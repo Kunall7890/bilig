@@ -4,6 +4,35 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.159.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.157.0
+- Manual override: no
+
+## Features
+- feat(xlsx): add workbook compatibility report (7cd5c940)
+
+## Fixes
+- fix(release): restore runtime version anchor (00a4e209)
+
+## Internal runtime changes
+- docs(n8n): improve template sticky notes (fd01b202)
+- docs(agents): add openai hosted mcp proof (5a2360b2)
+- docs(agent): add google adk workpaper proof (53fec737)
+- docs(agent): advertise ai sdk workpaper tools (02a829b9)
+- test(workpaper): copy external typecheck config (3eb87e55)
+- docs(agent): add workpaper proof matrix (99631461)
+- docs(agent): expand agent-start rule targets (aecbdcf0)
+- docs(agent): expand coding agent discovery (190e48a4)
+- docs(growth): add stale formula readback chooser (059d739a)
+- docs(agent): add proof transcripts (5f19d493)
+- docs(agent): expand proof discovery surfaces (1700b124)
+- docs(growth): sharpen workbook fixture intake (5b56eb34)
+- docs(growth): publish public workbook corpus report (2208d89a)
+- chore(release): runtime packages v0.158.0 (3d7569af)
+- style(release): format generated changelog (07b28e76)
+
 ## 0.158.0
 
 - Release type: minor
