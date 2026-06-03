@@ -24,6 +24,7 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-
 npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx
 ```
 
 If VS Code MCP tools are available, prefer the workspace server named

@@ -90,6 +90,7 @@ describe('bilig-agent-start', () => {
     expect(exitCode).toBe(0)
     expect(stdout).toContain('Recommended file: `.cursor/rules/bilig-workpaper.mdc`')
     expect(stdout).toContain('bilig-evaluate --door agent-mcp --json')
+    expect(stdout).toContain('bilig-workpaper-mcp --from-xlsx ./pricing.xlsx')
     expect(stdout).toContain('Never claim success from a write call alone.')
     expect(stdout).toContain('alwaysApply: false')
   })

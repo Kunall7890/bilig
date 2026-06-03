@@ -24,12 +24,14 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
 npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx
 ```
 
 For a writable project WorkPaper file:
 
 ```sh
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
 ```
 
 Use the hosted endpoint only for remote MCP connector discovery or stateless

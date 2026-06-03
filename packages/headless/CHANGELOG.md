@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(mcp): allow direct xlsx risk imports (cbf622bf)
 
 ## 0.160.1

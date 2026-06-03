@@ -269,6 +269,16 @@ export async function requireAgentInstructionDiscovery(input: {
     'npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json',
     '.claude/commands/bilig-workpaper-proof.md',
   )
+  requireIncludes(
+    claudeProjectCommandNotes,
+    'npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx',
+    '.claude/commands/bilig-workpaper-proof.md',
+  )
+  requireIncludes(
+    claudeProjectCommandNotes,
+    'npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable',
+    '.claude/commands/bilig-workpaper-proof.md',
+  )
   requireIncludes(claudeProjectCommandNotes, 'Do not drive', '.claude/commands/bilig-workpaper-proof.md')
   requireIncludes(claudeProjectCommandNotes, 'do not claim success from a write call alone.', '.claude/commands/bilig-workpaper-proof.md')
 
@@ -355,6 +365,16 @@ export async function requireAgentInstructionDiscovery(input: {
     'npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json',
     '.github/copilot-instructions.md',
   )
+  requireIncludes(
+    copilotInstructions,
+    'npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx',
+    '.github/copilot-instructions.md',
+  )
+  requireIncludes(
+    copilotInstructions,
+    'npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable',
+    '.github/copilot-instructions.md',
+  )
   requireIncludes(copilotInstructions, 'Do not claim success from a write call alone.', '.github/copilot-instructions.md')
   requireIncludes(copilotWorkpaperInstructions, "applyTo: '**/*'", '.github/instructions/bilig-workpaper.instructions.md')
   requireIncludes(copilotWorkpaperInstructions, '# Bilig WorkPaper Formula Proof', '.github/instructions/bilig-workpaper.instructions.md')
@@ -366,6 +386,16 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(
     copilotWorkpaperInstructions,
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json',
+    '.github/instructions/bilig-workpaper.instructions.md',
+  )
+  requireIncludes(
+    copilotWorkpaperInstructions,
+    'npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx',
+    '.github/instructions/bilig-workpaper.instructions.md',
+  )
+  requireIncludes(
+    copilotWorkpaperInstructions,
+    'npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable',
     '.github/instructions/bilig-workpaper.instructions.md',
   )
   requireIncludes(
@@ -384,6 +414,11 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(
     copilotPrompt,
     'npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json',
+    '.github/prompts/bilig-workpaper-proof.prompt.md',
+  )
+  requireIncludes(
+    copilotPrompt,
+    'npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx',
     '.github/prompts/bilig-workpaper-proof.prompt.md',
   )
   requireIncludes(copilotPrompt, '`biligWorkpaperFile`', '.github/prompts/bilig-workpaper-proof.prompt.md')

@@ -306,6 +306,19 @@ file-backed stdio server when the agent must persist a project WorkPaper JSON
 file. VS Code also supports `code --add-mcp` for user-level setup; the
 workspace file is easier to review in a repository.
 
+For a user-level VS Code install, pass the same reviewed server shape through
+the VS Code CLI:
+
+```sh
+code --add-mcp '{"name":"biligWorkpaperFile","type":"stdio","command":"npm","args":["exec","--package","@bilig/workpaper@latest","--","bilig-workpaper-mcp","--workpaper","${workspaceFolder}/.bilig/pricing.workpaper.json","--init-demo-workpaper","--writable"]}'
+```
+
+Use a second user-level server only for public no-file smoke tests:
+
+```sh
+code --add-mcp '{"name":"biligWorkpaperDemo","type":"http","url":"https://bilig.proompteng.ai/mcp"}'
+```
+
 ## Cline
 
 Cline can run the published WorkPaper server as a local stdio MCP server. For

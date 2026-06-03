@@ -64,6 +64,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   const workpaperPackageSpec = '@bilig/workpaper@latest'
   const mcpbReleaseAssetUrl = 'https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb'
   const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
+  const remoteMcpEndpoint = 'https://bilig.proompteng.ai/mcp'
   const officialRegistryLatestMarkedVersion = '0.160.2'
   const officialRegistryLatestMarkedUpdatedAt = '2026-06-03T18:18:29.73846Z'
 
@@ -660,6 +661,8 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'mcp/bilig-workpaper.mcp.json',
     'Use the biligWorkpaperFile MCP server. List sheets, read Summary!A1:B5',
     'set Inputs!B3 to 0.4 with set_cell_contents_and_readback',
+    `code --add-mcp '{"name":"biligWorkpaperFile","type":"stdio","command":"npm","args":["exec","--package","${workpaperPackageSpec}","--","bilig-workpaper-mcp","--workpaper","\${workspaceFolder}/.bilig/pricing.workpaper.json","--init-demo-workpaper","--writable"]}'`,
+    `code --add-mcp '{"name":"biligWorkpaperDemo","type":"http","url":"${remoteMcpEndpoint}"}'`,
     'The useful Cursor tool set includes `list_sheets`, `read_range`',
     '.vscode/mcp.json',
     'cline_mcp_settings.json',

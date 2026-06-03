@@ -339,6 +339,14 @@ state:
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
 \`\`\`
 
+Use direct XLSX import when the task starts from an existing workbook file and
+needs in-memory formula readback or import risk diagnostics:
+
+\`\`\`sh
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
+\`\`\`
+
 Do not drive Excel, LibreOffice, Google Sheets, browser grids, or screenshots
 when WorkPaper JSON can be the source of truth.
 

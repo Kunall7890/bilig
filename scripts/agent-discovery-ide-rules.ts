@@ -405,6 +405,8 @@ npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-
 npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx
+npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
 \`\`\`
 
 Use the hosted stateless MCP endpoint only for tool discovery or smoke tests:
@@ -519,6 +521,8 @@ npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-
 npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx
+npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
 \`\`\`
 
 Before reporting success, return readback with:
@@ -587,12 +591,14 @@ npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
 npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
+npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx
 \`\`\`
 
 For a writable project WorkPaper file:
 
 \`\`\`sh
 npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
 \`\`\`
 
 Use the hosted endpoint only for remote MCP connector discovery or stateless
@@ -652,6 +658,7 @@ npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-
 npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx
 \`\`\`
 
 If VS Code MCP tools are available, prefer the workspace server named
