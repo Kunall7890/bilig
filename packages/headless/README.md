@@ -673,6 +673,12 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
   `sheet-rename-dependencies` at `0.792x`.
 - The shareable benchmark card is generated from the checked-in artifact:
   [`workpaper-benchmark-card.png`](https://github.com/proompteng/bilig/blob/main/docs/assets/workpaper-benchmark-card.png).
+- The
+  [public workbook corpus report](https://github.com/proompteng/bilig/blob/main/docs/public-workbook-corpus-report.md)
+  is generated from the checked 22-workbook public scorecard. It records 602
+  source candidates, 22 cached public workbooks, 812,868 cells, 46,211 formula
+  cells, 6/6 formula-oracle matches, and the three resource-limited
+  classifications.
 - Read the
   [compatibility limits](https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md)
   before importing real Excel workbooks.

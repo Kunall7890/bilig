@@ -257,6 +257,7 @@ value, and a small repro path.
 
 Useful links:
 
+- [public workbook corpus report](public-workbook-corpus-report.md)
 - [oracle design feedback thread](https://github.com/proompteng/bilig/discussions/382)
 - [new issue](https://github.com/proompteng/bilig/issues/new/choose)
 - [first-timers-only queue](https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only)

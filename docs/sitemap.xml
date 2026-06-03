@@ -649,6 +649,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://proompteng.github.io/bilig/public-workbook-corpus-report.html</loc>
+    <lastmod>2026-06-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.86</priority>
+  </url>
+  <url>
     <loc>https://proompteng.github.io/bilig/xlsx-corpus-verifier-walkthrough.html</loc>
     <lastmod>2026-05-07</lastmod>
     <changefreq>monthly</changefreq>

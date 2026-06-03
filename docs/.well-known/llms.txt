@@ -602,6 +602,13 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 - stale XLSX cache and fresh Excel oracle checks:
   https://proompteng.github.io/bilig/xlsx-corpus-verifier-walkthrough.html
   https://github.com/proompteng/bilig/blob/main/docs/xlsx-corpus-verifier-walkthrough.md
+- public workbook corpus report:
+  https://proompteng.github.io/bilig/public-workbook-corpus-report.html
+  https://github.com/proompteng/bilig/blob/main/docs/public-workbook-corpus-report.md
+  generated from packages/benchmarks/baselines/public-workbook-corpus-scorecard.json;
+  records 602 source candidates, 22 cached public workbooks, 812868 cells,
+  46211 formula cells, 6/6 formula-oracle matches, and resource-limited
+  unsupported cases without claiming the broader financial corpus is complete.
 - XLSX formula recalculation in Node:
   https://proompteng.github.io/bilig/xlsx-formula-recalculation-node.html
   https://github.com/proompteng/bilig/blob/main/docs/xlsx-formula-recalculation-node.md
@@ -896,6 +903,9 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://github.com/proompteng/bilig/blob/main/docs/building-a-revenue-model-with-headless-workpaper.md
 - compatibility boundaries:
   https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md
+- public-workbook-corpus-report:
+  https://proompteng.github.io/bilig/public-workbook-corpus-report.html
+  https://github.com/proompteng/bilig/blob/main/docs/public-workbook-corpus-report.md
 - xlsx verifier walkthrough:
   https://proompteng.github.io/bilig/xlsx-corpus-verifier-walkthrough.html
   https://github.com/proompteng/bilig/blob/main/docs/xlsx-corpus-verifier-walkthrough.md

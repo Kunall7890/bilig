@@ -104,6 +104,10 @@ Missing cached results and volatile or environment-dependent formulas such as
 
 For a concrete report walkthrough, see
 [`docs/xlsx-corpus-verifier-walkthrough.md`](xlsx-corpus-verifier-walkthrough.md).
+For the checked public baseline, see the generated
+[public workbook corpus report](public-workbook-corpus-report.md), which names
+the source-count, workbook-count, formula-cell, oracle-match, and
+resource-limited rows without claiming broader corpus completion.
 
 ### UI dominance claims
 

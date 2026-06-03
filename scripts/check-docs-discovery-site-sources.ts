@@ -140,6 +140,7 @@ export const docsSiteSources = [
   ['javascript-spreadsheet-library-headless-node.html', 'javascript-spreadsheet-library-headless-node.md'],
   ['sheetjs-exceljs-alternative-formula-workbook-api.html', 'sheetjs-exceljs-alternative-formula-workbook-api.md'],
   ['where-bilig-is-not-excel-compatible-yet.html', 'where-bilig-is-not-excel-compatible-yet.md'],
+  ['public-workbook-corpus-report.html', 'public-workbook-corpus-report.md'],
   ['xlsx-corpus-verifier-walkthrough.html', 'xlsx-corpus-verifier-walkthrough.md'],
   ['formula-edge-xlookup-exact-fixture.html', 'formula-edge-xlookup-exact-fixture.md'],
   ['formula-edge-sumifs-paired-criteria-fixture.html', 'formula-edge-sumifs-paired-criteria-fixture.md'],

@@ -3,10 +3,18 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  buildPublicWorkbookCorpusEvidence,
+  renderPublicWorkbookCorpusReport,
+  type PublicWorkbookCorpusEvidence,
+} from './public-workbook-corpus-report.ts'
 import { formatJsonForRepo } from './scorecard-format.ts'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const outputPath = join(repoRoot, 'docs', 'public-evidence.json')
+const publicWorkbookCorpusReportPath = join(repoRoot, 'docs', 'public-workbook-corpus-report.md')
+const publicWorkbookCorpusArtifactPath = 'packages/benchmarks/baselines/public-workbook-corpus-scorecard.json'
+const publicWorkbookCorpusReportRepoPath = 'docs/public-workbook-corpus-report.md'
 const checkMode = process.argv.includes('--check')
 
 interface LaneScorecard {
@@ -68,6 +76,7 @@ interface PublicEvidence {
     readonly tenXMeanAndP95WorkloadCountAgainstHyperFormula: number
     readonly comparisons: readonly PublicComparisonEvidence[]
   }
+  readonly publicWorkbookCorpus: PublicWorkbookCorpusEvidence
 }
 
 interface PublicComparisonEvidence {
@@ -364,6 +373,7 @@ async function buildEvidence(): Promise<PublicEvidence> {
     xlsxCalcArtifact,
     ironCalcRustArtifact,
     leadershipScorecard,
+    publicWorkbookCorpusScorecard,
   ] = await Promise.all([
     readJsonRecord(join(repoRoot, 'packages', 'headless', 'package.json'), 'packages/headless/package.json'),
     readJsonRecord(join(repoRoot, 'packages', 'headless', 'server.json'), 'packages/headless/server.json'),
@@ -382,6 +392,7 @@ async function buildEvidence(): Promise<PublicEvidence> {
       join(repoRoot, 'packages', 'benchmarks', 'baselines', 'headless-performance-leadership-scorecard.json'),
       'headless performance leadership scorecard',
     ),
+    readJsonRecord(join(repoRoot, publicWorkbookCorpusArtifactPath), 'public workbook corpus scorecard'),
   ])
 
   const packageName = readString(packageManifest, 'name', 'packages/headless/package.json')
@@ -561,12 +572,18 @@ async function buildEvidence(): Promise<PublicEvidence> {
       ),
       comparisons,
     },
+    publicWorkbookCorpus: buildPublicWorkbookCorpusEvidence({
+      scorecard: publicWorkbookCorpusScorecard,
+      artifactPath: publicWorkbookCorpusArtifactPath,
+      reportPath: publicWorkbookCorpusReportRepoPath,
+    }),
   }
 }
 
 async function assertPublicSurfaces(evidence: PublicEvidence): Promise<void> {
   const benchmark = evidence.workpaperVsHyperFormula
   const leadership = evidence.headlessPerformanceLeadership
+  const publicCorpus = evidence.publicWorkbookCorpus
   const overall = benchmark.overall
   const publicLane = benchmark.publicLane
   const holdout = benchmark.holdout
@@ -590,6 +607,16 @@ async function assertPublicSurfaces(evidence: PublicEvidence): Promise<void> {
     leadership.worstMeanRatio.toString(),
     leadership.worstP95Ratio.toString(),
     leadership.tenXMeanAndP95WorkloadCountAgainstHyperFormula.toString(),
+    publicCorpus.generatedAt,
+    publicCorpus.sourceCount.toString(),
+    publicCorpus.cachedWorkbookCount.toString(),
+    publicCorpus.importedWorkbookCount.toString(),
+    publicCorpus.passedWorkbookCount.toString(),
+    publicCorpus.unsupportedWorkbookCount.toString(),
+    publicCorpus.failedWorkbookCount.toString(),
+    publicCorpus.errorWorkbookCount.toString(),
+    publicCorpus.featureTotals.cellCount.toString(),
+    publicCorpus.featureTotals.formulaCellCount.toString(),
     p95Ratio,
     overall.directionalMeanRatioGeomean.toString(),
     overall.directionalP95RatioGeomean.toString(),
@@ -620,6 +647,7 @@ async function assertPublicSurfaces(evidence: PublicEvidence): Promise<void> {
     'docs/hyperformula-alternative-headless-workpaper.md',
     'docs/why-agents-need-workbook-apis.md',
     'docs/where-bilig-is-not-excel-compatible-yet.md',
+    'docs/public-workbook-corpus-report.md',
     'docs/dev-to-workbook-apis-post.md',
     'docs/local-workpaper-benchmark-walkthrough.md',
     'docs/llms.txt',
@@ -698,15 +726,36 @@ async function assertPublicSurfaces(evidence: PublicEvidence): Promise<void> {
     }
   }
 
-  const [readme, headlessReadme, index, benchmarkExplainer, benchmarkEvidence, hyperformulaAlternative, svgCard] = await Promise.all([
+  const [
+    readme,
+    headlessReadme,
+    index,
+    benchmarkExplainer,
+    benchmarkEvidence,
+    hyperformulaAlternative,
+    publicWorkbookCorpusReport,
+    xlsxCorpusVerifierWalkthrough,
+    compatibilityLimits,
+    llms,
+    svgCard,
+  ] = await Promise.all([
     readFile(join(repoRoot, 'README.md'), 'utf8'),
     readFile(join(repoRoot, 'packages', 'headless', 'README.md'), 'utf8'),
     readFile(join(repoRoot, 'docs', 'index.html'), 'utf8'),
     readFile(join(repoRoot, 'docs', 'what-workpaper-benchmark-proves.md'), 'utf8'),
     readFile(join(repoRoot, 'docs', 'headless-workpaper-benchmark-evidence.md'), 'utf8'),
     readFile(join(repoRoot, 'docs', 'hyperformula-alternative-headless-workpaper.md'), 'utf8'),
+    readFile(join(repoRoot, 'docs', 'public-workbook-corpus-report.md'), 'utf8'),
+    readFile(join(repoRoot, 'docs', 'xlsx-corpus-verifier-walkthrough.md'), 'utf8'),
+    readFile(join(repoRoot, 'docs', 'where-bilig-is-not-excel-compatible-yet.md'), 'utf8'),
+    readFile(join(repoRoot, 'docs', 'llms.txt'), 'utf8'),
     readFile(join(repoRoot, 'docs', 'assets', 'workpaper-benchmark-card.svg'), 'utf8'),
   ])
+
+  const renderedPublicWorkbookCorpusReport = renderPublicWorkbookCorpusReport(publicCorpus)
+  if (publicWorkbookCorpusReport !== renderedPublicWorkbookCorpusReport) {
+    throw new Error('docs/public-workbook-corpus-report.md is out of date. Run: pnpm public:evidence:generate')
+  }
 
   for (const [path, content] of [
     ['README.md', readme],
@@ -776,6 +825,38 @@ async function assertPublicSurfaces(evidence: PublicEvidence): Promise<void> {
     'docs/hyperformula-alternative-headless-workpaper.md',
   )
 
+  for (const [path, content] of [
+    ['README.md', readme],
+    ['packages/headless/README.md', headlessReadme],
+    ['docs/index.html', index],
+    ['docs/llms.txt', llms],
+    ['docs/where-bilig-is-not-excel-compatible-yet.md', compatibilityLimits],
+    ['docs/xlsx-corpus-verifier-walkthrough.md', xlsxCorpusVerifierWalkthrough],
+  ] as const) {
+    requireIncludes(content, 'public-workbook-corpus-report', path)
+  }
+  for (const required of [
+    'Public Workbook Corpus Report',
+    publicCorpus.artifactPath,
+    'pnpm public-workbook-corpus:status',
+    'pnpm public:evidence:check',
+    'bilig-evaluate --door xlsx-cache --json',
+    `\`${publicCorpus.sourceCount.toLocaleString('en-US')}\``,
+    `\`${publicCorpus.cachedWorkbookCount.toLocaleString('en-US')}\``,
+    `\`${publicCorpus.importedWorkbookCount.toLocaleString('en-US')}\``,
+    `\`${publicCorpus.passedWorkbookCount.toLocaleString('en-US')}\``,
+    `\`${publicCorpus.unsupportedWorkbookCount.toLocaleString('en-US')}\``,
+    `\`${publicCorpus.failedWorkbookCount.toLocaleString('en-US')}\``,
+    `\`${publicCorpus.errorWorkbookCount.toLocaleString('en-US')}\``,
+    `\`${publicCorpus.formulaOracleMatchCount.toLocaleString('en-US')}/${publicCorpus.formulaOracleComparisonCount.toLocaleString('en-US')}\``,
+    `\`${publicCorpus.featureTotals.cellCount.toLocaleString('en-US')}\``,
+    `\`${publicCorpus.featureTotals.formulaCellCount.toLocaleString('en-US')}\``,
+    'not the broader 10,000-workbook or 5,000-financial-workbook objective',
+    'Resource-budget skips are visible instead of being counted as silent passes',
+  ] as const) {
+    requireIncludes(publicWorkbookCorpusReport, required, 'docs/public-workbook-corpus-report.md')
+  }
+
   requireIncludes(svgCard, `>${allProviderHeadline}</text>`, 'docs/assets/workpaper-benchmark-card.svg')
   requireIncludes(
     svgCard,
@@ -794,8 +875,8 @@ async function assertPublicSurfaces(evidence: PublicEvidence): Promise<void> {
 }
 
 async function syncPublicSurfaceMarkdown(evidence: PublicEvidence): Promise<void> {
-  await Promise.all(
-    (['docs/what-workpaper-benchmark-proves.md', 'docs/headless-workpaper-benchmark-evidence.md'] as const).map(async (relativePath) => {
+  await Promise.all([
+    ...(['docs/what-workpaper-benchmark-proves.md', 'docs/headless-workpaper-benchmark-evidence.md'] as const).map(async (relativePath) => {
       const absolutePath = join(repoRoot, relativePath)
       let content = await readFile(absolutePath, 'utf8')
       content = syncGoalStatus(content, evidence.headlessPerformanceLeadership.goalStatus, relativePath)
@@ -804,7 +885,8 @@ async function syncPublicSurfaceMarkdown(evidence: PublicEvidence): Promise<void
       }
       await writeFile(absolutePath, content)
     }),
-  )
+    writeFile(publicWorkbookCorpusReportPath, renderPublicWorkbookCorpusReport(evidence.publicWorkbookCorpus)),
+  ])
 }
 
 const evidence = await buildEvidence()
