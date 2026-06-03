@@ -11,12 +11,15 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(xlsx): add workbook compatibility report (7cd5c940)
 
 ## Fixes
+
 - fix(release): restore runtime version anchor (00a4e209)
 
 ## Internal runtime changes
+
 - docs(n8n): improve template sticky notes (fd01b202)
 - docs(agents): add openai hosted mcp proof (5a2360b2)
 - docs(agent): add google adk workpaper proof (53fec737)
