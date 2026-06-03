@@ -59,6 +59,10 @@ underlying recalculation implementation as this package.
 npx --package sheetjs-formula-recalc sheetjs-recalc --demo --json
 ```
 
+If you are not sure whether the fix belongs at the XLSX file, SheetJS, ExcelJS,
+template, CI, WorkPaper, or agent boundary, start with the
+[stale formula readback chooser](https://proompteng.github.io/bilig/stale-formula-readback-chooser.html).
+
 ## Install
 
 ```sh

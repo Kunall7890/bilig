@@ -140,6 +140,10 @@ Use this package at the file boundary:
 That keeps your current file-writer choice intact and adds only the missing
 calculation/readback step.
 
+If you are not sure whether the fix belongs at the XLSX file, SheetJS, ExcelJS,
+template, CI, WorkPaper, or agent boundary, start with the
+[stale formula readback chooser](https://proompteng.github.io/bilig/stale-formula-readback-chooser.html).
+
 ## Install
 
 ```sh

@@ -29,6 +29,7 @@ agent proof matrix: https://proompteng.github.io/bilig/agent-proof-matrix.html
 MCP spreadsheet formula server for coding agents: https://proompteng.github.io/bilig/mcp-spreadsheet-formula-server-for-coding-agents.html
 Vercel AI SDK formula readback: https://proompteng.github.io/bilig/vercel-ai-sdk-spreadsheet-tool-formula-readback.html
 ExcelJS formula result not updating after Node edits: https://proompteng.github.io/bilig/exceljs-formula-result-not-updating-after-node-edits.html
+Stale formula readback chooser: https://proompteng.github.io/bilig/stale-formula-readback-chooser.html
 agent discovery manifest: https://proompteng.github.io/bilig/.well-known/agent.json
 root agent discovery manifest: https://proompteng.github.io/bilig/agent.json
 agent skill: https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt
@@ -85,6 +86,12 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 - Google Sheets QUERY/SORTN over local WorkPaper ranges:
   https://proompteng.github.io/bilig/google-sheets-query-sortn-node-workpaper.html
   https://github.com/proompteng/bilig/blob/main/docs/google-sheets-query-sortn-node-workpaper.md
+- Stale formula readback chooser:
+  https://proompteng.github.io/bilig/stale-formula-readback-chooser.html
+  https://github.com/proompteng/bilig/blob/main/docs/stale-formula-readback-chooser.md
+  Use this before choosing among XLSX cache, XLSX recalculation, SheetJS,
+  ExcelJS, xlsx-populate/template, CI, WorkPaper service, and agent MCP proof
+  paths.
 - Evaluator commands:
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json`.
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`.

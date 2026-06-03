@@ -94,14 +94,14 @@ same-origin static server-card discovery.
 
 | Directory                       | Status                                                                                         | Link                                                                                                            |
 | ------------------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Official MCP Registry           | Live; latest marker currently trails current package                                          | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper&limit=100> |
+| Official MCP Registry           | Live; latest marker matches current `@bilig/workpaper` package                                | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper&limit=100> |
 | Hosted Streamable HTTP endpoint | App runtime endpoint for JSON-only stateless MCP smoke tests                                   | <https://bilig.proompteng.ai/mcp>                                                                               |
 | Hosted MCP server card          | Same-origin server card for Streamable HTTP scanners                                           | <https://bilig.proompteng.ai/.well-known/mcp/server-card.json>                                                  |
 | Static MCP server card          | Live                                                                                           | <https://proompteng.github.io/bilig/.well-known/mcp/server-card.json>                                           |
 | Static MCP discovery aliases    | Live                                                                                           | <https://proompteng.github.io/bilig/.well-known/mcp.json>                                                       |
 | Smithery                        | Live; `smithery mcp add` smoke connected and listed demo workbook sheets                       | <https://smithery.ai/servers/gkonushev/bilig-workpaper>                                                         |
 | Glama                           | Live with `Try in Browser`; file-backed tools indexed with A-grade TDQS                        | <https://glama.ai/mcp/servers/proompteng/bilig>                                                                 |
-| Docker MCP Registry             | Submitted for maintainer review; source commit and readme refreshed on May 19                  | <https://github.com/docker/mcp-registry/pull/3606>                                                              |
+| Docker MCP Registry             | Open for maintainer review; current proof refreshed in the existing pull request               | <https://github.com/docker/mcp-registry/pull/3606>                                                              |
 | Goose MCP catalog               | Closed by maintainer while Goose pauses new MCP server additions                               | <https://github.com/aaif-goose/goose/pull/9315>                                                                 |
 | mcp.so                          | Submitted for maintainer review; issue body refreshed on May 19                                | <https://github.com/chatmcp/mcpso/issues/2295>                                                                  |
 | Cline MCP Marketplace           | Submitted for maintainer review; issue body refreshed on May 19                                | <https://github.com/cline/mcp-marketplace/issues/1557>                                                          |
@@ -123,10 +123,11 @@ server there. Starter issue
 [#384](https://github.com/proompteng/bilig/issues/384) captured the first public
 verification pass and should stay closed unless the live listing regresses.
 
-The Docker MCP Registry pull request was refreshed on May 19, 2026 by updating
-the existing PR body, not by opening a duplicate submission. Docker still points
-at Bilig source commit `a1ecdd52cda3d54e0254afce129a9012c5027826`; the PR body
-now points reviewers at `@bilig/workpaper@latest` and the latest release MCPB asset.
+The Docker MCP Registry pull request was refreshed in place, not duplicated.
+Latest checked result on June 3, 2026: the pull request is still open, GitHub
+reports merge state `BLOCKED`, and the review URL remains
+<https://github.com/docker/mcp-registry/pull/3606>. Keep updating that pull
+request if reviewers need fresher proof; do not open a second Docker listing.
 
 The Goose MCP catalog pull request was closed on May 19, 2026 because Goose is
 paused on adding new MCP servers while it works on a more scalable extensions
@@ -221,9 +222,10 @@ The canonical package metadata in this repo includes:
 - `transport.type: stdio`
 - `repository.url: https://github.com/proompteng/bilig`
 
-Latest checked result on June 1, 2026: Live, and the Registry latest marker is live but currently trails the current package. The official Registry
-latest-marked server `io.github.proompteng/bilig-workpaper` is version
-`0.131.2`, package `@bilig/workpaper` is version `0.131.2`, and the current repo package version is `0.157.0`. The latest-marked entry was updated at `2026-06-01T00:56:47.948741Z`. The API also returns historical entries, so
+Latest checked result on June 3, 2026: Live, and the Registry latest marker
+matches the current package. In the official Registry, the latest-marked server `io.github.proompteng/bilig-workpaper` is
+version `0.157.0`, package `@bilig/workpaper` is version `0.157.0`, and the
+latest-marked entry was updated at `2026-06-03T06:14:38.997781Z`. The API also returns historical entries, so
 consumers should follow pagination, request a sufficient limit, and select the
 latest-marked entry when they need the Registry-owned freshest install
 coordinate. The hosted server-card path still advertises remote
@@ -231,6 +233,8 @@ coordinate. The hosted server-card path still advertises remote
 
 The `@bilig/workpaper` package itself carries the matching `mcpName` field.
 That is the ownership signal the registry uses for npm package validation.
+For local stdio proof, keep the install coordinate current and explicit:
+`@bilig/workpaper@latest`.
 
 ## Verify The Tool Surface
 

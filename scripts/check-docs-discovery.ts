@@ -20,6 +20,7 @@ import { requireTypeScriptFirstPublicSnippets } from './check-docs-discovery-typ
 import { requireXlsxCorpusVerifierDiscovery } from './check-docs-discovery-xlsx-verifier.ts'
 import { requireXlsxCalcAlternativeDiscovery } from './check-docs-discovery-xlsx-calc.ts'
 import { requireXlsxFormulaSupportAnswersDiscovery } from './check-docs-discovery-xlsx-support-answers.ts'
+import { requireStaleFormulaReadbackChooserDiscovery } from './check-docs-discovery-stale-formula-readback-chooser.ts'
 import { requireXlsxRecalcPublicDiscovery } from './check-docs-discovery-xlsx-recalc-public.ts'
 import { requireExternalWorkbookRecalcProofDiscovery } from './check-docs-discovery-external-workbook.ts'
 import { requireLlmsInstallDiscovery } from './check-docs-discovery-llms-install.ts'
@@ -410,6 +411,7 @@ requireIncludes(headlessReadme, 'docs/stale-xlsx-formula-cache-node.md', 'packag
 requireIncludes(llms, 'https://proompteng.github.io/bilig/stale-xlsx-formula-cache-node.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/stale-xlsx-formula-cache-node.md', 'docs/llms.txt')
 await requireXlsxFormulaSupportAnswersDiscovery({ docsRoot, index, llms, readme })
+await requireStaleFormulaReadbackChooserDiscovery({ docsRoot, repoRoot, index, llms, llmsFull, readme })
 
 for (const required of [
   'title: SheetJS formula result not updating in Node.js',

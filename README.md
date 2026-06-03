@@ -108,11 +108,13 @@ Pick the path that matches the job:
 
 | You have...                                                             | Start with                                                                 | You should see                                                                            |
 | ----------------------------------------------------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| You are not sure whether XLSX, SheetJS, ExcelJS, xlsx-populate, CI, WorkPaper, or an agent owns the fix | [Stale formula readback chooser](docs/stale-formula-readback-chooser.md) | the smallest proof command for the boundary, plus when not to use it. |
 | A real `.xlsx` file has stale formula results after Node edits          | [XLSX Cache Doctor evaluator](docs/eval-xlsx-cache-doctor.md)              | stale cells, cached values, recalculated values, suggested reads, and JSON output.        |
 | Pull requests can commit XLSX fixtures with stale cached values         | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md) | report-only workbook findings before the workflow blocks anything.                        |
 | A Node service, route, queue, test, or tool needs workbook logic        | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)         | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.    |
 | A coding agent or MCP client needs workbook tools without UI automation | [Agent MCP evaluator](docs/eval-agent-mcp.md)                              | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`. |
 | A coding agent needs the right repo rule or MCP config file             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                    | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Windsurf, Cline, Continue, or Gemini. |
+| You are comparing Excel MCP servers, hosted spreadsheet agents, or file-first XLSX tools | [Spreadsheet MCP server comparison](docs/spreadsheet-mcp-server-comparison.md) | the account/session/file/runtime boundary before an agent trusts formula readback. |
 | You need to choose among agent, MCP, AI SDK, OpenAI, LangGraph, Semantic Kernel, or XLSX proof | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md) | the smallest command or example for the host boundary, plus what it does and does not prove. |
 | Existing XLSX outputs need refreshed cached results                     | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)                   | changed input, recalculated output, output workbook, and `recalculationCompleted: true`.  |
 
@@ -137,6 +139,9 @@ be ceremony.
 
 The canonical XLSX guide is
 [Fix stale XLSX formula values in Node.js](docs/stale-xlsx-formula-cache-node.md).
+If you need to choose among XLSX, SheetJS, ExcelJS, xlsx-populate, CI,
+WorkPaper, and agent proof paths, use the
+[stale formula readback chooser](docs/stale-formula-readback-chooser.md).
 If you are answering a public SheetJS, ExcelJS, `xlsx-populate`, template, or CI
 question, use the non-spam
 [XLSX formula support answers](docs/xlsx-formula-support-answers.md) first.
@@ -684,6 +689,7 @@ the [MCP server guide](docs/mcp-workpaper-tool-server.md),
 [agent XLSX formula recalculation without LibreOffice](docs/agent-xlsx-formula-recalculation-without-libreoffice.md),
 [Excel file as a Node calculation engine](docs/excel-file-calculation-engine-node.md),
 [stale XLSX formula cache in Node.js](docs/stale-xlsx-formula-cache-node.md),
+[stale formula readback chooser](docs/stale-formula-readback-chooser.md),
 [XLSX formula support answers](docs/xlsx-formula-support-answers.md),
 [SheetJS formula result not updating in Node.js](docs/sheetjs-formula-result-not-updating-node.md),
 [ExcelJS formula result not updating after Node edits](docs/exceljs-formula-result-not-updating-after-node-edits.md),

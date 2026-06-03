@@ -30,6 +30,7 @@ export const docsSiteSources = [
   ['xlsx-formula-recalculation-node.html', 'xlsx-formula-recalculation-node.md'],
   ['sheetjs-formula-result-not-updating-node.html', 'sheetjs-formula-result-not-updating-node.md'],
   ['excel-file-calculation-engine-node.html', 'excel-file-calculation-engine-node.md'],
+  ['stale-formula-readback-chooser.html', 'stale-formula-readback-chooser.md'],
   ['stale-xlsx-formula-cache-node.html', 'stale-xlsx-formula-cache-node.md'],
   ['xlsx-formula-support-answers.html', 'xlsx-formula-support-answers.md'],
   ['microsoft-graph-excel-recalculation-node.html', 'microsoft-graph-excel-recalculation-node.md'],

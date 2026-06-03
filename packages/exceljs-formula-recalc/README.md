@@ -30,6 +30,11 @@ For a cross-library proof, run
 It edits the same workbook through SheetJS/`xlsx`, `xlsx-populate`, and
 ExcelJS, then verifies that Bilig refreshes the stale formula result.
 
+If the workflow might belong at the generic XLSX, SheetJS, template, CI,
+WorkPaper, or agent boundary instead, use the
+[stale formula readback chooser](https://proompteng.github.io/bilig/stale-formula-readback-chooser.html)
+before adding an ExcelJS-specific bridge.
+
 ## Install
 
 ```sh

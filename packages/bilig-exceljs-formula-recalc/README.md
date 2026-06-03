@@ -32,6 +32,11 @@ The important distinction is:
 Use ExcelJS for workbook I/O and presentation. Use this package only for the
 calculation/readback boundary that ExcelJS intentionally does not own.
 
+If the workflow might belong at the generic XLSX, SheetJS, template, CI,
+WorkPaper, or agent boundary instead, use the
+[stale formula readback chooser](https://proompteng.github.io/bilig/stale-formula-readback-chooser.html)
+before adding an ExcelJS-specific bridge.
+
 ## Install
 
 ```sh

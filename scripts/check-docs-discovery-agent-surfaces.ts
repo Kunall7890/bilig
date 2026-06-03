@@ -64,9 +64,8 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   const workpaperPackageSpec = '@bilig/workpaper@latest'
   const mcpbReleaseAssetUrl = 'https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb'
   const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
-  const currentWorkpaperPackageVersion = headlessPackageVersion
-  const officialRegistryLatestMarkedVersion = '0.131.2'
-  const officialRegistryLatestMarkedUpdatedAt = '2026-06-01T00:56:47.948741Z'
+  const officialRegistryLatestMarkedVersion = '0.157.0'
+  const officialRegistryLatestMarkedUpdatedAt = '2026-06-03T06:14:38.997781Z'
 
   const jekyllConfig = await readFile(join(docsRoot, '_config.yml'), 'utf8')
   const openAiAgentsSdkDoc = await readFile(join(docsRoot, 'openai-agents-sdk-workpaper-tool.md'), 'utf8')
@@ -560,13 +559,14 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'https://github.com/cline/mcp-marketplace/issues/1557',
     'https://github.com/docker/mcp-registry/pull/3606',
     'https://github.com/aaif-goose/goose/pull/9315',
-    'Docker MCP Registry             | Submitted for maintainer review; source commit and readme refreshed on May 19',
+    'Docker MCP Registry             | Open for maintainer review; current proof refreshed in the existing pull request',
     'Goose MCP catalog               | Closed by maintainer while Goose pauses new MCP server additions',
     'mcp.so                          | Submitted for maintainer review; issue body refreshed on May 19',
     'Cline MCP Marketplace           | Submitted for maintainer review; issue body refreshed on May 19',
-    'The Docker MCP Registry pull request was refreshed on May 19, 2026',
-    '`a1ecdd52cda3d54e0254afce129a9012c5027826`',
-    `the PR body\nnow points reviewers at \`${workpaperPackageSpec}\` and the latest release MCPB asset`,
+    'The Docker MCP Registry pull request was refreshed in place, not duplicated.',
+    'Latest checked result on June 3, 2026: the pull request is still open',
+    'reports merge state `BLOCKED`',
+    'do not open a second Docker listing',
     'The Goose MCP catalog pull request was closed on May 19, 2026',
     'Do not resubmit there until maintainers reopen that path',
     'The mcp.so and Cline MCP Marketplace submissions were refreshed on May 19, 2026',
@@ -584,8 +584,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'https://mcprepository.com/proompteng/bilig',
     'MCPRepository search returns a live Bilig page',
     'Live; `smithery mcp add` smoke connected and listed demo workbook sheets',
-    'Live; latest marker currently trails current package',
-    `\`${workpaperPackageSpec}\``,
+    'Live; latest marker matches current `@bilig/workpaper` package',
     'Live with `Try in Browser`; file-backed tools indexed with A-grade TDQS',
     'Live in PulseMCP-backed lookup as `Bilig WorkPaper`',
     'https://www.pulsemcp.com/servers?search=bilig&q=bilig',
@@ -597,11 +596,11 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'file-backed tools',
     'A-grade Tool Definition Quality',
     "Glama's source crawl, hosted smoke build, and JSON API can refresh on\ndifferent cadences",
-    'Latest checked result on June 1, 2026: Live, and the Registry latest marker is live but currently trails',
+    'Latest checked result on June 3, 2026: Live, and the Registry latest marker\nmatches the current package.',
     'official Registry',
-    'latest-marked server `io.github.proompteng/bilig-workpaper`',
+    'latest-marked server `io.github.proompteng/bilig-workpaper` is\nversion',
     `\`${officialRegistryLatestMarkedVersion}\`, package \`@bilig/workpaper\` is version \`${officialRegistryLatestMarkedVersion}\``,
-    `the current repo package version is \`${currentWorkpaperPackageVersion}\``,
+    `matches the current package`,
     'entry was',
     `updated at \`${officialRegistryLatestMarkedUpdatedAt}\``,
     'hosted server-card path still advertises remote',

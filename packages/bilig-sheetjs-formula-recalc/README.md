@@ -33,6 +33,11 @@ Use this package at the file boundary:
 This package is a SheetJS-named bridge over `@bilig/xlsx-formula-recalc`, so
 teams searching for a SheetJS answer can find the right boundary directly.
 
+If the workflow might belong at the generic XLSX, ExcelJS, template, CI,
+WorkPaper, or agent boundary instead, use the
+[stale formula readback chooser](https://proompteng.github.io/bilig/stale-formula-readback-chooser.html)
+before installing another bridge.
+
 ## Install
 
 ```sh

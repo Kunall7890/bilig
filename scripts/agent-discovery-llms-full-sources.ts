@@ -65,6 +65,7 @@ const llmsFullSourceSpecs = [
   ['OpenAI Agents SDK WorkPaper Tool', 'docs/openai-agents-sdk-workpaper-tool.md'],
   ['MCP WorkPaper Tool Server', 'docs/mcp-workpaper-tool-server.md'],
   ['Agent XLSX Formula Recalculation Without LibreOffice', 'docs/agent-xlsx-formula-recalculation-without-libreoffice.md'],
+  ['Stale Formula Readback Chooser For Node.js', 'docs/stale-formula-readback-chooser.md'],
   ['ExcelJS Formula Result Not Updating After Node Edits', 'docs/exceljs-formula-result-not-updating-after-node-edits.md'],
   ['Formula Bug Clinic', 'docs/formula-bug-clinic.md'],
   ['Google Sheets QUERY and SORTN in Node.js', 'docs/google-sheets-query-sortn-node-workpaper.md'],
