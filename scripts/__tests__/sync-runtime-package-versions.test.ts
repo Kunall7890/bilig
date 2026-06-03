@@ -74,7 +74,8 @@ describe('syncRuntimePackageVersions', () => {
       [
         'Latest checked result on June 1, 2026: Live, and the Registry latest marker is live but currently trails the current package.',
         'The official Registry latest-marked server `io.github.proompteng/bilig-workpaper` is version',
-        '`0.1.90`, package `@bilig/workpaper` is version `0.1.90`, and the current repo package version is `0.1.95`. The latest-marked entry was updated at `2026-06-01T00:56:47.948741Z`.',
+        '`0.1.90`, package `@bilig/workpaper` is version `0.1.90`, and the current',
+        'repo package version is `0.1.95`. The latest-marked entry was updated at `2026-06-01T00:56:47.948741Z`.',
         '',
       ].join('\n'),
     )

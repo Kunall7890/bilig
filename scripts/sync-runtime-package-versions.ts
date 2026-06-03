@@ -53,8 +53,8 @@ function syncMcpDirectoryDocVersion(rootDir: string, version: string, updatedFil
   const currentContent = readFileSync(docPath, 'utf8')
   const nextContent = replaceRequired(
     currentContent,
-    /(current repo package version is `)\d+\.\d+\.\d+(`)/u,
-    `$1${version}$2`,
+    /current\s+repo\s+package\s+version\s+is\s+`\d+\.\d+\.\d+`/u,
+    `current repo package version is \`${version}\``,
     `${docPath} must include the current repo package version`,
   )
   writeTextIfChanged(docPath, currentContent, nextContent, updatedFiles)

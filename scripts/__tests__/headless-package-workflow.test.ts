@@ -99,6 +99,7 @@ describe('headless package workflow', () => {
     expect(staticReferenceSource).toContain("^(\\\\s*)'@bilig/workpaper@${stableSemverPattern}'")
     expect(agentDiscoverySource).not.toContain('replace(new RegExp(`@bilig/headless@${stableSemverPattern}`')
     expect(mcpDirectoryDoc).toContain('npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp')
+    expect(mcpDirectoryDoc).toMatch(/current\s+repo\s+package\s+version\s+is\s+`\d+\.\d+\.\d+`/u)
     expect(source).toContain('.release-please-manifest.json')
     expect(source).toContain('gemini-extension.json')
     expect(source).toContain('skills/bilig-workpaper/SKILL.md')

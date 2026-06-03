@@ -92,29 +92,29 @@ same-origin static server-card discovery.
 
 ## Directory Status
 
-| Directory                       | Status                                                                                         | Link                                                                                                            |
-| ------------------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Official MCP Registry           | Live; latest marker matches current `@bilig/workpaper` package                                | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper&limit=100> |
-| Hosted Streamable HTTP endpoint | App runtime endpoint for JSON-only stateless MCP smoke tests                                   | <https://bilig.proompteng.ai/mcp>                                                                               |
-| Hosted MCP server card          | Same-origin server card for Streamable HTTP scanners                                           | <https://bilig.proompteng.ai/.well-known/mcp/server-card.json>                                                  |
-| Static MCP server card          | Live                                                                                           | <https://proompteng.github.io/bilig/.well-known/mcp/server-card.json>                                           |
-| Static MCP discovery aliases    | Live                                                                                           | <https://proompteng.github.io/bilig/.well-known/mcp.json>                                                       |
-| Smithery                        | Live; `smithery mcp add` smoke connected and listed demo workbook sheets                       | <https://smithery.ai/servers/gkonushev/bilig-workpaper>                                                         |
-| Glama                           | Live with `Try in Browser`; file-backed tools indexed with A-grade TDQS                        | <https://glama.ai/mcp/servers/proompteng/bilig>                                                                 |
-| Docker MCP Registry             | Open for maintainer review; current proof refreshed in the existing pull request               | <https://github.com/docker/mcp-registry/pull/3606>                                                              |
-| Goose MCP catalog               | Closed by maintainer while Goose pauses new MCP server additions                               | <https://github.com/aaif-goose/goose/pull/9315>                                                                 |
-| mcp.so                          | Submitted for maintainer review; issue body refreshed on May 19                                | <https://github.com/chatmcp/mcpso/issues/2295>                                                                  |
-| Cline MCP Marketplace           | Submitted for maintainer review; issue body refreshed on May 19                                | <https://github.com/cline/mcp-marketplace/issues/1557>                                                          |
-| mcpserver.cc                    | Submitted for maintainer review                                                                | <https://mcpserver.cc/en?q=bilig>                                                                               |
-| AgentNDX                        | Submitted for review                                                                           | <https://agentndx.ai/browse?q=bilig>                                                                            |
-| YuzeHao2023 Awesome MCP Servers | Submitted for maintainer review                                                                | <https://github.com/YuzeHao2023/Awesome-MCP-Servers/pull/244>                                                   |
-| ToolSDK MCP Registry            | Submitted for maintainer review                                                                | <https://github.com/toolsdk-ai/toolsdk-mcp-registry/pull/309>                                                   |
-| Ever Works MCP data             | Submitted for maintainer review                                                                | <https://github.com/ever-works/awesome-mcp-servers-data/pull/4>                                                 |
-| mcpserve.com                    | Submitted for maintainer review                                                                | <https://github.com/jmstfv/mcpserve/pull/19>                                                                    |
-| MCPFind                         | Submitted for maintainer review                                                                | <https://github.com/MCPFind/mcp-find/pull/37>                                                                   |
-| mctrinh Awesome MCP Servers     | Submitted for maintainer review                                                                | <https://github.com/mctrinh/awesome-mcp-servers/pull/46>                                                        |
-| MCPRepository                   | Live                                                                                           | <https://mcprepository.com/proompteng/bilig>                                                                    |
-| PulseMCP                        | Live in PulseMCP-backed lookup as `Bilig WorkPaper`                                            | <https://www.pulsemcp.com/servers?search=bilig&q=bilig>                                                         |
+| Directory                       | Status                                                                           | Link                                                                                                            |
+| ------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Official MCP Registry           | Live; latest marker and repo package versions are recorded below                 | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper&limit=100> |
+| Hosted Streamable HTTP endpoint | App runtime endpoint for JSON-only stateless MCP smoke tests                     | <https://bilig.proompteng.ai/mcp>                                                                               |
+| Hosted MCP server card          | Same-origin server card for Streamable HTTP scanners                             | <https://bilig.proompteng.ai/.well-known/mcp/server-card.json>                                                  |
+| Static MCP server card          | Live                                                                             | <https://proompteng.github.io/bilig/.well-known/mcp/server-card.json>                                           |
+| Static MCP discovery aliases    | Live                                                                             | <https://proompteng.github.io/bilig/.well-known/mcp.json>                                                       |
+| Smithery                        | Live; `smithery mcp add` smoke connected and listed demo workbook sheets         | <https://smithery.ai/servers/gkonushev/bilig-workpaper>                                                         |
+| Glama                           | Live with `Try in Browser`; file-backed tools indexed with A-grade TDQS          | <https://glama.ai/mcp/servers/proompteng/bilig>                                                                 |
+| Docker MCP Registry             | Open for maintainer review; current proof refreshed in the existing pull request | <https://github.com/docker/mcp-registry/pull/3606>                                                              |
+| Goose MCP catalog               | Closed by maintainer while Goose pauses new MCP server additions                 | <https://github.com/aaif-goose/goose/pull/9315>                                                                 |
+| mcp.so                          | Submitted for maintainer review; issue body refreshed on May 19                  | <https://github.com/chatmcp/mcpso/issues/2295>                                                                  |
+| Cline MCP Marketplace           | Submitted for maintainer review; issue body refreshed on May 19                  | <https://github.com/cline/mcp-marketplace/issues/1557>                                                          |
+| mcpserver.cc                    | Submitted for maintainer review                                                  | <https://mcpserver.cc/en?q=bilig>                                                                               |
+| AgentNDX                        | Submitted for review                                                             | <https://agentndx.ai/browse?q=bilig>                                                                            |
+| YuzeHao2023 Awesome MCP Servers | Submitted for maintainer review                                                  | <https://github.com/YuzeHao2023/Awesome-MCP-Servers/pull/244>                                                   |
+| ToolSDK MCP Registry            | Submitted for maintainer review                                                  | <https://github.com/toolsdk-ai/toolsdk-mcp-registry/pull/309>                                                   |
+| Ever Works MCP data             | Submitted for maintainer review                                                  | <https://github.com/ever-works/awesome-mcp-servers-data/pull/4>                                                 |
+| mcpserve.com                    | Submitted for maintainer review                                                  | <https://github.com/jmstfv/mcpserve/pull/19>                                                                    |
+| MCPFind                         | Submitted for maintainer review                                                  | <https://github.com/MCPFind/mcp-find/pull/37>                                                                   |
+| mctrinh Awesome MCP Servers     | Submitted for maintainer review                                                  | <https://github.com/mctrinh/awesome-mcp-servers/pull/46>                                                        |
+| MCPRepository                   | Live                                                                             | <https://mcprepository.com/proompteng/bilig>                                                                    |
+| PulseMCP                        | Live in PulseMCP-backed lookup as `Bilig WorkPaper`                              | <https://www.pulsemcp.com/servers?search=bilig&q=bilig>                                                         |
 
 PulseMCP says server listings are ingested from the official MCP Registry daily
 and processed weekly. Live verification on May 19, 2026 found Bilig WorkPaper
@@ -222,10 +222,13 @@ The canonical package metadata in this repo includes:
 - `transport.type: stdio`
 - `repository.url: https://github.com/proompteng/bilig`
 
-Latest checked result on June 3, 2026: Live, and the Registry latest marker
-matches the current package. In the official Registry, the latest-marked server `io.github.proompteng/bilig-workpaper` is
-version `0.157.0`, package `@bilig/workpaper` is version `0.157.0`, and the
-latest-marked entry was updated at `2026-06-03T06:14:38.997781Z`. The API also returns historical entries, so
+Latest checked result on June 3, 2026: Live. In the official Registry, the
+latest-marked server `io.github.proompteng/bilig-workpaper` is version
+`0.157.0`, package `@bilig/workpaper` is version `0.157.0`, and the current
+repo package version is `0.157.0`. The latest-marked entry was updated at
+`2026-06-03T06:14:38.997781Z`. Keep the repo package version separate from
+Registry readback because release metadata sync may update it before npm and
+Registry publication catch up. The API also returns historical entries, so
 consumers should follow pagination, request a sufficient limit, and select the
 latest-marked entry when they need the Registry-owned freshest install
 coordinate. The hosted server-card path still advertises remote
