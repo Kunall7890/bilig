@@ -1,8 +1,8 @@
 ---
 title: Stale formula readback chooser for Node.js
 published: true
-description: Pick the narrow Bilig proof for stale XLSX cached values, SheetJS, ExcelJS, xlsx-populate, CI, WorkPaper, and agent workbook tools.
-tags: typescript, node, xlsx, sheetjs, exceljs, formulas, recalculation
+description: Pick the narrow Bilig proof for stale XLSX cached values, SheetJS, ExcelJS, xlsx-populate, CI, WorkPaper, MCP, and agent workbook tools.
+tags: typescript, node, xlsx, sheetjs, exceljs, formulas, recalculation, mcp, ai-agents
 canonical_url: https://proompteng.github.io/bilig/stale-formula-readback-chooser.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png
@@ -12,9 +12,11 @@ image: /assets/github-social-preview.png
 
 Use this page when the symptom is "the formula value is old after my Node code
 changed an input." Pick the smallest proof that matches the boundary you already
-own. Do not answer public threads with a Bilig link unless the thread is current,
-the stale-cache failure is exact, and the reply includes a runnable command plus
-a clear limitation.
+own. If the caller is an agent, MCP client, or workflow runner, prove formula
+readback before opening Excel, LibreOffice, Sheets, or a browser grid. Do not
+answer public threads with a Bilig link unless the thread is current, the
+stale-cache failure is exact, and the reply includes a runnable command plus a
+clear limitation.
 
 ## Quick chooser
 
@@ -28,20 +30,38 @@ a clear limitation.
 | Service-owned formula logic | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json` | The service can own workbook state as JSON and prove edit, readback, persistence, and restore. | The saved `.xlsx` file must remain the authoritative state. |
 | Coding agent or MCP client | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json` | An agent needs workbook tools without UI automation. | The task is manual spreadsheet editing or exact Office UI behavior. |
 
+## Agent and JavaScript search map
+
+Use this map when the user or issue title is search-shaped rather than
+architecture-shaped. Start with the existing library boundary, then move to the
+Bilig proof only when the missing piece is current-process formula readback.
+
+| Search symptom | Route first | Bilig proof |
+| --- | --- | --- |
+| `SheetJS xlsx formula result not updating` or `xlsx formula refresh` | [SheetJS formula result not updating in Node.js](sheetjs-formula-result-not-updating-node.md) | `npm exec --package @bilig/sheetjs-formula-recalc@latest -- sheetjs-recalc --demo --json` |
+| `ExcelJS formula result not updating after Node edits` | [ExcelJS formula result not updating after Node edits](exceljs-formula-result-not-updating-after-node-edits.md) | `npm exec --package @bilig/exceljs-formula-recalc@latest -- exceljs-recalc --demo --json` |
+| `Excel file as Node calculation engine` or `server-side spreadsheet formulas` | [Evaluate Excel formulas in Node.js TypeScript](evaluate-excel-formulas-in-node-typescript.md) | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json` |
+| `spreadsheet agent formula readback`, `MCP spreadsheet formula server`, or `agent workbook tools` | [MCP spreadsheet formula server for coding agents](mcp-spreadsheet-formula-server-for-coding-agents.md) and [Agent XLSX formula recalculation without LibreOffice](agent-xlsx-formula-recalculation-without-libreoffice.md) | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json` |
+
+The agent/MCP path should return proof fields such as `editedCell`, `before`,
+`after`, `afterRestore`, `persistedDocumentBytes`, and `verified`. A write call,
+DOM click, screenshot, or successful file save is not formula readback.
+
 ## Freshness snapshot
 
-Last checked on 2026-06-03 from the npm downloads API for the latest complete
-`last-week` window, 2026-05-25 through 2026-05-31:
+Last checked on 2026-06-03 from the npm downloads API `last-week` window,
+2026-05-27 through 2026-06-02:
 
 | Package | Weekly downloads | Why it matters |
 | --- | ---: | --- |
-| `xlsx` | 10,066,932 | The largest organic search pool for stale cached XLSX formula results. |
-| `exceljs` | 8,048,169 | A large Excel authoring pool where `fullCalcOnLoad` is often confused with current-process readback. |
-| `hyperformula` | 322,988 | A useful comparison point for broad JS formula-engine searches. |
-| `@bilig/headless` | 31,174 | Service-owned workbook state already has enough usage to be a second door. |
-| `@bilig/xlsx-formula-recalc` | 7,545 | The canonical scoped stale-cache and recalculation package. |
-| `@bilig/sheetjs-formula-recalc` | 6,442 | The SheetJS-named bridge for people searching through the `xlsx` boundary. |
-| `@bilig/exceljs-formula-recalc` | 6,316 | The ExcelJS-named bridge for people searching through the ExcelJS boundary. |
+| `xlsx` | 10,557,539 | The largest organic search pool for stale cached XLSX formula results. |
+| `exceljs` | 8,644,921 | A large Excel authoring pool where `fullCalcOnLoad` is often confused with current-process readback. |
+| `hyperformula` | 358,924 | A useful comparison point for broad JS formula-engine searches. |
+| `@bilig/headless` | 37,244 | Service-owned workbook state already has enough usage to be a second door. |
+| `@bilig/xlsx-formula-recalc` | 10,613 | The canonical scoped stale-cache and recalculation package. |
+| `@bilig/workpaper` | 8,814 | The WorkPaper API, CLI evaluator, and MCP server for agent and service readback. |
+| `@bilig/sheetjs-formula-recalc` | 8,610 | The SheetJS-named bridge for people searching through the `xlsx` boundary. |
+| `@bilig/exceljs-formula-recalc` | 8,459 | The ExcelJS-named bridge for people searching through the ExcelJS boundary. |
 
 The maintained reduced issue fixtures are:
 

@@ -203,6 +203,11 @@ requirePackageKeywords(
   ],
   'packages/headless/package.json',
 )
+requireIncludes(
+  headlessPackageJson,
+  '"homepage": "https://proompteng.github.io/bilig/try-bilig-headless-in-node.html"',
+  'packages/headless/package.json',
+)
 requirePackageKeywords(
   scopedWorkpaperPackageJson,
   [
@@ -227,6 +232,11 @@ requirePackageKeywords(
     'workpaper',
     'xlsx',
   ],
+  'packages/workpaper/package.json',
+)
+requireIncludes(
+  scopedWorkpaperPackageJson,
+  '"homepage": "https://proompteng.github.io/bilig/agent-framework-workbook-tools.html"',
   'packages/workpaper/package.json',
 )
 requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/workpaper"', 'docs/index.html')

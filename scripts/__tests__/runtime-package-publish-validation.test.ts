@@ -84,6 +84,28 @@ describe('runtime package publish validation', () => {
     )
   })
 
+  it('rejects MCP registry metadata that overclaims workbook compatibility', () => {
+    const stagedPackageDir = stageHeadlessPackage({
+      manifestVersion: '9.9.9',
+      serverDescription: 'Excel compatibility checker with a compatibility score for workbook risk.',
+      versionModuleSource: packageManifestVersionModuleSource(),
+    })
+
+    expect(() => validateStagedRuntimePackageVersion('@bilig/headless', stagedPackageDir, '9.9.9')).toThrow(
+      'Staged @bilig/headless server.json contains overclaiming MCP Registry wording',
+    )
+  })
+
+  it('accepts diagnostic MCP registry workbook risk wording', () => {
+    const stagedPackageDir = stageHeadlessPackage({
+      manifestVersion: '9.9.9',
+      serverDescription: 'Formula readback, input edits, JSON persistence, and workbook risk preflight for agents.',
+      versionModuleSource: packageManifestVersionModuleSource(),
+    })
+
+    expect(() => validateStagedRuntimePackageVersion('@bilig/headless', stagedPackageDir, '9.9.9')).not.toThrow()
+  })
+
   it('rejects MCP metadata without the hosted remote endpoint', () => {
     const stagedPackageDir = stageHeadlessPackage({
       manifestVersion: '9.9.9',
@@ -143,7 +165,7 @@ function stageMcpPackage(args: {
     `${JSON.stringify(
       {
         name: 'io.github.proompteng/bilig-workpaper',
-        description: args.serverDescription ?? 'Formula-backed WorkPaper tools for workbook readback, input edits, and JSON persistence.',
+        description: args.serverDescription ?? 'Formula readback, input edits, JSON persistence, and workbook risk preflight for agents.',
         version: serverVersion,
         ...(args.includeRemote === false
           ? {}

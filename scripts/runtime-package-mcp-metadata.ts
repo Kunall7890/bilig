@@ -1,6 +1,23 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+const forbiddenMcpRegistryClaimPatterns = [
+  /compatible with Excel/iu,
+  /Excel-compatible/iu,
+  /Excel parity verified/iu,
+  /Excel readiness score/iu,
+  /Excel certification/iu,
+  /\bcertified\b/iu,
+  /\bguaranteed\b/iu,
+  /100%\s+compatible/iu,
+  /compatibility\s+score/iu,
+  /compatibilityScore/u,
+  /excelCompatibilityPercent/u,
+  /verifies workbook compatibility/iu,
+  /guarantees workbook execution/iu,
+  /detects all workbook issues/iu,
+] as const
+
 export function syncStagedMcpServerMetadata(packageName: string, stagedPackageDir: string, targetVersion: string): void {
   const manifest = readPackageManifest(stagedPackageDir)
   if (!shouldValidateMcpMetadata(packageName, manifest)) {
@@ -44,6 +61,7 @@ export function validateStagedMcpServerMetadata(packageName: string, stagedPacka
   if (typeof serverJson['description'] !== 'string' || serverJson['description'].length > 100) {
     throw new Error(`Staged ${packageName} server.json description must be a string no longer than 100 characters`)
   }
+  assertNoMcpRegistryOverclaimText(packageName, serverJson)
 
   const npmPackage = findNpmPackageEntry(serverJson, manifest['name'])
   if (!npmPackage) {
@@ -103,6 +121,27 @@ function findHostedRemoteEntry(serverJson: Record<string, unknown>): Record<stri
     (entry): entry is Record<string, unknown> =>
       isRecord(entry) && entry['type'] === 'streamable-http' && entry['url'] === 'https://bilig.proompteng.ai/mcp',
   )
+}
+
+function assertNoMcpRegistryOverclaimText(packageName: string, serverJson: Record<string, unknown>): void {
+  const metadataText = collectJsonStrings(serverJson).join('\n')
+  const matchedPattern = forbiddenMcpRegistryClaimPatterns.find((pattern) => pattern.test(metadataText))
+  if (matchedPattern) {
+    throw new Error(`Staged ${packageName} server.json contains overclaiming MCP Registry wording: ${matchedPattern.source}`)
+  }
+}
+
+function collectJsonStrings(value: unknown): string[] {
+  if (typeof value === 'string') {
+    return [value]
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) => collectJsonStrings(entry))
+  }
+  if (isRecord(value)) {
+    return Object.values(value).flatMap((entry) => collectJsonStrings(entry))
+  }
+  return []
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
