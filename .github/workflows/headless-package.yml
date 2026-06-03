@@ -1233,6 +1233,75 @@ jobs:
             build/mcpb/bilig-workpaper.mcpb.sha256 \
             --clobber
 
+      - name: Publish MCP Registry entry
+        if: steps.release_metadata_alignment.outputs.current == 'true' && steps.npm_provisioning.outputs.publish_allowed == 'true' && needs.plan_release.outputs.dry_run != 'true'
+        env:
+          TARGET_VERSION: ${{ needs.plan_release.outputs.target_version }}
+        run: |
+          set -euo pipefail
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}"
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}"
+
+          rm -rf build/mcp-registry
+          mkdir -p build/mcp-registry
+          npm pack "@bilig/workpaper@${TARGET_VERSION}" --pack-destination build/mcp-registry
+          tarball="$(find build/mcp-registry -maxdepth 1 -name '*.tgz' -print -quit)"
+          test -n "${tarball}"
+          tar -xzf "${tarball}" -C build/mcp-registry
+
+          node <<'NODE'
+          const fs = require("node:fs");
+          const manifest = JSON.parse(fs.readFileSync("build/mcp-registry/package/package.json", "utf8"));
+          const server = JSON.parse(fs.readFileSync("build/mcp-registry/package/server.json", "utf8"));
+          server.description = "Formula-backed WorkPaper tools for workbook readback, input edits, and JSON persistence.";
+          server.remotes = [
+            {
+              type: "streamable-http",
+              url: "https://bilig.proompteng.ai/mcp",
+            },
+          ];
+          const npmPackage = Array.isArray(server.packages)
+            ? server.packages.find((entry) => entry.registryType === "npm" && entry.identifier === manifest.name)
+            : undefined;
+          const remoteServer = Array.isArray(server.remotes)
+            ? server.remotes.find((entry) => entry.type === "streamable-http" && entry.url === "https://bilig.proompteng.ai/mcp")
+            : undefined;
+
+          const failures = [];
+          if (manifest.name !== "@bilig/workpaper") failures.push(`unexpected package: ${manifest.name}`);
+          if (manifest.mcpName !== "io.github.proompteng/bilig-workpaper") failures.push(`unexpected mcpName: ${manifest.mcpName}`);
+          if (server.name !== manifest.mcpName) failures.push(`server name mismatch: ${server.name} !== ${manifest.mcpName}`);
+          if (server.version !== manifest.version) failures.push(`server version mismatch: ${server.version} !== ${manifest.version}`);
+          if (typeof server.description !== "string" || server.description.length > 100) {
+            failures.push(`registry description is too long: ${server.description?.length ?? "missing"}`);
+          }
+          if (!npmPackage) failures.push("missing npm package entry");
+          if (!remoteServer) failures.push("missing hosted Streamable HTTP remote entry");
+          if (npmPackage && npmPackage.version !== manifest.version) {
+            failures.push(`npm package version mismatch: ${npmPackage.version} !== ${manifest.version}`);
+          }
+          if (npmPackage && npmPackage.transport?.type !== "stdio") {
+            failures.push(`unexpected MCP transport: ${npmPackage.transport?.type}`);
+          }
+
+          if (failures.length > 0) {
+            throw new Error(`Invalid MCP registry metadata:\n- ${failures.join("\n- ")}`);
+          }
+
+          console.log(JSON.stringify({
+            package: `${manifest.name}@${manifest.version}`,
+            mcpName: manifest.mcpName,
+            serverVersion: server.version,
+            descriptionLength: server.description.length,
+            remote: remoteServer?.url,
+          }, null, 2));
+          fs.writeFileSync("build/mcp-registry/package/server.json", `${JSON.stringify(server, null, 2)}\n`);
+          NODE
+
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+          ./mcp-publisher login github-oidc
+          (cd build/mcp-registry/package && ../../../mcp-publisher publish)
+
   publish_n8n_node:
     name: publish-n8n-workpaper-node
     runs-on: ubuntu-latest

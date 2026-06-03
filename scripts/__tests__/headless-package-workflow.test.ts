@@ -196,6 +196,11 @@ describe('headless package workflow', () => {
     expect(source).toContain('pnpm mcpb:workpaper:build -- --package-version "${TARGET_VERSION}"')
     expect(source).toContain('(cd build/mcpb && shasum -a 256 bilig-workpaper.mcpb > bilig-workpaper.mcpb.sha256)')
     expect(source).toContain('gh release upload "${TAG_NAME}"')
+    expect(source).toContain('Publish MCP Registry entry')
+    expect(source).toContain('npm pack "@bilig/workpaper@${TARGET_VERSION}" --pack-destination build/mcp-registry')
+    expect(source).toContain('curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_')
+    expect(source).toContain('./mcp-publisher login github-oidc')
+    expect(source).toContain('(cd build/mcp-registry/package && ../../../mcp-publisher publish)')
     expect(source).toContain('pnpm publish:runtime:check')
     expect(source).toContain('pnpm workpaper:bench:competitive:check')
     expect(source).toContain('pnpm workpaper:smoke:external')
@@ -212,6 +217,11 @@ describe('headless package workflow', () => {
     expect(source).toContain('npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version')
     expect(source).not.toContain('workbook-domain')
     expect(source).not.toContain('@bilig/workbook-domain')
+    const npmPublishIndex = source.indexOf('Publish runtime package set to npm')
+    const mcpbUploadIndex = source.indexOf('Upload WorkPaper MCPB release asset')
+    const mcpRegistryPublishIndex = source.indexOf('Publish MCP Registry entry')
+    expect(npmPublishIndex).toBeLessThan(mcpbUploadIndex)
+    expect(mcpbUploadIndex).toBeLessThan(mcpRegistryPublishIndex)
   })
 
   it('does not force IronCalc benchmark regeneration for runtime package version-only releases', () => {
