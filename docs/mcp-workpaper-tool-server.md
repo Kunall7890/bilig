@@ -373,8 +373,8 @@ It is the canonical package metadata for the official MCP Registry entry
 <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper>.
 
 If you already know which client you want to use, start with the
-[MCP client setup guide](mcp-client-setup.md) for Claude, Cursor, VS Code, and
-Codex config snippets.
+[MCP client setup guide](mcp-client-setup.md) for Claude, Cursor, Junie, VS Code,
+and Codex config snippets.
 
 If you are checking a directory listing or preparing one, use the
 [MCP spreadsheet server directory status page](mcp-spreadsheet-server-directory.md)

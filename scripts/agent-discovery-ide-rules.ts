@@ -814,6 +814,14 @@ export function buildCursorMcpConfig(input: AgentIdeRuleInput): string {
   })
 }
 
+export function buildJunieMcpConfig(input: AgentIdeRuleInput): string {
+  return buildFileBackedMcpServerConfig({
+    serverKey: 'biligWorkpaperFile',
+    workpaperPackageSpec: input.workpaperPackageSpec,
+    workpaperPath: './.bilig/pricing.workpaper.json',
+  })
+}
+
 export function buildReusableMcpConfig(input: AgentIdeRuleInput): string {
   return buildFileBackedMcpServerConfig({
     serverKey: 'bilig-workpaper',

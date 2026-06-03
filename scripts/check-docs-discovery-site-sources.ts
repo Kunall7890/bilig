@@ -73,6 +73,7 @@ export const docsSiteSources = [
   ['agno-workpaper-mcp.html', 'agno-workpaper-mcp.md'],
   ['pydantic-ai-workpaper-mcp.html', 'pydantic-ai-workpaper-mcp.md'],
   ['google-adk-workpaper-mcp.html', 'google-adk-workpaper-mcp.md'],
+  ['microsoft-agent-framework-workpaper-mcp.html', 'microsoft-agent-framework-workpaper-mcp.md'],
   ['openhands-workpaper-mcp.html', 'openhands-workpaper-mcp.md'],
   ['opencode-workpaper-mcp.html', 'opencode-workpaper-mcp.md'],
   ['smolagents-workpaper-tool.html', 'smolagents-workpaper-tool.md'],

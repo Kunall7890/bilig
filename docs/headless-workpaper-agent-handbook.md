@@ -58,6 +58,7 @@ npm run mcp:server
 
 The generated project includes `AGENTS.md`, `CLAUDE.md`, project-root
 `.mcp.json` for Claude Code, Cursor and VS Code MCP configs,
+`.junie/mcp/mcp.json` for Junie,
 `mcp/bilig-workpaper.mcp.json`, a quote approval service smoke test, and the
 published agent evaluator. `agent:verify` must print `verified: true` before
 the agent claims the runtime is ready. Use `npm run mcp:challenge` only when
@@ -69,7 +70,7 @@ For an existing repo, add only the Bilig agent and MCP files:
 npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
-This writes `AGENTS.md`, Claude/Gemini/Copilot/Cursor/Cline/Continue/Cascade
+This writes `AGENTS.md`, Claude/Gemini/Copilot/Cursor/Junie/Cline/Continue/Cascade
 and Windsurf rules, and MCP configs while keeping the existing app template,
 `README.md`, and `package.json` intact. The copied MCP configs run the
 WorkPaper server with direct `npm exec`, so they do not depend on host-project

@@ -124,6 +124,7 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
         Reflect.get(capability, 'type') === 'project-mcp-configs' &&
         Reflect.get(capability, 'claude_code') === 'https://github.com/proompteng/bilig/blob/main/.mcp.json' &&
         Reflect.get(capability, 'cursor') === 'https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json' &&
+        Reflect.get(capability, 'junie') === 'https://github.com/proompteng/bilig/blob/main/.junie/mcp/mcp.json' &&
         Reflect.get(capability, 'opencode') === 'https://github.com/proompteng/bilig/blob/main/opencode.jsonc' &&
         Reflect.get(capability, 'vscode') === 'https://github.com/proompteng/bilig/blob/main/.vscode/mcp.json' &&
         Reflect.get(capability, 'reusable') === 'https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json' &&
@@ -249,6 +250,21 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
     !hasCapability(
       agentJsonCapabilities,
       (capability) =>
+        Reflect.get(capability, 'name') === 'microsoft-agent-framework-workpaper-mcp' &&
+        Reflect.get(capability, 'framework') === 'Microsoft Agent Framework' &&
+        Reflect.get(capability, 'command') ===
+          'python examples/microsoft-agent-framework-workpaper-mcp/scripts/check-microsoft-agent-framework-recipe.py' &&
+        Reflect.get(capability, 'docs') === 'https://proompteng.github.io/bilig/microsoft-agent-framework-workpaper-mcp.html' &&
+        Reflect.get(capability, 'source') ===
+          'https://github.com/proompteng/bilig/tree/main/examples/microsoft-agent-framework-workpaper-mcp',
+    )
+  ) {
+    throw new Error('docs/.well-known/agent.json must advertise the Microsoft Agent Framework WorkPaper MCP capability')
+  }
+  if (
+    !hasCapability(
+      agentJsonCapabilities,
+      (capability) =>
         Reflect.get(capability, 'name') === 'openhands-workpaper-mcp' &&
         Reflect.get(capability, 'framework') === 'OpenHands' &&
         Reflect.get(capability, 'command') ===
@@ -349,6 +365,7 @@ const requiredPublicEntrypoints = [
   'https://proompteng.github.io/bilig/workbook-compatibility-report.json',
   'https://github.com/proompteng/bilig/blob/main/.mcp.json',
   'https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json',
+  'https://github.com/proompteng/bilig/blob/main/.junie/mcp/mcp.json',
   'https://github.com/proompteng/bilig/blob/main/opencode.jsonc',
   'https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json',
   'https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html',
@@ -361,6 +378,7 @@ const requiredPublicEntrypoints = [
   'https://proompteng.github.io/bilig/agno-workpaper-mcp.html',
   'https://proompteng.github.io/bilig/pydantic-ai-workpaper-mcp.html',
   'https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html',
+  'https://proompteng.github.io/bilig/microsoft-agent-framework-workpaper-mcp.html',
   'https://proompteng.github.io/bilig/openhands-workpaper-mcp.html',
   'https://github.com/proompteng/bilig/blob/main/docs/openhands-workpaper-mcp.md',
   'https://github.com/proompteng/bilig/blob/main/.agents/skills/bilig-workpaper/SKILL.md',

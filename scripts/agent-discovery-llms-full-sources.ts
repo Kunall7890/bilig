@@ -42,6 +42,7 @@ const llmsFullSourceSpecs = [
   ['CrewAI WorkPaper Spreadsheet Tool', 'docs/crewai-workpaper-spreadsheet-tool.md'],
   ['LangGraph.js WorkPaper ToolNode Spreadsheet Tool', 'docs/langgraph-workpaper-toolnode-spreadsheet.md'],
   ['LlamaIndex.TS WorkPaper Spreadsheet Tool', 'docs/llamaindex-workpaper-spreadsheet-tool.md'],
+  ['Microsoft Agent Framework WorkPaper MCP Tools', 'docs/microsoft-agent-framework-workpaper-mcp.md'],
   ['Semantic Kernel WorkPaper MCP Plugin', 'docs/semantic-kernel-workpaper-mcp.md'],
   ['Gemini CLI WorkPaper Extension', 'docs/gemini-cli-workpaper-extension.md'],
   ['Directus WorkPaper Flow Operation', 'docs/directus-workpaper-flow-operation.md'],

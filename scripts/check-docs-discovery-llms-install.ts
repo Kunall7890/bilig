@@ -22,6 +22,7 @@ export function requireLlmsInstallDiscovery({ docsLlmsInstall, llmsFull, llmsIns
   requireIncludes(llmsInstall, '.clinerules/bilig-workpaper.md', 'llms-install.md')
   requireIncludes(llmsInstall, '.cursor/rules/bilig-workpaper.mdc', 'llms-install.md')
   requireIncludes(llmsInstall, '.devin/rules/bilig-workpaper.md', 'llms-install.md')
+  requireIncludes(llmsInstall, '.junie/mcp/mcp.json', 'llms-install.md')
   requireIncludes(llmsInstall, 'opencode.jsonc', 'llms-install.md')
   requireIncludes(llmsInstall, '.opencode/agents/bilig-workpaper.md', 'llms-install.md')
   requireIncludes(llmsInstall, 'https://proompteng.github.io/bilig/agent-rule-chooser.html', 'llms-install.md')

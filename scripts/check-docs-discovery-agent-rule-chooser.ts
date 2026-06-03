@@ -27,6 +27,8 @@ export async function requireAgentRuleChooserDiscovery(input: {
     '| GitHub Copilot | `.github/copilot-instructions.md`',
     '| VS Code agent mode | `.github/copilot-instructions.md`',
     '| Cursor | `.cursor/rules/bilig-workpaper.mdc`',
+    '| JetBrains Junie | `AGENTS.md` in the repo root',
+    '`.junie/mcp/mcp.json` defines the file-backed WorkPaper MCP server',
     '| OpenHands | `AGENTS.md`, then `.agents/skills/bilig-workpaper/SKILL.md`',
     'openhands mcp add bilig-workpaper --transport stdio npm -- exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable',
     'https://docs.openhands.dev/openhands/usage/cli/mcp-servers',
@@ -43,11 +45,14 @@ export async function requireAgentRuleChooserDiscovery(input: {
     'npm create @bilig/workpaper@latest . -- --add-agent',
     'npm create @bilig/workpaper@latest pricing-agent -- --agent',
     '`.vscode/mcp.json` uses the VS Code `servers` shape.',
+    'Junie project MCP config lives at `.junie/mcp/mcp.json`',
     'Cascade/Devin docs currently prefer `.devin/rules`',
     'mirror remains for compatible Windsurf/Cascade installs',
     'https://docs.windsurf.com/windsurf/cascade/memories',
     'https://docs.cline.bot/customization/cline-rules',
     'https://docs.continue.dev/customize/rules',
+    'https://junie.jetbrains.com/docs/junie-plugin-mcp-settings.html',
+    'https://junie.jetbrains.com/docs/guidelines-and-memory.html',
     '[Agent WorkPaper proof matrix](agent-proof-matrix.md)',
   ] as const) {
     requireIncludes(agentRuleChooser, required, 'docs/agent-rule-chooser.md')

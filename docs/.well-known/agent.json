@@ -240,6 +240,7 @@
       "type": "project-mcp-configs",
       "claude_code": "https://github.com/proompteng/bilig/blob/main/.mcp.json",
       "cursor": "https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json",
+      "junie": "https://github.com/proompteng/bilig/blob/main/.junie/mcp/mcp.json",
       "opencode": "https://github.com/proompteng/bilig/blob/main/opencode.jsonc",
       "vscode": "https://github.com/proompteng/bilig/blob/main/.vscode/mcp.json",
       "reusable": "https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json",
@@ -364,6 +365,14 @@
       "command": "uv run --python 3.12 --with google-adk --with mcp python examples/google-adk-workpaper-mcp/google_adk_workpaper_mcp.py --output .tmp/google-adk-workpaper-proof.json",
       "docs": "https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html",
       "source": "https://github.com/proompteng/bilig/tree/main/examples/google-adk-workpaper-mcp"
+    },
+    {
+      "name": "microsoft-agent-framework-workpaper-mcp",
+      "type": "python-dotnet-agent-mcp-recipe",
+      "framework": "Microsoft Agent Framework",
+      "command": "python examples/microsoft-agent-framework-workpaper-mcp/scripts/check-microsoft-agent-framework-recipe.py",
+      "docs": "https://proompteng.github.io/bilig/microsoft-agent-framework-workpaper-mcp.html",
+      "source": "https://github.com/proompteng/bilig/tree/main/examples/microsoft-agent-framework-workpaper-mcp"
     },
     {
       "name": "openhands-workpaper-mcp",
@@ -505,6 +514,7 @@
     "https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html",
     "https://github.com/proompteng/bilig/blob/main/.mcp.json",
     "https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json",
+    "https://github.com/proompteng/bilig/blob/main/.junie/mcp/mcp.json",
     "https://github.com/proompteng/bilig/blob/main/opencode.jsonc",
     "https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json",
     "https://proompteng.github.io/bilig/agent-workbook-challenge.html",
@@ -518,6 +528,7 @@
     "https://proompteng.github.io/bilig/agno-workpaper-mcp.html",
     "https://proompteng.github.io/bilig/pydantic-ai-workpaper-mcp.html",
     "https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html",
+    "https://proompteng.github.io/bilig/microsoft-agent-framework-workpaper-mcp.html",
     "https://proompteng.github.io/bilig/openhands-workpaper-mcp.html",
     "https://github.com/proompteng/bilig/blob/main/docs/openhands-workpaper-mcp.md",
     "https://github.com/proompteng/bilig/blob/main/.agents/skills/bilig-workpaper/SKILL.md",

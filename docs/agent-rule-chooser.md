@@ -1,7 +1,7 @@
 ---
 title: Coding agent rule chooser for Bilig WorkPaper
 published: true
-description: Pick the Bilig instruction, rule, prompt, or MCP config for Codex, Claude Code, GitHub Copilot, VS Code, Cursor, OpenHands, OpenCode, Windsurf, Cline, Continue, and Gemini CLI.
+description: Pick the Bilig instruction, rule, prompt, or MCP config for Codex, Claude Code, GitHub Copilot, VS Code, Cursor, JetBrains Junie, OpenHands, OpenCode, Windsurf, Cline, Continue, and Gemini CLI.
 tags: ai-agents, agent-rules, mcp, workbook formulas, coding agents
 canonical_url: https://proompteng.github.io/bilig/agent-rule-chooser.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -33,6 +33,7 @@ call alone is not success.
 | GitHub Copilot | `.github/copilot-instructions.md` plus `.github/instructions/bilig-workpaper.instructions.md`. | `.github/prompts/bilig-workpaper-proof.prompt.md` for the task prompt, `.vscode/mcp.json` in VS Code. | Copilot should return WorkPaper readback fields, not spreadsheet UI status. |
 | VS Code agent mode | `.github/copilot-instructions.md` and `.github/instructions/bilig-workpaper.instructions.md`. | `.vscode/mcp.json` for `biligWorkpaperDemo` and `biligWorkpaperFile`. | Use the workspace MCP config before copying a generic `mcpServers` manifest. |
 | Cursor | `.cursor/rules/bilig-workpaper.mdc`. | `.cursor/mcp.json` for local file-backed WorkPaper tools. | Treat `.cursorrules` as legacy; use the project rule and MCP config here. |
+| JetBrains Junie | `AGENTS.md` in the repo root; `.junie/AGENTS.md` can add narrower project memory when needed. | `.junie/mcp/mcp.json` defines the file-backed WorkPaper MCP server. | Use Junie MCP tools for workbook readback and require persisted WorkPaper evidence before reporting success. |
 | OpenHands | `AGENTS.md`, then `.agents/skills/bilig-workpaper/SKILL.md`. | `openhands mcp add bilig-workpaper --transport stdio npm -- exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable`. | Use `/mcp` in the conversation and restart after MCP config changes. |
 | OpenCode | `opencode.jsonc`, then `.opencode/agents/bilig-workpaper.md`. | `opencode.jsonc` defines the local `bilig-workpaper` MCP server and a disabled hosted demo server. | Invoke the `@bilig-workpaper` subagent for workbook-shaped tasks and require readback fields. |
 | Windsurf/Cascade | `.devin/rules/bilig-workpaper.md`, with `.windsurf/rules/bilig-workpaper.md` kept as a fallback. | Start with the same `bilig-evaluate --door agent-mcp --json` command, then file-backed MCP if state must persist. | The rule uses `trigger: model_decision`; require computed readback before reporting success. |
@@ -49,8 +50,8 @@ npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
 That overlay writes `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Copilot and VS Code
-instructions, Cursor, OpenHands, OpenCode, Cline, Continue, Cascade/Devin and
-Windsurf rules, and MCP configs. It does not overwrite an existing app
+instructions, Cursor, Junie, OpenHands, OpenCode, Cline, Continue,
+Cascade/Devin and Windsurf rules, and MCP configs. It does not overwrite an existing app
 `README.md` or `package.json`.
 
 For a blank agent-ready project, use:
@@ -67,6 +68,9 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
   routes it to the Claude Code skill, slash command, and `.mcp.json`.
 - `.vscode/mcp.json` uses the VS Code `servers` shape. `mcp/bilig-workpaper.mcp.json`
   is the reusable `mcpServers` shape for other clients.
+- Junie project MCP config lives at `.junie/mcp/mcp.json`; root `AGENTS.md`
+  remains the shared project instruction file unless `.junie/AGENTS.md` is
+  needed for Junie-only memory.
 - Cascade/Devin docs currently prefer `.devin/rules`; the `.windsurf/rules`
   mirror remains for compatible Windsurf/Cascade installs.
 - `GEMINI.md` is the normal Gemini CLI context file, but this repo exposes the
@@ -79,6 +83,8 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 - [GitHub Copilot response customization](https://docs.github.com/en/copilot/concepts/prompting/response-customization)
 - [VS Code MCP configuration](https://code.visualstudio.com/docs/copilot/reference/mcp-configuration)
 - [Cursor rules](https://docs.cursor.com/en/context/rules)
+- [Junie MCP settings](https://junie.jetbrains.com/docs/junie-plugin-mcp-settings.html)
+- [Junie guidelines and memory](https://junie.jetbrains.com/docs/guidelines-and-memory.html)
 - [OpenHands MCP servers](https://docs.openhands.dev/openhands/usage/cli/mcp-servers)
 - [OpenHands skills](https://docs.openhands.dev/overview/skills)
 - [OpenCode config](https://opencode.ai/docs/config/)

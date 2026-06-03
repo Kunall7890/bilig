@@ -90,6 +90,7 @@ rules instead:
   `.github/instructions/bilig-workpaper.instructions.md`,
   `.github/prompts/bilig-workpaper-proof.prompt.md`, and `.vscode/mcp.json`
 - Cursor: `.cursor/rules/bilig-workpaper.mdc`
+- Junie: `.junie/mcp/mcp.json`
 - OpenHands: `AGENTS.md`, `.agents/skills/bilig-workpaper/SKILL.md`, and
   `openhands mcp add` for the file-backed WorkPaper server
 - OpenCode: `opencode.jsonc` and `.opencode/agents/bilig-workpaper.md`
@@ -106,8 +107,8 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 ```
 
 The generated project includes `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
-Copilot / VS Code instructions, Cursor, OpenHands, OpenCode, Cline, Continue,
-and Windsurf rules, plus local MCP configs and `npm run agent:verify`.
+Copilot / VS Code instructions, Cursor, Junie, OpenHands, OpenCode, Cline,
+Continue, and Windsurf rules, plus local MCP configs and `npm run agent:verify`.
 
 For an existing repo, add only the agent/MCP files:
 

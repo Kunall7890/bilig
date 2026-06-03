@@ -1,8 +1,8 @@
 ---
 title: MCP client setup for Bilig WorkPaper
 published: true
-description: Remote MCP smoke endpoint and local stdio configuration for Bilig WorkPaper in Claude, Cursor, VS Code, Cline, and Codex.
-tags: mcp, claude, cursor, vscode, cline, codex, spreadsheet
+description: Remote MCP smoke endpoint and local stdio configuration for Bilig WorkPaper in Claude, Cursor, Junie, VS Code, Cline, and Codex.
+tags: mcp, claude, cursor, junie, vscode, cline, codex, spreadsheet
 canonical_url: https://proompteng.github.io/bilig/mcp-client-setup.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png
@@ -266,6 +266,48 @@ edited cell, before and after values, and whether the WorkPaper JSON persisted.
 The useful Cursor tool set includes `list_sheets`, `read_range`,
 `set_cell_contents_and_readback`, `export_workpaper_document`, and
 `validate_formula`.
+
+## JetBrains Junie
+
+Bilig checkouts include `.junie/mcp/mcp.json` for project-local Junie MCP
+usage. For another repository, copy this shape:
+
+```json
+{
+  "mcpServers": {
+    "biligWorkpaperFile": {
+      "type": "stdio",
+      "command": "npm",
+      "args": [
+        "exec",
+        "--yes",
+        "--package",
+        "@bilig/workpaper@latest",
+        "--",
+        "bilig-workpaper-mcp",
+        "--workpaper",
+        "./.bilig/pricing.workpaper.json",
+        "--init-demo-workpaper",
+        "--writable"
+      ],
+      "env": {}
+    }
+  }
+}
+```
+
+Junie reads project guidelines from `.junie/AGENTS.md` when present and root
+`AGENTS.md` otherwise. Keep the WorkPaper proof rule in `AGENTS.md` unless you
+need Junie-only memory.
+
+Ask Junie for a concrete readback check:
+
+```text
+Use the biligWorkpaperFile MCP server from .junie/mcp/mcp.json. List sheets,
+read Summary!A1:B5, set Inputs!B3 to 0.4 with set_cell_contents_and_readback,
+then report the edited cell, before and after values, and whether the WorkPaper
+JSON persisted.
+```
 
 ## VS Code
 

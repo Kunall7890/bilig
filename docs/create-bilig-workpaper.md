@@ -95,9 +95,10 @@ curl -X POST http://localhost:8788/api/quote/approval \
 - a narrow API surface that an agent tool or backend route can own.
 - an optional agent starter with `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
   a Claude Code project skill and proof command, GitHub Copilot / VS Code
-  instructions, Cursor, Cline, Continue, Cascade/Devin, and Windsurf rules,
-  project-root `.mcp.json` for Claude Code, Cursor and VS Code MCP configs, a reusable MCP
-  config file, and an `agent:verify` command that runs the service smoke plus
+  instructions, Cursor, Junie, Cline, Continue, Cascade/Devin, and Windsurf
+  rules, project-root `.mcp.json` for Claude Code, Cursor and VS Code MCP
+  configs, `.junie/mcp/mcp.json` for Junie, a reusable MCP config file, and an
+  `agent:verify` command that runs the service smoke plus
   the package-owned basic and revenue-plan agent evaluator proofs. The
   revenue-plan evaluator checks MCP tool discovery, mutation, recalculated
   `SUM`, `SUMIF`, `XLOOKUP`, `FILTER`, a named expression, persistence, and

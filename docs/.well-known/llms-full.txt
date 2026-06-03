@@ -486,7 +486,7 @@ Pick the path that matches the job:
 | Pull requests can commit XLSX fixtures with stale cached values         | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md) | report-only workbook findings before the workflow blocks anything.                        |
 | A Node service, route, queue, test, or tool needs workbook logic        | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)         | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.    |
 | A coding agent or MCP client needs workbook tools without UI automation | [Agent MCP evaluator](docs/eval-agent-mcp.md)                              | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`. |
-| A coding agent needs the right repo rule or MCP config file             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                    | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, OpenCode, Windsurf, Cline, Continue, or Gemini. |
+| A coding agent needs the right repo rule or MCP config file             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                    | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Junie, OpenCode, Windsurf, Cline, Continue, or Gemini. |
 | You are comparing Excel MCP servers, hosted spreadsheet agents, or file-first XLSX tools | [Spreadsheet MCP server comparison](docs/spreadsheet-mcp-server-comparison.md) | the account/session/file/runtime boundary before an agent trusts formula readback. |
 | You need to choose among agent, MCP, AI SDK, OpenAI, LangGraph, Semantic Kernel, or XLSX proof | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md) | the smallest command or example for the host boundary, plus what it does and does not prove. |
 | You need to see a successful agent session shape before adopting        | [Agent proof transcripts](docs/agent-proof-transcripts.md)                 | prompt, tool call, result, workbook state change, formula readback, JSON export, and restart verification.   |
@@ -746,6 +746,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Google ADK                                                 | `McpToolset` should import workbook MCP tools and return verified formula readback before an ADK agent trusts the result.                                                       | [Google ADK WorkPaper MCP tools](https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html)                                                                                                                                                                                                                                                                                        |
 | OpenHands                                                  | `openhands mcp add` should launch the file-backed WorkPaper server while `.agents/skills` teaches readback-first workbook edits.                                                | [OpenHands WorkPaper MCP setup](https://proompteng.github.io/bilig/openhands-workpaper-mcp.html)                                                                                                                                                                                                                                                                                          |
 | OpenCode                                                   | `opencode.jsonc` should register the local WorkPaper MCP server while `.opencode/agents` keeps workbook proof work readback-first.                                             | [OpenCode WorkPaper MCP setup](https://proompteng.github.io/bilig/opencode-workpaper-mcp.html)                                                                                                                                                                                                                                                                                             |
+| Microsoft Agent Framework                                  | `MCPStdioTool` or `MCPStreamableHTTPTool` should import workbook MCP tools and verify dependent formula readback before an agent trusts the result.                             | [Microsoft Agent Framework WorkPaper MCP tools](https://proompteng.github.io/bilig/microsoft-agent-framework-workpaper-mcp.html)                                                                                                                                                                                                                                                          |
 | Microsoft Semantic Kernel                                  | `MCPStdioPlugin` should import workbook tools and verify dependent formula readback before an agent trusts plugin calls.                                                        | [Semantic Kernel WorkPaper MCP plugin](https://proompteng.github.io/bilig/semantic-kernel-workpaper-mcp.html)                                                                                                                                                                                                                                                                             |
 | OpenAI Agents SDK                                          | `tool()`, `MCPServerStdio`, or `MCPServerStreamableHttp` should return computed WorkPaper readback before an agent trusts workbook math.                                        | [OpenAI Agents SDK WorkPaper tools](https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html)                                                                                                                                                                                                                                                                             |
 | ChatGPT Apps / Developer Mode                              | A ChatGPT conversation should add Bilig as a no-auth remote MCP app before trying spreadsheet UI automation.                                                                    | [ChatGPT Apps WorkPaper MCP](https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html)                                                                                                                                                                                                                                                                                          |
@@ -760,7 +761,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Temporal, Airflow, Dagster Formula Assets, Kestra, Prefect | Orchestrators should own retries/history while a Node step owns workbook proof.                                                                                                 | [Temporal](https://proompteng.github.io/bilig/temporal-workpaper-activity.html), [Airflow](https://proompteng.github.io/bilig/airflow-workpaper-dag.html), [Dagster](https://proompteng.github.io/bilig/dagster-workpaper-asset.html), [Kestra](https://proompteng.github.io/bilig/kestra-workpaper-flow.html), [Prefect](https://proompteng.github.io/bilig/prefect-workpaper-flow.html) |
 | Directus Persisted Calculated Fields                       | A custom operation should persist calculated fields with formula proof.                                                                                                         | [Directus WorkPaper Flow operation](https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html)                                                                                                                                                                                                                                                                            |
 
-<!-- Source recipe docs remain in docs/open-webui-workpaper-mcp.md, docs/lobehub-workpaper-mcp.md, docs/anythingllm-workpaper-mcp.md, docs/sim-workpaper-mcp.md, docs/fastmcp-workpaper-client.md, docs/agno-workpaper-mcp.md, docs/pydantic-ai-workpaper-mcp.md, docs/google-adk-workpaper-mcp.md, docs/openhands-workpaper-mcp.md, docs/opencode-workpaper-mcp.md, docs/semantic-kernel-workpaper-mcp.md, docs/openai-agents-sdk-workpaper-tool.md, docs/chatgpt-apps-workpaper-mcp.md, docs/smolagents-workpaper-tool.md, docs/huggingface-workpaper-space.md, docs/n8n-workpaper-formula-readback.md, docs/dify-workpaper-formula-readback.md, docs/flowise-workpaper-formula-readback.md, docs/pipedream-workpaper-formula-readback.md, docs/vercel-ai-sdk-langchain-spreadsheet-tool.md, docs/langgraph-workpaper-toolnode-spreadsheet.md, docs/windmill-workpaper-script.md, docs/triggerdev-workpaper-task.md, docs/inngest-workpaper-step.md, docs/airbyte-workpaper-validation.md, docs/meltano-workpaper-utility.md, docs/temporal-workpaper-activity.md, docs/airflow-workpaper-dag.md, docs/dagster-workpaper-asset.md, docs/kestra-workpaper-flow.md, docs/prefect-workpaper-flow.md, and docs/directus-workpaper-flow-operation.md. -->
+<!-- Source recipe docs remain in docs/open-webui-workpaper-mcp.md, docs/lobehub-workpaper-mcp.md, docs/anythingllm-workpaper-mcp.md, docs/sim-workpaper-mcp.md, docs/fastmcp-workpaper-client.md, docs/agno-workpaper-mcp.md, docs/pydantic-ai-workpaper-mcp.md, docs/google-adk-workpaper-mcp.md, docs/openhands-workpaper-mcp.md, docs/opencode-workpaper-mcp.md, docs/microsoft-agent-framework-workpaper-mcp.md, docs/semantic-kernel-workpaper-mcp.md, docs/openai-agents-sdk-workpaper-tool.md, docs/chatgpt-apps-workpaper-mcp.md, docs/smolagents-workpaper-tool.md, docs/huggingface-workpaper-space.md, docs/n8n-workpaper-formula-readback.md, docs/dify-workpaper-formula-readback.md, docs/flowise-workpaper-formula-readback.md, docs/pipedream-workpaper-formula-readback.md, docs/vercel-ai-sdk-langchain-spreadsheet-tool.md, docs/langgraph-workpaper-toolnode-spreadsheet.md, docs/windmill-workpaper-script.md, docs/triggerdev-workpaper-task.md, docs/inngest-workpaper-step.md, docs/airbyte-workpaper-validation.md, docs/meltano-workpaper-utility.md, docs/temporal-workpaper-activity.md, docs/airflow-workpaper-dag.md, docs/dagster-workpaper-asset.md, docs/kestra-workpaper-flow.md, docs/prefect-workpaper-flow.md, and docs/directus-workpaper-flow-operation.md. -->
 
 ## Choose An Evaluation Path
 
@@ -915,7 +916,7 @@ For a generated project from a blank directory, run
 [`packages/create-workpaper`](packages/create-workpaper), and the publish gate
 is documented in [create a Bilig WorkPaper starter](docs/create-bilig-workpaper.md).
 For an agent-ready project with `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
-Copilot / Cursor / OpenHands / OpenCode / Cline / Continue / Windsurf rules, MCP client
+Copilot / Cursor / Junie / OpenHands / OpenCode / Cline / Continue / Windsurf rules, MCP client
 configs, and an `agent:verify` script, run
 `npm create @bilig/workpaper@latest pricing-agent -- --agent`.
 For an existing repo, run
@@ -1063,6 +1064,7 @@ the [Node spreadsheet formula engine guide](docs/node-spreadsheet-formula-engine
 [Google ADK MCP tools](docs/google-adk-workpaper-mcp.md),
 [OpenHands MCP setup](docs/openhands-workpaper-mcp.md),
 [OpenCode MCP setup](docs/opencode-workpaper-mcp.md),
+[Microsoft Agent Framework MCP tools](docs/microsoft-agent-framework-workpaper-mcp.md),
 [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md),
 [MCP spreadsheet formula server for coding agents](docs/mcp-spreadsheet-formula-server-for-coding-agents.md),
 [Vercel AI SDK formula readback](docs/vercel-ai-sdk-spreadsheet-tool-formula-readback.md),
@@ -1494,8 +1496,8 @@ npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
 That adds `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Copilot/VS Code instructions,
-Cursor, OpenCode, Cline, Continue, Windsurf rules, and MCP client configs without
-replacing the app template or editing `package.json`.
+Cursor, Junie, OpenCode, Cline, Continue, Windsurf rules, and MCP client configs
+without replacing the app template or editing `package.json`.
 
 For a new agent-ready project:
 
@@ -1587,6 +1589,7 @@ Use the repo-local files when the agent is already inside a checkout:
 - GitHub Copilot prompt: `.github/prompts/bilig-workpaper-proof.prompt.md`
 - VS Code MCP: `.vscode/mcp.json`
 - Cursor: `.cursor/rules/bilig-workpaper.mdc`
+- Junie: `.junie/mcp/mcp.json`
 - OpenCode: `opencode.jsonc` and `.opencode/agents/bilig-workpaper.md`
 - Cascade/Devin: `.devin/rules/bilig-workpaper.md`
 - Cline: `.clinerules/bilig-workpaper.md`
@@ -2891,6 +2894,7 @@ rules instead:
   `.github/instructions/bilig-workpaper.instructions.md`,
   `.github/prompts/bilig-workpaper-proof.prompt.md`, and `.vscode/mcp.json`
 - Cursor: `.cursor/rules/bilig-workpaper.mdc`
+- Junie: `.junie/mcp/mcp.json`
 - OpenHands: `AGENTS.md`, `.agents/skills/bilig-workpaper/SKILL.md`, and
   `openhands mcp add` for the file-backed WorkPaper server
 - OpenCode: `opencode.jsonc` and `.opencode/agents/bilig-workpaper.md`
@@ -2907,8 +2911,8 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 ```
 
 The generated project includes `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
-Copilot / VS Code instructions, Cursor, OpenHands, OpenCode, Cline, Continue,
-and Windsurf rules, plus local MCP configs and `npm run agent:verify`.
+Copilot / VS Code instructions, Cursor, Junie, OpenHands, OpenCode, Cline,
+Continue, and Windsurf rules, plus local MCP configs and `npm run agent:verify`.
 
 For an existing repo, add only the agent/MCP files:
 
@@ -3167,6 +3171,7 @@ call alone is not success.
 | GitHub Copilot | `.github/copilot-instructions.md` plus `.github/instructions/bilig-workpaper.instructions.md`. | `.github/prompts/bilig-workpaper-proof.prompt.md` for the task prompt, `.vscode/mcp.json` in VS Code. | Copilot should return WorkPaper readback fields, not spreadsheet UI status. |
 | VS Code agent mode | `.github/copilot-instructions.md` and `.github/instructions/bilig-workpaper.instructions.md`. | `.vscode/mcp.json` for `biligWorkpaperDemo` and `biligWorkpaperFile`. | Use the workspace MCP config before copying a generic `mcpServers` manifest. |
 | Cursor | `.cursor/rules/bilig-workpaper.mdc`. | `.cursor/mcp.json` for local file-backed WorkPaper tools. | Treat `.cursorrules` as legacy; use the project rule and MCP config here. |
+| JetBrains Junie | `AGENTS.md` in the repo root; `.junie/AGENTS.md` can add narrower project memory when needed. | `.junie/mcp/mcp.json` defines the file-backed WorkPaper MCP server. | Use Junie MCP tools for workbook readback and require persisted WorkPaper evidence before reporting success. |
 | OpenHands | `AGENTS.md`, then `.agents/skills/bilig-workpaper/SKILL.md`. | `openhands mcp add bilig-workpaper --transport stdio npm -- exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable`. | Use `/mcp` in the conversation and restart after MCP config changes. |
 | OpenCode | `opencode.jsonc`, then `.opencode/agents/bilig-workpaper.md`. | `opencode.jsonc` defines the local `bilig-workpaper` MCP server and a disabled hosted demo server. | Invoke the `@bilig-workpaper` subagent for workbook-shaped tasks and require readback fields. |
 | Windsurf/Cascade | `.devin/rules/bilig-workpaper.md`, with `.windsurf/rules/bilig-workpaper.md` kept as a fallback. | Start with the same `bilig-evaluate --door agent-mcp --json` command, then file-backed MCP if state must persist. | The rule uses `trigger: model_decision`; require computed readback before reporting success. |
@@ -3183,8 +3188,8 @@ npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
 That overlay writes `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Copilot and VS Code
-instructions, Cursor, OpenHands, OpenCode, Cline, Continue, Cascade/Devin and
-Windsurf rules, and MCP configs. It does not overwrite an existing app
+instructions, Cursor, Junie, OpenHands, OpenCode, Cline, Continue,
+Cascade/Devin and Windsurf rules, and MCP configs. It does not overwrite an existing app
 `README.md` or `package.json`.
 
 For a blank agent-ready project, use:
@@ -3201,6 +3206,9 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
   routes it to the Claude Code skill, slash command, and `.mcp.json`.
 - `.vscode/mcp.json` uses the VS Code `servers` shape. `mcp/bilig-workpaper.mcp.json`
   is the reusable `mcpServers` shape for other clients.
+- Junie project MCP config lives at `.junie/mcp/mcp.json`; root `AGENTS.md`
+  remains the shared project instruction file unless `.junie/AGENTS.md` is
+  needed for Junie-only memory.
 - Cascade/Devin docs currently prefer `.devin/rules`; the `.windsurf/rules`
   mirror remains for compatible Windsurf/Cascade installs.
 - `GEMINI.md` is the normal Gemini CLI context file, but this repo exposes the
@@ -3213,6 +3221,8 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 - [GitHub Copilot response customization](https://docs.github.com/en/copilot/concepts/prompting/response-customization)
 - [VS Code MCP configuration](https://code.visualstudio.com/docs/copilot/reference/mcp-configuration)
 - [Cursor rules](https://docs.cursor.com/en/context/rules)
+- [Junie MCP settings](https://junie.jetbrains.com/docs/junie-plugin-mcp-settings.html)
+- [Junie guidelines and memory](https://junie.jetbrains.com/docs/guidelines-and-memory.html)
 - [OpenHands MCP servers](https://docs.openhands.dev/openhands/usage/cli/mcp-servers)
 - [OpenHands skills](https://docs.openhands.dev/overview/skills)
 - [OpenCode config](https://opencode.ai/docs/config/)
@@ -3444,6 +3454,7 @@ Expected invariants:
 | OpenAI Responses function call | `pnpm --dir examples/headless-workpaper run agent:openai-responses` | `function_call_output`, `verified: true` | OpenAI tool calling can wrap WorkPaper readback as a structured function result. | Hosted remote MCP app review or ChatGPT UI behavior. |
 | OpenAI Agents SDK hosted MCP | `pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-hosted-mcp` | `MCPServerStreamableHttp`, `set_cell_contents_and_readback` | An OpenAI Agents SDK agent can call the hosted Streamable HTTP MCP endpoint. | Private writable workbook state. Use local stdio for that. |
 | LangGraph ToolNode | `pnpm --dir examples/headless-workpaper run agent:langgraph-toolnode` | `SpreadsheetAgentProof`, `restoredMatchesAfter` | Graph state can carry the proof object instead of only a scalar formula value. | Whether every graph architecture should store workbook state. |
+| Microsoft Agent Framework MCP tools | `python examples/microsoft-agent-framework-workpaper-mcp/scripts/check-microsoft-agent-framework-recipe.py` | `MCPStdioTool`, `MCPStreamableHTTPTool`, `set_cell_contents_and_readback` | Agent Framework can host the same Bilig MCP boundary for local file-backed or hosted no-key workbook readback proof. | LLM quality, private hosted storage, or exact import stability across every Agent Framework package version. |
 | Semantic Kernel MCP plugin | `python examples/semantic-kernel-workpaper-mcp/semantic_kernel_workpaper_mcp.py --smoke` | `verified: true`, `pluginBoundary` | A .NET-oriented agent path can keep WorkPaper behind a plugin or MCP boundary. | .NET package publication or C# parity for every TypeScript example. |
 | Mastra tool | `pnpm --dir examples/mastra-workpaper-tool run smoke` | `Mastra createTool -> execute -> WorkPaper readback` | The repo-local Mastra example uses a real `createTool()` wrapper around formula readback. | A new Mastra catalog submission, issue, or PR. Do not duplicate that outreach. |
 
@@ -3453,9 +3464,9 @@ Use `agent-mcp` first when the caller is an agent, MCP client, tool host, or
 integration reviewer. It proves discovery, write/readback, resources, prompts,
 and restart state in one command.
 
-Use the Vercel AI SDK, OpenAI, LangGraph, Semantic Kernel, or Mastra examples
-only after the generic evaluator passes. Those examples prove host fit, not a
-stronger workbook runtime.
+Use the Vercel AI SDK, OpenAI, LangGraph, Microsoft Agent Framework, Semantic
+Kernel, or Mastra examples only after the generic evaluator passes. Those
+examples prove host fit, not a stronger workbook runtime.
 
 Use the XLSX and ExcelJS paths when a saved file or ExcelJS object is already
 the contract. Do not force a WorkPaper model when the job is mostly workbook
@@ -3479,6 +3490,7 @@ manual UI workflows.
 - [Evaluate Bilig as an agent MCP workbook tool](eval-agent-mcp.md)
 - [Agent proof transcripts](agent-proof-transcripts.md)
 - [MCP spreadsheet formula server for coding agents](mcp-spreadsheet-formula-server-for-coding-agents.md)
+- [Microsoft Agent Framework WorkPaper MCP tools](microsoft-agent-framework-workpaper-mcp.md)
 - [Vercel AI SDK spreadsheet tool: generateText and streamText with formula readback](vercel-ai-sdk-spreadsheet-tool-formula-readback.md)
 - [ExcelJS formula result not updating after Node edits](exceljs-formula-result-not-updating-after-node-edits.md)
 - [Workbook tools for agent frameworks](agent-framework-workbook-tools.md)
@@ -4475,6 +4487,7 @@ npm run mcp:server
 
 The generated project includes `AGENTS.md`, `CLAUDE.md`, project-root
 `.mcp.json` for Claude Code, Cursor and VS Code MCP configs,
+`.junie/mcp/mcp.json` for Junie,
 `mcp/bilig-workpaper.mcp.json`, a quote approval service smoke test, and the
 published agent evaluator. `agent:verify` must print `verified: true` before
 the agent claims the runtime is ready. Use `npm run mcp:challenge` only when
@@ -4486,7 +4499,7 @@ For an existing repo, add only the Bilig agent and MCP files:
 npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
-This writes `AGENTS.md`, Claude/Gemini/Copilot/Cursor/Cline/Continue/Cascade
+This writes `AGENTS.md`, Claude/Gemini/Copilot/Cursor/Junie/Cline/Continue/Cascade
 and Windsurf rules, and MCP configs while keeping the existing app template,
 `README.md`, and `package.json` intact. The copied MCP configs run the
 WorkPaper server with direct `npm exec`, so they do not depend on host-project
@@ -6399,6 +6412,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | Codex                              | Local stdio MCP server or direct package import in repo tools.                                                                        | [MCP client setup](mcp-client-setup.md#codex)                                                |
 | Claude Code and Claude Desktop     | File-backed MCP server, or MCPB when a desktop extension is easier.                                                                   | [Claude MCPB guide](claude-desktop-mcpb-workpaper.md)                                        |
 | Cursor                             | Project-local `.cursor/mcp.json` pointing at `bilig-workpaper-mcp`.                                                                   | [MCP client setup](mcp-client-setup.md#cursor)                                               |
+| JetBrains Junie                    | Project-local `.junie/mcp/mcp.json` using the file-backed WorkPaper MCP server, with `AGENTS.md` for the shared workbook proof rule. | [Coding agent rule chooser](agent-rule-chooser.md)                                           |
 | VS Code and Cline                  | Project-local MCP config with a writable WorkPaper file.                                                                              | [MCP client setup](mcp-client-setup.md)                                                      |
 | OpenHands                          | `AGENTS.md`, `.agents/skills/bilig-workpaper/SKILL.md`, and `openhands mcp add` for a file-backed stdio WorkPaper server.             | [OpenHands WorkPaper MCP setup](openhands-workpaper-mcp.md)                                  |
 | OpenCode                           | `opencode.jsonc` for local MCP plus `.opencode/agents/bilig-workpaper.md` for a readback-first workbook subagent.                    | [OpenCode WorkPaper MCP setup](opencode-workpaper-mcp.md)                                    |
@@ -6417,6 +6431,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | Agno                               | `MCPTools` with the file-backed WorkPaper MCP server and explicit readback checks.                                                    | [Agno WorkPaper MCP tools](agno-workpaper-mcp.md)                                            |
 | Pydantic AI                        | `MCPToolset` with typed proof validation before an agent trusts workbook calculations.                                                | [Pydantic AI WorkPaper MCP tools](pydantic-ai-workpaper-mcp.md)                              |
 | Google ADK                         | `McpToolset` with file-backed stdio WorkPaper tools and explicit formula readback proof.                                             | [Google ADK WorkPaper MCP tools](google-adk-workpaper-mcp.md)                                |
+| Microsoft Agent Framework          | `MCPStdioTool` or `MCPStreamableHTTPTool` with file-backed or hosted WorkPaper tools; .NET hosts can convert MCP tools to `AITool`.  | [Microsoft Agent Framework WorkPaper MCP tools](microsoft-agent-framework-workpaper-mcp.md)   |
 | Mastra                             | Real `@mastra/core` `createTool()` smoke for formula-backed workbook edits.                                                           | [Mastra WorkPaper tool](mastra-workpaper-spreadsheet-tool.md)                                |
 | Cloudflare Agents                  | Agent tool calling a Node-compatible WorkPaper boundary.                                                                              | [Cloudflare Agents WorkPaper tool](cloudflare-agents-workpaper-spreadsheet-tool.md)          |
 | Runtime adapter authors            | `@bilig/workbook` models, plan data, checks, schemas, command receipts, and strict proof.                                             | [Workbook agent intent API](workbook-agent-intent-api.md)                                    |
@@ -6466,6 +6481,7 @@ Do not claim success from a write call alone.
 - [Browser Use WorkPaper formula tool](browser-use-workpaper-formula-tool.md)
 - [Open Multi-Agent WorkPaper MCP example](open-multi-agent-workpaper-mcp.md)
 - [Google ADK WorkPaper MCP tools](google-adk-workpaper-mcp.md)
+- [Microsoft Agent Framework WorkPaper MCP tools](microsoft-agent-framework-workpaper-mcp.md)
 - [MCP WorkPaper tool server](mcp-workpaper-tool-server.md)
 - [ChatGPT Apps WorkPaper MCP](chatgpt-apps-workpaper-mcp.md)
 - [Node framework WorkPaper adapters](node-framework-workpaper-adapters.md)
@@ -7560,6 +7576,160 @@ Official LlamaIndex.TS tools docs:
 
 Runnable source:
 [`examples/headless-workpaper/agent-framework-adapters.ts`](../examples/headless-workpaper/agent-framework-adapters.ts).
+
+---
+
+## Microsoft Agent Framework WorkPaper MCP Tools
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/microsoft-agent-framework-workpaper-mcp.md
+
+# Microsoft Agent Framework WorkPaper MCP Tools
+
+Microsoft Agent Framework can connect agents to local and remote MCP servers.
+That makes it a direct fit for Bilig WorkPaper when an agent needs workbook
+formula logic but should not drive Excel, LibreOffice, Google Sheets, or a
+browser grid.
+
+Bilig owns the WorkPaper state, formula recalculation, JSON persistence, and
+read-after-write proof. Agent Framework owns the Python or .NET agent host that
+loads MCP tools.
+
+Official references:
+
+- <https://learn.microsoft.com/en-us/agent-framework/>
+- <https://learn.microsoft.com/en-us/agent-framework/agents/tools/local-mcp-tools>
+- <https://github.com/microsoft/agent-framework>
+- <https://github.com/microsoft/autogen>
+
+## Run The No-Key Smoke
+
+Use the package-owned evaluator first:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
+
+Expected proof shape:
+
+```json
+{
+  "door": "agent-mcp",
+  "verified": true,
+  "evidence": {
+    "editedCell": "Inputs!B3",
+    "dependentCell": "Summary!B3",
+    "before": 60000,
+    "after": 96000,
+    "afterRestore": 96000,
+    "afterRestart": 96000
+  }
+}
+```
+
+After editing this recipe, run the static guard:
+
+```sh
+python examples/microsoft-agent-framework-workpaper-mcp/scripts/check-microsoft-agent-framework-recipe.py
+```
+
+The guard is intentionally static. It protects the public recipe text without
+requiring a particular preview or stable Agent Framework package API to be
+installed in CI.
+
+## Local Python MCP Shape
+
+Agent Framework's Python docs show `MCPStdioTool` for local stdio MCP servers.
+Use it to launch Bilig's file-backed WorkPaper MCP server as an argument array:
+
+```python
+from agent_framework import Agent, MCPStdioTool
+
+bilig_tools = MCPStdioTool(
+    name="Bilig WorkPaper",
+    command="npm",
+    args=[
+        "exec",
+        "--yes",
+        "--package",
+        "@bilig/workpaper@latest",
+        "--",
+        "bilig-workpaper-mcp",
+        "--workpaper",
+        "./pricing.workpaper.json",
+        "--init-demo-workpaper",
+        "--writable",
+    ],
+)
+
+async with Agent(
+    client=client,
+    name="PricingAgent",
+    instructions="Edit workbook inputs only through Bilig tools and verify formula readback.",
+    tools=bilig_tools,
+) as agent:
+    result = await agent.run(
+        "Set Inputs!B3 to 0.4 and report Summary!B3 after recalculation.",
+    )
+```
+
+The useful proof is the tool transcript, not the final model sentence. The
+agent must call `set_cell_contents_and_readback` or call `set_cell_contents`,
+then `read_cell` or `read_range`, then `export_workpaper_document`.
+
+## Hosted Streamable HTTP Shape
+
+Agent Framework's Python docs also show `MCPStreamableHTTPTool` for HTTP MCP
+servers. Use Bilig's hosted no-key endpoint for connector smoke tests:
+
+```python
+from agent_framework import MCPStreamableHTTPTool
+
+bilig_tools = MCPStreamableHTTPTool(
+    name="Bilig hosted WorkPaper MCP",
+    url="https://bilig.proompteng.ai/mcp",
+)
+```
+
+The hosted endpoint is request-local. It is useful for MCP discovery and demo
+readback proof, but it does not persist private workbook files. Use the stdio
+command when an agent must write `./pricing.workpaper.json`.
+
+## .NET Boundary
+
+For .NET hosts, follow the Agent Framework MCP guidance with the official MCP
+C# SDK, convert discovered MCP tools into `AITool` values, and keep the same
+Bilig proof contract:
+
+1. list tools from the Bilig MCP server;
+2. edit only the requested input cell;
+3. read the dependent formula cell after recalculation;
+4. export the WorkPaper document;
+5. reopen or restore when a file boundary matters.
+
+Do not accept an agent answer that only says the cell was updated.
+
+## Proof Loop
+
+A valid Microsoft Agent Framework integration should prove this loop:
+
+- discover `set_cell_contents_and_readback`;
+- read `Inputs!B3` and `Summary!B3`;
+- write `Inputs!B3` to `0.4`;
+- read `Summary!B3` changing from `60000` to `96000`;
+- export the WorkPaper JSON document;
+- restart or restore and confirm `Summary!B3` is still `96000`.
+
+Return a compact object with `editedCell`, `before`, `after`, `afterRestore`,
+`persistedDocumentBytes`, `verified`, and `limitations`.
+
+## Boundary
+
+This recipe is owned by Bilig. No upstream Microsoft Agent Framework PR or issue was opened for this page.
+
+This proves the MCP boundary and the WorkPaper readback contract. It does not
+claim full desktop Excel compatibility, Office macro execution, pivot refresh,
+external link refresh, private workbook storage on the hosted endpoint, or that
+every Agent Framework preview package version has the exact same import names.
 
 ---
 
@@ -12699,8 +12869,8 @@ It is the canonical package metadata for the official MCP Registry entry
 <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper>.
 
 If you already know which client you want to use, start with the
-[MCP client setup guide](mcp-client-setup.md) for Claude, Cursor, VS Code, and
-Codex config snippets.
+[MCP client setup guide](mcp-client-setup.md) for Claude, Cursor, Junie, VS Code,
+and Codex config snippets.
 
 If you are checking a directory listing or preparing one, use the
 [MCP spreadsheet server directory status page](mcp-spreadsheet-server-directory.md)

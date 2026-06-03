@@ -144,7 +144,7 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 That command is published through `@bilig/create-workpaper`. The publish gate is documented at
 <https://proompteng.github.io/bilig/create-bilig-workpaper.html>.
 The `--agent` starter adds `AGENTS.md`, `CLAUDE.md`, project-root `.mcp.json`
-for Claude Code, Cursor and VS Code MCP configs,
+for Claude Code, Cursor and VS Code MCP configs, `.junie/mcp/mcp.json` for Junie,
 `mcp/bilig-workpaper.mcp.json`, `npm run agent:verify`, and `npm run
 mcp:server`.
 

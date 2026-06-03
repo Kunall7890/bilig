@@ -1,7 +1,7 @@
 ---
 title: Bilig WorkPaper install context for agents
 published: true
-description: Short install and verification path for OpenCode, Cline, Cursor, Copilot, Claude Code, Continue, Windsurf, VS Code MCP, and other agents that need workbook formulas without spreadsheet UI automation.
+description: Short install and verification path for OpenCode, Cline, Cursor, Junie, Copilot, Claude Code, Continue, Windsurf, VS Code MCP, and other agents that need workbook formulas without spreadsheet UI automation.
 tags: ai agents, mcp, workpaper, spreadsheet formulas, node
 canonical_url: https://proompteng.github.io/bilig/llms-install.html
 ---
@@ -42,8 +42,8 @@ npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
 That adds `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Copilot/VS Code instructions,
-Cursor, OpenCode, Cline, Continue, Windsurf rules, and MCP client configs without
-replacing the app template or editing `package.json`.
+Cursor, Junie, OpenCode, Cline, Continue, Windsurf rules, and MCP client configs
+without replacing the app template or editing `package.json`.
 
 For a new agent-ready project:
 
@@ -135,6 +135,7 @@ Use the repo-local files when the agent is already inside a checkout:
 - GitHub Copilot prompt: `.github/prompts/bilig-workpaper-proof.prompt.md`
 - VS Code MCP: `.vscode/mcp.json`
 - Cursor: `.cursor/rules/bilig-workpaper.mdc`
+- Junie: `.junie/mcp/mcp.json`
 - OpenCode: `opencode.jsonc` and `.opencode/agents/bilig-workpaper.md`
 - Cascade/Devin: `.devin/rules/bilig-workpaper.md`
 - Cline: `.clinerules/bilig-workpaper.md`

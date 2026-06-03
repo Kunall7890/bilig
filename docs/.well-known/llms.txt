@@ -16,6 +16,7 @@ npm full runtime package: https://www.npmjs.com/package/@bilig/headless
 remote MCP endpoint: https://bilig.proompteng.ai/mcp
 ChatGPT Apps WorkPaper MCP: https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html
 Google ADK WorkPaper MCP: https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html
+Microsoft Agent Framework WorkPaper MCP: https://proompteng.github.io/bilig/microsoft-agent-framework-workpaper-mcp.html
 OpenHands WorkPaper MCP setup: https://proompteng.github.io/bilig/openhands-workpaper-mcp.html
 OpenCode WorkPaper MCP setup: https://proompteng.github.io/bilig/opencode-workpaper-mcp.html
 OpenCode WorkPaper MCP source: https://github.com/proompteng/bilig/blob/main/docs/opencode-workpaper-mcp.md
@@ -53,6 +54,7 @@ GitHub Copilot prompt: https://github.com/proompteng/bilig/blob/main/.github/pro
 VS Code MCP workspace config: https://github.com/proompteng/bilig/blob/main/.vscode/mcp.json
 Cursor MCP workspace config: https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json
 Cursor project rule: https://github.com/proompteng/bilig/blob/main/.cursor/rules/bilig-workpaper.mdc
+JetBrains Junie MCP workspace config: https://github.com/proompteng/bilig/blob/main/.junie/mcp/mcp.json
 reusable MCP server config: https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json
 Cascade/Devin workspace rule: https://github.com/proompteng/bilig/blob/main/.devin/rules/bilig-workpaper.md
 Windsurf Cascade workspace rule: https://github.com/proompteng/bilig/blob/main/.windsurf/rules/bilig-workpaper.md
@@ -276,6 +278,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/agent-framework-workbook-tools.html
 - https://proompteng.github.io/bilig/browser-use-workpaper-formula-tool.html
 - https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html
+- https://proompteng.github.io/bilig/microsoft-agent-framework-workpaper-mcp.html
 - https://proompteng.github.io/bilig/openhands-workpaper-mcp.html
 - https://proompteng.github.io/bilig/opencode-workpaper-mcp.html
 - https://proompteng.github.io/bilig/workbook-agent-intent-api.html
@@ -361,6 +364,9 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html
 - https://github.com/proompteng/bilig/blob/main/docs/google-adk-workpaper-mcp.md
 - https://github.com/proompteng/bilig/tree/main/examples/google-adk-workpaper-mcp
+- https://proompteng.github.io/bilig/microsoft-agent-framework-workpaper-mcp.html
+- https://github.com/proompteng/bilig/blob/main/docs/microsoft-agent-framework-workpaper-mcp.md
+- https://github.com/proompteng/bilig/tree/main/examples/microsoft-agent-framework-workpaper-mcp
 - https://proompteng.github.io/bilig/openhands-workpaper-mcp.html
 - https://github.com/proompteng/bilig/blob/main/docs/openhands-workpaper-mcp.md
 - https://github.com/proompteng/bilig/blob/main/.agents/skills/bilig-workpaper/SKILL.md
@@ -740,9 +746,11 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://proompteng.github.io/bilig/agent-framework-workbook-tools.html
   https://proompteng.github.io/bilig/browser-use-workpaper-formula-tool.html
   https://proompteng.github.io/bilig/openhands-workpaper-mcp.html
+  https://proompteng.github.io/bilig/microsoft-agent-framework-workpaper-mcp.html
   https://github.com/proompteng/bilig/blob/main/docs/agent-framework-workbook-tools.md
   https://github.com/proompteng/bilig/blob/main/docs/browser-use-workpaper-formula-tool.md
   https://github.com/proompteng/bilig/blob/main/docs/openhands-workpaper-mcp.md
+  https://github.com/proompteng/bilig/blob/main/docs/microsoft-agent-framework-workpaper-mcp.md
 - framework-specific spreadsheet tool pages:
   https://proompteng.github.io/bilig/mastra-workpaper-spreadsheet-tool.html
   https://proompteng.github.io/bilig/llamaindex-workpaper-spreadsheet-tool.html
@@ -750,10 +758,12 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://proompteng.github.io/bilig/open-multi-agent-workpaper-mcp.html
   https://proompteng.github.io/bilig/agno-workpaper-mcp.html
   https://proompteng.github.io/bilig/pydantic-ai-workpaper-mcp.html
+  https://proompteng.github.io/bilig/microsoft-agent-framework-workpaper-mcp.html
   https://proompteng.github.io/bilig/copilotkit-workpaper-spreadsheet-action.html
   https://proompteng.github.io/bilig/cloudflare-agents-workpaper-spreadsheet-tool.html
   https://proompteng.github.io/bilig/crewai-workpaper-spreadsheet-tool.html
   https://proompteng.github.io/bilig/semantic-kernel-workpaper-mcp.html
+  https://github.com/proompteng/bilig/tree/main/examples/microsoft-agent-framework-workpaper-mcp
 - Gemini CLI WorkPaper extension:
   gemini extensions install https://github.com/proompteng/bilig --ref main
   https://proompteng.github.io/bilig/gemini-cli-workpaper-extension.html

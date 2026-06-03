@@ -30,6 +30,7 @@ export async function requireAgentInstructionDiscovery(input: {
     copilotPrompt,
     claudeCodeMcpConfig,
     cursorMcpConfig,
+    junieMcpConfig,
     vscodeMcpConfig,
     openCodeMcpConfig,
     reusableMcpConfig,
@@ -59,6 +60,7 @@ export async function requireAgentInstructionDiscovery(input: {
     readFile(join(repoRoot, '.github', 'prompts', 'bilig-workpaper-proof.prompt.md'), 'utf8'),
     readFile(join(repoRoot, '.mcp.json'), 'utf8'),
     readFile(join(repoRoot, '.cursor', 'mcp.json'), 'utf8'),
+    readFile(join(repoRoot, '.junie', 'mcp', 'mcp.json'), 'utf8'),
     readFile(join(repoRoot, '.vscode', 'mcp.json'), 'utf8'),
     readFile(join(repoRoot, 'opencode.jsonc'), 'utf8'),
     readFile(join(repoRoot, 'mcp', 'bilig-workpaper.mcp.json'), 'utf8'),
@@ -434,6 +436,10 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(cursorMcpConfig, '"command": "npm"', '.cursor/mcp.json')
   requireIncludes(cursorMcpConfig, '"@bilig/workpaper@latest"', '.cursor/mcp.json')
   requireIncludes(cursorMcpConfig, '"./.bilig/pricing.workpaper.json"', '.cursor/mcp.json')
+  requireIncludes(junieMcpConfig, '"biligWorkpaperFile"', '.junie/mcp/mcp.json')
+  requireIncludes(junieMcpConfig, '"command": "npm"', '.junie/mcp/mcp.json')
+  requireIncludes(junieMcpConfig, '"@bilig/workpaper@latest"', '.junie/mcp/mcp.json')
+  requireIncludes(junieMcpConfig, '"./.bilig/pricing.workpaper.json"', '.junie/mcp/mcp.json')
   requireIncludes(vscodeMcpConfig, '"biligWorkpaperDemo"', '.vscode/mcp.json')
   requireIncludes(vscodeMcpConfig, '"biligWorkpaperFile"', '.vscode/mcp.json')
   requireIncludes(vscodeMcpConfig, '"${workspaceFolder}/.bilig/pricing.workpaper.json"', '.vscode/mcp.json')

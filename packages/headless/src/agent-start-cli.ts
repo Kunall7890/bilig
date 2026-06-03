@@ -15,6 +15,7 @@ const agentStartRuleTargets = [
   'continue',
   'windsurf',
   'gemini',
+  'junie',
   'vscode-mcp',
 ] as const
 export type AgentStartRuleTarget = (typeof agentStartRuleTargets)[number]
@@ -151,6 +152,7 @@ export function agentStartHelpText(): string {
     '  continue     .continue/rules/bilig-workpaper.md',
     '  windsurf     .devin/rules/bilig-workpaper.md or .windsurf/rules/bilig-workpaper.md',
     '  gemini       GEMINI.md, gemini-extension.json, gemini-workpaper-context.md',
+    '  junie        .junie/mcp/mcp.json',
     '  vscode-mcp   .vscode/mcp.json',
     '',
   ].join('\n')
@@ -247,6 +249,11 @@ export function buildAgentStartDecisionCard(): AgentStartDecisionCard {
         command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules gemini',
       },
       {
+        target: 'junie',
+        file: '.junie/mcp/mcp.json',
+        command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules junie',
+      },
+      {
         target: 'vscode-mcp',
         file: '.vscode/mcp.json',
         command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules vscode-mcp',
@@ -308,6 +315,7 @@ function renderAgentStartRules(card: AgentStartDecisionCard, target: AgentStartR
     copilot: 'GitHub Copilot',
     cursor: 'Cursor',
     gemini: 'Gemini CLI',
+    junie: 'Junie',
     opencode: 'OpenCode',
     'vscode-mcp': 'VS Code agent mode',
     windsurf: 'Windsurf/Cascade',
@@ -452,6 +460,12 @@ project starter, put the same rule in \`GEMINI.md\`.`
     return `Use this target when the host needs MCP config rather than prose.
 The \`.vscode/mcp.json\` file should define \`biligWorkpaperDemo\` and
 \`biligWorkpaperFile\` servers.`
+  }
+  if (target === 'junie') {
+    return `Junie reads project guidelines from \`.junie/AGENTS.md\` when present
+and root \`AGENTS.md\` otherwise. Keep the project-local MCP server in
+\`.junie/mcp/mcp.json\` and require computed WorkPaper readback before
+reporting a workbook edit as complete.`
   }
   if (target === 'opencode') {
     return `OpenCode should keep the project MCP server in \`opencode.jsonc\`
