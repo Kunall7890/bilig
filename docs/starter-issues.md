@@ -15,11 +15,11 @@ for someone opening the repository cold.
 
 Current starter queue as of June 3, 2026:
 
-- 14 open `good first issue` issues.
-- 14 open `first-timers-only` issues.
-- 14 open `help wanted` issues.
-- 9 starter issues are code or test tasks.
-- 5 starter issues are focused docs or integration transcript tasks.
+- 2 open `good first issue` issues.
+- 2 open `first-timers-only` issues.
+- 2 open `help wanted` issues.
+- 0 starter issues are code or test tasks.
+- 2 starter issues are focused docs or integration transcript tasks.
 - 0 starter issues are currently under active review.
 
 ## Start Here This Week
@@ -28,18 +28,6 @@ If you are opening the queue cold, pick one of these before browsing the full
 issue list. They are small, current, and map to the public adoption path for
 `@bilig/headless`.
 
-- [#360: test(headless): cover display-value readback after JSON restore](https://github.com/proompteng/bilig/issues/360)
-  proves the persistence readback path in a focused headless test.
-- [#361: test(headless): cover range readback after an input edit](https://github.com/proompteng/bilig/issues/361)
-  proves the service/agent write-then-read workflow.
-- [#362: test(examples): guard the headless README command index against missing scripts](https://github.com/proompteng/bilig/issues/362)
-  keeps the npm README commands from drifting.
-- [#363: test(examples): add invalid-request proof to the HTTP JSON summary smoke](https://github.com/proompteng/bilig/issues/363)
-  gives service examples a clear error-path check.
-- [#273: docs(examples): add Express WorkPaper route smoke](https://github.com/proompteng/bilig/issues/273)
-  adds the most familiar Node service entry point.
-- [#300: docs(examples): add tRPC WorkPaper procedure smoke](https://github.com/proompteng/bilig/issues/300)
-  covers a common TypeScript RPC integration.
 - [#334: docs(agent): add OpenAI Responses streaming tool-call transcript](https://github.com/proompteng/bilig/issues/334)
   helps agent builders see the tool-call loop.
 - [#358: docs(agent): add AI SDK onStepFinish WorkPaper transcript](https://github.com/proompteng/bilig/issues/358)
@@ -47,21 +35,11 @@ issue list. They are small, current, and map to the public adoption path for
 
 ## Code And Test Starters
 
-- [#360: test(headless): cover display-value readback after JSON restore](https://github.com/proompteng/bilig/issues/360)
-- [#361: test(headless): cover range readback after an input edit](https://github.com/proompteng/bilig/issues/361)
-- [#362: test(examples): guard the headless README command index against missing scripts](https://github.com/proompteng/bilig/issues/362)
-- [#363: test(examples): add invalid-request proof to the HTTP JSON summary smoke](https://github.com/proompteng/bilig/issues/363)
-- [#366: test(headless): cover changed named expressions after WorkPaper restore](https://github.com/proompteng/bilig/issues/366)
-- [#367: test(headless): cover dense sheet range read with sparse values](https://github.com/proompteng/bilig/issues/367)
-- [#368: test(headless): cover two-column formula tiling in fill ranges](https://github.com/proompteng/bilig/issues/368)
-- [#369: test(headless): cover tab-indented formula prefix detection](https://github.com/proompteng/bilig/issues/369)
-- [#371: test(examples): add deterministic markdown-report output test](https://github.com/proompteng/bilig/issues/371)
+No code or test starter issues are currently open. Open a scoped code/test
+ticket before the next contributor push if the queue should include one.
 
 ## Integration Docs Starters
 
-- [#273: docs(examples): add Express WorkPaper route smoke](https://github.com/proompteng/bilig/issues/273)
-- [#283: docs(mcp): add Cursor MCP config for the WorkPaper stdio server](https://github.com/proompteng/bilig/issues/283)
-- [#300: docs(examples): add tRPC WorkPaper procedure smoke](https://github.com/proompteng/bilig/issues/300)
 - [#334: docs(agent): add OpenAI Responses streaming tool-call transcript](https://github.com/proompteng/bilig/issues/334)
 - [#358: docs(agent): add AI SDK onStepFinish WorkPaper transcript](https://github.com/proompteng/bilig/issues/358)
 

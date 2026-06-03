@@ -881,34 +881,10 @@ including its worst p95 row.
   first-patch list capped at 15 scoped issues.
 - current first patch shortlist: see docs/starter-issues.md#start-here-this-week
   before browsing the full issue queue.
-- current small docs issue: Cursor MCP config for the WorkPaper stdio server:
-  https://github.com/proompteng/bilig/issues/283
-- current small example issue: tRPC WorkPaper procedure smoke:
-  https://github.com/proompteng/bilig/issues/300
-- current small example issue: Express WorkPaper route smoke:
-  https://github.com/proompteng/bilig/issues/273
 - current small agent issue: OpenAI Responses streaming tool-call transcript:
   https://github.com/proompteng/bilig/issues/334
 - current small agent issue: Vercel AI SDK streamText WorkPaper tool smoke:
   https://github.com/proompteng/bilig/issues/358
-- current small test issue: display-value readback after JSON restore:
-  https://github.com/proompteng/bilig/issues/360
-- current small test issue: range readback after an input edit:
-  https://github.com/proompteng/bilig/issues/361
-- current small test issue: headless README command index guard:
-  https://github.com/proompteng/bilig/issues/362
-- current small test issue: HTTP JSON summary invalid-request proof:
-  https://github.com/proompteng/bilig/issues/363
-- current small test issue: named expression restore coverage:
-  https://github.com/proompteng/bilig/issues/366
-- current small test issue: dense sheet range sparse values:
-  https://github.com/proompteng/bilig/issues/367
-- current small test issue: two-column fill-range formula tiling:
-  https://github.com/proompteng/bilig/issues/368
-- current small test issue: tab-indented formula prefix detection:
-  https://github.com/proompteng/bilig/issues/369
-- current small test issue: markdown-report deterministic output:
-  https://github.com/proompteng/bilig/issues/371
 - good first issue search:
   https://github.com/proompteng/bilig/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22
 - first-timers-only issue search:

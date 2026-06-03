@@ -193,6 +193,37 @@ The npm package exposes the demo server as `bilig-workpaper-mcp` by default:
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp
 ```
 
+### Cursor demo server config
+
+For a Cursor smoke that matches the lower-level runtime package, add this
+server to `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "bilig-workpaper": {
+      "command": "npm",
+      "args": ["exec", "--yes", "--package", "@bilig/headless@latest", "--", "bilig-workpaper-mcp"]
+    }
+  }
+}
+```
+
+That default demo mode exposes two tools: `read_workpaper_summary` and
+`set_workpaper_input_cell`.
+
+Ask Cursor for a concrete write/readback proof:
+
+```text
+Use the `bilig-workpaper` MCP server. Read `Summary!A1:B5`, then set
+`Inputs!B3` to `0.4` with `set_workpaper_input_cell`, and report
+`expectedArr` before and after.
+```
+
+A passing result reports `expectedArr` `60000` before the edit and `96000`
+after the edit. Use the file-backed config below when Cursor needs persistent
+project WorkPaper state instead of the packaged demo workbook.
+
 For Cursor, use the project-local `.cursor/mcp.json` shape in the
 [MCP client setup guide](mcp-client-setup.md#cursor). That setup uses
 `@bilig/workpaper@latest` in file-backed mode, so Cursor sees the general

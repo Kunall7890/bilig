@@ -451,6 +451,21 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     `npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp`,
     'docs/mcp-workpaper-tool-server.md',
   )
+  for (const required of [
+    '### Cursor demo server config',
+    '"bilig-workpaper": {',
+    '"command": "npm"',
+    '"@bilig/headless@latest"',
+    '"bilig-workpaper-mcp"',
+    'That default demo mode exposes two tools: `read_workpaper_summary` and',
+    '`set_workpaper_input_cell`.',
+    'Use the `bilig-workpaper` MCP server. Read `Summary!A1:B5`',
+    '`Inputs!B3` to `0.4` with `set_workpaper_input_cell`',
+    '`expectedArr` before and after',
+    '`expectedArr` `60000` before the edit and `96000`',
+  ]) {
+    requireIncludes(mcpWorkPaperToolServerDoc, required, 'docs/mcp-workpaper-tool-server.md')
+  }
   requireIncludes(mcpWorkPaperToolServerDoc, '[MCP client setup guide](mcp-client-setup.md#cursor)', 'docs/mcp-workpaper-tool-server.md')
   requireIncludes(mcpWorkPaperToolServerDoc, `\`${workpaperPackageSpec}\` in file-backed mode`, 'docs/mcp-workpaper-tool-server.md')
   requireIncludes(
