@@ -328,6 +328,7 @@ function runNodeSmoke(
   mkdirSync(join(projectDir, 'fixtures'), { recursive: true })
   copyFileSync(join(headlessExampleDir, 'package.json'), join(projectDir, 'package.json'))
   copyFileSync(join(headlessExampleDir, 'tsconfig.json'), join(projectDir, 'tsconfig.json'))
+  copyFileSync(join(headlessExampleDir, 'tsconfig.typecheck.json'), join(projectDir, 'tsconfig.typecheck.json'))
   for (const entry of readdirSync(headlessExampleDir).filter((fileName) => fileName.endsWith('.ts'))) {
     copyFileSync(join(headlessExampleDir, entry), join(projectDir, entry))
   }
@@ -840,8 +841,9 @@ function runTextCommand(command: string, args: string[], options: { cwd?: string
     stderr: 'pipe',
   })
   if (result.exitCode !== 0) {
+    const stdout = textDecoder.decode(result.stdout).trim()
     const stderr = textDecoder.decode(result.stderr).trim()
-    throw new Error(`Command failed: ${command} ${args.join(' ')}${stderr ? `\n${stderr}` : ''}`)
+    throw new Error(`Command failed: ${command} ${args.join(' ')}${stdout ? `\n${stdout}` : ''}${stderr ? `\n${stderr}` : ''}`)
   }
   return textDecoder.decode(result.stdout).trim()
 }
