@@ -20,6 +20,7 @@ const llmsFullSourceSpecs = [
   ['Agent WorkPaper Tool-Calling Recipe', 'docs/agent-workpaper-tool-calling-recipe.md'],
   ['AI Spreadsheet Agent Tool For Node.js', 'docs/ai-agent-spreadsheet-tool-node.md'],
   ['Workbook Tools For Agent Frameworks', 'docs/agent-framework-workbook-tools.md'],
+  ['Browser Use WorkPaper Formula Tool', 'docs/browser-use-workpaper-formula-tool.md'],
   ['Workbook Agent Intent API', 'docs/workbook-agent-intent-api.md'],
   ['Workbook Package README', 'packages/workbook/README.md'],
   ['Workbook Agent Model Example', 'examples/workbook-agent-model/README.md'],

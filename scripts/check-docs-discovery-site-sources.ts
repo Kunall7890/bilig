@@ -11,6 +11,7 @@ export const docsSiteSources = [
   ['agent-adoption-kit.html', 'agent-adoption-kit.md'],
   ['ai-agent-spreadsheet-tool-node.html', 'ai-agent-spreadsheet-tool-node.md'],
   ['agent-framework-workbook-tools.html', 'agent-framework-workbook-tools.md'],
+  ['browser-use-workpaper-formula-tool.html', 'browser-use-workpaper-formula-tool.md'],
   ['workbook-agent-intent-api.html', 'workbook-agent-intent-api.md'],
   ['headless-spreadsheet-engine-node-services-agents.html', 'headless-spreadsheet-engine-node-services-agents.md'],
   ['exceljs-formula-recalculation-node.html', 'exceljs-formula-recalculation-node.md'],

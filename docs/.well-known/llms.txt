@@ -192,9 +192,11 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/agent-adoption-kit.html
 - https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html
 - https://proompteng.github.io/bilig/agent-framework-workbook-tools.html
+- https://proompteng.github.io/bilig/browser-use-workpaper-formula-tool.html
 - https://proompteng.github.io/bilig/workbook-agent-intent-api.html
 - https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model
 - https://github.com/proompteng/bilig/blob/main/docs/agent-framework-workbook-tools.md
+- https://github.com/proompteng/bilig/blob/main/docs/browser-use-workpaper-formula-tool.md
 - https://proompteng.github.io/bilig/headless-spreadsheet-engine-node-services-agents.html
 - https://proompteng.github.io/bilig/xlsx-formula-recalculation-node.html
 - https://proompteng.github.io/bilig/sheetjs-formula-result-not-updating-node.html
@@ -631,7 +633,9 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://github.com/proompteng/bilig/blob/main/docs/vercel-ai-sdk-langchain-spreadsheet-tool.md
 - workbook tools for agent frameworks:
   https://proompteng.github.io/bilig/agent-framework-workbook-tools.html
+  https://proompteng.github.io/bilig/browser-use-workpaper-formula-tool.html
   https://github.com/proompteng/bilig/blob/main/docs/agent-framework-workbook-tools.md
+  https://github.com/proompteng/bilig/blob/main/docs/browser-use-workpaper-formula-tool.md
 - framework-specific spreadsheet tool pages:
   https://proompteng.github.io/bilig/mastra-workpaper-spreadsheet-tool.html
   https://proompteng.github.io/bilig/llamaindex-workpaper-spreadsheet-tool.html

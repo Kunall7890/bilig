@@ -648,6 +648,7 @@ the [Node spreadsheet formula engine guide](docs/node-spreadsheet-formula-engine
 [formula bug clinic](docs/formula-bug-clinic.md),
 [workbook fixture submissions](docs/submit-workbook-fixture.md),
 [OpenAI Agents SDK tools](docs/openai-agents-sdk-workpaper-tool.md),
+[Browser Use formula tool](docs/browser-use-workpaper-formula-tool.md),
 [AI SDK and LangChain tools](docs/vercel-ai-sdk-langchain-spreadsheet-tool.md),
 [CrewAI adapter](docs/crewai-workpaper-spreadsheet-tool.md),
 the [headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md),

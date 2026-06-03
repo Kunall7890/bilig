@@ -1,7 +1,7 @@
 ---
 title: Workbook tools for agent frameworks
 published: true
-description: Pick the Bilig WorkPaper integration path for Codex, Claude, Cursor, OpenAI Agents, Vercel AI SDK, LangChain, LangGraph, LlamaIndex, and MCP clients.
+description: Pick the Bilig WorkPaper integration path for Codex, Claude, Cursor, Browser Use, OpenAI Agents, Vercel AI SDK, LangChain, LangGraph, LlamaIndex, and MCP clients.
 tags: ai-agents, mcp, spreadsheet-agent, workbook-api, typescript
 canonical_url: https://proompteng.github.io/bilig/agent-framework-workbook-tools.html
 image: /assets/github-social-preview.png
@@ -83,6 +83,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | Open WebUI                         | Hosted OpenAPI for no-bridge smoke tests, native Streamable HTTP MCP, or `mcpo` around the npm stdio server for local writable files. | [Open WebUI WorkPaper setup](open-webui-workpaper-mcp.md)                                    |
 | LobeHub                            | Custom MCP import JSON for hosted Streamable HTTP, or desktop STDIO for a writable WorkPaper file.                                    | [LobeHub WorkPaper MCP setup](lobehub-workpaper-mcp.md)                                      |
 | AnythingLLM                        | `anythingllm_mcp_servers.json` with hosted Streamable HTTP, Desktop stdio, or Docker storage-backed stdio.                            | [AnythingLLM WorkPaper MCP setup](anythingllm-workpaper-mcp.md)                              |
+| Browser Use                        | Browser agent gathers web context; custom Bilig tool or file-backed MCP owns formula readback and WorkPaper persistence.              | [Browser Use WorkPaper formula tool](browser-use-workpaper-formula-tool.md)                  |
 | OpenAI Agents SDK                  | Function tools, `MCPServerStdio`, or hosted `MCPServerStreamableHttp` with computed WorkPaper readback.                               | [OpenAI Agents SDK WorkPaper tool](openai-agents-sdk-workpaper-tool.md)                      |
 | ChatGPT Apps / Developer Mode      | Remote MCP app using the hosted Streamable HTTP endpoint for no-key WorkPaper readback proof.                                         | [ChatGPT Apps WorkPaper MCP](chatgpt-apps-workpaper-mcp.md)                                  |
 | OpenAI Responses API               | Function-call wrapper returning proof objects.                                                                                        | [OpenAI Responses WorkPaper tool call](openai-responses-workpaper-tool-call.md)              |
@@ -137,6 +138,7 @@ Do not claim success from a write call alone.
 - [Agent WorkPaper tool-calling recipe](agent-workpaper-tool-calling-recipe.md)
 - [MCP client setup](mcp-client-setup.md)
 - [Open WebUI WorkPaper setup](open-webui-workpaper-mcp.md)
+- [Browser Use WorkPaper formula tool](browser-use-workpaper-formula-tool.md)
 - [Open Multi-Agent WorkPaper MCP example](open-multi-agent-workpaper-mcp.md)
 - [MCP WorkPaper tool server](mcp-workpaper-tool-server.md)
 - [ChatGPT Apps WorkPaper MCP](chatgpt-apps-workpaper-mcp.md)

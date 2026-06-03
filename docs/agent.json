@@ -212,6 +212,24 @@
       "source": "https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/openai-agents-sdk-hosted-mcp-smoke.ts"
     },
     {
+      "name": "openai-responses-workpaper-tool-calls",
+      "type": "typescript-function-calling-dispatcher",
+      "framework": "OpenAI Responses API",
+      "api_shape": "function_call -> function_call_output",
+      "command": "pnpm --dir examples/headless-workpaper run agent:openai-responses",
+      "docs": "https://proompteng.github.io/bilig/openai-responses-workpaper-tool-call.html",
+      "source": "https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/openai-responses-tool-wrapper.ts"
+    },
+    {
+      "name": "browser-use-workpaper-formula-tool",
+      "type": "python-browser-agent-tool-guide",
+      "framework": "Browser Use",
+      "command": "npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json",
+      "docs": "https://proompteng.github.io/bilig/browser-use-workpaper-formula-tool.html",
+      "source": "https://github.com/proompteng/bilig/blob/main/docs/browser-use-workpaper-formula-tool.md",
+      "upstream_pr": "https://github.com/browser-use/browser-use/pull/4909"
+    },
+    {
       "name": "chatgpt-apps-workpaper-mcp",
       "type": "chatgpt-developer-mode-remote-mcp-app",
       "framework": "ChatGPT Apps",
@@ -370,6 +388,8 @@
     "https://proompteng.github.io/bilig/agent-framework-workbook-tools.html",
     "https://proompteng.github.io/bilig/workbook-agent-intent-api.html",
     "https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html",
+    "https://proompteng.github.io/bilig/openai-responses-workpaper-tool-call.html",
+    "https://proompteng.github.io/bilig/browser-use-workpaper-formula-tool.html",
     "https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html",
     "https://proompteng.github.io/bilig/langgraph-workpaper-toolnode-spreadsheet.html",
     "https://proompteng.github.io/bilig/llamaindex-workpaper-spreadsheet-tool.html",

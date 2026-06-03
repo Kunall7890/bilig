@@ -69,6 +69,36 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
     !hasCapability(
       agentJsonCapabilities,
       (capability) =>
+        Reflect.get(capability, 'name') === 'openai-responses-workpaper-tool-calls' &&
+        Reflect.get(capability, 'framework') === 'OpenAI Responses API' &&
+        Reflect.get(capability, 'api_shape') === 'function_call -> function_call_output' &&
+        Reflect.get(capability, 'command') === 'pnpm --dir examples/headless-workpaper run agent:openai-responses' &&
+        Reflect.get(capability, 'docs') === 'https://proompteng.github.io/bilig/openai-responses-workpaper-tool-call.html' &&
+        Reflect.get(capability, 'source') ===
+          'https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/openai-responses-tool-wrapper.ts',
+    )
+  ) {
+    throw new Error('docs/.well-known/agent.json must advertise the OpenAI Responses function-calling capability')
+  }
+  if (
+    !hasCapability(
+      agentJsonCapabilities,
+      (capability) =>
+        Reflect.get(capability, 'name') === 'browser-use-workpaper-formula-tool' &&
+        Reflect.get(capability, 'framework') === 'Browser Use' &&
+        Reflect.get(capability, 'command') ===
+          'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json' &&
+        Reflect.get(capability, 'docs') === 'https://proompteng.github.io/bilig/browser-use-workpaper-formula-tool.html' &&
+        Reflect.get(capability, 'source') === 'https://github.com/proompteng/bilig/blob/main/docs/browser-use-workpaper-formula-tool.md' &&
+        Reflect.get(capability, 'upstream_pr') === 'https://github.com/browser-use/browser-use/pull/4909',
+    )
+  ) {
+    throw new Error('docs/.well-known/agent.json must advertise the Browser Use WorkPaper formula tool capability')
+  }
+  if (
+    !hasCapability(
+      agentJsonCapabilities,
+      (capability) =>
         Reflect.get(capability, 'name') === 'chatgpt-apps-workpaper-mcp' &&
         Reflect.get(capability, 'framework') === 'ChatGPT Apps' &&
         Reflect.get(capability, 'endpoint') === 'https://bilig.proompteng.ai/mcp' &&
@@ -122,6 +152,8 @@ const requiredPublicEntrypoints = [
   'https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json',
   'https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html',
   'https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html',
+  'https://proompteng.github.io/bilig/openai-responses-workpaper-tool-call.html',
+  'https://proompteng.github.io/bilig/browser-use-workpaper-formula-tool.html',
   'https://proompteng.github.io/bilig/langgraph-workpaper-toolnode-spreadsheet.html',
   'https://proompteng.github.io/bilig/llamaindex-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/agno-workpaper-mcp.html',

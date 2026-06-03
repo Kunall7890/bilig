@@ -9,6 +9,7 @@ export const agentFrameworkLlmsRequiredLinks = [
   'https://proompteng.github.io/bilig/cloudflare-agents-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/crewai-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/semantic-kernel-workpaper-mcp.html',
+  'https://proompteng.github.io/bilig/browser-use-workpaper-formula-tool.html',
 ] as const
 
 export const agentFrameworkDocRequirements = [
@@ -109,6 +110,28 @@ export const agentFrameworkDocRequirements = [
       '@bilig/workpaper',
       'JSON contract',
       'pnpm --dir examples/headless-workpaper run agent:framework-adapters',
+    ],
+  },
+  {
+    path: 'docs/browser-use-workpaper-formula-tool.md',
+    includes: [
+      'Browser Use WorkPaper formula tool',
+      'https://docs.browser-use.com/open-source/customize/tools/basics',
+      'https://docs.browser-use.com/open-source/customize/tools/add',
+      'https://docs.browser-use.com/open-source/customize/tools/response',
+      'https://docs.browser-use.com/open-source/customize/agent/all-parameters',
+      'https://docs.browser-use.com/open-source/customize/integrations/mcp-server',
+      '@bilig/workpaper@latest',
+      'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
+      'Tools()',
+      '@tools.action',
+      'ActionResult',
+      'set_cell_contents_and_readback',
+      'https://github.com/browser-use/browser-use/pull/4909',
+      'Do not open a second Browser Use PR',
+      '60000',
+      '96000',
+      'verified: true',
     ],
   },
   {
