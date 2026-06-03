@@ -8,6 +8,7 @@ import { parse as parseYaml } from 'yaml'
 
 import { runXlsxFormulaRecalcCli } from '../cli-api.js'
 import { WorkPaper, exportXlsx } from '../index.js'
+import { buildWorkbookCompatibilityReport, runWorkbookCompatibilityReportCli } from '../workbook-compatibility-report.js'
 
 const officeRelationshipNamespace = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
 const packageVersion = readPackageVersion()
@@ -182,6 +183,88 @@ describe('xlsx-recalc CLI', () => {
       cacheStatus: 'stale',
       staleCachedValue: true,
     })
+  })
+
+  it('prints a workbook compatibility report without claiming an Excel compatibility score', () => {
+    let stdout = ''
+
+    const exitCode = runWorkbookCompatibilityReportCli(['--demo', '--json'], {
+      stdout: (text) => {
+        stdout += text
+      },
+    })
+
+    expect(exitCode).toBe(0)
+    const report = readWorkbookCompatibilityReport(stdout)
+    expect(report.schemaVersion).toBe('bilig-workbook-compatibility-report.v1')
+    expect(report.verified).toBe(true)
+    expect(report.risk.level).toBe('high')
+    expect(report.workbook.formulaCellCount).toBe(3)
+    expect(report.findings.unsupportedFunctions).toEqual([{ name: 'CUBEVALUE', count: 1 }])
+    expect(report.findings.volatileFunctions).toEqual([{ name: 'NOW', count: 1 }])
+    expect(report.findings.staleCachedFormulas.count).toBe(2)
+    expect(report.findings.missingCachedFormulaValues.count).toBe(1)
+    expect(report.excelParity).toBe('not_proven')
+    expect(report.limitations).toContain('It is not an Excel compatibility certification.')
+    expect(stdout).not.toMatch(/compatibilityScore|excelCompatibilityPercent/u)
+  })
+
+  it('keeps workbook compatibility human output explicit about the trust boundary', () => {
+    let stdout = ''
+
+    const exitCode = runWorkbookCompatibilityReportCli(['--demo'], {
+      stdout: (text) => {
+        stdout += text
+      },
+    })
+
+    expect(exitCode).toBe(0)
+    expect(stdout).toContain('Workbook analyzed. Risk level: HIGH')
+    expect(stdout).toContain('Unsupported functions: CUBEVALUE (1)')
+    expect(stdout).toContain('It is not an Excel compatibility certification.')
+    expect(stdout).not.toContain('compatibility score')
+  })
+
+  it('flags provider-backed workbook formulas as high-risk unsupported functions', () => {
+    const report = buildWorkbookCompatibilityReport(buildProviderBackedRiskWorkbook(), {
+      fileName: 'provider-backed-risk.xlsx',
+    })
+
+    expect(report.risk.level).toBe('high')
+    expect(report.findings.unsupportedFunctions).toEqual([
+      { name: 'GOOGLEFINANCE', count: 1 },
+      { name: 'IMPORTDATA', count: 1 },
+      { name: 'IMPORTHTML', count: 1 },
+      { name: 'IMPORTRANGE', count: 1 },
+      { name: 'TRANSLATE', count: 1 },
+    ])
+    expect(report.risk.reasons.join('\n')).toContain('unsupported functions:')
+  })
+
+  it('counts external workbook links at workbook reference grain', () => {
+    const report = buildWorkbookCompatibilityReport(buildExternalLinkRangeCacheWorkbook('file:///tmp/rates.xlsx'), {
+      fileName: 'external-link-risk.xlsx',
+    })
+
+    expect(report.findings.externalLinks.count).toBe(1)
+    expect(report.findings.externalLinks.unresolvedCount).toBe(0)
+    expect(report.risk.level).toBe('high')
+    expect(report.risk.reasons).toContain('external workbook links: 1')
+  })
+
+  it('raises risk when inspection limits leave formulas unchecked', () => {
+    const report = buildWorkbookCompatibilityReport(buildManyFormulaCacheWorkbook(), {
+      fileName: 'limited-inspection.xlsx',
+      inspectLimit: 50,
+    })
+
+    expect(report.cacheInspection).toMatchObject({
+      inspectedFormulaCellCount: 50,
+      uninspectedFormulaCellCount: 10,
+      inspectionLimit: 50,
+    })
+    expect(report.risk.level).toBe('medium')
+    expect(report.risk.reasons).toContain('uninspected formula cells: 10')
   })
 
   it('separates missing cached formula values from stale cached values', () => {
@@ -590,6 +673,25 @@ interface CliInspectionSummary {
   readonly excelParity: 'not_proven'
 }
 
+interface WorkbookCompatibilityReportForTest {
+  readonly schemaVersion: string
+  readonly verified: boolean
+  readonly workbook: {
+    readonly formulaCellCount: number
+  }
+  readonly findings: {
+    readonly unsupportedFunctions: readonly { readonly name: string; readonly count: number }[]
+    readonly volatileFunctions: readonly { readonly name: string; readonly count: number }[]
+    readonly staleCachedFormulas: { readonly count: number }
+    readonly missingCachedFormulaValues: { readonly count: number }
+  }
+  readonly risk: {
+    readonly level: string
+  }
+  readonly excelParity: 'not_proven'
+  readonly limitations: readonly string[]
+}
+
 function readCliSummary(stdout: string): CliSummary {
   const parsed: unknown = JSON.parse(stdout)
   if (typeof parsed !== 'object' || parsed === null) {
@@ -687,6 +789,38 @@ function readCliInspectionSummary(stdout: string): CliInspectionSummary {
   }
 }
 
+function readWorkbookCompatibilityReport(stdout: string): WorkbookCompatibilityReportForTest {
+  const parsed: unknown = JSON.parse(stdout)
+  if (!isRecord(parsed)) {
+    throw new Error(`Expected workbook compatibility report object, received ${stdout}`)
+  }
+  const workbook = parsed['workbook']
+  const findings = parsed['findings']
+  const risk = parsed['risk']
+  const limitations = parsed['limitations']
+  if (!isRecord(workbook) || !isRecord(findings) || !isRecord(risk) || !Array.isArray(limitations)) {
+    throw new Error(`Unexpected workbook compatibility report shape: ${stdout}`)
+  }
+  return {
+    schemaVersion: requireString(parsed['schemaVersion']),
+    verified: parsed['verified'] === true,
+    workbook: {
+      formulaCellCount: requireNumber(workbook['formulaCellCount']),
+    },
+    findings: {
+      unsupportedFunctions: requireNamedCounts(findings['unsupportedFunctions']),
+      volatileFunctions: requireNamedCounts(findings['volatileFunctions']),
+      staleCachedFormulas: requireCountObject(findings['staleCachedFormulas']),
+      missingCachedFormulaValues: requireCountObject(findings['missingCachedFormulaValues']),
+    },
+    risk: {
+      level: requireString(risk['level']),
+    },
+    excelParity: parsed['excelParity'] === 'not_proven' ? 'not_proven' : 'not_proven',
+    limitations: limitations.filter((limitation): limitation is string => typeof limitation === 'string'),
+  }
+}
+
 function readGeneratedWorkflow(stdout: string): Record<string, unknown> {
   return requireRecord(parseYaml(stdout))
 }
@@ -708,6 +842,32 @@ function requireRecord(value: unknown): Record<string, unknown> {
     throw new Error(`Expected object, received ${typeof value}`)
   }
   return value
+}
+
+function requireString(value: unknown): string {
+  if (typeof value !== 'string') {
+    throw new Error(`Expected string, received ${typeof value}`)
+  }
+  return value
+}
+
+function requireNumber(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new Error(`Expected finite number, received ${typeof value}`)
+  }
+  return value
+}
+
+function requireCountObject(value: unknown): { readonly count: number } {
+  const record = requireRecord(value)
+  return { count: requireNumber(record['count']) }
+}
+
+function requireNamedCounts(value: unknown): readonly { readonly name: string; readonly count: number }[] {
+  return requireRecordArray(value).map((entry) => ({
+    name: requireString(entry['name']),
+    count: requireNumber(entry['count']),
+  }))
 }
 
 function requireRecordArray(value: unknown): readonly Record<string, unknown>[] {
@@ -837,6 +997,24 @@ function buildManyFormulaCacheWorkbook(): Uint8Array {
       'B61',
       '<c r="B61"><f>A61*10</f><v>999</v></c>',
     )
+  } finally {
+    workbook.dispose()
+  }
+}
+
+function buildProviderBackedRiskWorkbook(): Uint8Array {
+  const workbook = WorkPaper.buildFromSheets({
+    Risks: [
+      ['Signal', 'Formula'],
+      ['Market data', '=GOOGLEFINANCE("GOOG","price")'],
+      ['CSV import', '=IMPORTDATA("https://example.com/data.csv")'],
+      ['HTML import', '=IMPORTHTML("https://example.com","table",1)'],
+      ['Range import', '=IMPORTRANGE("source","Revenue!B2")'],
+      ['Translate', '=TRANSLATE("hello","en","es")'],
+    ],
+  })
+  try {
+    return exportXlsx(workbook.exportSnapshot())
   } finally {
     workbook.dispose()
   }

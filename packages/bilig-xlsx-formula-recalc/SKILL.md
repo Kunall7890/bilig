@@ -1,5 +1,5 @@
 ---
-name: xlsx-formula-recalc
+name: bilig-xlsx-formula-recalc
 version: 0.1.0
 description: Recalculate XLSX formula outputs in Node.js after cell edits without opening Excel, LibreOffice, or browser automation.
 tags:
@@ -11,13 +11,11 @@ tags:
   - typescript
 ---
 
-# XLSX Formula Recalculation
+# Bilig XLSX Formula Recalculation
 
 Use `@bilig/xlsx-formula-recalc` when an agent or Node.js service has changed
 XLSX inputs and must read recalculated formula outputs without opening Excel,
-LibreOffice, or a browser. The unscoped `xlsx-formula-recalc` package remains a
-compatibility/search alias; new agent instructions should use the scoped package
-first.
+LibreOffice, or a browser. This package is the canonical scoped package.
 
 ## First Check
 
@@ -63,10 +61,9 @@ npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibi
 ```
 
 The inspection output includes `formulaCellCount`, `staleCachedFormulaCount`,
-`suggestedReads`, and a `nextStep.command` for the recalculation proof. Default
-inspection checks every formula. If a workflow sets `--inspect-limit`, require
-`uninspectedFormulaCellCount: 0` before treating the report as complete
-coverage.
+`suggestedReads`, and warnings. Default inspection checks every formula. If a
+workflow sets `--inspect-limit`, require `uninspectedFormulaCellCount: 0` before
+treating the report as complete coverage.
 
 ## Real Workbook
 

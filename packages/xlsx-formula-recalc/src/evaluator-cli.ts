@@ -10,10 +10,17 @@ import {
   buildMcpRevenuePlanChallengeProof,
 } from '@bilig/headless/cli'
 import { runXlsxFormulaRecalcCli } from './cli-api.js'
+import {
+  buildWorkbookCompatibilityDemoBytes,
+  buildWorkbookCompatibilityReport,
+  type WorkbookCompatibilityNamedCount,
+  type WorkbookCompatibilityReport,
+  type WorkbookCompatibilityRiskLevel,
+} from './workbook-compatibility-report.js'
 
 export const biligEvaluatorSchemaVersion = 'bilig-evaluator.v1'
 
-export type BiligEvaluatorDoor = 'xlsx-cache' | 'workpaper-service' | 'agent-mcp'
+export type BiligEvaluatorDoor = 'xlsx-cache' | 'workbook-compatibility' | 'workpaper-service' | 'agent-mcp'
 export type BiligEvaluatorScenario = 'default' | 'revenue-plan' | 'provider-backed'
 
 export interface BiligEvaluatorCliContext {
@@ -41,6 +48,14 @@ export interface BiligEvaluatorEvidence {
   readonly formula?: string | undefined
   readonly adapterFormula?: string | undefined
   readonly diagnostics?: readonly unknown[] | undefined
+  readonly riskLevel?: WorkbookCompatibilityRiskLevel | undefined
+  readonly riskReasons?: readonly string[] | undefined
+  readonly unsupportedFunctions?: readonly WorkbookCompatibilityNamedCount[] | undefined
+  readonly externalLinks?: number | undefined
+  readonly macroModules?: number | undefined
+  readonly volatileFunctions?: readonly WorkbookCompatibilityNamedCount[] | undefined
+  readonly pivotTables?: number | undefined
+  readonly formulaCellCount?: number | undefined
   readonly before?: unknown
   readonly after?: unknown
   readonly afterRestore?: unknown
@@ -100,6 +115,7 @@ interface XlsxCacheDoctorProofSummary {
 }
 
 const xlsxCacheDocs = 'https://proompteng.github.io/bilig/eval-xlsx-cache-doctor.html'
+const workbookCompatibilityDocs = 'https://proompteng.github.io/bilig/workbook-compatibility-report.html'
 const workpaperDocs = 'https://proompteng.github.io/bilig/eval-workpaper-service.html'
 const mcpDocs = 'https://proompteng.github.io/bilig/eval-agent-mcp.html'
 
@@ -109,6 +125,12 @@ const doorSummaries: readonly BiligEvaluatorDoorSummary[] = [
     label: 'Detect and recalculate a stale cached XLSX formula without Excel or LibreOffice.',
     command: 'npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json',
     docs: xlsxCacheDocs,
+  },
+  {
+    door: 'workbook-compatibility',
+    label: 'Inspect workbook risks before trusting Bilig in a Node service or agent workflow.',
+    command: 'npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json',
+    docs: workbookCompatibilityDocs,
   },
   {
     door: 'workpaper-service',
@@ -159,7 +181,7 @@ export function runBiligEvaluatorCli(args: readonly string[], context: BiligEval
       return 0
     }
     if (parsed.door === undefined) {
-      throw new Error('Expected --door xlsx-cache, --door workpaper-service, or --door agent-mcp.')
+      throw new Error('Expected --door xlsx-cache, --door workbook-compatibility, --door workpaper-service, or --door agent-mcp.')
     }
 
     const proof = buildBiligEvaluatorProof(parsed.door, { scenario: parsed.scenario })
@@ -178,6 +200,8 @@ function buildDoorProof(door: BiligEvaluatorDoor, scenario: BiligEvaluatorScenar
   switch (door) {
     case 'xlsx-cache':
       return buildXlsxCacheEvaluatorProof()
+    case 'workbook-compatibility':
+      return buildWorkbookCompatibilityEvaluatorProof()
     case 'workpaper-service':
       return buildWorkpaperServiceEvaluatorProof()
     case 'agent-mcp':
@@ -220,6 +244,54 @@ function buildXlsxCacheEvaluatorProof(): Omit<BiligEvaluatorProof, 'durationMs'>
       'This door proves stale cached formula detection and Bilig recalculation readback; it does not prove Excel desktop parity.',
       'Use Excel, LibreOffice, or an oracle harness for macros, pivots, charts, unsupported functions, and UI-specific workbook behavior.',
     ],
+    next: {
+      docs: summary.docs,
+      command: summary.command,
+    },
+    sourceProof,
+  }
+}
+
+function buildWorkbookCompatibilityEvaluatorProof(): Omit<BiligEvaluatorProof, 'durationMs'> {
+  const sourceProof = buildWorkbookCompatibilityReport(buildWorkbookCompatibilityDemoBytes(), {
+    fileName: 'bilig-workbook-compatibility-demo.xlsx',
+    inspectLimit: 'all',
+  })
+  const checks = {
+    commandSucceeded: sourceProof.commandSucceeded,
+    inspectionCompleted: sourceProof.inspectionCompleted,
+    recalculationCompleted: sourceProof.recalculationCompleted,
+    riskReasonsExplainFindings: sourceProof.risk.reasons.length > 0,
+    noCompatibilityScore: !reportHasCompatibilityScore(sourceProof),
+    unsupportedFunctionsReported: sourceProof.findings.unsupportedFunctions.length > 0,
+  }
+  const verified = Object.values(checks).every(Boolean)
+  const summary = requireDoorSummary('workbook-compatibility')
+
+  return {
+    schemaVersion: biligEvaluatorSchemaVersion,
+    door: 'workbook-compatibility',
+    doorName: 'Workbook compatibility risk report',
+    command: summary.command,
+    packageVersions: {
+      'xlsx-formula-recalc': readLocalPackageVersion(),
+      '@bilig/workpaper-runtime': WorkPaper.version,
+    },
+    evidence: {
+      riskLevel: sourceProof.risk.level,
+      riskReasons: sourceProof.risk.reasons,
+      unsupportedFunctions: sourceProof.findings.unsupportedFunctions,
+      externalLinks: sourceProof.findings.externalLinks.count,
+      macroModules: sourceProof.findings.macroModules.count,
+      volatileFunctions: sourceProof.findings.volatileFunctions,
+      pivotTables: sourceProof.findings.pivotTables.count,
+      formulaCellCount: sourceProof.workbook.formulaCellCount,
+      staleCachedFormulaCount: sourceProof.findings.staleCachedFormulas.count,
+      suggestedReads: sourceProof.cacheInspection.suggestedReads,
+      checks,
+    },
+    verified,
+    limitations: sourceProof.limitations,
     next: {
       docs: summary.docs,
       command: summary.command,
@@ -432,6 +504,11 @@ function parseDoor(value: string): BiligEvaluatorDoor {
     case 'xlsx-cache':
     case 'xlsx-cache-doctor':
       return 'xlsx-cache'
+    case 'workbook':
+    case 'compatibility':
+    case 'workbook-compatibility':
+    case 'workbook-compatibility-report':
+      return 'workbook-compatibility'
     case 'workpaper':
     case 'workpaper-service':
     case 'service':
@@ -474,6 +551,8 @@ function renderEvaluatorHelp(): string {
 
 Doors:
   xlsx-cache          Detect stale cached XLSX formulas and prove recalculated readback.
+  workbook-compatibility
+                      Inspect workbook risks without claiming Excel compatibility.
   workpaper-service   Prove WorkPaper edit, recalc, restore, and persistence.
   agent-mcp           Prove MCP tools, restart persistence, and readback.
 
@@ -502,6 +581,11 @@ function renderProofMarkdown(proof: BiligEvaluatorProof): string {
     `- Evidence: \`${JSON.stringify(proof.evidence)}\``,
     '',
   ].join('\n')
+}
+
+function reportHasCompatibilityScore(report: WorkbookCompatibilityReport): boolean {
+  const text = JSON.stringify(report)
+  return /compatibilityScore|excelCompatibilityPercent/iu.test(text)
 }
 
 function requireDoorSummary(door: BiligEvaluatorDoor): BiligEvaluatorDoorSummary {

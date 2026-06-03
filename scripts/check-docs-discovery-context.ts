@@ -54,6 +54,9 @@ export interface DocsDiscoveryContext {
   readonly headlessSpreadsheetEngineComparison: string
   readonly sheetjsExceljsAlternativeFormulaWorkbookApi: string
   readonly hyperformulaAlternativeHeadlessWorkpaper: string
+  readonly workbookCompatibilityReport: string
+  readonly workbookCompatibilityReportTranscript: string
+  readonly workbookCompatibilityReportJson: string
   readonly xlsxFormulaRecalculationNode: string
   readonly xlsxCacheDoctorProofTranscript: string
   readonly agentXlsxFormulaRecalculationWithoutLibreOffice: string
@@ -138,6 +141,9 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     headlessSpreadsheetEngineComparison,
     sheetjsExceljsAlternativeFormulaWorkbookApi,
     hyperformulaAlternativeHeadlessWorkpaper,
+    workbookCompatibilityReport,
+    workbookCompatibilityReportTranscript,
+    workbookCompatibilityReportJson,
     xlsxFormulaRecalculationNode,
     xlsxCacheDoctorProofTranscript,
     agentXlsxFormulaRecalculationWithoutLibreOffice,
@@ -212,6 +218,9 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     readFile(join(docsRoot, 'headless-spreadsheet-engine-comparison.md'), 'utf8'),
     readFile(join(docsRoot, 'sheetjs-exceljs-alternative-formula-workbook-api.md'), 'utf8'),
     readFile(join(docsRoot, 'hyperformula-alternative-headless-workpaper.md'), 'utf8'),
+    readFile(join(docsRoot, 'workbook-compatibility-report.md'), 'utf8'),
+    readFile(join(docsRoot, 'workbook-compatibility-report-transcript.md'), 'utf8'),
+    readFile(join(docsRoot, 'workbook-compatibility-report.json'), 'utf8'),
     readFile(join(docsRoot, 'xlsx-formula-recalculation-node.md'), 'utf8'),
     readFile(join(docsRoot, 'xlsx-cache-doctor-proof-transcript.md'), 'utf8'),
     readFile(join(docsRoot, 'agent-xlsx-formula-recalculation-without-libreoffice.md'), 'utf8'),
@@ -295,6 +304,9 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     headlessSpreadsheetEngineComparison,
     sheetjsExceljsAlternativeFormulaWorkbookApi,
     hyperformulaAlternativeHeadlessWorkpaper,
+    workbookCompatibilityReport,
+    workbookCompatibilityReportTranscript,
+    workbookCompatibilityReportJson,
     xlsxFormulaRecalculationNode,
     xlsxCacheDoctorProofTranscript,
     agentXlsxFormulaRecalculationWithoutLibreOffice,

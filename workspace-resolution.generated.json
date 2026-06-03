@@ -187,6 +187,10 @@
     "packageDir": "packages/bilig-xlsx-formula-recalc",
     "sourceEntry": "packages/bilig-xlsx-formula-recalc/src/evaluator.ts"
   },
+  "@bilig/xlsx-formula-recalc/workbook-compatibility-report": {
+    "packageDir": "packages/bilig-xlsx-formula-recalc",
+    "sourceEntry": "packages/bilig-xlsx-formula-recalc/src/workbook-compatibility-report.ts"
+  },
   "@bilig/zero-sync": {
     "packageDir": "packages/zero-sync",
     "sourceEntry": "packages/zero-sync/src/index.ts"
@@ -222,5 +226,9 @@
   "xlsx-formula-recalc/evaluator": {
     "packageDir": "packages/xlsx-formula-recalc",
     "sourceEntry": "packages/xlsx-formula-recalc/src/evaluator-cli.ts"
+  },
+  "xlsx-formula-recalc/workbook-compatibility-report": {
+    "packageDir": "packages/xlsx-formula-recalc",
+    "sourceEntry": "packages/xlsx-formula-recalc/src/workbook-compatibility-report.ts"
   }
 }

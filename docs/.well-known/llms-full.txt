@@ -364,10 +364,21 @@ fresh.
 Run the no-clone checks:
 
 ```sh
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 ```
+
+Evaluate a real workbook before integrating it:
+
+```sh
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibility-report workbook.xlsx --json
+```
+
+The report lists unsupported functions, external links, VBA payloads, pivots,
+volatile formulas, stale cached formulas, and concrete risk reasons. It is not
+an Excel compatibility certification and does not print a compatibility score.
 
 Expected WorkPaper service result:
 
@@ -442,6 +453,9 @@ export, and restart verification shape.
 The [XLSX Cache Doctor proof transcript](docs/xlsx-cache-doctor-proof-transcript.md)
 shows the stale cached formula value, recalculated value, exact cell address,
 and suggested read target before a service or CI job trusts a saved workbook.
+The [Workbook Compatibility Report](docs/workbook-compatibility-report.md)
+shows the local risk report for an actual `.xlsx` before a Node service or
+coding agent trusts Bilig with it.
 Use the [coding agent rule chooser](docs/agent-rule-chooser.md) when you need
 the exact instruction, rule, prompt, or MCP config file for Codex, Claude Code,
 GitHub Copilot, VS Code, Cursor, Windsurf/Cascade, Cline, Continue, or Gemini
@@ -456,6 +470,7 @@ Pick the path that matches the job:
 | You have...                                                             | Start with                                                                 | You should see                                                                            |
 | ----------------------------------------------------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | You are not sure whether XLSX, SheetJS, ExcelJS, xlsx-populate, CI, WorkPaper, or an agent owns the fix | [Stale formula readback chooser](docs/stale-formula-readback-chooser.md) | the smallest proof command for the boundary, plus when not to use it. |
+| You need to know whether a specific workbook has Bilig integration risks | [Workbook Compatibility Report](docs/workbook-compatibility-report.md)    | unsupported functions, external links, macros, pivots, volatile formulas, cache risks, and no compatibility score. |
 | A real `.xlsx` file has stale formula results after Node edits          | [XLSX Cache Doctor evaluator](docs/eval-xlsx-cache-doctor.md)              | stale cells, cached values, recalculated values, suggested reads, and JSON output.        |
 | You need to see the exact stale-cache output before adopting            | [XLSX Cache Doctor proof transcript](docs/xlsx-cache-doctor-proof-transcript.md) | `Summary!B2` and `Sheet1!B61` cached-vs-recalculated proof, plus CI boundary.       |
 | Pull requests can commit XLSX fixtures with stale cached values         | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md) | report-only workbook findings before the workflow blocks anything.                        |
@@ -476,6 +491,7 @@ The shortest no-project checks are:
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json
 npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json
 ```
@@ -1613,6 +1629,256 @@ Reject answers that only say a cell was written.
 - Agent adoption kit: <https://proompteng.github.io/bilig/agent-adoption-kit.html>
 - MCP server guide: <https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html>
 - Repository: <https://github.com/proompteng/bilig>
+
+---
+
+## Workbook Compatibility Report
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/workbook-compatibility-report.md
+
+# Workbook Compatibility Report
+
+Use this before wiring a real `.xlsx` workbook into a Node service or coding
+agent. The report answers one question:
+
+> If I point an agent or Node service at this workbook, what known risks should
+> I investigate before I trust the outputs?
+
+It is an inspector, not a grader. It does not say that a workbook is Excel
+compatible, and it does not print a compatibility percentage.
+
+## One command
+
+```sh
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- \
+  workbook-compatibility-report workbook.xlsx --json
+```
+
+For a no-project proof:
+
+```sh
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- \
+  workbook-compatibility-report --demo --json
+```
+
+The same proof is available through the evaluator door:
+
+```sh
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- \
+  bilig-evaluate --door workbook-compatibility --json
+```
+
+## Fields to trust
+
+The v1 report stays small on purpose:
+
+- `verified: true`: the report completed locally.
+- `workbook.formulaCellCount`: how much formula surface was inspected.
+- `findings.unsupportedFunctions`: formulas that need review before readback is
+  trusted.
+- `findings.externalLinks`: linked workbook references and unresolved count.
+- `findings.macroModules`: preserved VBA payloads that Bilig does not execute.
+- `findings.volatileFunctions`: functions like `NOW` and `OFFSET`.
+- `findings.pivotTables`: pivots and unsupported pivot surfaces.
+- `findings.staleCachedFormulas`: cached formula values that changed when
+  recalculated.
+- `cacheInspection.uninspectedFormulaCellCount`: formulas left unchecked when a
+  caller deliberately sets `--inspect-limit`.
+- `risk.level` and `risk.reasons`: low, medium, or high with concrete reasons.
+- `excelParity: "not_proven"`: the report does not certify desktop Excel
+  behavior.
+
+## Demo output
+
+The checked-in proof artifact is
+[`workbook-compatibility-report.json`](workbook-compatibility-report.json).
+The important shape is:
+
+```json
+{
+  "schemaVersion": "bilig-workbook-compatibility-report.v1",
+  "verified": true,
+  "workbook": {
+    "sheetCount": 2,
+    "formulaCellCount": 3
+  },
+  "findings": {
+    "unsupportedFunctions": [{ "name": "CUBEVALUE", "count": 1 }],
+    "externalLinks": { "count": 0, "unresolvedCount": 0, "refreshedCount": 0 },
+    "macroModules": { "count": 0, "byteLength": 0 },
+    "volatileFunctions": [{ "name": "NOW", "count": 1 }],
+    "pivotTables": { "count": 0, "unsupportedCount": 0, "cacheOnlyCount": 0 },
+    "staleCachedFormulas": { "count": 2 },
+    "missingCachedFormulaValues": { "count": 1 }
+  },
+  "risk": {
+    "level": "high",
+    "reasons": ["unsupported functions: CUBEVALUE (1)"]
+  },
+  "excelParity": "not_proven"
+}
+```
+
+The demo workbook is intentionally imperfect. A perfect workbook proves little;
+this one proves the report can call out a known unsupported function, a volatile
+function, and cache states without pretending to know full Excel parity.
+
+## Human output
+
+Without `--json`, the CLI prints a compact readout:
+
+```text
+Workbook analyzed. Risk level: HIGH
+Findings:
+- Unsupported functions: CUBEVALUE (1)
+- External links: 0
+- Macro modules: 0
+- Pivot tables: 0
+- Volatile functions: NOW (1)
+- Formula cells: 3
+- Stale cached formulas: 2
+- Missing cached formula values: 1
+This report identifies workbook features that may require investigation before using Bilig in a service or agent workflow. It is not an Excel compatibility certification.
+```
+
+## What this proves
+
+- the workbook can be imported locally without a spreadsheet UI
+- formula cells can be counted and inspected
+- unsupported function, external-link, macro, volatile, pivot, and cache signals
+  are machine-readable
+- limited inspection is visible and raises risk when formula cells remain
+  unchecked
+- the report completed without uploading the workbook
+
+## What this does not prove
+
+This is not an Excel compatibility certification. It does not execute VBA,
+refresh pivots, refresh external data sources, certify chart behavior, or prove
+desktop Excel UI behavior. Do not add `compatibilityScore`,
+`excelCompatibilityPercent`, or similar score fields around this report.
+
+## Related
+
+- [Workbook Compatibility Report transcript](workbook-compatibility-report-transcript.md)
+- [Evaluate stale XLSX formula caches](eval-xlsx-cache-doctor.md)
+- [XLSX Cache Doctor proof transcript](xlsx-cache-doctor-proof-transcript.md)
+- [Where Bilig is not Excel-compatible yet](where-bilig-is-not-excel-compatible-yet.md)
+- [Stale formula readback chooser](stale-formula-readback-chooser.md)
+
+---
+
+## Workbook Compatibility Report Transcript
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/workbook-compatibility-report-transcript.md
+
+# Workbook Compatibility Report Transcript
+
+This is the local terminal proof for the workbook compatibility report. It is
+not a screenshot, not a hosted upload, and not spreadsheet UI automation.
+
+## Report command
+
+```sh
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- \
+  workbook-compatibility-report --demo --json
+```
+
+Observed shape from `@bilig/xlsx-formula-recalc` `0.157.0`:
+
+```json
+{
+  "schemaVersion": "bilig-workbook-compatibility-report.v1",
+  "verified": true,
+  "input": {
+    "fileName": "bilig-workbook-compatibility-demo.xlsx",
+    "externalWorkbookCount": 0,
+    "inspectLimit": "all"
+  },
+  "workbook": {
+    "sheetCount": 2,
+    "sheetNames": ["Inputs", "Summary"],
+    "nonEmptyCellCount": 14,
+    "formulaCellCount": 3,
+    "definedNameCount": 0,
+    "tableCount": 0,
+    "pivotTableCount": 0,
+    "chartCount": 0,
+    "macroModuleCount": 0
+  },
+  "findings": {
+    "unsupportedFunctions": [{ "name": "CUBEVALUE", "count": 1 }],
+    "externalLinks": { "count": 0, "unresolvedCount": 0, "refreshedCount": 0 },
+    "macroModules": { "count": 0, "byteLength": 0 },
+    "volatileFunctions": [{ "name": "NOW", "count": 1 }],
+    "pivotTables": { "count": 0, "unsupportedCount": 0, "cacheOnlyCount": 0 },
+    "staleCachedFormulas": { "count": 2 },
+    "missingCachedFormulaValues": { "count": 1 },
+    "unsupportedRecalculations": { "count": 0 },
+    "warnings": [
+      "Volatile formulas were preserved during XLSX import; cached formula values may depend on workbook calculation time."
+    ]
+  },
+  "cacheInspection": {
+    "inspectedFormulaCellCount": 3,
+    "uninspectedFormulaCellCount": 0,
+    "inspectionLimit": "all",
+    "suggestedReads": ["Summary!B2", "Summary!B3", "Summary!B4"]
+  },
+  "commandSucceeded": true,
+  "inspectionCompleted": true,
+  "recalculationCompleted": true,
+  "excelParity": "not_proven",
+  "risk": {
+    "level": "high",
+    "reasons": ["unsupported functions: CUBEVALUE (1)"]
+  }
+}
+```
+
+## Evaluator command
+
+```sh
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- \
+  bilig-evaluate --door workbook-compatibility --json
+```
+
+The evaluator wraps the same report in `bilig-evaluator.v1`:
+
+```json
+{
+  "schemaVersion": "bilig-evaluator.v1",
+  "door": "workbook-compatibility",
+  "doorName": "Workbook compatibility risk report",
+  "verified": true,
+  "evidence": {
+    "riskLevel": "high",
+    "unsupportedFunctions": [{ "name": "CUBEVALUE", "count": 1 }],
+    "volatileFunctions": [{ "name": "NOW", "count": 1 }],
+    "formulaCellCount": 3,
+    "staleCachedFormulaCount": 2,
+    "checks": {
+      "commandSucceeded": true,
+      "inspectionCompleted": true,
+      "recalculationCompleted": true,
+      "riskReasonsExplainFindings": true,
+      "noCompatibilityScore": true,
+      "unsupportedFunctionsReported": true
+    }
+  }
+}
+```
+
+The important evaluator check is `noCompatibilityScore: true`. This proof path
+must remain a risk inspector. It must not grow a `compatibilityScore`,
+`excelCompatibilityPercent`, or similar field that implies a defensible Excel
+parity percentage.
+
+## Related
+
+- [Workbook Compatibility Report](workbook-compatibility-report.md)
+- [Evaluate stale XLSX formula caches](eval-xlsx-cache-doctor.md)
+- [XLSX Cache Doctor proof transcript](xlsx-cache-doctor-proof-transcript.md)
 
 ---
 
@@ -3074,6 +3340,7 @@ Expected invariants:
 | WorkPaper service | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json` | `door: "workpaper-service"`, `verified: true` | Node can edit a WorkPaper input, recalculate a formula, export JSON, restore it, and verify readback. | MCP discovery, private workbook compatibility, macros, pivots, charts, or Excel UI behavior. |
 | Agent MCP evaluator | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json` | `door: "agent-mcp"`, `listedResourcesAndPrompts`, `restartReadbackMatchesAfter` | A coding agent or MCP client can discover workbook tools, write a cell, read a formula value, persist state, and restart from disk. | Hosted auth, arbitrary client UX, or full workbook compatibility. |
 | Provider-backed formula boundary | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json` | `scenario: "provider-backed"`, `provider-backed-adapter-missing`, `adapterBackedDiagnosticsCleared` | Provider formulas such as `IMPORTRANGE` fail closed until the host supplies an adapter, then verify readback. | Live Google Sheets authorization or remote provider availability. |
+| Workbook Compatibility Report | `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json` | `door: "workbook-compatibility"`, `riskLevel`, `unsupportedFunctions`, `noCompatibilityScore` | A saved `.xlsx` can be inspected for unsupported functions, external links, macros, pivots, volatile functions, stale caches, and risk reasons before an agent trusts it. | Excel compatibility certification, macro execution, pivot refresh, or a defensible compatibility percentage. |
 | XLSX cache detector | `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json` | `door: "xlsx-cache"`, `verified: true` | A saved `.xlsx` can be inspected for stale cached formula values without mutating the file. | In-process business state or JSON WorkPaper persistence. |
 | XLSX recalculation | `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json` | `recalculationCompleted: true` | An XLSX file boundary can be edited, recalculated, exported, and reimported for readback. | A full Excel clone, macro execution, charts, pivots, or desktop layout fidelity. |
 | ExcelJS recalculation | `npx --package @bilig/exceljs-formula-recalc exceljs-recalc --demo --json` | `commandSucceeded: true`, `recalculationCompleted: true`, `expectedValueMatched: true` | An existing ExcelJS workbook can get fresh formula readback after Node edits. | ExcelJS styling/export behavior, desktop Excel parity, or every Excel formula. |
@@ -13540,6 +13807,18 @@ artifacts:
 Those artifacts are useful evidence. They are not a blanket promise that every
 Excel workbook, every formula argument shape, every UI interaction, or every
 third-party file behaves exactly like desktop Excel.
+
+If you need to preflight a specific workbook before integrating it, run the
+[Workbook Compatibility Report](workbook-compatibility-report.md):
+
+```sh
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibility-report workbook.xlsx --json
+```
+
+That report lists unsupported functions, external links, macro payloads,
+pivots, volatile formulas, stale cached formula values, and risk reasons. It is
+not an Excel compatibility certification and does not include a compatibility
+score.
 
 ## The Biggest Non-Goals
 

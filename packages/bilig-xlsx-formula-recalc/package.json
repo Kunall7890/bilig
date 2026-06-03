@@ -18,6 +18,8 @@
     "spreadsheet-formulas",
     "stale-xlsx-cache",
     "workbook",
+    "workbook-compatibility-report",
+    "workbook-risk-report",
     "xlsx",
     "xlsx-cache-doctor",
     "xlsx-calc",
@@ -40,12 +42,15 @@
   "bin": {
     "bilig-evaluate": "./bin/bilig-evaluate.js",
     "sheetjs-recalc": "./bin/sheetjs-recalc.js",
+    "workbook-compatibility-report": "./bin/workbook-compatibility-report.js",
     "xlsx-cache-doctor": "./bin/xlsx-cache-doctor.js",
     "xlsx-recalc": "./bin/xlsx-recalc.js"
   },
   "files": [
     "bin",
     "dist",
+    "AGENTS.md",
+    "SKILL.md",
     "README.md",
     "LICENSE"
   ],
@@ -68,6 +73,11 @@
       "types": "./dist/evaluator.d.ts",
       "import": "./dist/evaluator.js",
       "default": "./dist/evaluator.js"
+    },
+    "./workbook-compatibility-report": {
+      "types": "./dist/workbook-compatibility-report.d.ts",
+      "import": "./dist/workbook-compatibility-report.js",
+      "default": "./dist/workbook-compatibility-report.js"
     }
   },
   "publishConfig": {

@@ -7,6 +7,9 @@ export function requireXlsxRecalcPublicDiscovery(args: {
   readonly liveSheetjsRecalcCli: string
   readonly llms: string
   readonly readme: string
+  readonly workbookCompatibilityReport: string
+  readonly workbookCompatibilityReportJson: string
+  readonly workbookCompatibilityReportTranscript: string
   readonly xlsxFormulaRecalculationNode: string
   readonly xlsxCacheDoctorProofTranscript: string
   readonly xlsxCacheDoctorCli: string
@@ -14,6 +17,9 @@ export function requireXlsxRecalcPublicDiscovery(args: {
 }): void {
   requireIncludes(args.readme, 'examples/xlsx-recalculation-node', 'README.md')
   requireIncludes(args.readme, 'examples/recalc-bridge-workflows', 'README.md')
+  requireIncludes(args.readme, 'docs/workbook-compatibility-report.md', 'README.md')
+  requireIncludes(args.readme, 'bilig-evaluate --door workbook-compatibility --json', 'README.md')
+  requireIncludes(args.readme, 'workbook-compatibility-report workbook.xlsx --json', 'README.md')
   requireIncludes(args.readme, 'docs/xlsx-formula-recalculation-node.md', 'README.md')
   requireIncludes(args.readme, args.xlsxRecalcCli, 'README.md')
   requireIncludes(args.readme, args.xlsxCacheDoctorCli, 'README.md')
@@ -34,11 +40,19 @@ export function requireXlsxRecalcPublicDiscovery(args: {
   requireIncludes(args.headlessReadme, 'docs/exceljs-shared-formula-recalculation-node.md', 'packages/headless/README.md')
   requireIncludes(args.index, 'examples/xlsx-recalculation-node', 'docs/index.html')
   requireIncludes(args.index, '<code>@bilig/xlsx-formula-recalc</code> when XLSX is the boundary.', 'docs/index.html')
+  requireIncludes(args.index, './workbook-compatibility-report.html', 'docs/index.html')
+  requireIncludes(args.index, './workbook-compatibility-report-transcript.html', 'docs/index.html')
   requireIncludes(args.index, './xlsx-formula-recalculation-node.html', 'docs/index.html')
   requireIncludes(args.index, './xlsx-cache-doctor-proof-transcript.html', 'docs/index.html')
   requireIncludes(args.index, './xlsx-cache-doctor-github-action.html', 'docs/index.html')
   requireIncludes(args.index, './sheetjs-formula-result-not-updating-node.html', 'docs/index.html')
   requireIncludes(args.llms, 'https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node', 'docs/llms.txt')
+  requireIncludes(args.llms, 'https://proompteng.github.io/bilig/workbook-compatibility-report.html', 'docs/llms.txt')
+  requireIncludes(args.llms, 'https://github.com/proompteng/bilig/blob/main/docs/workbook-compatibility-report.md', 'docs/llms.txt')
+  requireIncludes(args.llms, 'https://proompteng.github.io/bilig/workbook-compatibility-report-transcript.html', 'docs/llms.txt')
+  requireIncludes(args.llms, 'https://proompteng.github.io/bilig/workbook-compatibility-report.json', 'docs/llms.txt')
+  requireIncludes(args.llms, 'bilig-evaluate --door workbook-compatibility --json', 'docs/llms.txt')
+  requireIncludes(args.llms, 'workbook-compatibility-report workbook.xlsx --json', 'docs/llms.txt')
   requireIncludes(args.llms, 'https://proompteng.github.io/bilig/xlsx-formula-recalculation-node.html', 'docs/llms.txt')
   requireIncludes(args.llms, 'https://github.com/proompteng/bilig/blob/main/docs/xlsx-formula-recalculation-node.md', 'docs/llms.txt')
   requireIncludes(args.llms, args.xlsxRecalcCli, 'docs/llms.txt')
@@ -56,6 +70,58 @@ export function requireXlsxRecalcPublicDiscovery(args: {
   requireIncludes(args.llms, 'https://proompteng.github.io/bilig/xlsx-recalculation-proof.html', 'docs/llms.txt')
   requireIncludes(args.llms, 'https://proompteng.github.io/bilig/xlsx-recalculation-proof.ts', 'docs/llms.txt')
   requireIncludes(args.llms, 'creates an XLSX workbook, edits inputs, recalculates formulas in Node.js', 'docs/llms.txt')
+  for (const required of [
+    'title: Workbook Compatibility Report',
+    'canonical_url: https://proompteng.github.io/bilig/workbook-compatibility-report.html',
+    'workbook-compatibility-report workbook.xlsx --json',
+    'bilig-evaluate --door workbook-compatibility --json',
+    '"schemaVersion": "bilig-workbook-compatibility-report.v1"',
+    '"unsupportedFunctions": [{ "name": "CUBEVALUE", "count": 1 }]',
+    '"volatileFunctions": [{ "name": "NOW", "count": 1 }]',
+    '"excelParity": "not_proven"',
+    'cacheInspection.uninspectedFormulaCellCount',
+    'limited inspection is visible and raises risk',
+    'It is not an Excel compatibility certification.',
+    'compatibilityScore',
+  ]) {
+    requireIncludes(args.workbookCompatibilityReport, required, 'docs/workbook-compatibility-report.md')
+  }
+  for (const required of [
+    'title: Workbook Compatibility Report transcript',
+    'canonical_url: https://proompteng.github.io/bilig/workbook-compatibility-report-transcript.html',
+    'workbook-compatibility-report --demo --json',
+    'bilig-evaluate --door workbook-compatibility --json',
+    '"schemaVersion": "bilig-workbook-compatibility-report.v1"',
+    '"door": "workbook-compatibility"',
+    '"riskLevel": "high"',
+    'compatibilityScore',
+    'excelCompatibilityPercent',
+  ]) {
+    requireIncludes(args.workbookCompatibilityReportTranscript, required, 'docs/workbook-compatibility-report-transcript.md')
+  }
+  const parsedCompatibilityReport: unknown = JSON.parse(args.workbookCompatibilityReportJson)
+  if (
+    typeof parsedCompatibilityReport !== 'object' ||
+    parsedCompatibilityReport === null ||
+    Array.isArray(parsedCompatibilityReport) ||
+    Reflect.get(parsedCompatibilityReport, 'schemaVersion') !== 'bilig-workbook-compatibility-report.v1' ||
+    Reflect.get(parsedCompatibilityReport, 'verified') !== true ||
+    Reflect.get(parsedCompatibilityReport, 'excelParity') !== 'not_proven'
+  ) {
+    throw new Error('docs/workbook-compatibility-report.json must contain the checked workbook compatibility report proof')
+  }
+  const serializedCompatibilityReport = JSON.stringify(parsedCompatibilityReport)
+  requireIncludes(serializedCompatibilityReport, '"CUBEVALUE"', 'docs/workbook-compatibility-report.json')
+  requireIncludes(serializedCompatibilityReport, '"NOW"', 'docs/workbook-compatibility-report.json')
+  requireIncludes(
+    serializedCompatibilityReport,
+    '"It is not an Excel compatibility certification."',
+    'docs/workbook-compatibility-report.json',
+  )
+  requireIncludes(serializedCompatibilityReport, '"excelParity":"not_proven"', 'docs/workbook-compatibility-report.json')
+  if (/compatibilityScore|excelCompatibilityPercent/iu.test(serializedCompatibilityReport)) {
+    throw new Error('docs/workbook-compatibility-report.json must not include compatibility score fields')
+  }
   for (const required of [
     'title: XLSX Cache Doctor proof transcript',
     'canonical_url: https://proompteng.github.io/bilig/xlsx-cache-doctor-proof-transcript.html',

@@ -48,8 +48,9 @@ for (const packageDir of packageDirs) {
 
   const tarballPath = isAbsolute(tarballName) ? tarballName : join(packDir, tarballName)
   const tarEntries = runTextCommand('tar', ['-tf', tarballPath]).split('\n').filter(Boolean)
+  const tarListing = runTextCommand('tar', ['-tvf', tarballPath]).split('\n').filter(Boolean)
 
-  validateTarballContents(packageLabel, manifest, tarEntries, failures)
+  validateTarballContents(packageLabel, manifest, tarEntries, tarListing, failures)
 
   const packedManifest = JSON.parse(runTextCommand('tar', ['-xOf', tarballPath, 'package/package.json']))
   validatePackedManifest(packageLabel, packedManifest, tarballPath, failures)
@@ -117,7 +118,7 @@ function validateManifestShape(packageLabel, manifest, failureMessages) {
   }
 }
 
-function validateTarballContents(packageLabel, manifest, tarEntries, failureMessages) {
+function validateTarballContents(packageLabel, manifest, tarEntries, tarListing, failureMessages) {
   const requiredEntries = new Set(['package/package.json', 'package/README.md', 'package/LICENSE'])
 
   if (typeof manifest.main === 'string') {
@@ -150,11 +151,22 @@ function validateTarballContents(packageLabel, manifest, tarEntries, failureMess
     if (entry.includes('__tests__')) {
       failureMessages.push(`${packageLabel}: tarball must not contain test artifacts (${entry})`)
     }
+    if (/\/[^/]+\.test\.(?:js|d\.ts|js\.map|d\.ts\.map)$/u.test(entry)) {
+      failureMessages.push(`${packageLabel}: tarball must not contain built test artifacts (${entry})`)
+    }
     if (entry.endsWith('.tsbuildinfo')) {
       failureMessages.push(`${packageLabel}: tarball must not contain tsbuildinfo (${entry})`)
     }
     if (entry.startsWith('package/src/')) {
       failureMessages.push(`${packageLabel}: tarball must not contain source files (${entry})`)
+    }
+  }
+
+  for (const binTarget of collectBinTargets(manifest.bin)) {
+    const entry = `package/${stripDotSlash(binTarget)}`
+    const listing = tarListing.find((line) => line.endsWith(` ${entry}`))
+    if (listing && !listing.startsWith('-rwx')) {
+      failureMessages.push(`${packageLabel}: bin entry must be executable (${entry})`)
     }
   }
 }

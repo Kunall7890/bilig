@@ -37,6 +37,9 @@ Vercel AI SDK formula readback: https://proompteng.github.io/bilig/vercel-ai-sdk
 ExcelJS formula result not updating after Node edits: https://proompteng.github.io/bilig/exceljs-formula-result-not-updating-after-node-edits.html
 Stale formula readback chooser: https://proompteng.github.io/bilig/stale-formula-readback-chooser.html
 XLSX Cache Doctor proof transcript: https://proompteng.github.io/bilig/xlsx-cache-doctor-proof-transcript.html
+Workbook Compatibility Report: https://proompteng.github.io/bilig/workbook-compatibility-report.html
+Workbook Compatibility Report transcript: https://proompteng.github.io/bilig/workbook-compatibility-report-transcript.html
+Workbook Compatibility Report JSON: https://proompteng.github.io/bilig/workbook-compatibility-report.json
 agent discovery manifest: https://proompteng.github.io/bilig/.well-known/agent.json
 root agent discovery manifest: https://proompteng.github.io/bilig/agent.json
 agent skill: https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt
@@ -68,6 +71,16 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 
 - Evaluator for stale XLSX formula caches:
   https://proompteng.github.io/bilig/eval-xlsx-cache-doctor.html
+- Workbook Compatibility Report:
+  https://proompteng.github.io/bilig/workbook-compatibility-report.html
+  https://github.com/proompteng/bilig/blob/main/docs/workbook-compatibility-report.md
+  Use this to inspect unsupported functions, external links, macro payloads,
+  pivots, volatile functions, stale cached formulas, and risk reasons before a
+  Node service or coding agent trusts a specific `.xlsx` workbook. It is not an
+  Excel compatibility certificate and must not include a compatibility score.
+  Run:
+  `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json`.
+  `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibility-report workbook.xlsx --json`.
 - Evaluator for XLSX recalculation:
   https://proompteng.github.io/bilig/eval-xlsx-recalc.html
 - Evaluator for Node service formulas:
@@ -115,6 +128,7 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json`.
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`.
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json`.
+  `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json`.
   `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json`.
 - Direct proof commands:
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-challenge --json`.
@@ -134,6 +148,10 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   queue worker, route handler, test, or agent tool.
 - Use `@bilig/xlsx-formula-recalc` when XLSX inputs changed in Node and formula
   outputs must be inspected or recalculated before returning. Start with the
+  workbook compatibility report when the question is whether a specific file has
+  integration risks:
+  `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibility-report workbook.xlsx --json`.
+  Then use the
   read-only stale-cache detector:
   `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json`.
   Use recalculation once you know the input and output cells:
@@ -164,6 +182,15 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 
 ## evaluator doors
 
+- `eval-workbook-compatibility`: use when a Node service or coding agent needs a
+  local risk report before trusting a specific `.xlsx` workbook. Read:
+  https://proompteng.github.io/bilig/workbook-compatibility-report.html
+  Run:
+  `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json`.
+  `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibility-report workbook.xlsx --json`.
+  This is a risk inspector for unsupported functions, external links, macros,
+  pivots, volatile formulas, stale caches, and uninspected formulas; it is not
+  an Excel compatibility score.
 - `eval-xlsx-cache-doctor`: use when a repo, service, CI job, or agent has an
   `.xlsx` file that may contain stale cached formula values. Read:
   https://proompteng.github.io/bilig/eval-xlsx-cache-doctor.html

@@ -17,24 +17,37 @@ and backend file pipelines where stale readback is worse than a hard failure.
 Run the no-project evaluator demo:
 
 ```sh
+npx --package @bilig/xlsx-formula-recalc bilig-evaluate --door workbook-compatibility --json
 npx --package @bilig/xlsx-formula-recalc bilig-evaluate --door xlsx-cache --json
 ```
+
+Use `workbook-compatibility` when the question is whether a real workbook has
+known integration risks before a Node service or coding agent trusts Bilig with
+it. The report lists unsupported functions, external links, VBA payloads,
+pivots, volatile functions, stale caches, and concrete `risk.reasons`. It does
+not certify Excel compatibility and it does not print a compatibility score.
 
 Expected evaluator shape:
 
 ```json
 {
   "schemaVersion": "bilig-evaluator.v1",
-  "door": "xlsx-cache",
+  "door": "workbook-compatibility",
   "verified": true,
   "evidence": {
-    "target": "Summary!B2",
-    "before": 60000,
-    "after": 72000,
-    "staleCachedFormulaCount": 1,
-    "suggestedReads": ["Summary!B2"]
+    "riskLevel": "high",
+    "unsupportedFunctions": [{ "name": "CUBEVALUE", "count": 1 }],
+    "volatileFunctions": [{ "name": "NOW", "count": 1 }],
+    "formulaCellCount": 3,
+    "staleCachedFormulaCount": 2
   }
 }
+```
+
+Run the report directly against a workbook:
+
+```sh
+npx --package @bilig/xlsx-formula-recalc workbook-compatibility-report pricing.xlsx --json
 ```
 
 ## Try The Cache Doctor Directly

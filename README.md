@@ -23,10 +23,21 @@ fresh.
 Run the no-clone checks:
 
 ```sh
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 ```
+
+Evaluate a real workbook before integrating it:
+
+```sh
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibility-report workbook.xlsx --json
+```
+
+The report lists unsupported functions, external links, VBA payloads, pivots,
+volatile formulas, stale cached formulas, and concrete risk reasons. It is not
+an Excel compatibility certification and does not print a compatibility score.
 
 Expected WorkPaper service result:
 
@@ -101,6 +112,9 @@ export, and restart verification shape.
 The [XLSX Cache Doctor proof transcript](docs/xlsx-cache-doctor-proof-transcript.md)
 shows the stale cached formula value, recalculated value, exact cell address,
 and suggested read target before a service or CI job trusts a saved workbook.
+The [Workbook Compatibility Report](docs/workbook-compatibility-report.md)
+shows the local risk report for an actual `.xlsx` before a Node service or
+coding agent trusts Bilig with it.
 Use the [coding agent rule chooser](docs/agent-rule-chooser.md) when you need
 the exact instruction, rule, prompt, or MCP config file for Codex, Claude Code,
 GitHub Copilot, VS Code, Cursor, Windsurf/Cascade, Cline, Continue, or Gemini
@@ -115,6 +129,7 @@ Pick the path that matches the job:
 | You have...                                                             | Start with                                                                 | You should see                                                                            |
 | ----------------------------------------------------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | You are not sure whether XLSX, SheetJS, ExcelJS, xlsx-populate, CI, WorkPaper, or an agent owns the fix | [Stale formula readback chooser](docs/stale-formula-readback-chooser.md) | the smallest proof command for the boundary, plus when not to use it. |
+| You need to know whether a specific workbook has Bilig integration risks | [Workbook Compatibility Report](docs/workbook-compatibility-report.md)    | unsupported functions, external links, macros, pivots, volatile formulas, cache risks, and no compatibility score. |
 | A real `.xlsx` file has stale formula results after Node edits          | [XLSX Cache Doctor evaluator](docs/eval-xlsx-cache-doctor.md)              | stale cells, cached values, recalculated values, suggested reads, and JSON output.        |
 | You need to see the exact stale-cache output before adopting            | [XLSX Cache Doctor proof transcript](docs/xlsx-cache-doctor-proof-transcript.md) | `Summary!B2` and `Sheet1!B61` cached-vs-recalculated proof, plus CI boundary.       |
 | Pull requests can commit XLSX fixtures with stale cached values         | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md) | report-only workbook findings before the workflow blocks anything.                        |
@@ -135,6 +150,7 @@ The shortest no-project checks are:
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json
 npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json
 ```

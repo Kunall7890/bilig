@@ -1,0 +1,81 @@
+{
+  "schemaVersion": "bilig-workbook-compatibility-report.v1",
+  "verified": true,
+  "input": {
+    "fileName": "bilig-workbook-compatibility-demo.xlsx",
+    "externalWorkbookCount": 0,
+    "inspectLimit": "all"
+  },
+  "workbook": {
+    "sheetCount": 2,
+    "sheetNames": ["Inputs", "Summary"],
+    "nonEmptyCellCount": 14,
+    "formulaCellCount": 3,
+    "definedNameCount": 0,
+    "tableCount": 0,
+    "pivotTableCount": 0,
+    "chartCount": 0,
+    "macroModuleCount": 0
+  },
+  "findings": {
+    "unsupportedFunctions": [
+      {
+        "name": "CUBEVALUE",
+        "count": 1
+      }
+    ],
+    "externalLinks": {
+      "count": 0,
+      "unresolvedCount": 0,
+      "refreshedCount": 0
+    },
+    "macroModules": {
+      "count": 0,
+      "byteLength": 0
+    },
+    "volatileFunctions": [
+      {
+        "name": "NOW",
+        "count": 1
+      }
+    ],
+    "pivotTables": {
+      "count": 0,
+      "unsupportedCount": 0,
+      "cacheOnlyCount": 0
+    },
+    "staleCachedFormulas": {
+      "count": 2
+    },
+    "missingCachedFormulaValues": {
+      "count": 1
+    },
+    "unsupportedRecalculations": {
+      "count": 0
+    },
+    "warnings": ["Volatile formulas were preserved during XLSX import; cached formula values may depend on workbook calculation time."]
+  },
+  "cacheInspection": {
+    "inspectedFormulaCellCount": 3,
+    "uninspectedFormulaCellCount": 0,
+    "inspectionLimit": "all",
+    "suggestedReads": ["Summary!B2", "Summary!B3", "Summary!B4"]
+  },
+  "commandSucceeded": true,
+  "inspectionCompleted": true,
+  "recalculationCompleted": true,
+  "excelParity": "not_proven",
+  "limitations": [
+    "This report identifies workbook features that may require investigation before using Bilig in a service or agent workflow.",
+    "It is not an Excel compatibility certification.",
+    "It does not execute VBA, refresh pivots, refresh external data sources, or prove desktop Excel UI behavior."
+  ],
+  "next": {
+    "docs": "https://proompteng.github.io/bilig/workbook-compatibility-report.html",
+    "command": "workbook-compatibility-report bilig-workbook-compatibility-demo.xlsx --json"
+  },
+  "risk": {
+    "level": "high",
+    "reasons": ["unsupported functions: CUBEVALUE (1)"]
+  }
+}

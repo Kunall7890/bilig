@@ -1,6 +1,10 @@
 import { requireIncludes, requireNotIncludes } from './check-docs-discovery-core.ts'
 
 export function requirePackageCliSurfaceDiscovery(args: {
+  readonly scopedXlsxRecalcPackageAgentNotes: string
+  readonly scopedXlsxRecalcPackageJson: string
+  readonly scopedXlsxRecalcPackageReadme: string
+  readonly scopedXlsxRecalcPackageSkillNotes: string
   readonly exceljsRecalcPackageAgentNotes: string
   readonly exceljsRecalcPackageJson: string
   readonly exceljsRecalcPackageReadme: string
@@ -48,7 +52,45 @@ export function requirePackageCliSurfaceDiscovery(args: {
   requireIncludes(args.scopedWorkpaperPackageReadme, 'https://github.com/proompteng/bilig/subscription', 'packages/workpaper/README.md')
   requireIncludes(args.scopedWorkpaperPackageReadme, 'Use `bilig-mcp-challenge --json` only', 'packages/workpaper/README.md')
 
+  requireIncludes(
+    args.scopedXlsxRecalcPackageJson,
+    '"workbook-compatibility-report": "./bin/workbook-compatibility-report.js"',
+    'packages/bilig-xlsx-formula-recalc/package.json',
+  )
+  requireIncludes(args.scopedXlsxRecalcPackageJson, '"AGENTS.md"', 'packages/bilig-xlsx-formula-recalc/package.json')
+  requireIncludes(args.scopedXlsxRecalcPackageJson, '"SKILL.md"', 'packages/bilig-xlsx-formula-recalc/package.json')
+  requireIncludes(
+    args.scopedXlsxRecalcPackageAgentNotes,
+    'npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json',
+    'packages/bilig-xlsx-formula-recalc/AGENTS.md',
+  )
+  requireIncludes(
+    args.scopedXlsxRecalcPackageAgentNotes,
+    'workbook-compatibility-report workbook.xlsx --json',
+    'packages/bilig-xlsx-formula-recalc/AGENTS.md',
+  )
+  requireIncludes(
+    args.scopedXlsxRecalcPackageSkillNotes,
+    'bilig-evaluate --door workbook-compatibility --json',
+    'packages/bilig-xlsx-formula-recalc/SKILL.md',
+  )
+  requireIncludes(
+    args.scopedXlsxRecalcPackageSkillNotes,
+    "from '@bilig/xlsx-formula-recalc'",
+    'packages/bilig-xlsx-formula-recalc/SKILL.md',
+  )
+  requireIncludes(
+    args.scopedXlsxRecalcPackageReadme,
+    'workbook-compatibility-report pricing.xlsx --json',
+    'packages/bilig-xlsx-formula-recalc/README.md',
+  )
+
   requireIncludes(args.xlsxRecalcPackageJson, '"bilig-evaluate": "./bin/bilig-evaluate.js"', 'packages/xlsx-formula-recalc/package.json')
+  requireIncludes(
+    args.xlsxRecalcPackageJson,
+    '"workbook-compatibility-report": "./bin/workbook-compatibility-report.js"',
+    'packages/xlsx-formula-recalc/package.json',
+  )
   requireIncludes(args.xlsxRecalcPackageJson, '"xlsx-recalc": "./bin/xlsx-recalc.js"', 'packages/xlsx-formula-recalc/package.json')
   requireIncludes(
     args.xlsxRecalcPackageJson,
@@ -56,8 +98,19 @@ export function requirePackageCliSurfaceDiscovery(args: {
     'packages/xlsx-formula-recalc/package.json',
   )
   requireIncludes(args.xlsxRecalcPackageJson, '"sheetjs-recalc": "./bin/sheetjs-recalc.js"', 'packages/xlsx-formula-recalc/package.json')
+  requireIncludes(args.xlsxRecalcPackageJson, '"./workbook-compatibility-report"', 'packages/xlsx-formula-recalc/package.json')
   requireIncludes(args.xlsxRecalcPackageJson, '"./evaluator"', 'packages/xlsx-formula-recalc/package.json')
   requireIncludes(args.xlsxRecalcPackageJson, '"./cli-api"', 'packages/xlsx-formula-recalc/package.json')
+  requireIncludes(
+    args.xlsxRecalcPackageReadme,
+    'bilig-evaluate --door workbook-compatibility --json',
+    'packages/xlsx-formula-recalc/README.md',
+  )
+  requireIncludes(
+    args.xlsxRecalcPackageReadme,
+    'workbook-compatibility-report pricing.xlsx --json',
+    'packages/xlsx-formula-recalc/README.md',
+  )
   requireIncludes(args.xlsxRecalcPackageReadme, 'bilig-evaluate --door xlsx-cache --json', 'packages/xlsx-formula-recalc/README.md')
   requireIncludes(args.xlsxRecalcPackageReadme, 'bilig-evaluator.v1', 'packages/xlsx-formula-recalc/README.md')
   requireIncludes(args.xlsxRecalcPackageReadme, 'xlsx-cache-doctor --demo --json', 'packages/xlsx-formula-recalc/README.md')
@@ -70,6 +123,11 @@ export function requirePackageCliSurfaceDiscovery(args: {
   requireIncludes(args.xlsxRecalcPackageReadme, 'examples/recalc-bridge-workflows', 'packages/xlsx-formula-recalc/README.md')
   requireIncludes(
     args.xlsxRecalcPackageAgentNotes,
+    'npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json',
+    'packages/xlsx-formula-recalc/AGENTS.md',
+  )
+  requireIncludes(
+    args.xlsxRecalcPackageAgentNotes,
     'npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json',
     'packages/xlsx-formula-recalc/AGENTS.md',
   )
@@ -79,12 +137,27 @@ export function requirePackageCliSurfaceDiscovery(args: {
     'packages/xlsx-formula-recalc/AGENTS.md',
   )
   requireIncludes(args.xlsxRecalcPackageAgentNotes, 'xlsx-cache-doctor workbook.xlsx --json', 'packages/xlsx-formula-recalc/AGENTS.md')
+  requireIncludes(
+    args.xlsxRecalcPackageAgentNotes,
+    'workbook-compatibility-report workbook.xlsx --json',
+    'packages/xlsx-formula-recalc/AGENTS.md',
+  )
   requireIncludes(args.xlsxRecalcPackageAgentNotes, 'xlsx-recalc workbook.xlsx --inspect --json', 'packages/xlsx-formula-recalc/AGENTS.md')
   requireIncludes(args.xlsxRecalcPackageAgentNotes, 'sheetjs-recalc --demo --json', 'packages/xlsx-formula-recalc/AGENTS.md')
   requireIncludes(args.xlsxRecalcPackageAgentNotes, "from '@bilig/xlsx-formula-recalc'", 'packages/xlsx-formula-recalc/AGENTS.md')
   requireIncludes(args.xlsxRecalcPackageSkillNotes, 'bilig-evaluator.v1', 'packages/xlsx-formula-recalc/SKILL.md')
+  requireIncludes(
+    args.xlsxRecalcPackageSkillNotes,
+    'bilig-evaluate --door workbook-compatibility --json',
+    'packages/xlsx-formula-recalc/SKILL.md',
+  )
   requireIncludes(args.xlsxRecalcPackageSkillNotes, 'Summary!B2', 'packages/xlsx-formula-recalc/SKILL.md')
   requireIncludes(args.xlsxRecalcPackageSkillNotes, 'xlsx-cache-doctor workbook.xlsx --json', 'packages/xlsx-formula-recalc/SKILL.md')
+  requireIncludes(
+    args.xlsxRecalcPackageSkillNotes,
+    'workbook-compatibility-report workbook.xlsx --json',
+    'packages/xlsx-formula-recalc/SKILL.md',
+  )
   requireIncludes(args.xlsxRecalcPackageSkillNotes, 'xlsx-recalc workbook.xlsx --inspect --json', 'packages/xlsx-formula-recalc/SKILL.md')
   requireIncludes(args.xlsxRecalcPackageSkillNotes, 'sheetjs-recalc --demo --json', 'packages/xlsx-formula-recalc/SKILL.md')
   requireIncludes(args.xlsxRecalcPackageSkillNotes, "from '@bilig/xlsx-formula-recalc'", 'packages/xlsx-formula-recalc/SKILL.md')

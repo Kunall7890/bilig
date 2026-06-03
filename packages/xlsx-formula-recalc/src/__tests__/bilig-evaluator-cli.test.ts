@@ -3,8 +3,13 @@ import { describe, expect, it } from 'vitest'
 import { buildBiligEvaluatorProof, listBiligEvaluatorDoors, runBiligEvaluatorCli } from '../evaluator-cli.js'
 
 describe('bilig-evaluate CLI', () => {
-  it('lists the three production evaluator doors', () => {
-    expect(listBiligEvaluatorDoors().map((door) => door.door)).toEqual(['xlsx-cache', 'workpaper-service', 'agent-mcp'])
+  it('lists the four production evaluator doors', () => {
+    expect(listBiligEvaluatorDoors().map((door) => door.door)).toEqual([
+      'xlsx-cache',
+      'workbook-compatibility',
+      'workpaper-service',
+      'agent-mcp',
+    ])
   })
 
   it('prints a verified XLSX stale-cache proof', () => {
@@ -35,6 +40,38 @@ describe('bilig-evaluate CLI', () => {
         readbackSuggested: true,
       },
     })
+  })
+
+  it('prints a verified workbook compatibility proof without a compatibility score', () => {
+    let stdout = ''
+
+    const exitCode = runBiligEvaluatorCli(['--door', 'workbook-compatibility', '--json'], {
+      stdout: (text) => {
+        stdout += text
+      },
+    })
+
+    expect(exitCode).toBe(0)
+    const proof = readProof(stdout)
+    expect(proof.schemaVersion).toBe('bilig-evaluator.v1')
+    expect(proof.door).toBe('workbook-compatibility')
+    expect(proof.verified).toBe(true)
+    expect(proof.evidence).toMatchObject({
+      riskLevel: 'high',
+      unsupportedFunctions: [{ name: 'CUBEVALUE', count: 1 }],
+      volatileFunctions: [{ name: 'NOW', count: 1 }],
+      formulaCellCount: 3,
+      staleCachedFormulaCount: 2,
+      checks: {
+        commandSucceeded: true,
+        inspectionCompleted: true,
+        recalculationCompleted: true,
+        riskReasonsExplainFindings: true,
+        noCompatibilityScore: true,
+        unsupportedFunctionsReported: true,
+      },
+    })
+    expect(stdout).not.toMatch(/compatibilityScore|excelCompatibilityPercent/u)
   })
 
   it('prints a verified WorkPaper service proof', () => {

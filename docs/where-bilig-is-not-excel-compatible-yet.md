@@ -42,6 +42,18 @@ Those artifacts are useful evidence. They are not a blanket promise that every
 Excel workbook, every formula argument shape, every UI interaction, or every
 third-party file behaves exactly like desktop Excel.
 
+If you need to preflight a specific workbook before integrating it, run the
+[Workbook Compatibility Report](workbook-compatibility-report.md):
+
+```sh
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibility-report workbook.xlsx --json
+```
+
+That report lists unsupported functions, external links, macro payloads,
+pivots, volatile formulas, stale cached formula values, and risk reasons. It is
+not an Excel compatibility certification and does not include a compatibility
+score.
+
 ## The Biggest Non-Goals
 
 ### Native macro execution

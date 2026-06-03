@@ -13,9 +13,17 @@ function formatJson(value: unknown): string {
 }
 
 function formatTsconfigPathsJson(paths: Record<string, string[]>): string {
-  const entries = Object.entries(paths).map(
-    ([packageName, values]) => `      ${JSON.stringify(packageName)}: [${values.map((value) => JSON.stringify(value)).join(', ')}]`,
-  )
+  const entries = Object.entries(paths).map(([packageName, values]) => {
+    const prefix = `      ${JSON.stringify(packageName)}: `
+    const inlineValues = `[${values.map((value) => JSON.stringify(value)).join(', ')}]`
+    const inlineEntry = `${prefix}${inlineValues}`
+
+    if (inlineEntry.length <= 132) {
+      return inlineEntry
+    }
+
+    return `${prefix}[\n${values.map((value) => `        ${JSON.stringify(value)}`).join(',\n')}\n      ]`
+  })
   return [
     '{',
     '  "extends": "./tsconfig.base.json",',

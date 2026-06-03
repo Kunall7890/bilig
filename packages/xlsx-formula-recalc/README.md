@@ -75,24 +75,37 @@ Run the evaluator first when you want one JSON shape for XLSX stale-cache
 checks, WorkPaper services, and agent/MCP tooling:
 
 ```sh
+npx --package @bilig/xlsx-formula-recalc bilig-evaluate --door workbook-compatibility --json
 npx --package @bilig/xlsx-formula-recalc bilig-evaluate --door xlsx-cache --json
 ```
+
+Use `workbook-compatibility` when the question is whether a specific workbook
+has known Bilig integration risks before a Node service or agent trusts it. The
+report includes unsupported functions, external links, VBA payloads, pivots,
+volatile functions, stale caches, and concrete `risk.reasons`. It does not
+certify Excel compatibility and it does not print a compatibility score.
 
 Expected evaluator shape:
 
 ```json
 {
   "schemaVersion": "bilig-evaluator.v1",
-  "door": "xlsx-cache",
+  "door": "workbook-compatibility",
   "verified": true,
   "evidence": {
-    "target": "Summary!B2",
-    "before": 60000,
-    "after": 72000,
-    "staleCachedFormulaCount": 1,
-    "suggestedReads": ["Summary!B2"]
+    "riskLevel": "high",
+    "unsupportedFunctions": [{ "name": "CUBEVALUE", "count": 1 }],
+    "volatileFunctions": [{ "name": "NOW", "count": 1 }],
+    "formulaCellCount": 3,
+    "staleCachedFormulaCount": 2
   }
 }
+```
+
+Run the workbook report directly when you have a file:
+
+```sh
+npx --package @bilig/xlsx-formula-recalc workbook-compatibility-report pricing.xlsx --json
 ```
 
 Run the cache-doctor check directly when you need the full formula-cache report:

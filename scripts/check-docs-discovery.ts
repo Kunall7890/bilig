@@ -79,6 +79,9 @@ const {
   showAndTellDiscussionTemplate,
   generalDiscussionTemplate,
   dominanceScorecard,
+  workbookCompatibilityReport,
+  workbookCompatibilityReportJson,
+  workbookCompatibilityReportTranscript,
   xlsxFormulaRecalculationNode,
   xlsxCacheDoctorProofTranscript,
   agentXlsxFormulaRecalculationWithoutLibreOffice,
@@ -120,6 +123,10 @@ const sheetjsFormulaResultNotUpdatingNode = await readFile(join(docsRoot, 'sheet
 const geminiExtensionJson = await readFile(join(repoRoot, 'gemini-extension.json'), 'utf8')
 const scopedWorkpaperPackageJson = await readFile(join(repoRoot, 'packages', 'workpaper', 'package.json'), 'utf8')
 const scopedWorkpaperPackageReadme = await readFile(join(repoRoot, 'packages', 'workpaper', 'README.md'), 'utf8')
+const scopedXlsxRecalcPackageJson = await readFile(join(repoRoot, 'packages', 'bilig-xlsx-formula-recalc', 'package.json'), 'utf8')
+const scopedXlsxRecalcPackageReadme = await readFile(join(repoRoot, 'packages', 'bilig-xlsx-formula-recalc', 'README.md'), 'utf8')
+const scopedXlsxRecalcPackageAgentNotes = await readFile(join(repoRoot, 'packages', 'bilig-xlsx-formula-recalc', 'AGENTS.md'), 'utf8')
+const scopedXlsxRecalcPackageSkillNotes = await readFile(join(repoRoot, 'packages', 'bilig-xlsx-formula-recalc', 'SKILL.md'), 'utf8')
 const xlsxRecalcPackageJson = await readFile(join(repoRoot, 'packages', 'xlsx-formula-recalc', 'package.json'), 'utf8')
 const xlsxRecalcPackageReadme = await readFile(join(repoRoot, 'packages', 'xlsx-formula-recalc', 'README.md'), 'utf8')
 const xlsxRecalcPackageAgentNotes = await readFile(join(repoRoot, 'packages', 'xlsx-formula-recalc', 'AGENTS.md'), 'utf8')
@@ -528,6 +535,13 @@ requireIncludes(llms, 'https://proompteng.github.io/bilig/llms-full.txt', 'docs/
 requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/agent-skills/index.json', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/skills/index.json', 'docs/llms.txt')
 requireIncludes(llms, '## evaluator doors', 'docs/llms.txt')
+requireIncludes(llms, '`eval-workbook-compatibility`', 'docs/llms.txt')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/workbook-compatibility-report.html', 'docs/llms.txt')
+requireIncludes(
+  llms,
+  'npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json',
+  'docs/llms.txt',
+)
 requireIncludes(llms, 'https://proompteng.github.io/bilig/eval-xlsx-cache-doctor.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/eval-xlsx-recalc.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/eval-workpaper-service.html', 'docs/llms.txt')
@@ -864,6 +878,10 @@ requirePackageCliSurfaceDiscovery({
   exceljsRecalcPackageJson,
   exceljsRecalcPackageReadme,
   exceljsRecalcPackageSkillNotes,
+  scopedXlsxRecalcPackageAgentNotes,
+  scopedXlsxRecalcPackageJson,
+  scopedXlsxRecalcPackageReadme,
+  scopedXlsxRecalcPackageSkillNotes,
   scopedWorkpaperPackageJson,
   scopedWorkpaperPackageReadme,
   sheetjsRecalcPackageAgentNotes,
@@ -902,6 +920,9 @@ requireXlsxRecalcPublicDiscovery({
   liveSheetjsRecalcCli,
   llms,
   readme,
+  workbookCompatibilityReport,
+  workbookCompatibilityReportJson,
+  workbookCompatibilityReportTranscript,
   xlsxFormulaRecalculationNode,
   xlsxCacheDoctorProofTranscript,
   xlsxCacheDoctorCli,

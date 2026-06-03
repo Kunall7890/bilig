@@ -42,6 +42,18 @@ export function buildEvaluatorDoors(args: AgentDiscoveryEvaluatorDoorInputs): re
   const siteRoot = args.siteRoot.replace(/\/+$/, '')
   return [
     {
+      name: 'eval-workbook-compatibility',
+      audience: 'A Node service or coding agent needs a local risk report before trusting a specific XLSX workbook.',
+      docs: `${siteRoot}/workbook-compatibility-report.html`,
+      source: `${args.repositoryUrl}/blob/main/docs/workbook-compatibility-report.md`,
+      package: '@bilig/xlsx-formula-recalc',
+      command: 'npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json',
+      expected_result:
+        'bilig-evaluator.v1 JSON with unsupported functions, volatile functions, stale cache counts, risk reasons, no compatibility score, and verified true',
+      proof_schema: 'bilig-evaluator.v1',
+      canonical_door: 'workbook-compatibility',
+    },
+    {
       name: 'eval-xlsx-cache-doctor',
       audience: 'A repo, service, CI job, or agent has XLSX files that may contain stale cached formula values.',
       docs: `${siteRoot}/eval-xlsx-cache-doctor.html`,
