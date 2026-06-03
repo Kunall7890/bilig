@@ -5,7 +5,8 @@ export interface AgentStartCliHost {
 }
 
 type AgentStartOutputMode = 'json' | 'markdown' | 'rules'
-export type AgentStartRuleTarget = 'claude' | 'codex' | 'copilot' | 'cursor'
+const agentStartRuleTargets = ['codex', 'claude', 'copilot', 'cursor', 'cline', 'continue', 'windsurf', 'gemini', 'vscode-mcp'] as const
+export type AgentStartRuleTarget = (typeof agentStartRuleTargets)[number]
 
 interface AgentStartCliOptions {
   readonly help: boolean
@@ -88,7 +89,7 @@ export function parseAgentStartCliArgs(args: readonly string[]): AgentStartCliOp
     if (arg === '--rules') {
       const nextArg = args[index + 1]
       if (nextArg === undefined) {
-        throw new Error('Missing target for --rules. Use one of: claude, codex, copilot, cursor')
+        throw new Error(`Missing target for --rules. Use one of: ${agentStartRuleTargetListText()}`)
       }
       ruleTarget = parseAgentStartRuleTarget(nextArg)
       outputMode = 'rules'
@@ -107,10 +108,12 @@ export function parseAgentStartCliArgs(args: readonly string[]): AgentStartCliOp
 }
 
 export function parseAgentStartRuleTarget(target: string): AgentStartRuleTarget {
-  if (target === 'claude' || target === 'codex' || target === 'copilot' || target === 'cursor') {
-    return target
+  for (const candidate of agentStartRuleTargets) {
+    if (target === candidate) {
+      return candidate
+    }
   }
-  throw new Error(`Unknown bilig-agent-start rules target: ${target}. Use one of: claude, codex, copilot, cursor`)
+  throw new Error(`Unknown bilig-agent-start rules target: ${target}. Use one of: ${agentStartRuleTargetListText()}`)
 }
 
 export function agentStartHelpText(): string {
@@ -130,8 +133,13 @@ export function agentStartHelpText(): string {
     'Rule targets:',
     '  codex        AGENTS.md',
     '  claude       CLAUDE.md',
-    '  copilot      .github/copilot-instructions.md',
+    '  copilot      .github/copilot-instructions.md, .github/instructions/*.instructions.md, .github/prompts/*.prompt.md',
     '  cursor       .cursor/rules/bilig-workpaper.mdc',
+    '  cline        .clinerules/bilig-workpaper.md',
+    '  continue     .continue/rules/bilig-workpaper.md',
+    '  windsurf     .windsurf/rules/bilig-workpaper.md',
+    '  gemini       GEMINI.md, gemini-extension.json, gemini-workpaper-context.md',
+    '  vscode-mcp   .vscode/mcp.json',
     '',
   ].join('\n')
 }
@@ -193,13 +201,38 @@ export function buildAgentStartDecisionCard(): AgentStartDecisionCard {
       },
       {
         target: 'copilot',
-        file: '.github/copilot-instructions.md',
+        file: '.github/copilot-instructions.md, .github/instructions/bilig-workpaper.instructions.md, .github/prompts/bilig-workpaper-proof.prompt.md, .vscode/mcp.json',
         command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules copilot',
       },
       {
         target: 'cursor',
         file: '.cursor/rules/bilig-workpaper.mdc',
         command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules cursor',
+      },
+      {
+        target: 'cline',
+        file: '.clinerules/bilig-workpaper.md',
+        command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules cline',
+      },
+      {
+        target: 'continue',
+        file: '.continue/rules/bilig-workpaper.md',
+        command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules continue',
+      },
+      {
+        target: 'windsurf',
+        file: '.windsurf/rules/bilig-workpaper.md',
+        command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules windsurf',
+      },
+      {
+        target: 'gemini',
+        file: 'GEMINI.md, gemini-extension.json, gemini-workpaper-context.md',
+        command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules gemini',
+      },
+      {
+        target: 'vscode-mcp',
+        file: '.vscode/mcp.json',
+        command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules vscode-mcp',
       },
     ],
     next: {
@@ -252,24 +285,24 @@ function renderAgentStartRules(card: AgentStartDecisionCard, target: AgentStartR
   const rule = agentStartRuleTargetMetadata(card, target)
   const targetName = {
     claude: 'Claude Code',
+    cline: 'Cline',
     codex: 'Codex',
+    continue: 'Continue',
     copilot: 'GitHub Copilot',
     cursor: 'Cursor',
+    gemini: 'Gemini CLI',
+    'vscode-mcp': 'VS Code agent mode',
+    windsurf: 'Windsurf/Cascade',
   }[target]
 
-  const frontMatter =
-    target === 'cursor'
-      ? `---
-description: Use Bilig WorkPaper before spreadsheet UI automation when formula readback matters.
-alwaysApply: false
----
-
-`
-      : ''
+  const frontMatter = agentStartRuleTargetFrontMatter(target)
+  const targetNotes = agentStartRuleTargetNotes(target)
 
   return `${frontMatter}# Bilig WorkPaper rule for ${targetName}
 
 Recommended file: \`${rule.file}\`
+
+${targetNotes}
 
 Use Bilig WorkPaper before spreadsheet UI automation when the task needs cells,
 formulas, recalculation, readback, or saved workbook state.
@@ -318,4 +351,77 @@ function agentStartRuleTargetMetadata(card: AgentStartDecisionCard, target: Agen
     throw new Error(`Missing bilig-agent-start rule metadata for ${target}`)
   }
   return rule
+}
+
+function agentStartRuleTargetListText(): string {
+  return agentStartRuleTargets.join(', ')
+}
+
+function agentStartRuleTargetFrontMatter(target: AgentStartRuleTarget): string {
+  if (target === 'cursor') {
+    return `---
+description: Use Bilig WorkPaper before spreadsheet UI automation when formula readback matters.
+alwaysApply: false
+---
+
+`
+  }
+  if (target === 'continue') {
+    return `---
+name: Bilig WorkPaper Formula Check
+description: Use Bilig WorkPaper for spreadsheet-shaped business logic that needs formula readback without Excel UI automation.
+---
+
+`
+  }
+  if (target === 'windsurf') {
+    return `---
+description: Use Bilig WorkPaper when Cascade needs workbook formulas, MCP spreadsheet tools, or formula readback without Excel UI automation.
+trigger: model_decision
+---
+
+`
+  }
+  if (target === 'copilot') {
+    return `---
+applyTo: '**/*'
+---
+
+`
+  }
+  return ''
+}
+
+function agentStartRuleTargetNotes(target: AgentStartRuleTarget): string {
+  if (target === 'copilot') {
+    return `Copilot and VS Code agent mode use this as a set of related files:
+
+- \`.github/copilot-instructions.md\`
+- \`.github/instructions/bilig-workpaper.instructions.md\`
+- \`.github/prompts/bilig-workpaper-proof.prompt.md\`
+- \`.vscode/mcp.json\`
+
+The VS Code MCP config should expose \`biligWorkpaperDemo\` for hosted smoke
+tests and \`biligWorkpaperFile\` for local file-backed persistence.`
+  }
+  if (target === 'gemini') {
+    return `For an installed Gemini CLI extension, keep the root
+\`gemini-extension.json\` and \`gemini-workpaper-context.md\` together. For a
+project starter, put the same rule in \`GEMINI.md\`.`
+  }
+  if (target === 'vscode-mcp') {
+    return `Use this target when the host needs MCP config rather than prose.
+The \`.vscode/mcp.json\` file should define \`biligWorkpaperDemo\` and
+\`biligWorkpaperFile\` servers.`
+  }
+  if (target === 'cline') {
+    return 'Cline can read this workspace rule from `.clinerules/bilig-workpaper.md`.'
+  }
+  if (target === 'continue') {
+    return 'Continue can read this workspace rule from `.continue/rules/bilig-workpaper.md`.'
+  }
+  if (target === 'windsurf') {
+    return 'Windsurf/Cascade can read this workspace rule from `.windsurf/rules/bilig-workpaper.md`.'
+  }
+  return 'Use this as the project-level instruction file for the agent.'
 }

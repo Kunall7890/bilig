@@ -133,8 +133,42 @@ export async function requireAgentInstructionDiscovery(input: {
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules cursor',
     'docs/agent-start.txt',
   )
+  requireIncludes(
+    docsAgentStart,
+    'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules cline',
+    'docs/agent-start.txt',
+  )
+  requireIncludes(
+    docsAgentStart,
+    'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules continue',
+    'docs/agent-start.txt',
+  )
+  requireIncludes(
+    docsAgentStart,
+    'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules windsurf',
+    'docs/agent-start.txt',
+  )
+  requireIncludes(
+    docsAgentStart,
+    'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules gemini',
+    'docs/agent-start.txt',
+  )
+  requireIncludes(
+    docsAgentStart,
+    'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules vscode-mcp',
+    'docs/agent-start.txt',
+  )
   requireIncludes(docsAgentStart, '.github/copilot-instructions.md', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, '.github/prompts/bilig-workpaper-proof.prompt.md', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, '.cursor/rules/bilig-workpaper.mdc', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, '.clinerules/bilig-workpaper.md', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, '.continue/rules/bilig-workpaper.md', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, '.windsurf/rules/bilig-workpaper.md', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, 'GEMINI.md', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, 'gemini-extension.json', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, 'gemini-workpaper-context.md', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, '.vscode/mcp.json', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, 'npm create @bilig/workpaper@latest . -- --add-agent', 'docs/agent-start.txt')
   requireIncludes(
     docsAgentStart,
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json',

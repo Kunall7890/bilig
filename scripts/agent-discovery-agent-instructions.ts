@@ -133,9 +133,20 @@ npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules co
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules claude
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules copilot
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules cursor
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules cline
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules continue
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules windsurf
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules gemini
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules vscode-mcp
 \`\`\`
 
-Suggested files: \`AGENTS.md\`, \`CLAUDE.md\`, \`.github/copilot-instructions.md\`, or \`.cursor/rules/bilig-workpaper.mdc\`.
+For an existing repo that should receive the full starter overlay, run:
+
+\`\`\`sh
+npm create @bilig/workpaper@latest . -- --add-agent
+\`\`\`
+
+Suggested files: \`AGENTS.md\`, \`CLAUDE.md\`, \`GEMINI.md\`, \`.github/copilot-instructions.md\`, \`.github/prompts/bilig-workpaper-proof.prompt.md\`, \`.vscode/mcp.json\`, \`.cursor/rules/bilig-workpaper.mdc\`, \`.clinerules/bilig-workpaper.md\`, \`.continue/rules/bilig-workpaper.md\`, \`.windsurf/rules/bilig-workpaper.md\`, \`gemini-extension.json\`, and \`gemini-workpaper-context.md\`.
 
 ## Provider-backed formulas
 
