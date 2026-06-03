@@ -1,5 +1,6 @@
 import { agentNotAFitBoundaries, mcpPromptNames } from './agent-discovery-constants.ts'
 import { buildEvaluatorDoors, buildProofContract, compactProofContractJsonArrays } from './agent-discovery-evaluator-doors.ts'
+import { formatJsonForRepo } from './scorecard-format.ts'
 
 export type BuildAgentJsonManifestInput = {
   readonly siteRoot: string
@@ -459,7 +460,7 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
   )
   const compactPersistedBytesAlias = compactProofContractJsonArrays(json, compactStringArrayProperty)
   const compactPrompts = compactStringArrayProperty(compactPersistedBytesAlias, 'prompts', mcpPromptNames, '    ')
-  return `${compactStringArrayProperty(compactPrompts, 'not_a_fit', agentNotAFitBoundaries, '    ')}\n`
+  return formatJsonForRepo(compactStringArrayProperty(compactPrompts, 'not_a_fit', agentNotAFitBoundaries, '    '))
 }
 
 function compactStringArrayProperty(json: string, propertyName: string, values: readonly string[], indent: string): string {
