@@ -193,6 +193,7 @@ function assertPackedTarball(): void {
   for (const entry of [
     'package/package.json',
     'package/README.md',
+    'package/agent-overlay/.agents/skills/bilig-workpaper/SKILL.md',
     'package/agent-overlay/.claude/commands/bilig-workpaper-proof.md',
     'package/agent-overlay/.claude/skills/bilig-workpaper/SKILL.md',
     'package/agent-overlay/.clinerules/bilig-workpaper.md',
@@ -289,6 +290,7 @@ function assertGeneratedStarters(): void {
     'GEMINI.md',
     '.claude/commands/bilig-workpaper-proof.md',
     '.claude/skills/bilig-workpaper/SKILL.md',
+    '.agents/skills/bilig-workpaper/SKILL.md',
     '.clinerules/bilig-workpaper.md',
     '.continue/rules/bilig-workpaper.md',
     '.devin/rules/bilig-workpaper.md',
@@ -315,7 +317,14 @@ function assertGeneratedStarters(): void {
     'generated agent starter must teach the revenue-plan evaluator command',
   )
 
-  for (const expected of ['.mcp.json', '.cursor/mcp.json', '.vscode/mcp.json', 'mcp/bilig-workpaper.mcp.json', 'README.md']) {
+  for (const expected of [
+    '.agents/skills/bilig-workpaper/SKILL.md',
+    '.mcp.json',
+    '.cursor/mcp.json',
+    '.vscode/mcp.json',
+    'mcp/bilig-workpaper.mcp.json',
+    'README.md',
+  ]) {
     const generatedSource = readFileSync(join(agentDir, expected), 'utf8')
     assert(generatedSource.includes(starterWorkpaperPath), `generated agent starter ${expected} must use the starter WorkPaper path`)
     assert(!generatedSource.includes('__WORKPAPER_PATH__'), `generated agent starter ${expected} must render WorkPaper path placeholders`)
@@ -344,6 +353,10 @@ function assertGeneratedStarters(): void {
     'existing-repo overlay must write the Claude Code project skill',
   )
   assert(
+    existsSync(join(existingDir, '.agents', 'skills', 'bilig-workpaper', 'SKILL.md')),
+    'existing-repo overlay must write the OpenHands project skill',
+  )
+  assert(
     existsSync(join(existingDir, '.github', 'instructions', 'bilig-workpaper.instructions.md')),
     'existing-repo overlay must write path-specific Copilot instructions',
   )
@@ -356,6 +369,7 @@ function assertGeneratedStarters(): void {
   assert(!existsSync(join(existingDir, '.bilig')), 'existing-repo overlay must not create WorkPaper state before the MCP server runs')
   for (const expected of [
     '.mcp.json',
+    '.agents/skills/bilig-workpaper/SKILL.md',
     '.cursor/mcp.json',
     '.vscode/mcp.json',
     'mcp/bilig-workpaper.mcp.json',

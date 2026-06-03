@@ -38,6 +38,7 @@ export const versionedStaticReferenceRoots = [
   'docs/kestra-workpaper-flow.md',
   'docs/prefect-workpaper-flow.md',
   'docs/open-webui-workpaper-mcp.md',
+  'docs/openhands-workpaper-mcp.md',
   'docs/open-multi-agent-workpaper-mcp.md',
   'docs/lobehub-workpaper-mcp.md',
   'docs/anythingllm-workpaper-mcp.md',

@@ -54,6 +54,7 @@ export interface DocsDiscoveryContext {
   readonly sheetjsExceljsAlternativeFormulaWorkbookApi: string
   readonly hyperformulaAlternativeHeadlessWorkpaper: string
   readonly xlsxFormulaRecalculationNode: string
+  readonly xlsxCacheDoctorProofTranscript: string
   readonly agentXlsxFormulaRecalculationWithoutLibreOffice: string
   readonly staleXlsxFormulaCacheNode: string
   readonly microsoftGraphExcelRecalculationNode: string
@@ -136,6 +137,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     sheetjsExceljsAlternativeFormulaWorkbookApi,
     hyperformulaAlternativeHeadlessWorkpaper,
     xlsxFormulaRecalculationNode,
+    xlsxCacheDoctorProofTranscript,
     agentXlsxFormulaRecalculationWithoutLibreOffice,
     staleXlsxFormulaCacheNode,
     microsoftGraphExcelRecalculationNode,
@@ -208,6 +210,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     readFile(join(docsRoot, 'sheetjs-exceljs-alternative-formula-workbook-api.md'), 'utf8'),
     readFile(join(docsRoot, 'hyperformula-alternative-headless-workpaper.md'), 'utf8'),
     readFile(join(docsRoot, 'xlsx-formula-recalculation-node.md'), 'utf8'),
+    readFile(join(docsRoot, 'xlsx-cache-doctor-proof-transcript.md'), 'utf8'),
     readFile(join(docsRoot, 'agent-xlsx-formula-recalculation-without-libreoffice.md'), 'utf8'),
     readFile(join(docsRoot, 'stale-xlsx-formula-cache-node.md'), 'utf8'),
     readFile(join(docsRoot, 'microsoft-graph-excel-recalculation-node.md'), 'utf8'),
@@ -289,6 +292,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     sheetjsExceljsAlternativeFormulaWorkbookApi,
     hyperformulaAlternativeHeadlessWorkpaper,
     xlsxFormulaRecalculationNode,
+    xlsxCacheDoctorProofTranscript,
     agentXlsxFormulaRecalculationWithoutLibreOffice,
     staleXlsxFormulaCacheNode,
     microsoftGraphExcelRecalculationNode,

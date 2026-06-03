@@ -444,6 +444,7 @@ If any readback step fails, report the blocker instead of claiming the workbook 
 - Agent handbook: ${siteRoot}/headless-workpaper-agent-handbook.html
 - Agent workbook challenge: ${siteRoot}/agent-workbook-challenge.html
 - MCP server guide: ${siteRoot}/mcp-workpaper-tool-server.html
+- OpenHands MCP setup: ${siteRoot}/openhands-workpaper-mcp.html
 - Open WebUI tool setup: ${siteRoot}/open-webui-workpaper-mcp.html
 - LobeHub MCP setup: ${siteRoot}/lobehub-workpaper-mcp.html
 - AnythingLLM MCP setup: ${siteRoot}/anythingllm-workpaper-mcp.html
@@ -610,6 +611,7 @@ async function generatedTargets(): Promise<ReadonlyArray<readonly [string, strin
     ['mcp/bilig-workpaper.mcp.json', buildReusableMcpConfig(ideRuleInput)],
     ['.claude/commands/bilig-workpaper-proof.md', buildClaudeCodeWorkpaperCommand(ideRuleInput)],
     ['.claude/skills/bilig-workpaper/SKILL.md', skillDocument],
+    ['.agents/skills/bilig-workpaper/SKILL.md', skillDocument],
     ['skills/bilig-workpaper/SKILL.md', skillDocument],
     ['packages/workpaper/SKILL.md', skillDocument],
     ['packages/workpaper/AGENTS.md', docsAgentInstructions],

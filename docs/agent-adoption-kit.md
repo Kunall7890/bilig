@@ -60,6 +60,8 @@ rules instead:
   `.github/instructions/bilig-workpaper.instructions.md`,
   `.github/prompts/bilig-workpaper-proof.prompt.md`, and `.vscode/mcp.json`
 - Cursor: `.cursor/rules/bilig-workpaper.mdc`
+- OpenHands: `AGENTS.md`, `.agents/skills/bilig-workpaper/SKILL.md`, and
+  `openhands mcp add` for the file-backed WorkPaper server
 - Windsurf/Cascade: `.devin/rules/bilig-workpaper.md`, with
   `.windsurf/rules/bilig-workpaper.md` as the fallback mirror
 - Cline: `.clinerules/bilig-workpaper.md`
@@ -73,8 +75,8 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 ```
 
 The generated project includes `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
-Copilot / VS Code instructions, Cursor, Cline, Continue, and Windsurf rules,
-plus local MCP configs and `npm run agent:verify`.
+Copilot / VS Code instructions, Cursor, OpenHands, Cline, Continue, and
+Windsurf rules, plus local MCP configs and `npm run agent:verify`.
 
 For an existing repo, add only the agent/MCP files:
 
@@ -266,5 +268,6 @@ If it almost works but adoption is blocked, open the concrete blocker:
 - [Evaluate Bilig as an agent MCP workbook tool](eval-agent-mcp.md)
 - [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
 - [MCP client setup](mcp-client-setup.md)
+- [OpenHands WorkPaper MCP setup](openhands-workpaper-mcp.md)
 - [Agent workbook challenge](agent-workbook-challenge.md)
 - [Workbook tools for agent frameworks](agent-framework-workbook-tools.md)

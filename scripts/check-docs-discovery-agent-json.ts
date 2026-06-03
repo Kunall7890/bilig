@@ -23,6 +23,8 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
           'https://github.com/proompteng/bilig/blob/main/.claude/skills/bilig-workpaper/SKILL.md' &&
         Reflect.get(capability, 'claude_code_command') ===
           'https://github.com/proompteng/bilig/blob/main/.claude/commands/bilig-workpaper-proof.md' &&
+        Reflect.get(capability, 'openhands_skill') ===
+          'https://github.com/proompteng/bilig/blob/main/.agents/skills/bilig-workpaper/SKILL.md' &&
         Reflect.get(capability, 'docs') === 'https://proompteng.github.io/bilig/agent-rule-chooser.html',
     )
   ) {
@@ -195,6 +197,22 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
     !hasCapability(
       agentJsonCapabilities,
       (capability) =>
+        Reflect.get(capability, 'name') === 'openhands-workpaper-mcp' &&
+        Reflect.get(capability, 'framework') === 'OpenHands' &&
+        Reflect.get(capability, 'command') ===
+          'openhands mcp add bilig-workpaper --transport stdio npm -- exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable' &&
+        Reflect.get(capability, 'config_path') === '~/.openhands/mcp.json' &&
+        Reflect.get(capability, 'skill_path') === 'https://github.com/proompteng/bilig/blob/main/.agents/skills/bilig-workpaper/SKILL.md' &&
+        Reflect.get(capability, 'docs') === 'https://proompteng.github.io/bilig/openhands-workpaper-mcp.html' &&
+        Reflect.get(capability, 'source') === 'https://github.com/proompteng/bilig/blob/main/docs/openhands-workpaper-mcp.md',
+    )
+  ) {
+    throw new Error('docs/.well-known/agent.json must advertise the OpenHands WorkPaper MCP capability')
+  }
+  if (
+    !hasCapability(
+      agentJsonCapabilities,
+      (capability) =>
         Reflect.get(capability, 'name') === 'mastra-workpaper-tool' &&
         Reflect.get(capability, 'framework') === 'Mastra' &&
         Reflect.get(capability, 'api_shape') === 'createTool -> execute -> WorkPaper readback' &&
@@ -259,6 +277,9 @@ const requiredPublicEntrypoints = [
   'https://proompteng.github.io/bilig/agno-workpaper-mcp.html',
   'https://proompteng.github.io/bilig/pydantic-ai-workpaper-mcp.html',
   'https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html',
+  'https://proompteng.github.io/bilig/openhands-workpaper-mcp.html',
+  'https://github.com/proompteng/bilig/blob/main/docs/openhands-workpaper-mcp.md',
+  'https://github.com/proompteng/bilig/blob/main/.agents/skills/bilig-workpaper/SKILL.md',
   'https://proompteng.github.io/bilig/crewai-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/cloudflare-agents-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/semantic-kernel-workpaper-mcp.html',

@@ -16,6 +16,7 @@ npm full runtime package: https://www.npmjs.com/package/@bilig/headless
 remote MCP endpoint: https://bilig.proompteng.ai/mcp
 ChatGPT Apps WorkPaper MCP: https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html
 Google ADK WorkPaper MCP: https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html
+OpenHands WorkPaper MCP setup: https://proompteng.github.io/bilig/openhands-workpaper-mcp.html
 agent instructions: https://proompteng.github.io/bilig/AGENTS.md
 agent start: https://proompteng.github.io/bilig/agent-start.txt
 well-known agent start: https://proompteng.github.io/bilig/.well-known/agent-start.txt
@@ -31,6 +32,7 @@ MCP spreadsheet formula server for coding agents: https://proompteng.github.io/b
 Vercel AI SDK formula readback: https://proompteng.github.io/bilig/vercel-ai-sdk-spreadsheet-tool-formula-readback.html
 ExcelJS formula result not updating after Node edits: https://proompteng.github.io/bilig/exceljs-formula-result-not-updating-after-node-edits.html
 Stale formula readback chooser: https://proompteng.github.io/bilig/stale-formula-readback-chooser.html
+XLSX Cache Doctor proof transcript: https://proompteng.github.io/bilig/xlsx-cache-doctor-proof-transcript.html
 agent discovery manifest: https://proompteng.github.io/bilig/.well-known/agent.json
 root agent discovery manifest: https://proompteng.github.io/bilig/agent.json
 agent skill: https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt
@@ -100,6 +102,11 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   Use this before choosing among XLSX cache, XLSX recalculation, SheetJS,
   ExcelJS, xlsx-populate/template, CI, WorkPaper service, and agent MCP proof
   paths.
+- XLSX Cache Doctor proof transcript:
+  https://proompteng.github.io/bilig/xlsx-cache-doctor-proof-transcript.html
+  https://github.com/proompteng/bilig/blob/main/docs/xlsx-cache-doctor-proof-transcript.md
+  Use this to inspect the exact stale cached value, recalculated value, cell
+  address, suggested reads, and CI boundary before adopting the detector.
 - Evaluator commands:
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json`.
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`.
@@ -130,6 +137,8 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   `npx --package @bilig/xlsx-formula-recalc xlsx-recalc pricing.xlsx --set Inputs!B2=48 --read Summary!B7 --out pricing.recalculated.xlsx --json`.
 - For PR checks that only need to diagnose stale XLSX formula caches first:
   `npx --package @bilig/xlsx-formula-recalc xlsx-cache-doctor pricing.xlsx --json`.
+  https://proompteng.github.io/bilig/xlsx-cache-doctor-proof-transcript.html
+  https://github.com/proompteng/bilig/blob/main/docs/xlsx-cache-doctor-proof-transcript.md
   https://proompteng.github.io/bilig/xlsx-cache-doctor-github-action.html
   https://github.com/proompteng/bilig/blob/main/docs/xlsx-cache-doctor-github-action.md
 - For public SheetJS, ExcelJS, xlsx-populate, template, or CI support answers,
@@ -236,6 +245,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/agent-framework-workbook-tools.html
 - https://proompteng.github.io/bilig/browser-use-workpaper-formula-tool.html
 - https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html
+- https://proompteng.github.io/bilig/openhands-workpaper-mcp.html
 - https://proompteng.github.io/bilig/workbook-agent-intent-api.html
 - https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model
 - https://github.com/proompteng/bilig/blob/main/docs/agent-framework-workbook-tools.md
@@ -319,6 +329,9 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html
 - https://github.com/proompteng/bilig/blob/main/docs/google-adk-workpaper-mcp.md
 - https://github.com/proompteng/bilig/tree/main/examples/google-adk-workpaper-mcp
+- https://proompteng.github.io/bilig/openhands-workpaper-mcp.html
+- https://github.com/proompteng/bilig/blob/main/docs/openhands-workpaper-mcp.md
+- https://github.com/proompteng/bilig/blob/main/.agents/skills/bilig-workpaper/SKILL.md
 - https://proompteng.github.io/bilig/smolagents-workpaper-tool.html
 - https://github.com/proompteng/bilig/blob/main/docs/smolagents-workpaper-tool.md
 - https://github.com/proompteng/bilig/tree/main/examples/smolagents-workpaper-tool
@@ -685,8 +698,10 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 - workbook tools for agent frameworks:
   https://proompteng.github.io/bilig/agent-framework-workbook-tools.html
   https://proompteng.github.io/bilig/browser-use-workpaper-formula-tool.html
+  https://proompteng.github.io/bilig/openhands-workpaper-mcp.html
   https://github.com/proompteng/bilig/blob/main/docs/agent-framework-workbook-tools.md
   https://github.com/proompteng/bilig/blob/main/docs/browser-use-workpaper-formula-tool.md
+  https://github.com/proompteng/bilig/blob/main/docs/openhands-workpaper-mcp.md
 - framework-specific spreadsheet tool pages:
   https://proompteng.github.io/bilig/mastra-workpaper-spreadsheet-tool.html
   https://proompteng.github.io/bilig/llamaindex-workpaper-spreadsheet-tool.html

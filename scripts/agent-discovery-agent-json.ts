@@ -30,6 +30,7 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
     skillName,
     workpaperPackageSpec,
   } = input
+  const openHandsMcpAddCommand = `openhands mcp add bilig-workpaper --transport stdio npm -- exec --yes --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable`
   const json = JSON.stringify(
     {
       schema_version: 'agent-json-0.1.0',
@@ -170,6 +171,7 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
           codex: `${repositoryUrl}/blob/main/AGENTS.md`,
           claude_code_skill: `${repositoryUrl}/blob/main/.claude/skills/bilig-workpaper/SKILL.md`,
           claude_code_command: `${repositoryUrl}/blob/main/.claude/commands/bilig-workpaper-proof.md`,
+          openhands_skill: `${repositoryUrl}/blob/main/.agents/skills/bilig-workpaper/SKILL.md`,
           docs: `${siteRoot}/agent-rule-chooser.html`,
           challenge_command: `npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json`,
         },
@@ -306,6 +308,16 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
           source: `${repositoryUrl}/tree/main/examples/google-adk-workpaper-mcp`,
         },
         {
+          name: 'openhands-workpaper-mcp',
+          type: 'coding-agent-mcp-setup',
+          framework: 'OpenHands',
+          command: openHandsMcpAddCommand,
+          config_path: '~/.openhands/mcp.json',
+          skill_path: `${repositoryUrl}/blob/main/.agents/skills/bilig-workpaper/SKILL.md`,
+          docs: `${siteRoot}/openhands-workpaper-mcp.html`,
+          source: `${repositoryUrl}/blob/main/docs/openhands-workpaper-mcp.md`,
+        },
+        {
           name: 'mastra-workpaper-tool',
           type: 'typescript-agent-tool-smoke-test',
           framework: 'Mastra',
@@ -420,6 +432,9 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
         `${siteRoot}/agno-workpaper-mcp.html`,
         `${siteRoot}/pydantic-ai-workpaper-mcp.html`,
         `${siteRoot}/google-adk-workpaper-mcp.html`,
+        `${siteRoot}/openhands-workpaper-mcp.html`,
+        `${repositoryUrl}/blob/main/docs/openhands-workpaper-mcp.md`,
+        `${repositoryUrl}/blob/main/.agents/skills/bilig-workpaper/SKILL.md`,
         `${siteRoot}/smolagents-workpaper-tool.html`,
         `${siteRoot}/huggingface-workpaper-space.html`,
         remoteMcpEndpoint,

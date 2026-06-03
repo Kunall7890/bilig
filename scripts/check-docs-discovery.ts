@@ -79,6 +79,7 @@ const {
   generalDiscussionTemplate,
   dominanceScorecard,
   xlsxFormulaRecalculationNode,
+  xlsxCacheDoctorProofTranscript,
   agentXlsxFormulaRecalculationWithoutLibreOffice,
   staleXlsxFormulaCacheNode,
   microsoftGraphExcelRecalculationNode,
@@ -898,6 +899,7 @@ requireXlsxRecalcPublicDiscovery({
   llms,
   readme,
   xlsxFormulaRecalculationNode,
+  xlsxCacheDoctorProofTranscript,
   xlsxCacheDoctorCli,
   xlsxRecalcCli,
 })
