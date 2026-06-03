@@ -179,9 +179,21 @@ describe('WorkPaper MCP XLSX file bridge', () => {
       child.stdin.end(
         [
           { jsonrpc: '2.0', id: 1, method: 'initialize' },
+          { jsonrpc: '2.0', id: 2, method: 'tools/list' },
           {
             jsonrpc: '2.0',
-            id: 2,
+            id: 3,
+            method: 'tools/call',
+            params: {
+              name: 'analyze_workbook_risk',
+              arguments: {
+                inspectLimit: 'all',
+              },
+            },
+          },
+          {
+            jsonrpc: '2.0',
+            id: 4,
             method: 'tools/call',
             params: {
               name: 'read_cell',
@@ -206,7 +218,17 @@ describe('WorkPaper MCP XLSX file bridge', () => {
         .filter((line) => line.length > 0)
         .map((line) => JSON.parse(line))
 
-      expect(responses[1].result.structuredContent).toMatchObject({
+      expect(responses[1].result.tools.map((tool: { readonly name: string }) => tool.name)).toContain('analyze_workbook_risk')
+      expect(responses[2].result.structuredContent).toMatchObject({
+        schemaVersion: 'bilig-workbook-compatibility-report.v1',
+        verified: true,
+        input: {
+          fileName: 'pricing.xlsx',
+          inspectLimit: 'all',
+        },
+        excelParity: 'not_proven',
+      })
+      expect(responses[3].result.structuredContent).toMatchObject({
         address: 'Summary!B3',
         formula: '=B2*Inputs!B4',
         value: {

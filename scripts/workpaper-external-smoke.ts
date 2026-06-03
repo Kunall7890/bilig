@@ -29,6 +29,7 @@ import {
   type McpTranscriptSummary,
   type RevenueScenarioSummary,
 } from './workpaper-external-smoke-parsers.ts'
+import { parseRecordValue } from './workpaper-external-smoke-parser-helpers.ts'
 import { writeXlsxImportScript } from './workpaper-external-smoke-fixtures.ts'
 import { parseNodeMcpStdioErrorOutput } from './workpaper-external-smoke-mcp-parsers.ts'
 import { resolveKeepWorkpaperSmokeStage } from './workpaper-external-smoke-config.ts'
@@ -257,6 +258,13 @@ function runNodeSmoke(
       serializedBytes: number
     }
   }
+  packageMcpXlsxRisk: {
+    excelParity: 'not_proven'
+    inputFileName: string
+    schemaVersion: string
+    toolNames: string[]
+    verified: boolean
+  }
   mcpChallenge: {
     editedCell: string
     dependentCell: string
@@ -422,8 +430,10 @@ function runNodeSmoke(
   writeXlsxImportScript(projectDir)
   writeBiligWorkpaperScript(projectDir)
   writeExceljsFormulaRecalcScript(projectDir)
+  writeMcpXlsxRiskFixtureScript(projectDir)
 
   installTarballs(projectDir, tarballPaths, ['exceljs@4.4.0'])
+  runTextCommand('npx', ['--no-install', 'tsx', 'mcp-xlsx-risk-fixture.ts'], { cwd: projectDir })
   const npmEval = parseNodeNpmEvalOutput(runTextCommand('npm', ['run', '--silent', 'npm-eval'], { cwd: projectDir }))
   const biligWorkpaper = parseNodeBiligWorkpaperOutput(
     runTextCommand('npx', ['--no-install', 'tsx', 'bilig-workpaper.ts'], { cwd: projectDir }),
@@ -475,6 +485,23 @@ function runNodeSmoke(
     ),
     { expectedServerName: 'bilig-headless-workpaper' },
   )
+  const packageMcpXlsxRisk = parsePackageMcpXlsxRiskOutput(
+    runTextCommand(
+      'sh',
+      [
+        '-c',
+        [
+          "printf '%s\\n'",
+          '\'{"jsonrpc":"2.0","id":1,"method":"initialize"}\'',
+          '\'{"jsonrpc":"2.0","id":2,"method":"tools/list"}\'',
+          '\'{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"analyze_workbook_risk","arguments":{"inspectLimit":"all"}}}\'',
+          '|',
+          './node_modules/.bin/bilig-workpaper-mcp --from-xlsx fixtures/pricing-risk.xlsx --workpaper .bilig/pricing-risk.workpaper.json --overwrite-workpaper --writable',
+        ].join(' '),
+      ],
+      { cwd: projectDir },
+    ),
+  )
   const mcpChallenge = parseNodeMcpChallengeOutput(runTextCommand('./node_modules/.bin/bilig-mcp-challenge', [], { cwd: projectDir }))
   const mcpTranscript = parseNodeMcpTranscriptOutput(
     runTextCommand('npm', ['run', '--silent', 'agent:mcp-transcript'], { cwd: projectDir }),
@@ -522,6 +549,7 @@ function runNodeSmoke(
     mcpTranscript,
     mcpChallenge,
     packageMcpStdio,
+    packageMcpXlsxRisk,
     persistence,
     projectDir,
     biligWorkpaper,
@@ -535,6 +563,91 @@ function runNodeSmoke(
     xlsxImport,
     output,
   }
+}
+
+function writeMcpXlsxRiskFixtureScript(projectDir: string): void {
+  writeFileSync(
+    join(projectDir, 'mcp-xlsx-risk-fixture.ts'),
+    [
+      'import { mkdirSync, writeFileSync } from "node:fs";',
+      'import { WorkPaper } from "@bilig/workpaper";',
+      'import { exportXlsx } from "@bilig/workpaper/xlsx";',
+      '',
+      'mkdirSync("fixtures", { recursive: true });',
+      'const workbook = WorkPaper.buildFromSheets({',
+      '  Inputs: [["Metric", "Value"], ["Units", 40], ["Price", 1200]],',
+      '  Summary: [["Metric", "Value"], ["Revenue", "=Inputs!B2*Inputs!B3"]],',
+      '});',
+      'writeFileSync("fixtures/pricing-risk.xlsx", exportXlsx(workbook.exportSnapshot()));',
+      'workbook.dispose();',
+      '',
+    ].join('\n'),
+  )
+}
+
+function parsePackageMcpXlsxRiskOutput(output: string): {
+  excelParity: 'not_proven'
+  inputFileName: string
+  schemaVersion: string
+  toolNames: string[]
+  verified: boolean
+} {
+  const responses = output
+    .split(/\r?\n/)
+    .filter((line) => line.trim().length > 0)
+    .map((line, index) => parseJsonRecord(line, `package MCP XLSX risk response ${index + 1}`))
+  const listResult = parseRecordValue(
+    requireJsonRpcResponse(responses, 2, 'package MCP XLSX risk tools/list response').result,
+    'package MCP XLSX risk tools/list result',
+  )
+  const riskResult = parseRecordValue(
+    requireJsonRpcResponse(responses, 3, 'package MCP XLSX risk tools/call response').result,
+    'package MCP XLSX risk tools/call result',
+  )
+  const toolNames = parseMcpToolNames(listResult.tools, 'package MCP XLSX risk tool')
+  const structuredContent = parseRecordValue(riskResult.structuredContent, 'package MCP XLSX risk structured content')
+  const input = parseRecordValue(structuredContent.input, 'package MCP XLSX risk input')
+  const schemaVersion = structuredContent.schemaVersion
+  const inputFileName = input.fileName
+
+  if (
+    !toolNames.includes('analyze_workbook_risk') ||
+    schemaVersion !== 'bilig-workbook-compatibility-report.v1' ||
+    structuredContent.verified !== true ||
+    inputFileName !== 'pricing-risk.xlsx' ||
+    structuredContent.excelParity !== 'not_proven'
+  ) {
+    throw new Error(`Unexpected package MCP XLSX risk output: ${output}`)
+  }
+
+  return {
+    excelParity: 'not_proven',
+    inputFileName,
+    schemaVersion,
+    toolNames,
+    verified: true,
+  }
+}
+
+function requireJsonRpcResponse(responses: Record<string, unknown>[], id: number, context: string): Record<string, unknown> {
+  const response = responses.find((entry) => entry.id === id)
+  if (response === undefined || response.jsonrpc !== '2.0') {
+    throw new Error(`Missing ${context}: ${JSON.stringify(responses)}`)
+  }
+  return response
+}
+
+function parseMcpToolNames(value: unknown, context: string): string[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`Expected ${context} list to be an array: ${JSON.stringify(value)}`)
+  }
+  return value.map((entry, index) => {
+    const tool = parseRecordValue(entry, `${context} ${index + 1}`)
+    if (typeof tool.name !== 'string') {
+      throw new Error(`Unexpected ${context}: ${JSON.stringify(entry)}`)
+    }
+    return tool.name
+  })
 }
 
 function writeBiligWorkpaperScript(projectDir: string): void {
