@@ -5754,6 +5754,7 @@ touch spreadsheet-shaped business logic.
 | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | Control a live Excel session through an add-in, paired session, OAuth, or account-backed service          | Hosted or Excel-native MCP control layer                    |
 | Import an `.xlsx` into a collaborative spreadsheet workspace with Python, SQL, charts, and agent access   | Hosted spreadsheet workspace MCP                            |
+| Run an agent-authored script against Excel files for rendering, linting, calculation, and structured JSON | Spreadsheet CLI or API runtime                              |
 | Read and write arbitrary `.xlsx` files with formatting, charts, and workbook layout                      | Excel-focused MCP server or an Office automation workflow   |
 | Read and update Google Sheets through a live cloud spreadsheet                                           | Google Sheets MCP server                                    |
 | Let an agent inspect workbook structure, formulas, and cached values without mutating files              | Read-only spreadsheet inspection MCP server                 |
@@ -5767,6 +5768,7 @@ somewhere else:
 
 | Server or path                                                          | Best fit                                                                                 | Boundary to check before adopting                                                               |
 | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| [Witan](https://www.witanlabs.com/)                                      | Agents that can call a CLI, SDK, or API against Excel files for read, write, render, calculate, lint, and structured JSON workflows | Not positioned as a public MCP server in the inspected docs; the Witan API, cloud, or self-hosted runtime is part of proof |
 | [Cellium](https://cellium.dev/)                                          | MCP clients that need a paired Excel Add-in/session control layer with structured cell operations | Requires a Cellium account/API key and live Excel runtime pairing; do not treat it as a local no-key WorkPaper runtime |
 | [xlsx-for-ai](https://xlsx-for-ai.dev/)                                  | Hosted API plus npm/MCP client for reading, writing, validating, diffing, and redacting Excel files | Non-fallback API calls are hosted; strict mode is a privacy/error-capture setting, not proof of fresh formula recalculation |
 | [Quadratic Excel MCP](https://www.quadratichq.com/ai/mcp/excel)          | Hosted Quadratic workspace after importing `.xlsx`, with formulas, charts, Python, SQL, OAuth, and AI clients | Quadratic becomes the working spreadsheet surface and exports back to `.xlsx`; it is not a local file-only MCP server |
@@ -5810,6 +5812,23 @@ boundaries. Quadratic is a hosted spreadsheet workspace after import. xlsx-for-a
 is a hosted API/npm MCP path for Excel-file operations. Those are legitimate
 choices when the workflow wants those boundaries. They are not the same as a
 no-key local WorkPaper proof.
+
+## CLI And API Runtime Boundary
+
+Some spreadsheet-agent tools do not try to be MCP servers. Witan is the current
+public example: its spreadsheet surface is a CLI, SDK, and API path around
+commands such as `witan xlsx exec`, `render`, `calc`, and `lint`. That can be a
+good fit when an agent can run scripts directly against Excel files and the
+desired proof includes Witan's runtime, rendering, linting, or API deployment
+boundary.
+
+That is still a different product shape from an MCP server. MCP tool discovery,
+host approval, transport configuration, and tool-call readback are part of the
+adoption surface for Cursor, VS Code, Claude Desktop, Codex, ChatGPT Apps, and
+other clients. If the workflow wants a scriptable Excel-file runtime, start with
+the CLI/API tool. If the workflow wants an MCP client to discover tools, edit a
+known WorkPaper input, read a dependent formula, export state, restore it, and
+return `verified: true`, use Bilig WorkPaper MCP.
 
 ## Where Bilig Fits
 
@@ -5940,6 +5959,8 @@ or persists anything," choose a formula runtime path and keep the MCP layer thin
 ## Public Directory References
 
 - [SheetForge MCP](https://mcpservers.org/servers/iheldan/sheetforge-mcp)
+- [Witan spreadsheet tools](https://www.witanlabs.com/)
+- [Witan CLI docs](https://docs.witanlabs.com/products/spreadsheet/sdks/cli)
 - [Cellium](https://cellium.dev/)
 - [xlsx-for-ai](https://xlsx-for-ai.dev/)
 - [Quadratic Excel MCP](https://www.quadratichq.com/ai/mcp/excel)

@@ -4,6 +4,12 @@ export function requireSpreadsheetMcpServerComparisonDiscovery(input: { readonly
   const { spreadsheetMcpServerComparison } = input
   for (const required of [
     '## Named Public Alternatives',
+    'https://www.witanlabs.com/',
+    'https://docs.witanlabs.com/products/spreadsheet/sdks/cli',
+    '## CLI And API Runtime Boundary',
+    'Witan is the current\npublic example: its spreadsheet surface is a CLI, SDK, and API path around\ncommands such as `witan xlsx exec`, `render`, `calc`, and `lint`.',
+    'MCP tool discovery,\nhost approval, transport configuration, and tool-call readback are part of the\nadoption surface for Cursor, VS Code, Claude Desktop, Codex, ChatGPT Apps, and\nother clients.',
+    'If the workflow wants a scriptable Excel-file runtime, start with\nthe CLI/API tool. If the workflow wants an MCP client to discover tools, edit a\nknown WorkPaper input, read a dependent formula, export state, restore it, and\nreturn `verified: true`, use Bilig WorkPaper MCP.',
     'https://cellium.dev/',
     'https://xlsx-for-ai.dev/',
     'https://www.quadratichq.com/ai/mcp/excel',
