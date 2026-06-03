@@ -54,14 +54,14 @@ Use the narrowest command that matches the blocker:
 | --- | --- | --- |
 | Stale cached XLSX formula value after Node edits | `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json` | The stale formula object with cell address, cached value, recalculated value, and `suggestedReads`. |
 | Pull requests can commit stale workbook fixtures | `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor --print-github-action "**/*.xlsx"` | The generated report-only workflow, or the GitHub Action report artifact. |
-| WorkPaper import, formula, or persistence mismatch | `npm exec --package @bilig/headless@0.160.1 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"` | The Markdown clinic report with requested cells, formula samples, warnings, and actual readback. |
+| WorkPaper import, formula, or persistence mismatch | `npm exec --package @bilig/headless@0.160.2 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"` | The Markdown clinic report with requested cells, formula samples, warnings, and actual readback. |
 
 If the workbook is already reduced and the stale-cache check is not enough, run
 the clinic reporter locally and paste the Markdown output into the fixture form.
 It reads the file on your machine and does not upload workbook contents.
 
 ```sh
-npm exec --package @bilig/headless@0.160.1 -- bilig-formula-clinic ./reduced.xlsx \
+npm exec --package @bilig/headless@0.160.2 -- bilig-formula-clinic ./reduced.xlsx \
   --cells "Summary!B7,Inputs!B2"
 ```
 
