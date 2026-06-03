@@ -126,6 +126,20 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
     !hasCapability(
       agentJsonCapabilities,
       (capability) =>
+        Reflect.get(capability, 'name') === 'mastra-workpaper-tool' &&
+        Reflect.get(capability, 'framework') === 'Mastra' &&
+        Reflect.get(capability, 'api_shape') === 'createTool -> execute -> WorkPaper readback' &&
+        Reflect.get(capability, 'command') === 'pnpm --dir examples/mastra-workpaper-tool run smoke' &&
+        Reflect.get(capability, 'docs') === 'https://proompteng.github.io/bilig/mastra-workpaper-spreadsheet-tool.html' &&
+        Reflect.get(capability, 'source') === 'https://github.com/proompteng/bilig/tree/main/examples/mastra-workpaper-tool',
+    )
+  ) {
+    throw new Error('docs/.well-known/agent.json must advertise the Mastra WorkPaper tool capability')
+  }
+  if (
+    !hasCapability(
+      agentJsonCapabilities,
+      (capability) =>
         Reflect.get(capability, 'name') === 'claude-desktop-mcpb' &&
         Reflect.get(capability, 'type') === 'mcpb-desktop-extension' &&
         Reflect.get(capability, 'download_url') === mcpbReleaseAssetUrl &&
@@ -169,6 +183,7 @@ const requiredPublicEntrypoints = [
   'https://proompteng.github.io/bilig/openai-responses-workpaper-tool-call.html',
   'https://proompteng.github.io/bilig/browser-use-workpaper-formula-tool.html',
   'https://proompteng.github.io/bilig/langgraph-workpaper-toolnode-spreadsheet.html',
+  'https://proompteng.github.io/bilig/mastra-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/llamaindex-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/agno-workpaper-mcp.html',
   'https://proompteng.github.io/bilig/pydantic-ai-workpaper-mcp.html',

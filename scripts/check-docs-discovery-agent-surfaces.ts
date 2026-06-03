@@ -383,7 +383,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     }
   }
   for (const required of [
-    '"@mastra/core": "1.37.1"',
+    '"@mastra/core": "1.38.0"',
     '"smoke": "node --disable-warning=DEP0205 --import tsx src/mastra-workpaper-tool.ts"',
   ] as const) {
     requireIncludes(mastraExamplePackageJson, required, 'examples/mastra-workpaper-tool/package.json')

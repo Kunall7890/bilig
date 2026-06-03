@@ -273,6 +273,15 @@
       "source": "https://github.com/proompteng/bilig/tree/main/examples/google-adk-workpaper-mcp"
     },
     {
+      "name": "mastra-workpaper-tool",
+      "type": "typescript-agent-tool-smoke-test",
+      "framework": "Mastra",
+      "api_shape": "createTool -> execute -> WorkPaper readback",
+      "command": "pnpm --dir examples/mastra-workpaper-tool run smoke",
+      "docs": "https://proompteng.github.io/bilig/mastra-workpaper-spreadsheet-tool.html",
+      "source": "https://github.com/proompteng/bilig/tree/main/examples/mastra-workpaper-tool"
+    },
+    {
       "name": "semantic-kernel-workpaper-mcp",
       "type": "python-agent-mcp-smoke-test",
       "framework": "Microsoft Semantic Kernel",
@@ -401,6 +410,7 @@
     "https://proompteng.github.io/bilig/browser-use-workpaper-formula-tool.html",
     "https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html",
     "https://proompteng.github.io/bilig/langgraph-workpaper-toolnode-spreadsheet.html",
+    "https://proompteng.github.io/bilig/mastra-workpaper-spreadsheet-tool.html",
     "https://proompteng.github.io/bilig/llamaindex-workpaper-spreadsheet-tool.html",
     "https://proompteng.github.io/bilig/crewai-workpaper-spreadsheet-tool.html",
     "https://proompteng.github.io/bilig/cloudflare-agents-workpaper-spreadsheet-tool.html",

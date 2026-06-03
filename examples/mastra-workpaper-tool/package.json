@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@bilig/workpaper": "latest",
-    "@mastra/core": "1.37.1",
+    "@mastra/core": "1.38.0",
     "zod": "4.3.6"
   },
   "devDependencies": {

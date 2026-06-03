@@ -256,6 +256,15 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
           source: `${repositoryUrl}/tree/main/examples/google-adk-workpaper-mcp`,
         },
         {
+          name: 'mastra-workpaper-tool',
+          type: 'typescript-agent-tool-smoke-test',
+          framework: 'Mastra',
+          api_shape: 'createTool -> execute -> WorkPaper readback',
+          command: 'pnpm --dir examples/mastra-workpaper-tool run smoke',
+          docs: `${siteRoot}/mastra-workpaper-spreadsheet-tool.html`,
+          source: `${repositoryUrl}/tree/main/examples/mastra-workpaper-tool`,
+        },
+        {
           name: 'semantic-kernel-workpaper-mcp',
           type: 'python-agent-mcp-smoke-test',
           framework: 'Microsoft Semantic Kernel',
@@ -371,6 +380,7 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
         `${siteRoot}/browser-use-workpaper-formula-tool.html`,
         `${siteRoot}/chatgpt-apps-workpaper-mcp.html`,
         `${siteRoot}/langgraph-workpaper-toolnode-spreadsheet.html`,
+        `${siteRoot}/mastra-workpaper-spreadsheet-tool.html`,
         `${siteRoot}/llamaindex-workpaper-spreadsheet-tool.html`,
         `${siteRoot}/crewai-workpaper-spreadsheet-tool.html`,
         `${siteRoot}/cloudflare-agents-workpaper-spreadsheet-tool.html`,
