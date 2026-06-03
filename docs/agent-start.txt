@@ -68,9 +68,11 @@ Do not claim success from a write call alone. Read the dependent calculated cell
 
 ```sh
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
 ```
 
 Expected tools: `list_sheets`, `read_range`, `read_cell`, `set_cell_contents`, `set_cell_contents_and_readback`, `get_cell_display_value`, `export_workpaper_document`, and `validate_formula`.
+When started through the `@bilig/workpaper@latest` `--from-xlsx` path, `tools/list` also includes `analyze_workbook_risk`, a fixed-source diagnostic for the imported XLSX file. It reports workbook risk indicators and does not certify Excel compatibility.
 
 ## More context
 

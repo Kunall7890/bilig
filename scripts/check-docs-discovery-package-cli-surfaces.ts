@@ -51,6 +51,8 @@ export function requirePackageCliSurfaceDiscovery(args: {
   requireIncludes(args.scopedWorkpaperPackageReadme, 'https://github.com/proompteng/bilig/stargazers', 'packages/workpaper/README.md')
   requireIncludes(args.scopedWorkpaperPackageReadme, 'https://github.com/proompteng/bilig/subscription', 'packages/workpaper/README.md')
   requireIncludes(args.scopedWorkpaperPackageReadme, 'Use `bilig-mcp-challenge --json` only', 'packages/workpaper/README.md')
+  requireIncludes(args.scopedWorkpaperPackageReadme, 'analyze_workbook_risk', 'packages/workpaper/README.md')
+  requireIncludes(args.scopedWorkpaperPackageReadme, 'does not certify Excel compatibility', 'packages/workpaper/README.md')
 
   requireIncludes(
     args.scopedXlsxRecalcPackageJson,

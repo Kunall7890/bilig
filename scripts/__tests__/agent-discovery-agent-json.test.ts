@@ -37,5 +37,28 @@ describe('agent discovery agent.json manifest', () => {
           'Diagnoses workbook risks before agent or service use; does not certify Excel compatibility, execute macros, refresh pivots or external data, or assign a compatibility percentage.',
       }),
     )
+    expect(parsed.mcp).toMatchObject({
+      xlsx_import_tools: ['analyze_workbook_risk'],
+      xlsx_import_args: [
+        'exec',
+        '--package',
+        '@bilig/workpaper@latest',
+        '--',
+        'bilig-workpaper-mcp',
+        '--from-xlsx',
+        './pricing.xlsx',
+        '--workpaper',
+        './.bilig/pricing.workpaper.json',
+        '--writable',
+      ],
+    })
+    expect(parsed.capabilities).toContainEqual(
+      expect.objectContaining({
+        name: 'file-backed-workpaper-mcp',
+        xlsx_import_tool: 'analyze_workbook_risk',
+        boundary:
+          'The XLSX import tool is local and fixed to the --from-xlsx source file; it reports workbook risk indicators and does not certify Excel compatibility.',
+      }),
+    )
   })
 })

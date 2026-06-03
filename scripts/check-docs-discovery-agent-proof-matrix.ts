@@ -66,6 +66,8 @@ export async function requireAgentProofMatrixDiscovery({
     '| XLSX cache detector |',
     '| ExcelJS recalculation | `npx --package @bilig/exceljs-formula-recalc exceljs-recalc --demo --json` | `commandSucceeded: true`, `recalculationCompleted: true`, `expectedValueMatched: true` |',
     '| MCP Inspector |',
+    'analyze_workbook_risk',
+    'Excel compatibility certification',
     '| Vercel AI SDK `generateText()` |',
     '| Vercel AI SDK `streamText()` |',
     '| OpenAI Responses function call |',

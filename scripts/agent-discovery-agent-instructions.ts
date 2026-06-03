@@ -94,6 +94,7 @@ npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --d
 npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
 npm exec --package ${workpaperPackageSpec} -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 \`\`\`
 
@@ -185,9 +186,11 @@ Do not claim success from a write call alone. Read the dependent calculated cell
 
 \`\`\`sh
 npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
 \`\`\`
 
 Expected tools: \`list_sheets\`, \`read_range\`, \`read_cell\`, \`set_cell_contents\`, \`set_cell_contents_and_readback\`, \`get_cell_display_value\`, \`export_workpaper_document\`, and \`validate_formula\`.
+When started through the \`${workpaperPackageSpec}\` \`--from-xlsx\` path, \`tools/list\` also includes \`analyze_workbook_risk\`, a fixed-source diagnostic for the imported XLSX file. It reports workbook risk indicators and does not certify Excel compatibility.
 
 ## More context
 

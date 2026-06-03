@@ -10,6 +10,9 @@
     },
     {
       "path": "../headless"
+    },
+    {
+      "path": "../bilig-xlsx-formula-recalc"
     }
   ],
   "include": ["src/**/*"],

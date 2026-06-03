@@ -223,8 +223,8 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./
 
 That command imports the XLSX once, refuses to replace an existing WorkPaper
 JSON unless `--overwrite-workpaper` is present, and then exposes the same
-`read_cell`, `set_cell_contents_and_readback`, and `export_workpaper_document`
-tools.
+`read_cell`, `set_cell_contents_and_readback`, `export_workpaper_document`, and
+read-only `analyze_workbook_risk` tools.
 
 Use the hosted endpoint only for smoke tests and tool discovery:
 

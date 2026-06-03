@@ -111,6 +111,12 @@ treat its returned `tools` array as the source of truth for the currently publis
 - `export_workpaper_document`
 - `validate_formula`
 
+When the server is started through `@bilig/workpaper@latest` with
+`--from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json`,
+`tools/list` also includes `analyze_workbook_risk`. That tool is fixed to
+the source XLSX passed at startup and reports workbook risk indicators before an
+agent trusts the imported WorkPaper. It does not certify Excel compatibility.
+
 After a write, always read the dependent output cell and export the WorkPaper
 document. If the listed tool set includes `set_cell_contents_and_readback`,
 prefer it for stateless clients because the edit and dependent readback happen

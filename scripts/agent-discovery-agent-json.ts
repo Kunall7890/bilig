@@ -91,6 +91,18 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
           '--init-demo-workpaper',
           '--writable',
         ],
+        xlsx_import_args: [
+          'exec',
+          '--package',
+          workpaperPackageSpec,
+          '--',
+          'bilig-workpaper-mcp',
+          '--from-xlsx',
+          './pricing.xlsx',
+          '--workpaper',
+          './.bilig/pricing.workpaper.json',
+          '--writable',
+        ],
         tools: [
           'list_sheets',
           'read_range',
@@ -101,6 +113,7 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
           'export_workpaper_document',
           'validate_formula',
         ],
+        xlsx_import_tools: ['analyze_workbook_risk'],
         resources: [
           'bilig://workpaper/manifest',
           'bilig://workpaper/agent-handoff',
@@ -176,6 +189,10 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
           docs: `${siteRoot}/mcp-workpaper-tool-server.html`,
           server_card: `${siteRoot}/.well-known/mcp/server-card.json`,
           challenge_command: `npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge`,
+          xlsx_import_command: `npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable`,
+          xlsx_import_tool: 'analyze_workbook_risk',
+          boundary:
+            'The XLSX import tool is local and fixed to the --from-xlsx source file; it reports workbook risk indicators and does not certify Excel compatibility.',
         },
         {
           name: 'repo-local-agent-instructions',

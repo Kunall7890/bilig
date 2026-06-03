@@ -252,7 +252,14 @@ describe('WorkPaper MCP server', () => {
       'validate_formula',
     ])
     expect(readToolOutputSchemaRequired(tools.result, 'list_sheets')).toEqual(['writable', 'sheets'])
-    expect(readToolOutputSchemaRequired(tools.result, 'read_cell')).toEqual(['address', 'value', 'serialized', 'formula', 'displayValue'])
+    expect(readToolOutputSchemaRequired(tools.result, 'read_cell')).toEqual([
+      'address',
+      'value',
+      'serialized',
+      'formula',
+      'displayValue',
+      'formulaDiagnostics',
+    ])
     expect(readToolOutputSchemaRequired(tools.result, 'set_cell_contents')).toEqual([
       'editedCell',
       'before',

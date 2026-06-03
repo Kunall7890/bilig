@@ -86,6 +86,7 @@ npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --d
 npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
 npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
@@ -215,6 +216,12 @@ treat its returned `tools` array as the source of truth for the currently publis
 - `get_cell_display_value`
 - `export_workpaper_document`
 - `validate_formula`
+
+When the server is started through `@bilig/workpaper@latest` with
+`--from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json`,
+`tools/list` also includes `analyze_workbook_risk`. That tool is fixed to
+the source XLSX passed at startup and reports workbook risk indicators before an
+agent trusts the imported WorkPaper. It does not certify Excel compatibility.
 
 After a write, always read the dependent output cell and export the WorkPaper
 document. If the listed tool set includes `set_cell_contents_and_readback`,
@@ -2993,8 +3000,8 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./
 
 That command imports the XLSX once, refuses to replace an existing WorkPaper
 JSON unless `--overwrite-workpaper` is present, and then exposes the same
-`read_cell`, `set_cell_contents_and_readback`, and `export_workpaper_document`
-tools.
+`read_cell`, `set_cell_contents_and_readback`, `export_workpaper_document`, and
+read-only `analyze_workbook_risk` tools.
 
 Use the hosted endpoint only for smoke tests and tool discovery:
 
@@ -3377,7 +3384,7 @@ Expected invariants:
 | XLSX recalculation | `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json` | `recalculationCompleted: true` | An XLSX file boundary can be edited, recalculated, exported, and reimported for readback. | A full Excel clone, macro execution, charts, pivots, or desktop layout fidelity. |
 | ExcelJS recalculation | `npx --package @bilig/exceljs-formula-recalc exceljs-recalc --demo --json` | `commandSucceeded: true`, `recalculationCompleted: true`, `expectedValueMatched: true` | An existing ExcelJS workbook can get fresh formula readback after Node edits. | ExcelJS styling/export behavior, desktop Excel parity, or every Excel formula. |
 | MCP Inspector | `npx -y @modelcontextprotocol/inspector@latest --cli npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --method tools/list` | tool names such as `read_workpaper_summary`, `set_workpaper_input_cell` | A neutral MCP client can inspect the packaged stdio server before a user adds it to an agent host. | Private workbook persistence unless the file-backed config is used. |
-| File-backed MCP server | `npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable` | `set_cell_contents_and_readback`, `export_workpaper_document` | A local agent can use a persistent WorkPaper JSON file and general workbook tools. | Hosted multi-user storage or secret management. |
+| File-backed MCP server | `npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable` | `set_cell_contents_and_readback`, `export_workpaper_document`; `analyze_workbook_risk` when started with `--from-xlsx` | A local agent can use a persistent WorkPaper JSON file and inspect imported XLSX risk indicators before trusting the WorkPaper. | Hosted multi-user storage, secret management, or Excel compatibility certification. |
 | Vercel AI SDK `generateText()` | `pnpm --dir examples/headless-workpaper run agent:ai-sdk-generate-text` | `apiShape: "AI SDK generateText -> tool -> execute"` | AI SDK tools can return before/after/restore WorkPaper proof from a `generateText()` loop. | Provider model quality or production prompt behavior. |
 | Vercel AI SDK `streamText()` | `pnpm --dir examples/headless-workpaper run agent:ai-sdk-stream-text` | `apiShape: "AI SDK streamText -> tool -> execute"`, `streamChunkTypes` | Streaming tool calls can carry the same WorkPaper proof while the model streams final text. | Browser UI streaming, telemetry retention, or non-deterministic provider output. |
 | OpenAI Responses function call | `pnpm --dir examples/headless-workpaper run agent:openai-responses` | `function_call_output`, `verified: true` | OpenAI tool calling can wrap WorkPaper readback as a structured function result. | Hosted remote MCP app review or ChatGPT UI behavior. |
@@ -4232,6 +4239,9 @@ The challenge commands edit one input, recalculate dependent formulas, export
 WorkPaper JSON, restore it, and print a `verified: true` proof object.
 Use `--from-xlsx` when the agent already has an XLSX file: Bilig imports it once
 into persisted WorkPaper JSON, then starts the same file-backed MCP server.
+That XLSX-backed MCP path also lists `analyze_workbook_risk`, a read-only tool
+fixed to the source workbook passed at startup. It reports workbook risk
+indicators before an agent trusts the imported WorkPaper and does not certify Excel compatibility.
 
 ## Agent Adoption Kit
 

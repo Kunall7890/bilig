@@ -91,6 +91,10 @@ and persists edits back to the same path.
 The `--from-xlsx` command imports an existing workbook once; pass
 `--overwrite-workpaper` only when you intentionally want to replace the generated
 WorkPaper JSON.
+When started with `--from-xlsx`, `tools/list` also includes
+`analyze_workbook_risk`. That tool is fixed to the source XLSX passed at
+startup, returns workbook risk indicators before an agent trusts the imported
+WorkPaper, and does not certify Excel compatibility.
 
 Quick protocol smoke test:
 
@@ -107,6 +111,8 @@ printf '%s\n' \
 `tools/list` should include `list_sheets`, `read_range`, `read_cell`,
 `set_cell_contents`, `set_cell_contents_and_readback`,
 `get_cell_display_value`, `export_workpaper_document`, and `validate_formula`.
+When the local server starts with `--from-xlsx`, the same `tools/list` response
+also includes `analyze_workbook_risk` for the source workbook diagnostic.
 `resources/list` should include
 `bilig://workpaper/agent-handoff` and `bilig://workpaper/current-document`.
 `prompts/list` should include `edit_and_verify_workpaper` and

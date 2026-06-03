@@ -251,6 +251,9 @@ The challenge commands edit one input, recalculate dependent formulas, export
 WorkPaper JSON, restore it, and print a `verified: true` proof object.
 Use `--from-xlsx` when the agent already has an XLSX file: Bilig imports it once
 into persisted WorkPaper JSON, then starts the same file-backed MCP server.
+That XLSX-backed MCP path also lists `analyze_workbook_risk`, a read-only tool
+fixed to the source workbook passed at startup. It reports workbook risk
+indicators before an agent trusts the imported WorkPaper and does not certify Excel compatibility.
 
 ## Agent Adoption Kit
 
