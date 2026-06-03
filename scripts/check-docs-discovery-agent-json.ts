@@ -84,6 +84,40 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
     !hasCapability(
       agentJsonCapabilities,
       (capability) =>
+        Reflect.get(capability, 'name') === 'ai-sdk-generate-text-workpaper-tool' &&
+        Reflect.get(capability, 'framework') === 'Vercel AI SDK' &&
+        Reflect.get(capability, 'package') === 'ai' &&
+        Reflect.get(capability, 'adapter') === '@bilig/workpaper/ai-sdk' &&
+        Reflect.get(capability, 'api_shape') === 'generateText -> tool -> execute' &&
+        Reflect.get(capability, 'command') === 'pnpm --dir examples/headless-workpaper run agent:ai-sdk-generate-text' &&
+        Reflect.get(capability, 'docs') === 'https://proompteng.github.io/bilig/vercel-ai-sdk-langchain-spreadsheet-tool.html' &&
+        Reflect.get(capability, 'source') ===
+          'https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/ai-sdk-generate-text-tool-smoke.ts',
+    )
+  ) {
+    throw new Error('docs/.well-known/agent.json must advertise the AI SDK generateText WorkPaper tool capability')
+  }
+  if (
+    !hasCapability(
+      agentJsonCapabilities,
+      (capability) =>
+        Reflect.get(capability, 'name') === 'ai-sdk-stream-text-workpaper-tool' &&
+        Reflect.get(capability, 'framework') === 'Vercel AI SDK' &&
+        Reflect.get(capability, 'package') === 'ai' &&
+        Reflect.get(capability, 'adapter') === '@bilig/workpaper/ai-sdk' &&
+        Reflect.get(capability, 'api_shape') === 'streamText -> tool -> execute' &&
+        Reflect.get(capability, 'command') === 'pnpm --dir examples/headless-workpaper run agent:ai-sdk-stream-text' &&
+        Reflect.get(capability, 'docs') === 'https://proompteng.github.io/bilig/vercel-ai-sdk-langchain-spreadsheet-tool.html' &&
+        Reflect.get(capability, 'source') ===
+          'https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/ai-sdk-stream-text-tool-smoke.ts',
+    )
+  ) {
+    throw new Error('docs/.well-known/agent.json must advertise the AI SDK streamText WorkPaper tool capability')
+  }
+  if (
+    !hasCapability(
+      agentJsonCapabilities,
+      (capability) =>
         Reflect.get(capability, 'name') === 'browser-use-workpaper-formula-tool' &&
         Reflect.get(capability, 'framework') === 'Browser Use' &&
         Reflect.get(capability, 'command') ===

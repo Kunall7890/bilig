@@ -128,7 +128,7 @@ export async function requireAiSdkGenerateTextDiscovery({
     '"agent:ai-sdk-generate-text": "node --disable-warning=DEP0205 --import tsx ai-sdk-generate-text-tool-smoke.ts"',
     'examples/headless-workpaper/package.json',
   )
-  requireIncludes(headlessExamplePackage, '"ai": "6.0.182"', 'examples/headless-workpaper/package.json')
+  requireIncludes(headlessExamplePackage, '"ai": "6.0.195"', 'examples/headless-workpaper/package.json')
   requireIncludes(headlessExamplePackage, '"@types/json-schema": "7.0.15"', 'examples/headless-workpaper/package.json')
   requireIncludes(headlessExampleReadme, '## AI SDK GenerateText Tool Smoke', 'examples/headless-workpaper/README.md')
 }

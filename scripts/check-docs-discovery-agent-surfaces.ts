@@ -436,11 +436,14 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   ]) {
     requireIncludes(mcpWorkPaperToolServerDoc, required, 'docs/mcp-workpaper-tool-server.md')
   }
-  requireIncludes(
-    headlessExamplePackageJson,
+  for (const required of [
+    '"ai": "6.0.195"',
+    '"agent:ai-sdk-generate-text": "node --disable-warning=DEP0205 --import tsx ai-sdk-generate-text-tool-smoke.ts"',
+    '"agent:ai-sdk-stream-text": "node --disable-warning=DEP0205 --import tsx ai-sdk-stream-text-tool-smoke.ts"',
     '"agent:mcp-transcript": "node --disable-warning=DEP0205 --import tsx mcp-stdio-transcript.ts"',
-    'examples/headless-workpaper/package.json',
-  )
+  ] as const) {
+    requireIncludes(headlessExamplePackageJson, required, 'examples/headless-workpaper/package.json')
+  }
   requireIncludes(rootPackageJson, '"workpaper:smoke:external": "bun scripts/workpaper-external-smoke.ts"', 'package.json')
   requireIncludes(
     mcpWorkPaperToolServerDoc,
