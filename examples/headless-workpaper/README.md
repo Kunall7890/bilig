@@ -361,10 +361,12 @@ The example mirrors the Responses tool loop: model output contains
 `function_call` items, the Node process runs the WorkPaper tools, and the next
 input includes matching `function_call_output` items.
 
-For a compact streaming transcript of the same handoff, including
-`read_workpaper_summary`, `set_workpaper_input_cell`, `editedCell`,
-`before`/`after`, and `checks`, see the
-[WorkPaper tool-calling recipe](../../docs/agent-workpaper-tool-calling-recipe.md#openai-responses-streaming-transcript).
+For the OpenAI Responses Streaming Transcript of the same handoff, including
+`response.output_item.added`, `response.function_call_arguments.delta`,
+`response.function_call_arguments.done`, `response.output_item.done`, `item_id`,
+`output_index`, `call_id`, `read_workpaper_summary`, `set_workpaper_input_cell`,
+`editedCell`, `before`/`after`, and `checks`, see the [WorkPaper tool-calling
+recipe](../../docs/agent-workpaper-tool-calling-recipe.md#openai-responses-streaming-transcript).
 
 Expected proof:
 

@@ -60,6 +60,25 @@ export async function requireOpenAiResponsesDiscovery({
     requireIncludes(content, 'openai-responses-workpaper-tool-call', path)
   }
 
+  for (const [path, content] of [
+    ['docs/agent-workpaper-tool-calling-recipe.md', agentToolCallingDoc],
+    ['examples/headless-workpaper/README.md', headlessExampleReadme],
+  ] as const) {
+    requireIncludes(content, 'OpenAI Responses Streaming Transcript', path)
+    requireIncludes(content, 'response.output_item.added', path)
+    requireIncludes(content, 'response.function_call_arguments.delta', path)
+    requireIncludes(content, 'response.function_call_arguments.done', path)
+    requireIncludes(content, 'response.output_item.done', path)
+    requireIncludes(content, 'item_id', path)
+    requireIncludes(content, 'output_index', path)
+    requireIncludes(content, 'function_call_output', path)
+    requireIncludes(content, 'call_id', path)
+    requireIncludes(content, 'editedCell', path)
+    requireIncludes(content, 'before', path)
+    requireIncludes(content, 'after', path)
+    requireIncludes(content, 'checks', path)
+  }
+
   for (const required of [
     'title: OpenAI Responses WorkPaper tool calls',
     'description: Run @bilig/headless behind OpenAI Responses function calls',

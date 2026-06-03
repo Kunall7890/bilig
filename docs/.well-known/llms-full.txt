@@ -3958,26 +3958,93 @@ function dispatchOpenAiWorkPaperCall(call: OpenAiWorkPaperCall): OpenAiToolResul
 ## OpenAI Responses Streaming Transcript
 
 The transcript below shows the same wrapper shape when your application streams
-the Responses turn. The stream emits model `function_call` items, your Node
-process executes the WorkPaper tools, and the next input includes matching
-`function_call_output` items. The final answer is grounded in the computed
-formula readback from WorkPaper.
+the Responses turn. The official streaming path emits
+`response.output_item.added` when a `function_call` item starts,
+`response.function_call_arguments.delta` while arguments stream, and
+`response.function_call_arguments.done` when the application has the complete
+JSON arguments. Keep the model output item with its `call_id`, then execute the
+WorkPaper tools and append matching `function_call_output` items. The final
+answer is grounded in the computed formula readback from WorkPaper.
 
 ```json
 [
   {
     "stream": "model",
-    "type": "function_call",
-    "call_id": "call_read_01",
+    "event": "response.output_item.added",
+    "response_id": "resp_workpaper_01",
+    "output_index": 0,
+    "item": {
+      "id": "fc_read_01",
+      "type": "function_call",
+      "call_id": "call_read_01",
+      "name": "read_workpaper_summary",
+      "arguments": ""
+    }
+  },
+  {
+    "stream": "model",
+    "event": "response.function_call_arguments.delta",
+    "response_id": "resp_workpaper_01",
+    "item_id": "fc_read_01",
+    "output_index": 0,
+    "delta": "{\"range\":\"Summary!A1:B3\""
+  },
+  {
+    "stream": "model",
+    "event": "response.function_call_arguments.done",
+    "response_id": "resp_workpaper_01",
+    "item_id": "fc_read_01",
+    "output_index": 0,
     "name": "read_workpaper_summary",
     "arguments": "{\"range\":\"Summary!A1:B3\"}"
   },
   {
     "stream": "model",
-    "type": "function_call",
-    "call_id": "call_write_01",
+    "event": "response.output_item.done",
+    "response_id": "resp_workpaper_01",
+    "output_index": 0,
+    "item": {
+      "id": "fc_read_01",
+      "type": "function_call",
+      "call_id": "call_read_01",
+      "name": "read_workpaper_summary",
+      "arguments": "{\"range\":\"Summary!A1:B3\"}"
+    }
+  },
+  {
+    "stream": "model",
+    "event": "response.output_item.added",
+    "response_id": "resp_workpaper_01",
+    "output_index": 1,
+    "item": {
+      "id": "fc_write_01",
+      "type": "function_call",
+      "call_id": "call_write_01",
+      "name": "set_workpaper_input_cell",
+      "arguments": ""
+    }
+  },
+  {
+    "stream": "model",
+    "event": "response.function_call_arguments.done",
+    "response_id": "resp_workpaper_01",
+    "item_id": "fc_write_01",
+    "output_index": 1,
     "name": "set_workpaper_input_cell",
     "arguments": "{\"sheetName\":\"Revenue\",\"address\":\"B3\",\"value\":25}"
+  },
+  {
+    "stream": "model",
+    "event": "response.output_item.done",
+    "response_id": "resp_workpaper_01",
+    "output_index": 1,
+    "item": {
+      "id": "fc_write_01",
+      "type": "function_call",
+      "call_id": "call_write_01",
+      "name": "set_workpaper_input_cell",
+      "arguments": "{\"sheetName\":\"Revenue\",\"address\":\"B3\",\"value\":25}"
+    }
   },
   {
     "stream": "app",

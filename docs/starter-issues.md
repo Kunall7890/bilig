@@ -15,21 +15,18 @@ for someone opening the repository cold.
 
 Current starter queue as of June 3, 2026:
 
-- 1 open `good first issue` issue.
-- 1 open `first-timers-only` issue.
-- 1 open `help wanted` issue.
+- 0 open `good first issue` issues.
+- 0 open `first-timers-only` issues.
+- 0 open `help wanted` issues.
 - 0 starter issues are code or test tasks.
-- 1 starter issue is a focused docs or integration transcript task.
+- 0 starter issues are focused docs or integration transcript tasks.
 - 0 starter issues are currently under active review.
 
 ## Start Here This Week
 
-If you are opening the queue cold, pick one of these before browsing the full
-issue list. They are small, current, and map to the public adoption path for
-`@bilig/headless`.
-
-- [#334: docs(agent): add OpenAI Responses streaming tool-call transcript](https://github.com/proompteng/bilig/issues/334)
-  helps agent builders see the tool-call loop.
+There are no open first-patch issues right now. Browse the full issue list or
+open a Discussion with a small agent, workbook import/export, or formula
+readback gap that you can reproduce.
 
 ## Code And Test Starters
 
@@ -38,7 +35,7 @@ ticket before the next contributor push if the queue should include one.
 
 ## Integration Docs Starters
 
-- [#334: docs(agent): add OpenAI Responses streaming tool-call transcript](https://github.com/proompteng/bilig/issues/334)
+No integration-docs starter issues are currently open.
 
 ## Claim A Starter Issue
 
