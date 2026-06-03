@@ -4,6 +4,23 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.160.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.159.0
+- Manual override: no
+
+## Features
+- feat(mcp): add xlsx risk preflight tool (e6cd641c)
+
+## Fixes
+- fix(ci): build xlsx runtime before workpaper (d75e7d64)
+
+## Internal runtime changes
+- ci(release): publish mcp registry inline (df861ffd)
+- docs(agents): advertise compatibility evaluator (7524ee9f)
+- docs(discovery): harden mcp metadata claims (96848173)
+
 ## 0.159.0
 
 - Release type: minor
