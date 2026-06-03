@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.161.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.160.2
+- Manual override: no
+
+## Features
+- feat(agent): add xlsx mcp startup guidance (d92fd792)
+
 ## 0.160.2
 
 - Release type: patch

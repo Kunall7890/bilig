@@ -156,9 +156,9 @@ When the task explicitly targets this lower-level `@bilig/headless` package,
 run the same checks against this package boundary:
 
 ```sh
-npm exec --package @bilig/headless@0.160.2 -- bilig-agent-challenge --json
-npm exec --package @bilig/headless@0.160.2 -- bilig-mcp-challenge --json
-npm exec --package @bilig/headless@0.160.2 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.161.0 -- bilig-agent-challenge --json
+npm exec --package @bilig/headless@0.161.0 -- bilig-mcp-challenge --json
+npm exec --package @bilig/headless@0.161.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 Deeper docs:
