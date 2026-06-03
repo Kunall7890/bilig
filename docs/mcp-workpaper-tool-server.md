@@ -167,7 +167,9 @@ curl -fsS https://bilig.proompteng.ai/mcp \
 ```
 
 For server-to-server clients, omit `Origin`. Browser-based clients must send an
-allowed `Origin`; Claude origins are allowed by default.
+allowed `Origin`; Claude and ChatGPT origins such as `https://chatgpt.com` are
+allowed by default. For ChatGPT Developer Mode setup, use the
+[ChatGPT Apps WorkPaper MCP](chatgpt-apps-workpaper-mcp.md) page.
 
 For a real agent workflow, point the same binary at a persisted WorkPaper JSON
 document:

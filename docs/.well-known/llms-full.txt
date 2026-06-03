@@ -652,10 +652,13 @@ Then follow the [agent MCP evaluator](docs/eval-agent-mcp.md).
 The published package also carries `AGENTS.md` and `SKILL.md` so coding agents
 inspecting `node_modules/@bilig/workpaper` can find the write/read/persist loop
 locally. Cloned checkouts expose the same workflow through
+`.mcp.json`,
 `.claude/skills/bilig-workpaper/SKILL.md`,
 `.claude/commands/bilig-workpaper-proof.md`,
+`.cursor/mcp.json`,
 `.cursor/rules/bilig-workpaper.mdc`, `.windsurf/rules/bilig-workpaper.md`,
-`.clinerules/bilig-workpaper.md`, and `.continue/rules/bilig-workpaper.md`.
+`.clinerules/bilig-workpaper.md`, `.continue/rules/bilig-workpaper.md`,
+`.vscode/mcp.json`, and `mcp/bilig-workpaper.mcp.json`.
 The public docs expose the same agent path through
 [`docs/.well-known/agent.json`](docs/.well-known/agent.json).
 
@@ -681,6 +684,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Pydantic AI                                                | `MCPToolset` should validate typed workbook proof before an agent trusts spreadsheet-style calculations.                                                                        | [Pydantic AI WorkPaper MCP tools](https://proompteng.github.io/bilig/pydantic-ai-workpaper-mcp.html)                                                                                                                                                                                                                                                                                      |
 | Microsoft Semantic Kernel                                  | `MCPStdioPlugin` should import workbook tools and verify dependent formula readback before an agent trusts plugin calls.                                                        | [Semantic Kernel WorkPaper MCP plugin](https://proompteng.github.io/bilig/semantic-kernel-workpaper-mcp.html)                                                                                                                                                                                                                                                                             |
 | OpenAI Agents SDK                                          | `tool()`, `MCPServerStdio`, or `MCPServerStreamableHttp` should return computed WorkPaper readback before an agent trusts workbook math.                                        | [OpenAI Agents SDK WorkPaper tools](https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html)                                                                                                                                                                                                                                                                             |
+| ChatGPT Apps / Developer Mode                              | A ChatGPT conversation should add Bilig as a no-auth remote MCP app before trying spreadsheet UI automation.                                                                    | [ChatGPT Apps WorkPaper MCP](https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html)                                                                                                                                                                                                                                                                                          |
 | Hugging Face smolagents                                    | A `Tool` should return structured formula readback proof to a `CodeAgent`.                                                                                                      | [smolagents WorkPaper tool](https://proompteng.github.io/bilig/smolagents-workpaper-tool.html)                                                                                                                                                                                                                                                                                            |
 | Hugging Face Gradio MCP Space                              | A Space template should expose one no-key WorkPaper readback tool before a team wires private workbook state.                                                                   | [Hugging Face Gradio MCP Space](https://proompteng.github.io/bilig/huggingface-workpaper-space.html)                                                                                                                                                                                                                                                                                      |
 | n8n, Dify, Flowise, Pipedream                              | Workflow builders need formula readback without spreadsheet UI automation; use `@bilig/n8n-nodes-workpaper`, the upstream merged Dify plugin, or the reviewed Pipedream action. | [n8n](https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html), [Dify](https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html), [Flowise](https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html), [Pipedream](https://proompteng.github.io/bilig/pipedream-workpaper-formula-readback.html)                                          |
@@ -691,7 +695,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Temporal, Airflow, Dagster Formula Assets, Kestra, Prefect | Orchestrators should own retries/history while a Node step owns workbook proof.                                                                                                 | [Temporal](https://proompteng.github.io/bilig/temporal-workpaper-activity.html), [Airflow](https://proompteng.github.io/bilig/airflow-workpaper-dag.html), [Dagster](https://proompteng.github.io/bilig/dagster-workpaper-asset.html), [Kestra](https://proompteng.github.io/bilig/kestra-workpaper-flow.html), [Prefect](https://proompteng.github.io/bilig/prefect-workpaper-flow.html) |
 | Directus Persisted Calculated Fields                       | A custom operation should persist calculated fields with formula proof.                                                                                                         | [Directus WorkPaper Flow operation](https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html)                                                                                                                                                                                                                                                                            |
 
-<!-- Source recipe docs remain in docs/open-webui-workpaper-mcp.md, docs/lobehub-workpaper-mcp.md, docs/anythingllm-workpaper-mcp.md, docs/sim-workpaper-mcp.md, docs/fastmcp-workpaper-client.md, docs/agno-workpaper-mcp.md, docs/pydantic-ai-workpaper-mcp.md, docs/semantic-kernel-workpaper-mcp.md, docs/openai-agents-sdk-workpaper-tool.md, docs/smolagents-workpaper-tool.md, docs/huggingface-workpaper-space.md, docs/n8n-workpaper-formula-readback.md, docs/dify-workpaper-formula-readback.md, docs/flowise-workpaper-formula-readback.md, docs/pipedream-workpaper-formula-readback.md, docs/vercel-ai-sdk-langchain-spreadsheet-tool.md, docs/langgraph-workpaper-toolnode-spreadsheet.md, docs/windmill-workpaper-script.md, docs/triggerdev-workpaper-task.md, docs/inngest-workpaper-step.md, docs/airbyte-workpaper-validation.md, docs/meltano-workpaper-utility.md, docs/temporal-workpaper-activity.md, docs/airflow-workpaper-dag.md, docs/dagster-workpaper-asset.md, docs/kestra-workpaper-flow.md, docs/prefect-workpaper-flow.md, and docs/directus-workpaper-flow-operation.md. -->
+<!-- Source recipe docs remain in docs/open-webui-workpaper-mcp.md, docs/lobehub-workpaper-mcp.md, docs/anythingllm-workpaper-mcp.md, docs/sim-workpaper-mcp.md, docs/fastmcp-workpaper-client.md, docs/agno-workpaper-mcp.md, docs/pydantic-ai-workpaper-mcp.md, docs/semantic-kernel-workpaper-mcp.md, docs/openai-agents-sdk-workpaper-tool.md, docs/chatgpt-apps-workpaper-mcp.md, docs/smolagents-workpaper-tool.md, docs/huggingface-workpaper-space.md, docs/n8n-workpaper-formula-readback.md, docs/dify-workpaper-formula-readback.md, docs/flowise-workpaper-formula-readback.md, docs/pipedream-workpaper-formula-readback.md, docs/vercel-ai-sdk-langchain-spreadsheet-tool.md, docs/langgraph-workpaper-toolnode-spreadsheet.md, docs/windmill-workpaper-script.md, docs/triggerdev-workpaper-task.md, docs/inngest-workpaper-step.md, docs/airbyte-workpaper-validation.md, docs/meltano-workpaper-utility.md, docs/temporal-workpaper-activity.md, docs/airflow-workpaper-dag.md, docs/dagster-workpaper-asset.md, docs/kestra-workpaper-flow.md, docs/prefect-workpaper-flow.md, and docs/directus-workpaper-flow-operation.md. -->
 
 ## Choose An Evaluation Path
 
@@ -1089,6 +1093,10 @@ The OpenAI Agents SDK guide is
 It includes direct `tool()` wrapping, private `MCPServerStdio` discovery, and
 hosted stateless `MCPServerStreamableHttp` discovery through the WorkPaper MCP
 tool loop.
+The ChatGPT Apps Developer Mode setup is
+[`docs/chatgpt-apps-workpaper-mcp.md`](docs/chatgpt-apps-workpaper-mcp.md).
+It shows the public `/mcp` endpoint as a data/tool-only remote MCP app and keeps
+custom Apps SDK component UI as future scope.
 The OpenAI Responses guide is
 [`docs/openai-responses-workpaper-tool-call.md`](docs/openai-responses-workpaper-tool-call.md).
 The agent framework guide is
@@ -4419,6 +4427,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | LobeHub                            | Custom MCP import JSON for hosted Streamable HTTP, or desktop STDIO for a writable WorkPaper file.                                    | [LobeHub WorkPaper MCP setup](lobehub-workpaper-mcp.md)                                      |
 | AnythingLLM                        | `anythingllm_mcp_servers.json` with hosted Streamable HTTP, Desktop stdio, or Docker storage-backed stdio.                            | [AnythingLLM WorkPaper MCP setup](anythingllm-workpaper-mcp.md)                              |
 | OpenAI Agents SDK                  | Function tools, `MCPServerStdio`, or hosted `MCPServerStreamableHttp` with computed WorkPaper readback.                               | [OpenAI Agents SDK WorkPaper tool](openai-agents-sdk-workpaper-tool.md)                      |
+| ChatGPT Apps / Developer Mode      | Remote MCP app using the hosted Streamable HTTP endpoint for no-key WorkPaper readback proof.                                         | [ChatGPT Apps WorkPaper MCP](chatgpt-apps-workpaper-mcp.md)                                  |
 | OpenAI Responses API               | Function-call wrapper returning proof objects.                                                                                        | [OpenAI Responses WorkPaper tool call](openai-responses-workpaper-tool-call.md)              |
 | Vercel AI SDK                      | Tool definitions that call a WorkPaper service function.                                                                              | [Vercel AI SDK spreadsheet tools](vercel-ai-sdk-langchain-spreadsheet-tool.md)               |
 | LangChain.js                       | Tool wrappers around the same WorkPaper contract.                                                                                     | [Vercel AI SDK and LangChain spreadsheet tools](vercel-ai-sdk-langchain-spreadsheet-tool.md) |
@@ -4473,6 +4482,7 @@ Do not claim success from a write call alone.
 - [Open WebUI WorkPaper setup](open-webui-workpaper-mcp.md)
 - [Open Multi-Agent WorkPaper MCP example](open-multi-agent-workpaper-mcp.md)
 - [MCP WorkPaper tool server](mcp-workpaper-tool-server.md)
+- [ChatGPT Apps WorkPaper MCP](chatgpt-apps-workpaper-mcp.md)
 - [Node framework WorkPaper adapters](node-framework-workpaper-adapters.md)
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
 - [GitHub repo](https://github.com/proompteng/bilig)
@@ -8589,6 +8599,153 @@ npm exec --package @bilig/workpaper@latest -- \
 
 ---
 
+## ChatGPT Apps WorkPaper MCP
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/chatgpt-apps-workpaper-mcp.md
+
+# ChatGPT Apps WorkPaper MCP
+
+Use this path when a ChatGPT conversation needs workbook tools without opening
+Excel, Google Sheets, LibreOffice, or a browser grid. Bilig exposes a public
+Streamable HTTP MCP endpoint that ChatGPT Developer Mode can add as a remote MCP
+app:
+
+```text
+https://bilig.proompteng.ai/mcp
+```
+
+This is a data/tool-only remote MCP app path. It does not claim a custom Apps
+SDK component UI yet. The hosted endpoint is for no-key discovery and stateless
+WorkPaper proof; use the local file-backed stdio server for private workbook
+state that must persist across calls.
+
+## What ChatGPT Gets
+
+The hosted endpoint advertises the same eight WorkPaper MCP tools as the local
+server:
+
+- `list_sheets`
+- `read_range`
+- `read_cell`
+- `set_cell_contents`
+- `set_cell_contents_and_readback`
+- `get_cell_display_value`
+- `export_workpaper_document`
+- `validate_formula`
+
+It also publishes a server card at:
+
+```text
+https://bilig.proompteng.ai/.well-known/mcp/server-card.json
+```
+
+OpenAI documents remote MCP servers for ChatGPT apps and API integrations at
+<https://developers.openai.com/api/docs/mcp>. The Apps SDK connection guide
+covers Developer Mode setup, remote HTTPS MCP URLs, metadata refresh, and write
+tool confirmations:
+<https://developers.openai.com/apps-sdk/deploy/connect-chatgpt>.
+
+## Add It In ChatGPT
+
+1. In ChatGPT, enable Developer Mode from Settings -> Apps & Connectors -> Advanced settings.
+2. Create a new app or connector from a remote MCP server.
+3. Use a name like `Bilig WorkPaper`.
+4. Set the connector URL to `https://bilig.proompteng.ai/mcp`.
+5. Use no authentication for the hosted demo endpoint.
+6. Create the app, then confirm ChatGPT lists the eight WorkPaper tools above.
+7. In a new chat, attach the Bilig WorkPaper app from the composer tool picker.
+
+When the tool list or descriptions change, refresh the app metadata from the
+ChatGPT app settings before testing again.
+
+## Copy-Paste Prompt
+
+```text
+Use the Bilig WorkPaper app's set_cell_contents_and_readback tool.
+Set Inputs!B3 to =0.4, read Summary!A1:B4, and report Summary!B3 before,
+after, and after restored readback. Do not use browsing, screenshots, Excel,
+Google Sheets, LibreOffice, or a spreadsheet UI. If the app is not attached,
+say that first instead of guessing.
+```
+
+The useful result is not "tool called". The useful result is computed cell
+evidence:
+
+```json
+{
+  "tool": "set_cell_contents_and_readback",
+  "editedCell": "Inputs!B3",
+  "readbackRange": "Summary!A1:B4",
+  "before": { "expectedArr": 60000 },
+  "after": { "expectedArr": 96000 },
+  "restored": { "expectedArr": 96000 },
+  "persistence": { "persisted": false },
+  "restoredMatchesAfter": true
+}
+```
+
+`persistence.persisted: false` is expected on the hosted endpoint because every
+request gets a fresh demo WorkPaper. The endpoint still exports serialized
+WorkPaper bytes and restores them inside the same tool proof. For real project
+state, run the stdio server against a file:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+```
+
+## Terminal Checks
+
+Check that ChatGPT browser origins can preflight the MCP endpoint:
+
+```sh
+curl -i -X OPTIONS https://bilig.proompteng.ai/mcp \
+  -H 'Origin: https://chatgpt.com' \
+  -H 'Access-Control-Request-Method: POST' \
+  -H 'Access-Control-Request-Headers: accept, content-type, mcp-protocol-version'
+```
+
+Check the published server card:
+
+```sh
+curl -fsS https://bilig.proompteng.ai/.well-known/mcp/server-card.json |
+  jq '{serverInfo, tools: [.tools[].name]}'
+```
+
+Run the no-key package evaluator before trusting the agent workflow:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
+
+Run the repo-owned OpenAI Agents SDK hosted MCP smoke if you are validating from
+a Bilig checkout:
+
+```sh
+pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-hosted-mcp
+```
+
+## Boundaries
+
+Use the ChatGPT Developer Mode app for:
+
+- quick remote MCP tool discovery;
+- proof that ChatGPT can call WorkPaper reads and verified edits;
+- explaining the WorkPaper contract to another agent or teammate.
+
+Use local file-backed stdio for:
+
+- private workbook content;
+- workflows that must persist state after the chat ends;
+- approvals, quotes, budgets, forecasts, or imports that should write a project
+  WorkPaper JSON file.
+
+Use an Apps SDK component resource later when the product needs a custom ChatGPT
+iframe UI. The current public proof is the tool contract: edit one input, read
+dependent formulas, export or restore the WorkPaper document, and return the
+exact cells that changed.
+
+---
+
 ## Sim WorkPaper MCP Setup
 
 Source: https://github.com/proompteng/bilig/blob/main/docs/sim-workpaper-mcp.md
@@ -9709,7 +9866,9 @@ curl -fsS https://bilig.proompteng.ai/mcp \
 ```
 
 For server-to-server clients, omit `Origin`. Browser-based clients must send an
-allowed `Origin`; Claude origins are allowed by default.
+allowed `Origin`; Claude and ChatGPT origins such as `https://chatgpt.com` are
+allowed by default. For ChatGPT Developer Mode setup, use the
+[ChatGPT Apps WorkPaper MCP](chatgpt-apps-workpaper-mcp.md) page.
 
 For a real agent workflow, point the same binary at a persisted WorkPaper JSON
 document:

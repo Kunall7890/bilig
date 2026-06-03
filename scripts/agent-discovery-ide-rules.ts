@@ -520,3 +520,60 @@ export function buildVscodeMcpConfig(input: AgentIdeRuleInput): string {
     2,
   )}\n`
 }
+
+function buildFileBackedMcpServerConfig(input: {
+  readonly serverKey: string
+  readonly workpaperPath: string
+  readonly workpaperPackageSpec: string
+}): string {
+  const { serverKey, workpaperPath, workpaperPackageSpec } = input
+  return `${JSON.stringify(
+    {
+      mcpServers: {
+        [serverKey]: {
+          type: 'stdio',
+          command: 'npm',
+          args: [
+            'exec',
+            '--yes',
+            '--package',
+            workpaperPackageSpec,
+            '--',
+            'bilig-workpaper-mcp',
+            '--workpaper',
+            workpaperPath,
+            '--init-demo-workpaper',
+            '--writable',
+          ],
+          env: {},
+        },
+      },
+    },
+    null,
+    2,
+  )}\n`
+}
+
+export function buildClaudeCodeMcpConfig(input: AgentIdeRuleInput): string {
+  return buildFileBackedMcpServerConfig({
+    serverKey: 'bilig-workpaper',
+    workpaperPackageSpec: input.workpaperPackageSpec,
+    workpaperPath: './.bilig/pricing.workpaper.json',
+  })
+}
+
+export function buildCursorMcpConfig(input: AgentIdeRuleInput): string {
+  return buildFileBackedMcpServerConfig({
+    serverKey: 'biligWorkpaperFile',
+    workpaperPackageSpec: input.workpaperPackageSpec,
+    workpaperPath: './.bilig/pricing.workpaper.json',
+  })
+}
+
+export function buildReusableMcpConfig(input: AgentIdeRuleInput): string {
+  return buildFileBackedMcpServerConfig({
+    serverKey: 'bilig-workpaper',
+    workpaperPackageSpec: input.workpaperPackageSpec,
+    workpaperPath: './.bilig/pricing.workpaper.json',
+  })
+}

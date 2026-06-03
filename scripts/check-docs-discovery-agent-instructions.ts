@@ -24,7 +24,10 @@ export async function requireAgentInstructionDiscovery(input: {
     continueProjectRuleNotes,
     copilotInstructions,
     copilotPrompt,
+    claudeCodeMcpConfig,
+    cursorMcpConfig,
     vscodeMcpConfig,
+    reusableMcpConfig,
     rootSkillNotes,
     workpaperPackageJson,
     workpaperPackageReadme,
@@ -45,7 +48,10 @@ export async function requireAgentInstructionDiscovery(input: {
     readFile(join(repoRoot, '.continue', 'rules', 'bilig-workpaper.md'), 'utf8'),
     readFile(join(repoRoot, '.github', 'copilot-instructions.md'), 'utf8'),
     readFile(join(repoRoot, '.github', 'prompts', 'bilig-workpaper-proof.prompt.md'), 'utf8'),
+    readFile(join(repoRoot, '.mcp.json'), 'utf8'),
+    readFile(join(repoRoot, '.cursor', 'mcp.json'), 'utf8'),
     readFile(join(repoRoot, '.vscode', 'mcp.json'), 'utf8'),
+    readFile(join(repoRoot, 'mcp', 'bilig-workpaper.mcp.json'), 'utf8'),
     readFile(join(repoRoot, 'skills', 'bilig-workpaper', 'SKILL.md'), 'utf8'),
     readFile(join(repoRoot, 'packages', 'bilig', 'package.json'), 'utf8'),
     readFile(join(repoRoot, 'packages', 'bilig', 'README.md'), 'utf8'),
@@ -250,9 +256,24 @@ export async function requireAgentInstructionDiscovery(input: {
     '.github/prompts/bilig-workpaper-proof.prompt.md',
   )
   requireIncludes(copilotPrompt, '`biligWorkpaperFile`', '.github/prompts/bilig-workpaper-proof.prompt.md')
+  requireIncludes(claudeCodeMcpConfig, '"bilig-workpaper"', '.mcp.json')
+  requireIncludes(claudeCodeMcpConfig, '"command": "npm"', '.mcp.json')
+  requireIncludes(claudeCodeMcpConfig, '"--package"', '.mcp.json')
+  requireIncludes(claudeCodeMcpConfig, '"@bilig/workpaper@latest"', '.mcp.json')
+  requireIncludes(claudeCodeMcpConfig, '"--workpaper"', '.mcp.json')
+  requireIncludes(claudeCodeMcpConfig, '"./.bilig/pricing.workpaper.json"', '.mcp.json')
+  requireIncludes(claudeCodeMcpConfig, '"--init-demo-workpaper"', '.mcp.json')
+  requireIncludes(claudeCodeMcpConfig, '"--writable"', '.mcp.json')
+  requireIncludes(cursorMcpConfig, '"biligWorkpaperFile"', '.cursor/mcp.json')
+  requireIncludes(cursorMcpConfig, '"command": "npm"', '.cursor/mcp.json')
+  requireIncludes(cursorMcpConfig, '"@bilig/workpaper@latest"', '.cursor/mcp.json')
+  requireIncludes(cursorMcpConfig, '"./.bilig/pricing.workpaper.json"', '.cursor/mcp.json')
   requireIncludes(vscodeMcpConfig, '"biligWorkpaperDemo"', '.vscode/mcp.json')
   requireIncludes(vscodeMcpConfig, '"biligWorkpaperFile"', '.vscode/mcp.json')
   requireIncludes(vscodeMcpConfig, '"${workspaceFolder}/.bilig/pricing.workpaper.json"', '.vscode/mcp.json')
+  requireIncludes(reusableMcpConfig, '"bilig-workpaper"', 'mcp/bilig-workpaper.mcp.json')
+  requireIncludes(reusableMcpConfig, '"@bilig/workpaper@latest"', 'mcp/bilig-workpaper.mcp.json')
+  requireIncludes(reusableMcpConfig, '"./.bilig/pricing.workpaper.json"', 'mcp/bilig-workpaper.mcp.json')
 
   requireIncludes(rootSkillNotes, '## Command Safety', 'skills/bilig-workpaper/SKILL.md')
   requireIncludes(rootSkillNotes, '## First Check: Agent Evaluator', 'skills/bilig-workpaper/SKILL.md')

@@ -57,6 +57,7 @@ export const docsSiteSources = [
   ['pydantic-ai-workpaper-mcp.html', 'pydantic-ai-workpaper-mcp.md'],
   ['smolagents-workpaper-tool.html', 'smolagents-workpaper-tool.md'],
   ['huggingface-workpaper-space.html', 'huggingface-workpaper-space.md'],
+  ['chatgpt-apps-workpaper-mcp.html', 'chatgpt-apps-workpaper-mcp.md'],
   ['openai-agents-sdk-workpaper-tool.html', 'openai-agents-sdk-workpaper-tool.md'],
   ['openai-responses-workpaper-tool-call.html', 'openai-responses-workpaper-tool-call.md'],
   ['vercel-ai-sdk-langchain-spreadsheet-tool.html', 'vercel-ai-sdk-langchain-spreadsheet-tool.md'],

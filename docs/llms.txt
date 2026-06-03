@@ -14,6 +14,7 @@ npm SheetJS recalculation package: https://www.npmjs.com/package/@bilig/sheetjs-
 npm ExcelJS recalculation package: https://www.npmjs.com/package/@bilig/exceljs-formula-recalc
 npm full runtime package: https://www.npmjs.com/package/@bilig/headless
 remote MCP endpoint: https://bilig.proompteng.ai/mcp
+ChatGPT Apps WorkPaper MCP: https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html
 agent instructions: https://proompteng.github.io/bilig/AGENTS.md
 agent start: https://proompteng.github.io/bilig/agent-start.txt
 well-known agent start: https://proompteng.github.io/bilig/.well-known/agent-start.txt
@@ -27,10 +28,13 @@ root agent discovery manifest: https://proompteng.github.io/bilig/agent.json
 agent skill: https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt
 Claude Code project skill: https://github.com/proompteng/bilig/blob/main/.claude/skills/bilig-workpaper/SKILL.md
 Claude Code proof command: https://github.com/proompteng/bilig/blob/main/.claude/commands/bilig-workpaper-proof.md
+Claude Code MCP config: https://github.com/proompteng/bilig/blob/main/.mcp.json
 GitHub Copilot instructions: https://github.com/proompteng/bilig/blob/main/.github/copilot-instructions.md
 GitHub Copilot prompt: https://github.com/proompteng/bilig/blob/main/.github/prompts/bilig-workpaper-proof.prompt.md
 VS Code MCP workspace config: https://github.com/proompteng/bilig/blob/main/.vscode/mcp.json
+Cursor MCP workspace config: https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json
 Cursor project rule: https://github.com/proompteng/bilig/blob/main/.cursor/rules/bilig-workpaper.mdc
+reusable MCP server config: https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json
 Windsurf Cascade workspace rule: https://github.com/proompteng/bilig/blob/main/.windsurf/rules/bilig-workpaper.md
 Cline workspace rule: https://github.com/proompteng/bilig/blob/main/.clinerules/bilig-workpaper.md
 Continue workspace rule: https://github.com/proompteng/bilig/blob/main/.continue/rules/bilig-workpaper.md
@@ -230,6 +234,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/why-agents-need-workbook-apis.html
 - https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html
 - https://proompteng.github.io/bilig/agent-workbook-challenge.html
+- https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html
 - https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html
 - https://proompteng.github.io/bilig/vercel-ai-sdk-langchain-spreadsheet-tool.html
 - https://proompteng.github.io/bilig/mastra-workpaper-spreadsheet-tool.html
@@ -246,6 +251,9 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/.well-known/mcp/server-card.json
 - https://proompteng.github.io/bilig/.well-known/mcp.json
 - https://proompteng.github.io/bilig/.well-known/mcp-server-card.json
+- https://github.com/proompteng/bilig/blob/main/.mcp.json
+- https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json
+- https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json
 - https://proompteng.github.io/bilig/.well-known/agent-skills/index.json
 - https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt
 - https://proompteng.github.io/bilig/.well-known/skills/index.json
@@ -609,6 +617,10 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://github.com/proompteng/bilig/blob/main/docs/openai-agents-sdk-workpaper-tool.md
   https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/openai-agents-sdk-tool-smoke.ts
   https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/openai-agents-sdk-mcp-smoke.ts
+- ChatGPT Apps WorkPaper MCP:
+  https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html
+  https://github.com/proompteng/bilig/blob/main/docs/chatgpt-apps-workpaper-mcp.md
+  https://bilig.proompteng.ai/mcp
 - OpenAI Responses WorkPaper tool-call recipe:
   pnpm --dir examples/headless-workpaper run agent:openai-responses
   https://proompteng.github.io/bilig/openai-responses-workpaper-tool-call.html

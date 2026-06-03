@@ -166,6 +166,16 @@
       "challenge_command": "npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge"
     },
     {
+      "name": "repo-local-mcp-configs",
+      "type": "project-mcp-configs",
+      "claude_code": "https://github.com/proompteng/bilig/blob/main/.mcp.json",
+      "cursor": "https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json",
+      "vscode": "https://github.com/proompteng/bilig/blob/main/.vscode/mcp.json",
+      "reusable": "https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json",
+      "docs": "https://proompteng.github.io/bilig/mcp-client-setup.html",
+      "workpaper_state_path": "./.bilig/pricing.workpaper.json"
+    },
+    {
       "name": "gemini-cli-workpaper-extension",
       "type": "gemini-cli-extension",
       "install": "https://github.com/proompteng/bilig",
@@ -200,6 +210,17 @@
       "command": "pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-hosted-mcp",
       "docs": "https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html",
       "source": "https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/openai-agents-sdk-hosted-mcp-smoke.ts"
+    },
+    {
+      "name": "chatgpt-apps-workpaper-mcp",
+      "type": "chatgpt-developer-mode-remote-mcp-app",
+      "framework": "ChatGPT Apps",
+      "transport": "streamable-http",
+      "endpoint": "https://bilig.proompteng.ai/mcp",
+      "authentication_required": false,
+      "docs": "https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html",
+      "server_card": "https://bilig.proompteng.ai/.well-known/mcp/server-card.json",
+      "proof_command": "npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json"
     },
     {
       "name": "fastmcp-workpaper-client",
@@ -328,6 +349,9 @@
     "https://proompteng.github.io/bilig/xlsx-cache-doctor-github-action.html",
     "https://proompteng.github.io/bilig/agent-adoption-kit.html",
     "https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html",
+    "https://github.com/proompteng/bilig/blob/main/.mcp.json",
+    "https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json",
+    "https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json",
     "https://proompteng.github.io/bilig/agent-workbook-challenge.html",
     "https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html",
     "https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html",
@@ -346,6 +370,7 @@
     "https://proompteng.github.io/bilig/agent-framework-workbook-tools.html",
     "https://proompteng.github.io/bilig/workbook-agent-intent-api.html",
     "https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html",
+    "https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html",
     "https://proompteng.github.io/bilig/langgraph-workpaper-toolnode-spreadsheet.html",
     "https://proompteng.github.io/bilig/llamaindex-workpaper-spreadsheet-tool.html",
     "https://proompteng.github.io/bilig/crewai-workpaper-spreadsheet-tool.html",

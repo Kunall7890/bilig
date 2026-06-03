@@ -32,6 +32,21 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
     !hasCapability(
       agentJsonCapabilities,
       (capability) =>
+        Reflect.get(capability, 'name') === 'repo-local-mcp-configs' &&
+        Reflect.get(capability, 'type') === 'project-mcp-configs' &&
+        Reflect.get(capability, 'claude_code') === 'https://github.com/proompteng/bilig/blob/main/.mcp.json' &&
+        Reflect.get(capability, 'cursor') === 'https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json' &&
+        Reflect.get(capability, 'vscode') === 'https://github.com/proompteng/bilig/blob/main/.vscode/mcp.json' &&
+        Reflect.get(capability, 'reusable') === 'https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json' &&
+        Reflect.get(capability, 'workpaper_state_path') === './.bilig/pricing.workpaper.json',
+    )
+  ) {
+    throw new Error('docs/.well-known/agent.json must advertise the repo-local MCP config capability')
+  }
+  if (
+    !hasCapability(
+      agentJsonCapabilities,
+      (capability) =>
         Reflect.get(capability, 'name') === 'remote-workpaper-mcp-demo' &&
         Reflect.get(capability, 'endpoint') === 'https://bilig.proompteng.ai/mcp',
     )
@@ -49,6 +64,19 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
     )
   ) {
     throw new Error('docs/.well-known/agent.json must advertise the OpenAI Agents SDK hosted MCP smoke capability')
+  }
+  if (
+    !hasCapability(
+      agentJsonCapabilities,
+      (capability) =>
+        Reflect.get(capability, 'name') === 'chatgpt-apps-workpaper-mcp' &&
+        Reflect.get(capability, 'framework') === 'ChatGPT Apps' &&
+        Reflect.get(capability, 'endpoint') === 'https://bilig.proompteng.ai/mcp' &&
+        Reflect.get(capability, 'authentication_required') === false &&
+        Reflect.get(capability, 'docs') === 'https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html',
+    )
+  ) {
+    throw new Error('docs/.well-known/agent.json must advertise the ChatGPT Apps remote MCP capability')
   }
   if (
     !hasCapability(
@@ -89,6 +117,10 @@ const requiredPublicEntrypoints = [
   'https://proompteng.github.io/bilig/.well-known/llms-full.txt',
   'https://proompteng.github.io/bilig/agent-start.txt',
   'https://proompteng.github.io/bilig/.well-known/agent-start.txt',
+  'https://github.com/proompteng/bilig/blob/main/.mcp.json',
+  'https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json',
+  'https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json',
+  'https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html',
   'https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html',
   'https://proompteng.github.io/bilig/langgraph-workpaper-toolnode-spreadsheet.html',
   'https://proompteng.github.io/bilig/llamaindex-workpaper-spreadsheet-tool.html',

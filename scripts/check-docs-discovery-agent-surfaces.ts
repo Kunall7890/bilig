@@ -53,6 +53,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     serverSideSpreadsheetAutomationNode,
     nodeFrameworkWorkpaperAdaptersDoc,
     devToWorkbookApisPost,
+    chatgptAppsWorkpaperMcpDoc,
     nodeSpreadsheetFormulaEngine,
   } = input.context
   const { headlessSpreadsheetEngineNodeServicesAgents, spreadsheetMcpServerComparison } = input
@@ -220,6 +221,8 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'Codex',
     'Claude Code and Claude Desktop',
     'OpenAI Agents SDK',
+    'ChatGPT Apps / Developer Mode',
+    'chatgpt-apps-workpaper-mcp.md',
     'MCPServerStreamableHttp',
     'Vercel AI SDK',
     'LangGraph.js',
@@ -320,6 +323,32 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   ] as const) {
     requireIncludes(openAiAgentsSdkDoc, required, 'docs/openai-agents-sdk-workpaper-tool.md')
   }
+  for (const required of [
+    'title: ChatGPT Apps WorkPaper MCP',
+    'description: Add Bilig as a ChatGPT Developer Mode remote MCP app for WorkPaper workbook readback proof.',
+    'https://bilig.proompteng.ai/mcp',
+    'Settings -> Apps & Connectors -> Advanced settings',
+    'https://developers.openai.com/api/docs/mcp',
+    'https://developers.openai.com/apps-sdk/deploy/connect-chatgpt',
+    'set_cell_contents_and_readback',
+    'Summary!A1:B4',
+    'Summary!B3',
+    'persistence.persisted: false',
+    'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
+    'pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk-hosted-mcp',
+    'Access-Control-Request-Headers: accept, content-type, mcp-protocol-version',
+    'Use an Apps SDK component resource later',
+  ] as const) {
+    requireIncludes(chatgptAppsWorkpaperMcpDoc, required, 'docs/chatgpt-apps-workpaper-mcp.md')
+  }
+  for (const [path, content] of [
+    ['README.md', readme],
+    ['docs/agent-framework-workbook-tools.md', agentFrameworkWorkbookToolsDoc],
+    ['docs/llms.txt', llms],
+  ] as const) {
+    requireIncludes(content, 'ChatGPT Apps WorkPaper MCP', path)
+    requireIncludes(content, 'chatgpt-apps-workpaper-mcp', path)
+  }
   requireIncludes(
     agentToolCallingDoc,
     'pnpm --dir examples/headless-workpaper run agent:framework-adapters',
@@ -378,6 +407,8 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   )
   requireIncludes(mcpWorkPaperToolServerDoc, 'npm run --silent agent:mcp-stdio', 'docs/mcp-workpaper-tool-server.md')
   requireIncludes(mcpWorkPaperToolServerDoc, '## Copy-Paste JSON-RPC Transcript', 'docs/mcp-workpaper-tool-server.md')
+  requireIncludes(mcpWorkPaperToolServerDoc, 'ChatGPT Apps WorkPaper MCP', 'docs/mcp-workpaper-tool-server.md')
+  requireIncludes(mcpWorkPaperToolServerDoc, 'https://chatgpt.com', 'docs/mcp-workpaper-tool-server.md')
   requireIncludes(
     mcpWorkPaperToolServerDoc,
     'pnpm --dir examples/headless-workpaper run agent:mcp-transcript',
@@ -576,7 +607,9 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     mcpbReleaseChecksumUrl,
     'claude-desktop-mcpb-workpaper.md',
     'claude mcp add-json bilig-workpaper',
+    '.mcp.json',
     '.cursor/mcp.json',
+    'mcp/bilig-workpaper.mcp.json',
     'Use the biligWorkpaperFile MCP server. List sheets, read Summary!A1:B5',
     'set Inputs!B3 to 0.4 with set_cell_contents_and_readback',
     'The useful Cursor tool set includes `list_sheets`, `read_range`',

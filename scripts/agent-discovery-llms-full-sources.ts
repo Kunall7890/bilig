@@ -49,6 +49,7 @@ const llmsFullSourceSpecs = [
   ['Pydantic AI WorkPaper MCP Tools', 'docs/pydantic-ai-workpaper-mcp.md'],
   ['smolagents WorkPaper Tool', 'docs/smolagents-workpaper-tool.md'],
   ['Hugging Face WorkPaper MCP Space', 'docs/huggingface-workpaper-space.md'],
+  ['ChatGPT Apps WorkPaper MCP', 'docs/chatgpt-apps-workpaper-mcp.md'],
   ['Sim WorkPaper MCP Setup', 'docs/sim-workpaper-mcp.md'],
   ['n8n WorkPaper Formula Readback', 'docs/n8n-workpaper-formula-readback.md'],
   ['Dify WorkPaper Formula Readback', 'docs/dify-workpaper-formula-readback.md'],

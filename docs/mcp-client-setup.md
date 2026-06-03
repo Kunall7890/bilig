@@ -215,7 +215,8 @@ manifest shape and verification prompt.
 
 ## Cursor
 
-For a project-local setup, create `.cursor/mcp.json`:
+Bilig checkouts include `.cursor/mcp.json` for project-local Cursor MCP usage.
+For another repository, copy this shape:
 
 ```json
 {
@@ -258,9 +259,10 @@ The useful Cursor tool set includes `list_sheets`, `read_range`,
 
 ## VS Code
 
-Bilig checkouts already include `.vscode/mcp.json` for GitHub Copilot agent
-mode in VS Code. Copy this shape into another repository when that project
-should get the same WorkPaper tools:
+Bilig checkouts include `.vscode/mcp.json` for GitHub Copilot agent mode in VS
+Code, plus `.mcp.json` for Claude Code and `mcp/bilig-workpaper.mcp.json` as a
+reusable file-backed server entry. Copy the VS Code shape below into another
+repository when that project should get the same WorkPaper tools:
 
 ```json
 {

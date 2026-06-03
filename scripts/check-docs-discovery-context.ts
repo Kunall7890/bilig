@@ -81,6 +81,7 @@ export interface DocsDiscoveryContext {
   readonly serverSideSpreadsheetAutomationNode: string
   readonly nodeFrameworkWorkpaperAdaptersDoc: string
   readonly devToWorkbookApisPost: string
+  readonly chatgptAppsWorkpaperMcpDoc: string
   readonly evaluateExcelFormulasInNodeTypescript: string
   readonly nodeSpreadsheetFormulaEngine: string
 }
@@ -162,6 +163,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     serverSideSpreadsheetAutomationNode,
     nodeFrameworkWorkpaperAdaptersDoc,
     devToWorkbookApisPost,
+    chatgptAppsWorkpaperMcpDoc,
     evaluateExcelFormulasInNodeTypescript,
     nodeSpreadsheetFormulaEngine,
   ] = await Promise.all([
@@ -233,6 +235,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     readFile(join(docsRoot, 'server-side-spreadsheet-automation-node.md'), 'utf8'),
     readFile(join(docsRoot, 'node-framework-workpaper-adapters.md'), 'utf8'),
     readFile(join(docsRoot, 'dev-to-workbook-apis-post.md'), 'utf8'),
+    readFile(join(docsRoot, 'chatgpt-apps-workpaper-mcp.md'), 'utf8'),
     readFile(join(docsRoot, 'evaluate-excel-formulas-in-node-typescript.md'), 'utf8'),
     readFile(join(docsRoot, 'node-spreadsheet-formula-engine.md'), 'utf8'),
   ])
@@ -313,6 +316,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     serverSideSpreadsheetAutomationNode,
     nodeFrameworkWorkpaperAdaptersDoc,
     devToWorkbookApisPost,
+    chatgptAppsWorkpaperMcpDoc,
     evaluateExcelFormulasInNodeTypescript,
     nodeSpreadsheetFormulaEngine,
   }

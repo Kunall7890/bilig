@@ -84,6 +84,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | LobeHub                            | Custom MCP import JSON for hosted Streamable HTTP, or desktop STDIO for a writable WorkPaper file.                                    | [LobeHub WorkPaper MCP setup](lobehub-workpaper-mcp.md)                                      |
 | AnythingLLM                        | `anythingllm_mcp_servers.json` with hosted Streamable HTTP, Desktop stdio, or Docker storage-backed stdio.                            | [AnythingLLM WorkPaper MCP setup](anythingllm-workpaper-mcp.md)                              |
 | OpenAI Agents SDK                  | Function tools, `MCPServerStdio`, or hosted `MCPServerStreamableHttp` with computed WorkPaper readback.                               | [OpenAI Agents SDK WorkPaper tool](openai-agents-sdk-workpaper-tool.md)                      |
+| ChatGPT Apps / Developer Mode      | Remote MCP app using the hosted Streamable HTTP endpoint for no-key WorkPaper readback proof.                                         | [ChatGPT Apps WorkPaper MCP](chatgpt-apps-workpaper-mcp.md)                                  |
 | OpenAI Responses API               | Function-call wrapper returning proof objects.                                                                                        | [OpenAI Responses WorkPaper tool call](openai-responses-workpaper-tool-call.md)              |
 | Vercel AI SDK                      | Tool definitions that call a WorkPaper service function.                                                                              | [Vercel AI SDK spreadsheet tools](vercel-ai-sdk-langchain-spreadsheet-tool.md)               |
 | LangChain.js                       | Tool wrappers around the same WorkPaper contract.                                                                                     | [Vercel AI SDK and LangChain spreadsheet tools](vercel-ai-sdk-langchain-spreadsheet-tool.md) |
@@ -138,6 +139,7 @@ Do not claim success from a write call alone.
 - [Open WebUI WorkPaper setup](open-webui-workpaper-mcp.md)
 - [Open Multi-Agent WorkPaper MCP example](open-multi-agent-workpaper-mcp.md)
 - [MCP WorkPaper tool server](mcp-workpaper-tool-server.md)
+- [ChatGPT Apps WorkPaper MCP](chatgpt-apps-workpaper-mcp.md)
 - [Node framework WorkPaper adapters](node-framework-workpaper-adapters.md)
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
 - [GitHub repo](https://github.com/proompteng/bilig)
