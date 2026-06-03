@@ -64,8 +64,8 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   const workpaperPackageSpec = '@bilig/workpaper@latest'
   const mcpbReleaseAssetUrl = 'https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb'
   const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
-  const officialRegistryLatestMarkedVersion = '0.159.0'
-  const officialRegistryLatestMarkedUpdatedAt = '2026-06-03T13:36:48.317672Z'
+  const officialRegistryLatestMarkedVersion = '0.160.2'
+  const officialRegistryLatestMarkedUpdatedAt = '2026-06-03T18:18:29.73846Z'
 
   const jekyllConfig = await readFile(join(docsRoot, '_config.yml'), 'utf8')
   const openAiAgentsSdkDoc = await readFile(join(docsRoot, 'openai-agents-sdk-workpaper-tool.md'), 'utf8')
@@ -604,7 +604,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'official Registry',
     'latest-marked server `io.github.proompteng/bilig-workpaper` is version',
     `\`${officialRegistryLatestMarkedVersion}\`, package \`@bilig/workpaper\` is version \`${officialRegistryLatestMarkedVersion}\``,
-    'Keep the repo package version separate from\nRegistry readback because release metadata sync may update it before npm and\nRegistry publication catch up.',
+    'Keep the repo package version separate from\nRegistry readback because npm and Registry publication can refresh on different\ncadences.',
     'entry was',
     `\`${officialRegistryLatestMarkedUpdatedAt}\``,
     'hosted server-card path still advertises remote',

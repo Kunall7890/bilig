@@ -26,6 +26,9 @@ export function requireLlmsInstallDiscovery({ docsLlmsInstall, llmsFull, llmsIns
   requireIncludes(llmsInstall, '.opencode/agents/bilig-workpaper.md', 'llms-install.md')
   requireIncludes(llmsInstall, 'https://proompteng.github.io/bilig/agent-rule-chooser.html', 'llms-install.md')
   requireIncludes(llmsInstall, 'set_cell_contents_and_readback', 'llms-install.md')
+  requireIncludes(llmsInstall, 'bilig-workpaper-mcp --from-xlsx ./pricing.xlsx', 'llms-install.md')
+  requireIncludes(llmsInstall, 'analyze_workbook_risk', 'llms-install.md')
+  requireIncludes(llmsInstall, 'It does not certify\nExcel compatibility.', 'llms-install.md')
   requireIncludes(llmsInstall, 'Reject answers that only say a cell was written.', 'llms-install.md')
   if (Reflect.get(parsedAgentJson, 'llms_install') !== 'https://proompteng.github.io/bilig/llms-install.html') {
     throw new Error('docs/.well-known/agent.json must advertise the agent install context page')

@@ -86,6 +86,25 @@ Use file-backed stdio for private workbook state:
 }
 ```
 
+If the project already has an `.xlsx` file and the agent needs triage before
+trusting the import, start with the direct XLSX mode:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx
+```
+
+That imports the workbook into an in-memory WorkPaper server. In this mode,
+`tools/list` also includes `analyze_workbook_risk`, a fixed-source diagnostic
+for unsupported functions, external links, macro payloads, pivots, volatile
+formulas, stale cached formulas, and concrete risk reasons. It does not certify
+Excel compatibility.
+
+Persist the imported WorkPaper only when the workflow needs a durable sidecar:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
+```
+
 Expected tools:
 
 - `list_sheets`
