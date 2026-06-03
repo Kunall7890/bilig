@@ -31,6 +31,7 @@ describe('headless package workflow', () => {
 
   it('keeps publish, benchmark, and clean consumer smoke gates in the package workflow', () => {
     const source = readFileSync(resolve(repoRoot, '.github/workflows/headless-package.yml'), 'utf8')
+    const biligPackageJsonSource = readFileSync(resolve(repoRoot, 'packages/bilig/package.json'), 'utf8')
     const greenCiScript = readFileSync(resolve(repoRoot, 'scripts/wait-for-github-ci-green.mjs'), 'utf8')
     const agentDiscoverySource = readFileSync(resolve(repoRoot, 'scripts/sync-agent-discovery-docs.ts'), 'utf8')
     const docsDiscoveryAgentSurfacesSource = readFileSync(resolve(repoRoot, 'scripts/check-docs-discovery-agent-surfaces.ts'), 'utf8')
@@ -58,6 +59,23 @@ describe('headless package workflow', () => {
     expect(source).toContain('pnpm --filter @bilig/sheetjs-formula-recalc build')
     expect(source).toContain('pnpm --filter exceljs-formula-recalc build')
     expect(source).toContain('pnpm --filter @bilig/exceljs-formula-recalc build')
+    const runtimeBuildBlocks = [...source.matchAll(/(?:^          pnpm --filter .+ build\n)+/gmu)]
+      .map((match) => match[0])
+      .filter((block) => block.includes('pnpm --filter bilig-workpaper build'))
+    expect(runtimeBuildBlocks.length).toBeGreaterThanOrEqual(3)
+    for (const runtimeBuildBlock of runtimeBuildBlocks) {
+      const scopedXlsxBuildIndex = runtimeBuildBlock.indexOf('pnpm --filter @bilig/xlsx-formula-recalc build')
+      const headlessBuildIndex = runtimeBuildBlock.indexOf('pnpm --filter @bilig/headless build')
+      const unscopedWorkpaperBuildIndex = runtimeBuildBlock.indexOf('pnpm --filter bilig-workpaper build')
+      expect(scopedXlsxBuildIndex).toBeLessThan(headlessBuildIndex)
+      expect(headlessBuildIndex).toBeLessThan(unscopedWorkpaperBuildIndex)
+    }
+    const biligBuildScript = biligPackageJsonSource
+    expect(biligBuildScript).toContain('pnpm --dir ../.. --filter @bilig/headless build')
+    expect(biligBuildScript).toContain('pnpm --dir ../.. --filter @bilig/xlsx-formula-recalc build')
+    expect(biligBuildScript.indexOf('pnpm --dir ../.. --filter @bilig/xlsx-formula-recalc build')).toBeLessThan(
+      biligBuildScript.indexOf('tsc -p tsconfig.json'),
+    )
     expect(source).toContain(
       'encoded_package_name="$(node -e "process.stdout.write(encodeURIComponent(process.argv[1]))" "$package_name")"',
     )
