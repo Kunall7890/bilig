@@ -19,6 +19,7 @@ Print a compact rule for the agent surface you use:
 
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules codex
+npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules aider
 npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules claude
 npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules copilot
 npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules cursor
@@ -37,7 +38,7 @@ For an existing repo that should receive the full starter overlay, run:
 npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
-Suggested files: `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.github/copilot-instructions.md`, `.github/instructions/bilig-workpaper.instructions.md`, `.github/prompts/bilig-workpaper-proof.prompt.md`, `.vscode/mcp.json`, `opencode.jsonc`, `.opencode/agents/bilig-workpaper.md`, `.cursor/rules/bilig-workpaper.mdc`, `.junie/mcp/mcp.json`, `.devin/rules/bilig-workpaper.md`, `.clinerules/bilig-workpaper.md`, `.continue/rules/bilig-workpaper.md`, `.windsurf/rules/bilig-workpaper.md`, `gemini-extension.json`, and `gemini-workpaper-context.md`.
+Suggested files: `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`, `CLAUDE.md`, `GEMINI.md`, `.github/copilot-instructions.md`, `.github/instructions/bilig-workpaper.instructions.md`, `.github/prompts/bilig-workpaper-proof.prompt.md`, `.vscode/mcp.json`, `opencode.jsonc`, `.opencode/agents/bilig-workpaper.md`, `.cursor/rules/bilig-workpaper.mdc`, `.junie/mcp/mcp.json`, `.devin/rules/bilig-workpaper.md`, `.clinerules/bilig-workpaper.md`, `.continue/rules/bilig-workpaper.md`, `.windsurf/rules/bilig-workpaper.md`, `gemini-extension.json`, and `gemini-workpaper-context.md`.
 
 ## Provider-backed formulas
 

@@ -10,6 +10,8 @@ import { buildWorkpaperPackageAgentInstructions, buildWorkpaperPackageSkillDocum
 import { readTextFileIfExists } from './read-if-exists.ts'
 import { syncVersionedStaticReferences } from './sync-agent-static-references.ts'
 import {
+  buildAiderConfig,
+  buildAiderConventions,
   buildClineWorkpaperRule,
   buildClaudeCodeMcpConfig,
   buildClaudeCodeProjectMemory,
@@ -618,6 +620,8 @@ async function generatedTargets(): Promise<ReadonlyArray<readonly [string, strin
     ['docs/.well-known/mcp/server-card.json', mcpServerCard],
     ['docs/.well-known/mcp.json', mcpServerCard],
     ['docs/.well-known/mcp-server-card.json', mcpServerCard],
+    ['CONVENTIONS.md', buildAiderConventions(ideRuleInput)],
+    ['.aider.conf.yml', buildAiderConfig()],
     ['.cursor/rules/bilig-workpaper.mdc', buildCursorWorkpaperRule(ideRuleInput)],
     ['.devin/rules/bilig-workpaper.md', buildWindsurfWorkpaperRule(ideRuleInput)],
     ['.windsurf/rules/bilig-workpaper.md', buildWindsurfWorkpaperRule(ideRuleInput)],

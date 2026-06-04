@@ -6,6 +6,7 @@ export interface AgentStartCliHost {
 
 type AgentStartOutputMode = 'json' | 'markdown' | 'rules'
 const agentStartRuleTargets = [
+  'aider',
   'codex',
   'claude',
   'copilot',
@@ -143,6 +144,7 @@ export function agentStartHelpText(): string {
     '  -h, --help   Print this help text.',
     '',
     'Rule targets:',
+    '  aider       CONVENTIONS.md, .aider.conf.yml',
     '  codex        AGENTS.md',
     '  claude       CLAUDE.md',
     '  copilot      .github/copilot-instructions.md, .github/instructions/*.instructions.md, .github/prompts/*.prompt.md',
@@ -203,6 +205,11 @@ export function buildAgentStartDecisionCard(): AgentStartDecisionCard {
       'validate_formula',
     ],
     agentRuleTargets: [
+      {
+        target: 'aider',
+        file: 'CONVENTIONS.md, .aider.conf.yml',
+        command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules aider',
+      },
       {
         target: 'codex',
         file: 'AGENTS.md',
@@ -308,6 +315,7 @@ More context: ${card.next.agentStart}
 function renderAgentStartRules(card: AgentStartDecisionCard, target: AgentStartRuleTarget): string {
   const rule = agentStartRuleTargetMetadata(card, target)
   const targetName = {
+    aider: 'Aider',
     claude: 'Claude Code',
     cline: 'Cline',
     codex: 'Codex',
@@ -440,6 +448,10 @@ applyTo: '**/*'
 }
 
 function agentStartRuleTargetNotes(target: AgentStartRuleTarget): string {
+  if (target === 'aider') {
+    return `Aider should load \`CONVENTIONS.md\` through \`.aider.conf.yml\` with
+a \`read\` entry. Keep these conventions small and repository-local.`
+  }
   if (target === 'copilot') {
     return `Copilot and VS Code agent mode use this as a set of related files:
 

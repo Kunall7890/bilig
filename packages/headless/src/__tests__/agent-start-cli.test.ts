@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { agentStartHelpText, buildAgentStartDecisionCard, parseAgentStartCliArgs, runAgentStartCli } from '../agent-start-cli.js'
 
 const expectedRuleTargets = [
+  ['aider', 'CONVENTIONS.md, .aider.conf.yml'],
   ['codex', 'AGENTS.md'],
   ['claude', 'CLAUDE.md'],
   [
@@ -104,6 +105,7 @@ describe('bilig-agent-start', () => {
     ['gemini', 'GEMINI.md, gemini-extension.json, gemini-workpaper-context.md', 'Gemini CLI', 'gemini-workpaper-context.md'],
     ['junie', '.junie/mcp/mcp.json', 'Junie', 'Junie reads project guidelines'],
     ['vscode-mcp', '.vscode/mcp.json', 'VS Code agent mode', 'biligWorkpaperFile'],
+    ['aider', 'CONVENTIONS.md, .aider.conf.yml', 'Aider', '.aider.conf.yml'],
     [
       'copilot',
       '.github/copilot-instructions.md, .github/instructions/bilig-workpaper.instructions.md, .github/prompts/bilig-workpaper-proof.prompt.md, .vscode/mcp.json',
@@ -158,7 +160,13 @@ describe('bilig-agent-start', () => {
       outputMode: 'rules',
       ruleTarget: 'junie',
     })
+    expect(parseAgentStartCliArgs(['--rules=aider'])).toEqual({
+      help: false,
+      outputMode: 'rules',
+      ruleTarget: 'aider',
+    })
     expect(agentStartHelpText()).toContain('Usage: bilig-agent-start')
+    expect(agentStartHelpText()).toContain('aider       CONVENTIONS.md, .aider.conf.yml')
     expect(agentStartHelpText()).toContain('cline        .clinerules/bilig-workpaper.md')
     expect(agentStartHelpText()).toContain('opencode     opencode.jsonc, .opencode/agents/bilig-workpaper.md')
     expect(agentStartHelpText()).toContain('windsurf     .devin/rules/bilig-workpaper.md or .windsurf/rules/bilig-workpaper.md')
@@ -166,10 +174,10 @@ describe('bilig-agent-start', () => {
     expect(agentStartHelpText()).toContain('vscode-mcp   .vscode/mcp.json')
     expect(() => parseAgentStartCliArgs(['--bad'])).toThrow('Unknown bilig-agent-start argument')
     expect(() => parseAgentStartCliArgs(['--rules', 'bad'])).toThrow(
-      'Unknown bilig-agent-start rules target: bad. Use one of: codex, claude, copilot, cursor, opencode, cline, continue, windsurf, gemini, junie, vscode-mcp',
+      'Unknown bilig-agent-start rules target: bad. Use one of: aider, codex, claude, copilot, cursor, opencode, cline, continue, windsurf, gemini, junie, vscode-mcp',
     )
     expect(() => parseAgentStartCliArgs(['--rules'])).toThrow(
-      'Missing target for --rules. Use one of: codex, claude, copilot, cursor, opencode, cline, continue, windsurf, gemini, junie, vscode-mcp',
+      'Missing target for --rules. Use one of: aider, codex, claude, copilot, cursor, opencode, cline, continue, windsurf, gemini, junie, vscode-mcp',
     )
   })
 })

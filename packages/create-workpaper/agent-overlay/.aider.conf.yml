@@ -1,0 +1,3 @@
+# Load the project-local Bilig WorkPaper conventions into Aider.
+read:
+  - CONVENTIONS.md

@@ -1,7 +1,7 @@
 ---
 title: Bilig WorkPaper install context for agents
 published: true
-description: Short install and verification path for OpenCode, Cline, Cursor, Junie, Copilot, Claude Code, Continue, Windsurf, VS Code MCP, and other agents that need workbook formulas without spreadsheet UI automation.
+description: Short install and verification path for OpenCode, Aider, Cline, Cursor, Junie, Copilot, Claude Code, Continue, Windsurf, VS Code MCP, and other agents that need workbook formulas without spreadsheet UI automation.
 tags: ai agents, mcp, workpaper, spreadsheet formulas, node
 canonical_url: https://proompteng.github.io/bilig/llms-install.html
 ---
@@ -41,8 +41,9 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpa
 npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
-That adds `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Copilot/VS Code instructions,
-Cursor, Junie, OpenCode, Cline, Continue, Windsurf rules, and MCP client configs
+That adds `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`, `CLAUDE.md`,
+`GEMINI.md`, Copilot/VS Code instructions, Cursor, Junie, OpenCode, Aider,
+Cline, Continue, Windsurf rules, and MCP client configs
 without replacing the app template or editing `package.json`.
 
 For a new agent-ready project:
@@ -137,6 +138,7 @@ Use the repo-local files when the agent is already inside a checkout:
 - Cursor: `.cursor/rules/bilig-workpaper.mdc`
 - Junie: `.junie/mcp/mcp.json`
 - OpenCode: `opencode.jsonc` and `.opencode/agents/bilig-workpaper.md`
+- Aider: `CONVENTIONS.md` loaded by `.aider.conf.yml`
 - Cascade/Devin: `.devin/rules/bilig-workpaper.md`
 - Cline: `.clinerules/bilig-workpaper.md`
 - Continue: `.continue/rules/bilig-workpaper.md`

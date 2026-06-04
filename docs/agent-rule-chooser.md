@@ -1,7 +1,7 @@
 ---
 title: Coding agent rule chooser for Bilig WorkPaper
 published: true
-description: Pick the Bilig instruction, rule, prompt, or MCP config for Codex, Claude Code, GitHub Copilot, VS Code, Cursor, JetBrains Junie, OpenHands, OpenCode, Windsurf, Cline, Continue, and Gemini CLI.
+description: Pick the Bilig instruction, rule, prompt, or MCP config for Codex, Claude Code, GitHub Copilot, VS Code, Cursor, JetBrains Junie, OpenHands, OpenCode, Aider, Windsurf, Cline, Continue, and Gemini CLI.
 tags: ai-agents, agent-rules, mcp, workbook formulas, coding agents
 canonical_url: https://proompteng.github.io/bilig/agent-rule-chooser.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -36,6 +36,7 @@ call alone is not success.
 | JetBrains Junie | `AGENTS.md` in the repo root; `.junie/AGENTS.md` can add narrower project memory when needed. | `.junie/mcp/mcp.json` defines the file-backed WorkPaper MCP server. | Use Junie MCP tools for workbook readback and require persisted WorkPaper evidence before reporting success. |
 | OpenHands | `AGENTS.md`, then `.agents/skills/bilig-workpaper/SKILL.md`. | `openhands mcp add bilig-workpaper --transport stdio npm -- exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable`. | Use `/mcp` in the conversation and restart after MCP config changes. |
 | OpenCode | `opencode.jsonc`, then `.opencode/agents/bilig-workpaper.md`. | `opencode.jsonc` defines the local `bilig-workpaper` MCP server and a disabled hosted demo server. | Invoke the `@bilig-workpaper` subagent for workbook-shaped tasks and require readback fields. |
+| Aider | `CONVENTIONS.md`, loaded by `.aider.conf.yml`. | Run the local `bilig-workpaper-mcp` command from the conventions when state must persist. | Keep Aider's answer tied to WorkPaper readback, export or restore evidence, and explicit limitations. |
 | Windsurf/Cascade | `.devin/rules/bilig-workpaper.md`, with `.windsurf/rules/bilig-workpaper.md` kept as a fallback. | Start with the same `bilig-evaluate --door agent-mcp --json` command, then file-backed MCP if state must persist. | The rule uses `trigger: model_decision`; require computed readback before reporting success. |
 | Cline | `.clinerules/bilig-workpaper.md`. | Add MCP separately only if your Cline setup exposes custom MCP servers. | Cline should use the workspace rule when workbook formulas, cells, or MCP spreadsheet tools appear. |
 | Continue | `.continue/rules/bilig-workpaper.md`. | Configure MCP separately through Continue if you want direct tool calls. | Local rules are version controlled; use this one for Agent, Chat, and Edit requests that touch workbook logic. |
@@ -49,8 +50,9 @@ For a repo that already has app code, add only the agent and MCP files:
 npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
-That overlay writes `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Copilot and VS Code
-instructions, Cursor, Junie, OpenHands, OpenCode, Cline, Continue,
+That overlay writes `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`,
+`CLAUDE.md`, `GEMINI.md`, Copilot and VS Code instructions, Cursor, Junie,
+OpenHands, OpenCode, Aider, Cline, Continue,
 Cascade/Devin and Windsurf rules, and MCP configs. It does not overwrite an existing app
 `README.md` or `package.json`.
 
@@ -71,6 +73,8 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 - Junie project MCP config lives at `.junie/mcp/mcp.json`; root `AGENTS.md`
   remains the shared project instruction file unless `.junie/AGENTS.md` is
   needed for Junie-only memory.
+- Aider loads `CONVENTIONS.md` through `.aider.conf.yml`; keep the file focused
+  on WorkPaper proof, not broad repo policy that belongs in `AGENTS.md`.
 - Cascade/Devin docs currently prefer `.devin/rules`; the `.windsurf/rules`
   mirror remains for compatible Windsurf/Cascade installs.
 - `GEMINI.md` is the normal Gemini CLI context file, but this repo exposes the
@@ -90,6 +94,8 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 - [OpenCode config](https://opencode.ai/docs/config/)
 - [OpenCode MCP servers](https://opencode.ai/docs/mcp-servers/)
 - [OpenCode agents](https://opencode.ai/docs/agents/)
+- [Aider conventions](https://aider.chat/docs/usage/conventions.html)
+- [Aider configuration](https://aider.chat/docs/config/aider_conf.html)
 - [Windsurf/Cascade memories and rules](https://docs.windsurf.com/windsurf/cascade/memories)
 - [Cline rules](https://docs.cline.bot/customization/cline-rules)
 - [Continue rules](https://docs.continue.dev/customize/rules)

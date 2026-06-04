@@ -117,8 +117,8 @@ shows the local risk report for an actual `.xlsx` before a Node service or
 coding agent trusts Bilig with it.
 Use the [coding agent rule chooser](docs/agent-rule-chooser.md) when you need
 the exact instruction, rule, prompt, or MCP config file for Codex, Claude Code,
-GitHub Copilot, VS Code, Cursor, Windsurf/Cascade, Cline, Continue, or Gemini
-CLI.
+GitHub Copilot, VS Code, Cursor, Junie, OpenHands, OpenCode, Aider,
+Windsurf/Cascade, Cline, Continue, or Gemini CLI.
 
 Project site: <https://proompteng.github.io/bilig/>
 
@@ -135,7 +135,7 @@ Pick the path that matches the job:
 | Pull requests can commit XLSX fixtures with stale cached values         | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md) | report-only workbook findings before the workflow blocks anything.                        |
 | A Node service, route, queue, test, or tool needs workbook logic        | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)         | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.    |
 | A coding agent or MCP client needs workbook tools without UI automation | [Agent MCP evaluator](docs/eval-agent-mcp.md)                              | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`. |
-| A coding agent needs the right repo rule or MCP config file             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                    | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Junie, OpenCode, Windsurf, Cline, Continue, or Gemini. |
+| A coding agent needs the right repo rule or MCP config file             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                    | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Junie, OpenHands, OpenCode, Aider, Windsurf, Cline, Continue, or Gemini. |
 | You are comparing Excel MCP servers, hosted spreadsheet agents, or file-first XLSX tools | [Spreadsheet MCP server comparison](docs/spreadsheet-mcp-server-comparison.md) | the account/session/file/runtime boundary before an agent trusts formula readback. |
 | You need to choose among agent, MCP, AI SDK, OpenAI, LangGraph, Semantic Kernel, or XLSX proof | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md) | the smallest command or example for the host boundary, plus what it does and does not prove. |
 | You need to see a successful agent session shape before adopting        | [Agent proof transcripts](docs/agent-proof-transcripts.md)                 | prompt, tool call, result, workbook state change, formula readback, JSON export, and restart verification.   |
@@ -474,6 +474,9 @@ the Cascade rule mirrors at
 Cline and Continue read the workspace rules from
 [`.clinerules/bilig-workpaper.md`](.clinerules/bilig-workpaper.md) and
 [`.continue/rules/bilig-workpaper.md`](.continue/rules/bilig-workpaper.md).
+Aider loads
+[`CONVENTIONS.md`](CONVENTIONS.md) through
+[`.aider.conf.yml`](.aider.conf.yml) for the same WorkPaper proof loop.
 GitHub Copilot and VS Code agent mode read the repository instructions, prompt,
 and MCP servers from
 [`.github/copilot-instructions.md`](.github/copilot-instructions.md),
@@ -564,8 +567,9 @@ For a generated project from a blank directory, run
 `@bilig/create-workpaper` package. The package source lives in
 [`packages/create-workpaper`](packages/create-workpaper), and the publish gate
 is documented in [create a Bilig WorkPaper starter](docs/create-bilig-workpaper.md).
-For an agent-ready project with `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
-Copilot / Cursor / Junie / OpenHands / OpenCode / Cline / Continue / Windsurf rules, MCP client
+For an agent-ready project with `AGENTS.md`, `CONVENTIONS.md`,
+`.aider.conf.yml`, `CLAUDE.md`, `GEMINI.md`,
+Copilot / Cursor / Junie / OpenHands / OpenCode / Aider / Cline / Continue / Windsurf rules, MCP client
 configs, and an `agent:verify` script, run
 `npm create @bilig/workpaper@latest pricing-agent -- --agent`.
 For an existing repo, run

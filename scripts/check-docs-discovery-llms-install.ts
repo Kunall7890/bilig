@@ -19,6 +19,8 @@ export function requireLlmsInstallDiscovery({ docsLlmsInstall, llmsFull, llmsIns
     'llms-install.md',
   )
   requireIncludes(llmsInstall, 'CLAUDE.md', 'llms-install.md')
+  requireIncludes(llmsInstall, 'CONVENTIONS.md', 'llms-install.md')
+  requireIncludes(llmsInstall, '.aider.conf.yml', 'llms-install.md')
   requireIncludes(llmsInstall, '.clinerules/bilig-workpaper.md', 'llms-install.md')
   requireIncludes(llmsInstall, '.cursor/rules/bilig-workpaper.mdc', 'llms-install.md')
   requireIncludes(llmsInstall, '.devin/rules/bilig-workpaper.md', 'llms-install.md')

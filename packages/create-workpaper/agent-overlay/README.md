@@ -43,7 +43,7 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpa
 The server owns `__WORKPAPER_PATH__`, initializes it when missing, writes
 through MCP tools, recalculates formulas, and persists edits back to disk.
 Project MCP configs are included for Claude Code (`.mcp.json`), Cursor, Junie,
-and VS Code. Claude Code gets the project skill at
+and VS Code. Aider loads `CONVENTIONS.md` through `.aider.conf.yml`. Claude Code gets the project skill at
 `.claude/skills/bilig-workpaper/SKILL.md`; OpenHands gets the same workflow at
 `.agents/skills/bilig-workpaper/SKILL.md`; OpenCode gets `opencode.jsonc` and
 `.opencode/agents/bilig-workpaper.md`. Other clients can use the same command
@@ -51,7 +51,7 @@ from `mcp/bilig-workpaper.mcp.json`.
 
 Agent instruction files are included for Claude Code, Codex/AGENTS-aware
 tools, Gemini CLI, GitHub Copilot, VS Code agent mode, Cursor, OpenHands,
-OpenCode, Junie, Cline, Continue, Cascade/Devin, and Windsurf/Cascade. They all
+OpenCode, Junie, Aider, Cline, Continue, Cascade/Devin, and Windsurf/Cascade. They all
 point at the same rule: read first, edit one cell or formula, recalculate, read the
 dependent output, persist or export, and report proof.
 

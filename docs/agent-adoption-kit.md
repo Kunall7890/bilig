@@ -94,6 +94,7 @@ rules instead:
 - OpenHands: `AGENTS.md`, `.agents/skills/bilig-workpaper/SKILL.md`, and
   `openhands mcp add` for the file-backed WorkPaper server
 - OpenCode: `opencode.jsonc` and `.opencode/agents/bilig-workpaper.md`
+- Aider: `CONVENTIONS.md` loaded by `.aider.conf.yml`
 - Windsurf/Cascade: `.devin/rules/bilig-workpaper.md`, with
   `.windsurf/rules/bilig-workpaper.md` as the fallback mirror
 - Cline: `.clinerules/bilig-workpaper.md`
@@ -106,9 +107,10 @@ starter:
 npm create @bilig/workpaper@latest pricing-agent -- --agent
 ```
 
-The generated project includes `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
-Copilot / VS Code instructions, Cursor, Junie, OpenHands, OpenCode, Cline,
-Continue, and Windsurf rules, plus local MCP configs and `npm run agent:verify`.
+The generated project includes `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`,
+`CLAUDE.md`, `GEMINI.md`, Copilot / VS Code instructions, Cursor, Junie,
+OpenHands, OpenCode, Aider, Cline, Continue, and Windsurf rules, plus local MCP
+configs and `npm run agent:verify`.
 
 For an existing repo, add only the agent/MCP files:
 

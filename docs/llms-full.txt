@@ -40,13 +40,15 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
    `.claude/commands/bilig-workpaper-proof.md`.
 10. If you are using OpenCode, use `opencode.jsonc` and
     `.opencode/agents/bilig-workpaper.md`.
-11. If you are using Cursor, Windsurf/Cascade, Cline, or Continue, use
+11. If you are using Aider, load `CONVENTIONS.md` through
+    `.aider.conf.yml`.
+12. If you are using Cursor, Windsurf/Cascade, Cline, or Continue, use
     `.cursor/rules/bilig-workpaper.mdc` or
     `.devin/rules/bilig-workpaper.md`,
     `.windsurf/rules/bilig-workpaper.md`,
     `.clinerules/bilig-workpaper.md`, or
     `.continue/rules/bilig-workpaper.md`.
-12. Start the MCP server or import `@bilig/workpaper` directly.
+13. Start the MCP server or import `@bilig/workpaper` directly.
 
 Remote MCP clients that support Streamable HTTP can smoke-test the stateless
 demo endpoint at `https://bilig.proompteng.ai/mcp`. Directory scanners that inspect the
@@ -468,8 +470,8 @@ shows the local risk report for an actual `.xlsx` before a Node service or
 coding agent trusts Bilig with it.
 Use the [coding agent rule chooser](docs/agent-rule-chooser.md) when you need
 the exact instruction, rule, prompt, or MCP config file for Codex, Claude Code,
-GitHub Copilot, VS Code, Cursor, Windsurf/Cascade, Cline, Continue, or Gemini
-CLI.
+GitHub Copilot, VS Code, Cursor, Junie, OpenHands, OpenCode, Aider,
+Windsurf/Cascade, Cline, Continue, or Gemini CLI.
 
 Project site: <https://proompteng.github.io/bilig/>
 
@@ -486,7 +488,7 @@ Pick the path that matches the job:
 | Pull requests can commit XLSX fixtures with stale cached values         | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md) | report-only workbook findings before the workflow blocks anything.                        |
 | A Node service, route, queue, test, or tool needs workbook logic        | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)         | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.    |
 | A coding agent or MCP client needs workbook tools without UI automation | [Agent MCP evaluator](docs/eval-agent-mcp.md)                              | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`. |
-| A coding agent needs the right repo rule or MCP config file             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                    | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Junie, OpenCode, Windsurf, Cline, Continue, or Gemini. |
+| A coding agent needs the right repo rule or MCP config file             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                    | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Junie, OpenHands, OpenCode, Aider, Windsurf, Cline, Continue, or Gemini. |
 | You are comparing Excel MCP servers, hosted spreadsheet agents, or file-first XLSX tools | [Spreadsheet MCP server comparison](docs/spreadsheet-mcp-server-comparison.md) | the account/session/file/runtime boundary before an agent trusts formula readback. |
 | You need to choose among agent, MCP, AI SDK, OpenAI, LangGraph, Semantic Kernel, or XLSX proof | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md) | the smallest command or example for the host boundary, plus what it does and does not prove. |
 | You need to see a successful agent session shape before adopting        | [Agent proof transcripts](docs/agent-proof-transcripts.md)                 | prompt, tool call, result, workbook state change, formula readback, JSON export, and restart verification.   |
@@ -825,6 +827,9 @@ the Cascade rule mirrors at
 Cline and Continue read the workspace rules from
 [`.clinerules/bilig-workpaper.md`](.clinerules/bilig-workpaper.md) and
 [`.continue/rules/bilig-workpaper.md`](.continue/rules/bilig-workpaper.md).
+Aider loads
+[`CONVENTIONS.md`](CONVENTIONS.md) through
+[`.aider.conf.yml`](.aider.conf.yml) for the same WorkPaper proof loop.
 GitHub Copilot and VS Code agent mode read the repository instructions, prompt,
 and MCP servers from
 [`.github/copilot-instructions.md`](.github/copilot-instructions.md),
@@ -915,8 +920,9 @@ For a generated project from a blank directory, run
 `@bilig/create-workpaper` package. The package source lives in
 [`packages/create-workpaper`](packages/create-workpaper), and the publish gate
 is documented in [create a Bilig WorkPaper starter](docs/create-bilig-workpaper.md).
-For an agent-ready project with `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
-Copilot / Cursor / Junie / OpenHands / OpenCode / Cline / Continue / Windsurf rules, MCP client
+For an agent-ready project with `AGENTS.md`, `CONVENTIONS.md`,
+`.aider.conf.yml`, `CLAUDE.md`, `GEMINI.md`,
+Copilot / Cursor / Junie / OpenHands / OpenCode / Aider / Cline / Continue / Windsurf rules, MCP client
 configs, and an `agent:verify` script, run
 `npm create @bilig/workpaper@latest pricing-agent -- --agent`.
 For an existing repo, run
@@ -1495,8 +1501,9 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpa
 npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
-That adds `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Copilot/VS Code instructions,
-Cursor, Junie, OpenCode, Cline, Continue, Windsurf rules, and MCP client configs
+That adds `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`, `CLAUDE.md`,
+`GEMINI.md`, Copilot/VS Code instructions, Cursor, Junie, OpenCode, Aider,
+Cline, Continue, Windsurf rules, and MCP client configs
 without replacing the app template or editing `package.json`.
 
 For a new agent-ready project:
@@ -1591,6 +1598,7 @@ Use the repo-local files when the agent is already inside a checkout:
 - Cursor: `.cursor/rules/bilig-workpaper.mdc`
 - Junie: `.junie/mcp/mcp.json`
 - OpenCode: `opencode.jsonc` and `.opencode/agents/bilig-workpaper.md`
+- Aider: `CONVENTIONS.md` loaded by `.aider.conf.yml`
 - Cascade/Devin: `.devin/rules/bilig-workpaper.md`
 - Cline: `.clinerules/bilig-workpaper.md`
 - Continue: `.continue/rules/bilig-workpaper.md`
@@ -2898,6 +2906,7 @@ rules instead:
 - OpenHands: `AGENTS.md`, `.agents/skills/bilig-workpaper/SKILL.md`, and
   `openhands mcp add` for the file-backed WorkPaper server
 - OpenCode: `opencode.jsonc` and `.opencode/agents/bilig-workpaper.md`
+- Aider: `CONVENTIONS.md` loaded by `.aider.conf.yml`
 - Windsurf/Cascade: `.devin/rules/bilig-workpaper.md`, with
   `.windsurf/rules/bilig-workpaper.md` as the fallback mirror
 - Cline: `.clinerules/bilig-workpaper.md`
@@ -2910,9 +2919,10 @@ starter:
 npm create @bilig/workpaper@latest pricing-agent -- --agent
 ```
 
-The generated project includes `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
-Copilot / VS Code instructions, Cursor, Junie, OpenHands, OpenCode, Cline,
-Continue, and Windsurf rules, plus local MCP configs and `npm run agent:verify`.
+The generated project includes `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`,
+`CLAUDE.md`, `GEMINI.md`, Copilot / VS Code instructions, Cursor, Junie,
+OpenHands, OpenCode, Aider, Cline, Continue, and Windsurf rules, plus local MCP
+configs and `npm run agent:verify`.
 
 For an existing repo, add only the agent/MCP files:
 
@@ -3174,6 +3184,7 @@ call alone is not success.
 | JetBrains Junie | `AGENTS.md` in the repo root; `.junie/AGENTS.md` can add narrower project memory when needed. | `.junie/mcp/mcp.json` defines the file-backed WorkPaper MCP server. | Use Junie MCP tools for workbook readback and require persisted WorkPaper evidence before reporting success. |
 | OpenHands | `AGENTS.md`, then `.agents/skills/bilig-workpaper/SKILL.md`. | `openhands mcp add bilig-workpaper --transport stdio npm -- exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable`. | Use `/mcp` in the conversation and restart after MCP config changes. |
 | OpenCode | `opencode.jsonc`, then `.opencode/agents/bilig-workpaper.md`. | `opencode.jsonc` defines the local `bilig-workpaper` MCP server and a disabled hosted demo server. | Invoke the `@bilig-workpaper` subagent for workbook-shaped tasks and require readback fields. |
+| Aider | `CONVENTIONS.md`, loaded by `.aider.conf.yml`. | Run the local `bilig-workpaper-mcp` command from the conventions when state must persist. | Keep Aider's answer tied to WorkPaper readback, export or restore evidence, and explicit limitations. |
 | Windsurf/Cascade | `.devin/rules/bilig-workpaper.md`, with `.windsurf/rules/bilig-workpaper.md` kept as a fallback. | Start with the same `bilig-evaluate --door agent-mcp --json` command, then file-backed MCP if state must persist. | The rule uses `trigger: model_decision`; require computed readback before reporting success. |
 | Cline | `.clinerules/bilig-workpaper.md`. | Add MCP separately only if your Cline setup exposes custom MCP servers. | Cline should use the workspace rule when workbook formulas, cells, or MCP spreadsheet tools appear. |
 | Continue | `.continue/rules/bilig-workpaper.md`. | Configure MCP separately through Continue if you want direct tool calls. | Local rules are version controlled; use this one for Agent, Chat, and Edit requests that touch workbook logic. |
@@ -3187,8 +3198,9 @@ For a repo that already has app code, add only the agent and MCP files:
 npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
-That overlay writes `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Copilot and VS Code
-instructions, Cursor, Junie, OpenHands, OpenCode, Cline, Continue,
+That overlay writes `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`,
+`CLAUDE.md`, `GEMINI.md`, Copilot and VS Code instructions, Cursor, Junie,
+OpenHands, OpenCode, Aider, Cline, Continue,
 Cascade/Devin and Windsurf rules, and MCP configs. It does not overwrite an existing app
 `README.md` or `package.json`.
 
@@ -3209,6 +3221,8 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 - Junie project MCP config lives at `.junie/mcp/mcp.json`; root `AGENTS.md`
   remains the shared project instruction file unless `.junie/AGENTS.md` is
   needed for Junie-only memory.
+- Aider loads `CONVENTIONS.md` through `.aider.conf.yml`; keep the file focused
+  on WorkPaper proof, not broad repo policy that belongs in `AGENTS.md`.
 - Cascade/Devin docs currently prefer `.devin/rules`; the `.windsurf/rules`
   mirror remains for compatible Windsurf/Cascade installs.
 - `GEMINI.md` is the normal Gemini CLI context file, but this repo exposes the
@@ -3228,6 +3242,8 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 - [OpenCode config](https://opencode.ai/docs/config/)
 - [OpenCode MCP servers](https://opencode.ai/docs/mcp-servers/)
 - [OpenCode agents](https://opencode.ai/docs/agents/)
+- [Aider conventions](https://aider.chat/docs/usage/conventions.html)
+- [Aider configuration](https://aider.chat/docs/config/aider_conf.html)
 - [Windsurf/Cascade memories and rules](https://docs.windsurf.com/windsurf/cascade/memories)
 - [Cline rules](https://docs.cline.bot/customization/cline-rules)
 - [Continue rules](https://docs.continue.dev/customize/rules)
@@ -4485,8 +4501,8 @@ npm run agent:verify
 npm run mcp:server
 ```
 
-The generated project includes `AGENTS.md`, `CLAUDE.md`, project-root
-`.mcp.json` for Claude Code, Cursor and VS Code MCP configs,
+The generated project includes `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`,
+`CLAUDE.md`, project-root `.mcp.json` for Claude Code, Cursor and VS Code MCP configs,
 `.junie/mcp/mcp.json` for Junie,
 `mcp/bilig-workpaper.mcp.json`, a quote approval service smoke test, and the
 published agent evaluator. `agent:verify` must print `verified: true` before
@@ -4499,8 +4515,9 @@ For an existing repo, add only the Bilig agent and MCP files:
 npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
-This writes `AGENTS.md`, Claude/Gemini/Copilot/Cursor/Junie/Cline/Continue/Cascade
-and Windsurf rules, and MCP configs while keeping the existing app template,
+This writes `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`,
+Claude/Gemini/Copilot/Cursor/Junie/Aider/Cline/Continue/Cascade and Windsurf
+rules, and MCP configs while keeping the existing app template,
 `README.md`, and `package.json` intact. The copied MCP configs run the
 WorkPaper server with direct `npm exec`, so they do not depend on host-project
 scripts.
@@ -6416,6 +6433,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | VS Code and Cline                  | Project-local MCP config with a writable WorkPaper file.                                                                              | [MCP client setup](mcp-client-setup.md)                                                      |
 | OpenHands                          | `AGENTS.md`, `.agents/skills/bilig-workpaper/SKILL.md`, and `openhands mcp add` for a file-backed stdio WorkPaper server.             | [OpenHands WorkPaper MCP setup](openhands-workpaper-mcp.md)                                  |
 | OpenCode                           | `opencode.jsonc` for local MCP plus `.opencode/agents/bilig-workpaper.md` for a readback-first workbook subagent.                    | [OpenCode WorkPaper MCP setup](opencode-workpaper-mcp.md)                                    |
+| Aider                              | `CONVENTIONS.md` loaded by `.aider.conf.yml`, with WorkPaper readback and persistence proof before workbook success claims.           | [Coding agent rule chooser](agent-rule-chooser.md)                                           |
 | Open WebUI                         | Hosted OpenAPI for no-bridge smoke tests, native Streamable HTTP MCP, or `mcpo` around the npm stdio server for local writable files. | [Open WebUI WorkPaper setup](open-webui-workpaper-mcp.md)                                    |
 | LobeHub                            | Custom MCP import JSON for hosted Streamable HTTP, or desktop STDIO for a writable WorkPaper file.                                    | [LobeHub WorkPaper MCP setup](lobehub-workpaper-mcp.md)                                      |
 | AnythingLLM                        | `anythingllm_mcp_servers.json` with hosted Streamable HTTP, Desktop stdio, or Docker storage-backed stdio.                            | [AnythingLLM WorkPaper MCP setup](anythingllm-workpaper-mcp.md)                              |

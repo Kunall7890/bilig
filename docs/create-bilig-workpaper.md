@@ -93,9 +93,10 @@ curl -X POST http://localhost:8788/api/quote/approval \
 - formula readback after mutation;
 - JSON persistence and restore;
 - a narrow API surface that an agent tool or backend route can own.
-- an optional agent starter with `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
+- an optional agent starter with `AGENTS.md`, `CONVENTIONS.md`,
+  `.aider.conf.yml`, `CLAUDE.md`, `GEMINI.md`,
   a Claude Code project skill and proof command, GitHub Copilot / VS Code
-  instructions, Cursor, Junie, Cline, Continue, Cascade/Devin, and Windsurf
+  instructions, Cursor, Junie, Aider conventions, Cline, Continue, Cascade/Devin, and Windsurf
   rules, project-root `.mcp.json` for Claude Code, Cursor and VS Code MCP
   configs, `.junie/mcp/mcp.json` for Junie, a reusable MCP config file, and an
   `agent:verify` command that runs the service smoke plus

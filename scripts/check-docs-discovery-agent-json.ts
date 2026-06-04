@@ -45,6 +45,8 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
         Reflect.get(capability, 'type') === 'project-agent-instructions' &&
         Reflect.get(capability, 'claude_code') === 'https://github.com/proompteng/bilig/blob/main/CLAUDE.md' &&
         Reflect.get(capability, 'codex') === 'https://github.com/proompteng/bilig/blob/main/AGENTS.md' &&
+        Reflect.get(capability, 'aider_conventions') === 'https://github.com/proompteng/bilig/blob/main/CONVENTIONS.md' &&
+        Reflect.get(capability, 'aider_config') === 'https://github.com/proompteng/bilig/blob/main/.aider.conf.yml' &&
         Reflect.get(capability, 'claude_code_skill') ===
           'https://github.com/proompteng/bilig/blob/main/.claude/skills/bilig-workpaper/SKILL.md' &&
         Reflect.get(capability, 'claude_code_command') ===

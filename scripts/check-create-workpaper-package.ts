@@ -194,6 +194,7 @@ function assertPackedTarball(): void {
     'package/package.json',
     'package/README.md',
     'package/agent-overlay/.agents/skills/bilig-workpaper/SKILL.md',
+    'package/agent-overlay/.aider.conf.yml',
     'package/agent-overlay/.claude/commands/bilig-workpaper-proof.md',
     'package/agent-overlay/.claude/skills/bilig-workpaper/SKILL.md',
     'package/agent-overlay/.clinerules/bilig-workpaper.md',
@@ -211,6 +212,7 @@ function assertPackedTarball(): void {
     'package/agent-overlay/.windsurf/rules/bilig-workpaper.md',
     'package/agent-overlay/AGENTS.md',
     'package/agent-overlay/CLAUDE.md',
+    'package/agent-overlay/CONVENTIONS.md',
     'package/agent-overlay/GEMINI.md',
     'package/agent-overlay/README.md',
     'package/agent-overlay/mcp/bilig-workpaper.mcp.json',
@@ -294,6 +296,7 @@ function assertGeneratedStarters(): void {
     '.claude/commands/bilig-workpaper-proof.md',
     '.claude/skills/bilig-workpaper/SKILL.md',
     '.agents/skills/bilig-workpaper/SKILL.md',
+    '.aider.conf.yml',
     '.clinerules/bilig-workpaper.md',
     '.continue/rules/bilig-workpaper.md',
     '.devin/rules/bilig-workpaper.md',
@@ -307,6 +310,7 @@ function assertGeneratedStarters(): void {
     '.opencode/agents/bilig-workpaper.md',
     '.vscode/mcp.json',
     '.windsurf/rules/bilig-workpaper.md',
+    'CONVENTIONS.md',
     'mcp/bilig-workpaper.mcp.json',
     'opencode.jsonc',
   ]) {
@@ -322,6 +326,10 @@ function assertGeneratedStarters(): void {
     generatedAgentInstructions.includes('bilig-evaluate --door agent-mcp --scenario revenue-plan --json'),
     'generated agent starter must teach the revenue-plan evaluator command',
   )
+  assert(
+    readFileSync(join(agentDir, '.aider.conf.yml'), 'utf8').includes('- CONVENTIONS.md'),
+    'generated agent starter Aider config must load CONVENTIONS.md',
+  )
 
   for (const expected of [
     '.agents/skills/bilig-workpaper/SKILL.md',
@@ -330,6 +338,7 @@ function assertGeneratedStarters(): void {
     '.junie/mcp/mcp.json',
     '.vscode/mcp.json',
     'mcp/bilig-workpaper.mcp.json',
+    'CONVENTIONS.md',
     'README.md',
   ]) {
     const generatedSource = readFileSync(join(agentDir, expected), 'utf8')
@@ -363,6 +372,12 @@ function assertGeneratedStarters(): void {
     existsSync(join(existingDir, '.agents', 'skills', 'bilig-workpaper', 'SKILL.md')),
     'existing-repo overlay must write the OpenHands project skill',
   )
+  assert(existsSync(join(existingDir, 'CONVENTIONS.md')), 'existing-repo overlay must write Aider conventions')
+  assert(existsSync(join(existingDir, '.aider.conf.yml')), 'existing-repo overlay must write Aider config')
+  assert(
+    readFileSync(join(existingDir, '.aider.conf.yml'), 'utf8').includes('- CONVENTIONS.md'),
+    'existing-repo overlay Aider config must load CONVENTIONS.md',
+  )
   assert(
     existsSync(join(existingDir, '.opencode', 'agents', 'bilig-workpaper.md')),
     'existing-repo overlay must write the OpenCode project agent',
@@ -381,6 +396,7 @@ function assertGeneratedStarters(): void {
   for (const expected of [
     '.mcp.json',
     '.agents/skills/bilig-workpaper/SKILL.md',
+    'CONVENTIONS.md',
     '.cursor/mcp.json',
     '.junie/mcp/mcp.json',
     '.opencode/agents/bilig-workpaper.md',
