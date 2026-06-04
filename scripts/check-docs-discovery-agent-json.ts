@@ -107,6 +107,25 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
     !hasCapability(
       agentJsonCapabilities,
       (capability) =>
+        Reflect.get(capability, 'name') === 'agent-xlsx-risk-preflight' &&
+        Reflect.get(capability, 'type') === 'mcp-stdio-transcript' &&
+        Reflect.get(capability, 'package') === '@bilig/workpaper' &&
+        Reflect.get(capability, 'command') === 'pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight' &&
+        Reflect.get(capability, 'docs') === 'https://proompteng.github.io/bilig/agent-xlsx-risk-preflight.html' &&
+        Reflect.get(capability, 'source') ===
+          'https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-xlsx-risk-preflight.ts' &&
+        Reflect.get(capability, 'expected_result') ===
+          'bilig-agent-xlsx-risk-preflight.v1 JSON with analyze_workbook_risk, Inputs!B3, Summary!B3, 60000 -> 96000, exported WorkPaper JSON, restoredReadbackMatchesAfter, excelParity not_proven, and verified true' &&
+        Reflect.get(capability, 'boundary') ===
+          'Local MCP preflight for a real XLSX before edits; risk diagnostics do not certify Excel compatibility or prove desktop Excel UI behavior.',
+    )
+  ) {
+    throw new Error('docs/.well-known/agent.json must advertise the Agent XLSX risk preflight capability')
+  }
+  if (
+    !hasCapability(
+      agentJsonCapabilities,
+      (capability) =>
         Reflect.get(capability, 'name') === 'file-backed-workpaper-mcp' &&
         Reflect.get(capability, 'server_card') === 'https://proompteng.github.io/bilig/.well-known/mcp/server-card.json' &&
         Reflect.get(capability, 'xlsx_import_command') ===
@@ -380,6 +399,8 @@ const requiredPublicEntrypoints = [
   'https://github.com/proompteng/bilig/blob/main/docs/workbook-compatibility-report.md',
   'https://proompteng.github.io/bilig/workbook-compatibility-report-transcript.html',
   'https://proompteng.github.io/bilig/workbook-compatibility-report.json',
+  'https://proompteng.github.io/bilig/agent-xlsx-risk-preflight.html',
+  'https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-xlsx-risk-preflight.ts',
   'https://github.com/proompteng/bilig/blob/main/.mcp.json',
   'https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json',
   'https://github.com/proompteng/bilig/blob/main/.junie/mcp/mcp.json',

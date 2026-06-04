@@ -548,6 +548,8 @@ requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/skills/ind
 requireIncludes(llms, '## evaluator doors', 'docs/llms.txt')
 requireIncludes(llms, '`eval-workbook-compatibility`', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/workbook-compatibility-report.html', 'docs/llms.txt')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/agent-xlsx-risk-preflight.html', 'docs/llms.txt')
+requireIncludes(llms, 'pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight', 'docs/llms.txt')
 requireIncludes(
   llms,
   'npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json',

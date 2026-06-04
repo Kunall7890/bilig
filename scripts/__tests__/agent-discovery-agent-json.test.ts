@@ -42,6 +42,17 @@ describe('agent discovery agent.json manifest', () => {
           'Diagnoses workbook risks before agent or service use; does not certify Excel compatibility, execute macros, refresh pivots or external data, or assign a compatibility percentage.',
       }),
     )
+    expect(parsed.capabilities).toContainEqual(
+      expect.objectContaining({
+        name: 'agent-xlsx-risk-preflight',
+        type: 'mcp-stdio-transcript',
+        command: 'pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight',
+        expected_result:
+          'bilig-agent-xlsx-risk-preflight.v1 JSON with analyze_workbook_risk, Inputs!B3, Summary!B3, 60000 -> 96000, exported WorkPaper JSON, restoredReadbackMatchesAfter, excelParity not_proven, and verified true',
+        boundary:
+          'Local MCP preflight for a real XLSX before edits; risk diagnostics do not certify Excel compatibility or prove desktop Excel UI behavior.',
+      }),
+    )
     expect(parsed.mcp).toMatchObject({
       xlsx_import_tools: ['analyze_workbook_risk'],
       xlsx_import_args: ['exec', '--package', '@bilig/workpaper@latest', '--', 'bilig-workpaper-mcp', '--from-xlsx', './pricing.xlsx'],

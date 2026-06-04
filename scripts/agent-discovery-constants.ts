@@ -18,6 +18,7 @@ export const versionedStaticReferenceRoots = [
   'packages/bilig/SKILL.md',
   'skills/bilig-workpaper/SKILL.md',
   'docs/agent-workbook-challenge.md',
+  'docs/agent-xlsx-risk-preflight.md',
   'docs/agent-xlsx-formula-recalculation-without-libreoffice.md',
   'docs/claude-desktop-mcpb-workpaper.md',
   'docs/formula-bug-clinic.md',

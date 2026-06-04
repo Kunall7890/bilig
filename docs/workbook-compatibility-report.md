@@ -40,6 +40,18 @@ npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- \
   bilig-evaluate --door workbook-compatibility --json
 ```
 
+For an agent that will keep working through MCP after the risk report, use the
+XLSX preflight transcript:
+
+```sh
+pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight
+```
+
+That path starts `bilig-workpaper-mcp --from-xlsx`, calls
+`analyze_workbook_risk`, edits one input through
+`set_cell_contents_and_readback`, verifies dependent formula readback, and
+exports the WorkPaper document.
+
 ## Fields to trust
 
 The v1 report stays small on purpose:
@@ -132,6 +144,7 @@ desktop Excel UI behavior. Do not add `compatibilityScore`,
 
 ## Related
 
+- [Agent XLSX risk preflight](agent-xlsx-risk-preflight.md)
 - [Workbook Compatibility Report transcript](workbook-compatibility-report-transcript.md)
 - [Evaluate stale XLSX formula caches](eval-xlsx-cache-doctor.md)
 - [XLSX Cache Doctor proof transcript](xlsx-cache-doctor-proof-transcript.md)

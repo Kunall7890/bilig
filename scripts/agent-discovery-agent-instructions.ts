@@ -97,6 +97,7 @@ npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx
+pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight
 npm exec --package ${workpaperPackageSpec} -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 \`\`\`
 
@@ -196,12 +197,14 @@ npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --from-xlsx ./
 
 Expected tools: \`list_sheets\`, \`read_range\`, \`read_cell\`, \`set_cell_contents\`, \`set_cell_contents_and_readback\`, \`get_cell_display_value\`, \`export_workpaper_document\`, and \`validate_formula\`.
 When started through the \`${workpaperPackageSpec}\` \`--from-xlsx\` path, \`tools/list\` also includes \`analyze_workbook_risk\`, a fixed-source diagnostic for the imported XLSX file. It reports workbook risk indicators and does not certify Excel compatibility. Without \`--workpaper --writable\`, edits stay in memory; add a WorkPaper JSON path only when the task needs persisted file state.
+For a maintained transcript that starts from a real XLSX, call \`analyze_workbook_risk\`, then prove \`Inputs!B3\` -> \`Summary!B3\` readback and export with \`pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight\`.
 
 ## More context
 
 - Compact map: ${siteRoot}/llms.txt
 - Full agent context: ${siteRoot}/llms-full.txt
 - Agent rule chooser: ${siteRoot}/agent-rule-chooser.html
+- Agent XLSX risk preflight: ${siteRoot}/agent-xlsx-risk-preflight.html
 - Agent instructions: ${siteRoot}/AGENTS.md
 - Agent manifest: ${siteRoot}/.well-known/agent.json
 - Agent adoption kit: ${siteRoot}/agent-adoption-kit.html

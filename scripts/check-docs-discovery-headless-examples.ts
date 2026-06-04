@@ -86,6 +86,7 @@ export async function requireHeadlessExampleDiscovery({
   await requireFile(join(repoRoot, 'examples', 'headless-workpaper', 'agent-framework-adapters.ts'))
   await requireFile(join(repoRoot, 'examples', 'headless-workpaper', 'mcp-tool-server.ts'))
   await requireFile(join(repoRoot, 'examples', 'headless-workpaper', 'mcp-stdio-server.ts'))
+  await requireFile(join(repoRoot, 'examples', 'headless-workpaper', 'mcp-xlsx-risk-preflight.ts'))
   requireDocumentedScriptsExist(headlessExampleReadme, headlessExamplePackage, 'examples/headless-workpaper/README.md')
   requirePackageScriptsDocumented(headlessExampleReadme, headlessExamplePackage, 'examples/headless-workpaper/README.md', {
     ignoredScripts: ['typecheck', 'typecheck:mcp'],
@@ -109,6 +110,8 @@ export async function requireHeadlessExampleDiscovery({
   requireIncludes(headlessExampleReadme, '## Agent Framework Adapters', 'examples/headless-workpaper/README.md')
   requireIncludes(headlessExampleReadme, 'npm run agent:mcp-tools', 'examples/headless-workpaper/README.md')
   requireIncludes(headlessExampleReadme, 'npm run agent:mcp-stdio', 'examples/headless-workpaper/README.md')
+  requireIncludes(headlessExampleReadme, 'npm run agent:mcp-xlsx-risk-preflight', 'examples/headless-workpaper/README.md')
+  requireIncludes(headlessExampleReadme, '## MCP XLSX Risk Preflight', 'examples/headless-workpaper/README.md')
   requireIncludes(headlessReadme, 'npm run --silent agent:mcp-transcript', 'packages/headless/README.md')
   requireIncludes(headlessExampleReadme, '## MCP Tool Server Shape', 'examples/headless-workpaper/README.md')
   requireIncludes(headlessExampleReadme, '## MCP Stdio Server', 'examples/headless-workpaper/README.md')
@@ -127,6 +130,11 @@ export async function requireHeadlessExampleDiscovery({
   requireIncludes(
     headlessExamplePackage,
     '"agent:mcp-stdio": "node --disable-warning=DEP0205 --import tsx mcp-stdio-server.ts"',
+    'examples/headless-workpaper/package.json',
+  )
+  requireIncludes(
+    headlessExamplePackage,
+    '"agent:mcp-xlsx-risk-preflight": "node --disable-warning=DEP0205 --import tsx mcp-xlsx-risk-preflight.ts"',
     'examples/headless-workpaper/package.json',
   )
   await requireServerlessWorkPaperApiDiscovery({

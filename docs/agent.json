@@ -214,6 +214,16 @@
       "boundary": "Diagnoses workbook risks before agent or service use; does not certify Excel compatibility, execute macros, refresh pivots or external data, or assign a compatibility percentage."
     },
     {
+      "name": "agent-xlsx-risk-preflight",
+      "type": "mcp-stdio-transcript",
+      "package": "@bilig/workpaper",
+      "command": "pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight",
+      "docs": "https://proompteng.github.io/bilig/agent-xlsx-risk-preflight.html",
+      "source": "https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-xlsx-risk-preflight.ts",
+      "expected_result": "bilig-agent-xlsx-risk-preflight.v1 JSON with analyze_workbook_risk, Inputs!B3, Summary!B3, 60000 -> 96000, exported WorkPaper JSON, restoredReadbackMatchesAfter, excelParity not_proven, and verified true",
+      "boundary": "Local MCP preflight for a real XLSX before edits; risk diagnostics do not certify Excel compatibility or prove desktop Excel UI behavior."
+    },
+    {
       "name": "file-backed-workpaper-mcp",
       "type": "mcp-stdio-server",
       "docs": "https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html",
@@ -517,6 +527,8 @@
     "https://github.com/proompteng/bilig/blob/main/docs/workbook-compatibility-report.md",
     "https://proompteng.github.io/bilig/workbook-compatibility-report-transcript.html",
     "https://proompteng.github.io/bilig/workbook-compatibility-report.json",
+    "https://proompteng.github.io/bilig/agent-xlsx-risk-preflight.html",
+    "https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-xlsx-risk-preflight.ts",
     "https://proompteng.github.io/bilig/eval-xlsx-cache-doctor.html",
     "https://proompteng.github.io/bilig/eval-xlsx-recalc.html",
     "https://proompteng.github.io/bilig/xlsx-cache-doctor-github-action.html",

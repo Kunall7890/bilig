@@ -7,6 +7,7 @@ export const docsSiteSources = [
   ['workbook-compatibility-report.html', 'workbook-compatibility-report.md'],
   ['workbook-compatibility-report-transcript.html', 'workbook-compatibility-report-transcript.md'],
   ['workbook-compatibility-report.json', 'workbook-compatibility-report.json'],
+  ['agent-xlsx-risk-preflight.html', 'agent-xlsx-risk-preflight.md'],
   ['eval-xlsx-cache-doctor.html', 'eval-xlsx-cache-doctor.md'],
   ['xlsx-cache-doctor-proof-transcript.html', 'xlsx-cache-doctor-proof-transcript.md'],
   ['eval-xlsx-recalc.html', 'eval-xlsx-recalc.md'],

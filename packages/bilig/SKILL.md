@@ -119,6 +119,12 @@ WorkPaper. Without `--workpaper --writable`, edits stay in memory; add a
 WorkPaper JSON path only when the task needs persisted file state. It does not
 certify Excel compatibility.
 
+For a maintained XLSX preflight transcript, run
+`pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight`.
+It requires `analyze_workbook_risk`, `set_cell_contents_and_readback`,
+`export_workpaper_document`, `Inputs!B3`, `Summary!B3`, `60000 -> 96000`,
+and `verified: true`.
+
 After a write, always read the dependent output cell and export the WorkPaper
 document. If the listed tool set includes `set_cell_contents_and_readback`,
 prefer it for stateless clients because the edit and dependent readback happen

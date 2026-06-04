@@ -42,6 +42,7 @@ XLSX Cache Doctor proof transcript: https://proompteng.github.io/bilig/xlsx-cach
 Workbook Compatibility Report: https://proompteng.github.io/bilig/workbook-compatibility-report.html
 Workbook Compatibility Report transcript: https://proompteng.github.io/bilig/workbook-compatibility-report-transcript.html
 Workbook Compatibility Report JSON: https://proompteng.github.io/bilig/workbook-compatibility-report.json
+Agent XLSX risk preflight: https://proompteng.github.io/bilig/agent-xlsx-risk-preflight.html
 agent discovery manifest: https://proompteng.github.io/bilig/.well-known/agent.json
 root agent discovery manifest: https://proompteng.github.io/bilig/agent.json
 agent skill: https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt
@@ -84,6 +85,16 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   Run:
   `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json`.
   `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibility-report workbook.xlsx --json`.
+- Agent XLSX risk preflight:
+  https://proompteng.github.io/bilig/agent-xlsx-risk-preflight.html
+  https://github.com/proompteng/bilig/blob/main/docs/agent-xlsx-risk-preflight.md
+  Use this when an MCP client or coding agent already has a real `.xlsx` file.
+  It starts `bilig-workpaper-mcp --from-xlsx`, calls
+  `analyze_workbook_risk`, edits `Inputs!B3` with
+  `set_cell_contents_and_readback`, verifies `Summary!B3` changes from `60000`
+  to `96000`, exports WorkPaper JSON, and keeps `excelParity: "not_proven"`.
+  Run:
+  `pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight`.
 - Evaluator for XLSX recalculation:
   https://proompteng.github.io/bilig/eval-xlsx-recalc.html
 - Evaluator for Node service formulas:

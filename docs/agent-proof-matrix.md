@@ -55,6 +55,7 @@ Expected invariants:
 | Agent MCP evaluator | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json` | `door: "agent-mcp"`, `listedResourcesAndPrompts`, `restartReadbackMatchesAfter` | A coding agent or MCP client can discover workbook tools, write a cell, read a formula value, persist state, and restart from disk. | Hosted auth, arbitrary client UX, or full workbook compatibility. |
 | Provider-backed formula boundary | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json` | `scenario: "provider-backed"`, `provider-backed-adapter-missing`, `adapterBackedDiagnosticsCleared` | Provider formulas such as `IMPORTRANGE` fail closed until the host supplies an adapter, then verify readback. | Live Google Sheets authorization or remote provider availability. |
 | Workbook Compatibility Report | `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json` | `door: "workbook-compatibility"`, `riskLevel`, `unsupportedFunctions`, `noCompatibilityScore` | A saved `.xlsx` can be inspected for unsupported functions, external links, macros, pivots, volatile functions, stale caches, and risk reasons before an agent trusts it. | Excel compatibility certification, macro execution, pivot refresh, or a defensible compatibility percentage. |
+| Agent XLSX risk preflight | `pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight` | `schemaVersion: "bilig-agent-xlsx-risk-preflight.v1"`, `analyze_workbook_risk`, `afterExpectedArr: 96000` | A local MCP client can inspect real XLSX risk, then edit an imported WorkPaper, read a dependent formula back, persist state, and export the WorkPaper JSON. | Excel compatibility certification, desktop Excel UI behavior, or safe continuation when risk findings require Excel, Graph, LibreOffice, or oracle review. |
 | XLSX cache detector | `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json` | `door: "xlsx-cache"`, `verified: true` | A saved `.xlsx` can be inspected for stale cached formula values without mutating the file. | In-process business state or JSON WorkPaper persistence. |
 | XLSX recalculation | `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json` | `recalculationCompleted: true` | An XLSX file boundary can be edited, recalculated, exported, and reimported for readback. | A full Excel clone, macro execution, charts, pivots, or desktop layout fidelity. |
 | ExcelJS recalculation | `npx --package @bilig/exceljs-formula-recalc exceljs-recalc --demo --json` | `commandSucceeded: true`, `recalculationCompleted: true`, `expectedValueMatched: true` | An existing ExcelJS workbook can get fresh formula readback after Node edits. | ExcelJS styling/export behavior, desktop Excel parity, or every Excel formula. |
@@ -83,6 +84,11 @@ Use the XLSX and ExcelJS paths when a saved file or ExcelJS object is already
 the contract. Do not force a WorkPaper model when the job is mostly workbook
 formatting, image embedding, or file metadata.
 
+Use the Agent XLSX risk preflight when an agent has a real `.xlsx` file and the
+next action would otherwise be UI automation. It keeps the workbook local,
+calls `analyze_workbook_risk` first, then requires `set_cell_contents_and_readback`
+and `export_workpaper_document` before the agent reports success.
+
 If the reviewer asks what a successful agent session looks like, send the
 [agent proof transcripts](agent-proof-transcripts.md) after this matrix. The
 transcripts show prompt, tool call, result, workbook state change, formula
@@ -99,6 +105,7 @@ manual UI workflows.
 ## Related
 
 - [Evaluate Bilig as an agent MCP workbook tool](eval-agent-mcp.md)
+- [Agent XLSX risk preflight](agent-xlsx-risk-preflight.md)
 - [Agent proof transcripts](agent-proof-transcripts.md)
 - [MCP spreadsheet formula server for coding agents](mcp-spreadsheet-formula-server-for-coding-agents.md)
 - [Microsoft Agent Framework WorkPaper MCP tools](microsoft-agent-framework-workpaper-mcp.md)

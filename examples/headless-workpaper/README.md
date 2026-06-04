@@ -67,6 +67,7 @@ job you are evaluating:
 | Can an agent safely write workbook inputs? | `npm run agent:tool-call`                    | You need before/after computed readback and persisted restore verification.             |
 | Can MCP drive a real WorkPaper tool loop?  | `npm run agent:mcp-transcript`               | You want a JSON-RPC transcript for list tools, set input, and read output.              |
 | Can MCP edit a saved WorkPaper JSON file?  | `npm run agent:mcp-file-transcript`          | You want proof that the packaged binary writes a real file-backed workbook.             |
+| Can an agent preflight a real XLSX first?  | `npm run agent:mcp-xlsx-risk-preflight`      | You want `analyze_workbook_risk`, formula readback, and WorkPaper export before trust.  |
 | Does this fit OpenAI Agents SDK?           | `npm run agent:openai-agents-sdk`            | You want real `Agent` and `tool()` objects with provider-free invocation proof.         |
 | Can OpenAI Agents SDK discover MCP tools?  | `npm run agent:openai-agents-sdk-mcp`        | You want `MCPServerStdio` discovery plus verified WorkPaper write/readback.             |
 | Can OpenAI Agents SDK use hosted MCP?      | `npm run agent:openai-agents-sdk-hosted-mcp` | You want `MCPServerStreamableHttp` discovery against Bilig's stateless public endpoint. |
@@ -97,6 +98,7 @@ expected formula family, persistence requirement, or import/export constraint.
 | MCP tool server shape        | `npm run agent:mcp-tools`                    | `tools/list`, `tools/call`, verified edits                                                                                |
 | MCP stdio transcript         | `npm run agent:mcp-transcript`               | starts stdio server, sends JSON-RPC, parses verified write/readback                                                       |
 | MCP file transcript          | `npm run agent:mcp-file-transcript`          | runs the packaged binary with `--workpaper`, persists an edit, and verifies recalculated readback                         |
+| MCP XLSX risk preflight      | `npm run agent:mcp-xlsx-risk-preflight`      | runs `--from-xlsx`, calls `analyze_workbook_risk`, edits `Inputs!B3`, reads `Summary!B3`, and exports the WorkPaper JSON  |
 | MCP stdio server             | `npm run agent:mcp-stdio`                    | newline-delimited JSON-RPC over stdin/stdout                                                                              |
 | npm package eval             | `npm run npm-eval`                           | the same `.ts` file used by the npm-only smoke test                                                                       |
 | Agent writeback check        | `npm run agent:verify`                       | exact input edits and formula preservation                                                                                |
@@ -149,6 +151,47 @@ Expected output:
 
 The exact byte count can move between package versions. The important part is
 that `verified` is `true` and `afterRestore` matches `after`.
+
+## MCP XLSX Risk Preflight
+
+Run this before an agent edits a real `.xlsx` through MCP:
+
+```sh
+npm run agent:mcp-xlsx-risk-preflight
+```
+
+The script builds `pricing-risk-preflight.xlsx`, starts
+`bilig-workpaper-mcp --from-xlsx pricing-risk-preflight.xlsx --workpaper pricing-risk-preflight.workpaper.json --writable`,
+calls `analyze_workbook_risk`, edits `Inputs!B3`, verifies `Summary!B3`
+changes from `60000` to `96000`, and exports the WorkPaper document.
+
+Expected proof:
+
+```json
+{
+  "schemaVersion": "bilig-agent-xlsx-risk-preflight.v1",
+  "risk": {
+    "schemaVersion": "bilig-workbook-compatibility-report.v1",
+    "verified": true,
+    "fileName": "pricing-risk-preflight.xlsx",
+    "formulaCellCount": 3,
+    "excelParity": "not_proven"
+  },
+  "readback": {
+    "editedCell": "Inputs!B3",
+    "beforeExpectedArr": 60000,
+    "afterExpectedArr": 96000,
+    "restoredExpectedArr": 96000,
+    "persisted": true,
+    "restoredReadbackMatchesAfter": true
+  },
+  "verified": true
+}
+```
+
+Use the [Agent XLSX risk preflight guide](../../docs/agent-xlsx-risk-preflight.md)
+when a coding agent needs the MCP tool order and limits. The diagnostic is local
+and read-only, but it is not an Excel compatibility certification.
 
 ## Agent Tool Call Loop
 

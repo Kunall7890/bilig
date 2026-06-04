@@ -123,6 +123,7 @@ npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-
 npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx
+pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight
 
 For Node or TypeScript, import @bilig/workpaper directly. Check the edit by
 reading the relevant range, writing one small input or formula, reading the
@@ -179,6 +180,14 @@ WorkPaper. Without \`--workpaper --writable\`, edits stay in memory; add a
 WorkPaper JSON path only when the task needs persisted file state. It does not
 certify Excel compatibility.
 
+For a maintained transcript that starts from a real XLSX, call
+\`analyze_workbook_risk\`, then prove \`Inputs!B3\` -> \`Summary!B3\` readback
+and export with:
+
+\`\`\`sh
+pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight
+\`\`\`
+
 Claude Desktop users can skip manual JSON config by installing the released
 MCPB bundle:
 
@@ -231,6 +240,7 @@ npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-
 npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
 npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
+pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight
 \`\`\`
 
 \`bilig-agent-challenge\` checks the direct WorkPaper API loop.
@@ -373,6 +383,12 @@ startup and reports workbook risk indicators before an agent trusts the imported
 WorkPaper. Without \`--workpaper --writable\`, edits stay in memory; add a
 WorkPaper JSON path only when the task needs persisted file state. It does not
 certify Excel compatibility.
+
+For a maintained XLSX preflight transcript, run
+\`pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight\`.
+It requires \`analyze_workbook_risk\`, \`set_cell_contents_and_readback\`,
+\`export_workpaper_document\`, \`Inputs!B3\`, \`Summary!B3\`, \`60000 -> 96000\`,
+and \`verified: true\`.
 
 After a write, always read the dependent output cell and export the WorkPaper
 document. If the listed tool set includes \`set_cell_contents_and_readback\`,

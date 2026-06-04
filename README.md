@@ -130,6 +130,7 @@ Pick the path that matches the job:
 | ----------------------------------------------------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | You are not sure whether XLSX, SheetJS, ExcelJS, xlsx-populate, CI, WorkPaper, or an agent owns the fix | [Stale formula readback chooser](docs/stale-formula-readback-chooser.md) | the smallest proof command for the boundary, plus when not to use it. |
 | You need to know whether a specific workbook has Bilig integration risks | [Workbook Compatibility Report](docs/workbook-compatibility-report.md)    | unsupported functions, external links, macros, pivots, volatile formulas, cache risks, and no compatibility score. |
+| A coding agent already has a real `.xlsx` and needs MCP before edits | [Agent XLSX risk preflight](docs/agent-xlsx-risk-preflight.md) | `analyze_workbook_risk`, `Inputs!B3`, `Summary!B3`, `60000 -> 96000`, export, and `verified: true`. |
 | A real `.xlsx` file has stale formula results after Node edits          | [XLSX Cache Doctor evaluator](docs/eval-xlsx-cache-doctor.md)              | stale cells, cached values, recalculated values, suggested reads, and JSON output.        |
 | You need to see the exact stale-cache output before adopting            | [XLSX Cache Doctor proof transcript](docs/xlsx-cache-doctor-proof-transcript.md) | `Summary!B2` and `Sheet1!B61` cached-vs-recalculated proof, plus CI boundary.       |
 | Pull requests can commit XLSX fixtures with stale cached values         | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md) | report-only workbook findings before the workflow blocks anything.                        |
@@ -427,6 +428,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | XLSX or ExcelJS recalculation | [XLSX formula recalculation](docs/xlsx-formula-recalculation-node.md) and [ExcelJS formula recalculation](docs/exceljs-formula-recalculation-node.md)                                                                                                                                     | The package updates inputs, reads recalculated values, and exports or mutates the workbook boundary.        |
 | Backend service shape         | [Quote approval WorkPaper API](docs/quote-approval-workpaper-api.md)                                                                                                                                                                                                                      | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`.                 |
 | Agent or MCP tools            | [Headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md), [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md), [Gemini CLI extension](docs/gemini-cli-workpaper-extension.md), and [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md) | The agent installs a tool path, uses the handoff prompt, then proves write/readback/persist.                |
+| Agent XLSX risk preflight    | [Agent XLSX risk preflight](docs/agent-xlsx-risk-preflight.md)                                                                                                                                                                                                                            | The MCP path starts with `analyze_workbook_risk`, then proves formula readback and WorkPaper export.        |
 | Agent-owned XLSX files        | [Agent XLSX recalculation without LibreOffice](docs/agent-xlsx-formula-recalculation-without-libreoffice.md)                                                                                                                                                                              | A tool can edit XLSX inputs, recalculate, export, reimport, and return `verified: true`.                    |
 | Public WorkPaper review       | [Show HN WorkPaper maintainer note](docs/show-hn-formula-workbooks-node-services.md)                                                                                                                                                                                                      | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask.                     |
 | Trust and performance         | [npm provenance](docs/npm-provenance-package-trust.md) and [benchmark evidence](docs/what-workpaper-benchmark-proves.md)                                                                                                                                                                  | npm shows SLSA provenance, and benchmark claims match the checked artifact.                                 |
@@ -827,6 +829,7 @@ pnpm --dir examples/langgraph-workpaper-tool-state run smoke
 pnpm --dir examples/langchain-mcp-workpaper-toolnode run smoke
 pnpm --dir examples/headless-workpaper run agent:mcp-tools
 pnpm --dir examples/headless-workpaper run agent:mcp-file-transcript
+pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight
 pnpm --dir examples/headless-workpaper run agent:mcp-stdio
 ```
 
@@ -862,6 +865,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
+pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight
 npm exec --package @bilig/headless@latest -- bilig-workpaper-mcp
 docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
 ```
@@ -893,6 +897,11 @@ exposes MCP resources and prompts for `bilig://workpaper/agent-handoff`,
 `bilig://workpaper/current-document`, `edit_and_verify_workpaper`, and
 `debug_workpaper_formula`, so capable clients can discover the workflow before
 calling tools.
+For a maintained real-XLSX transcript, run
+`pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight`.
+It calls `analyze_workbook_risk`, edits `Inputs!B3`, verifies `Summary!B3`
+changes from `60000` to `96000`, exports WorkPaper JSON, and keeps
+`excelParity: "not_proven"`.
 The Docker target is for MCP directory scanners: it seeds a demo WorkPaper JSON
 inside the image and starts the file-backed `--writable` tool surface so
 `tools/list`, `resources/list`, and `prompts/list` return the general WorkPaper

@@ -38,6 +38,7 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx
+pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight
 
 For Node or TypeScript, import @bilig/workpaper directly. Check the edit by
 reading the relevant range, writing one small input or formula, reading the
@@ -94,6 +95,14 @@ WorkPaper. Without `--workpaper --writable`, edits stay in memory; add a
 WorkPaper JSON path only when the task needs persisted file state. It does not
 certify Excel compatibility.
 
+For a maintained transcript that starts from a real XLSX, call
+`analyze_workbook_risk`, then prove `Inputs!B3` -> `Summary!B3` readback
+and export with:
+
+```sh
+pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight
+```
+
 Claude Desktop users can skip manual JSON config by installing the released
 MCPB bundle:
 
@@ -146,6 +155,7 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-
 npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight
 ```
 
 `bilig-agent-challenge` checks the direct WorkPaper API loop.

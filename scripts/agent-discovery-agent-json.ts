@@ -188,6 +188,18 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
             'Diagnoses workbook risks before agent or service use; does not certify Excel compatibility, execute macros, refresh pivots or external data, or assign a compatibility percentage.',
         },
         {
+          name: 'agent-xlsx-risk-preflight',
+          type: 'mcp-stdio-transcript',
+          package: '@bilig/workpaper',
+          command: 'pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight',
+          docs: `${siteRoot}/agent-xlsx-risk-preflight.html`,
+          source: `${repositoryUrl}/blob/main/examples/headless-workpaper/mcp-xlsx-risk-preflight.ts`,
+          expected_result:
+            'bilig-agent-xlsx-risk-preflight.v1 JSON with analyze_workbook_risk, Inputs!B3, Summary!B3, 60000 -> 96000, exported WorkPaper JSON, restoredReadbackMatchesAfter, excelParity not_proven, and verified true',
+          boundary:
+            'Local MCP preflight for a real XLSX before edits; risk diagnostics do not certify Excel compatibility or prove desktop Excel UI behavior.',
+        },
+        {
           name: 'file-backed-workpaper-mcp',
           type: 'mcp-stdio-server',
           docs: `${siteRoot}/mcp-workpaper-tool-server.html`,
@@ -482,6 +494,8 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
         `${repositoryUrl}/blob/main/docs/workbook-compatibility-report.md`,
         `${siteRoot}/workbook-compatibility-report-transcript.html`,
         `${siteRoot}/workbook-compatibility-report.json`,
+        `${siteRoot}/agent-xlsx-risk-preflight.html`,
+        `${repositoryUrl}/blob/main/examples/headless-workpaper/mcp-xlsx-risk-preflight.ts`,
         `${siteRoot}/eval-xlsx-cache-doctor.html`,
         `${siteRoot}/eval-xlsx-recalc.html`,
         `${siteRoot}/xlsx-cache-doctor-github-action.html`,

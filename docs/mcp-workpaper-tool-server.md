@@ -323,6 +323,44 @@ bilig-workpaper-mcp --workpaper pricing.workpaper.json --init-demo-workpaper --w
 file-backed tool surface, writes `Inputs!B3`, persists the JSON file, reads
 `Summary!B3`, and asserts that the recalculated value is `96000`.
 
+## XLSX Risk Preflight Before Edits
+
+When the agent starts from a real `.xlsx`, run the file-backed XLSX path before
+opening Excel, LibreOffice, Google Sheets, or a browser grid:
+
+```sh
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight
+```
+
+The example starts the published binary this way:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- \
+  bilig-workpaper-mcp \
+  --from-xlsx pricing-risk-preflight.xlsx \
+  --workpaper pricing-risk-preflight.workpaper.json \
+  --writable
+```
+
+For an agent or MCP client, the required JSON-RPC sequence is:
+
+1. `initialize`
+2. `tools/list`
+3. `tools/call` `analyze_workbook_risk` with `inspectLimit: "all"`
+4. `tools/call` `set_cell_contents_and_readback` for one small input edit
+5. `tools/call` `export_workpaper_document`
+
+The maintained transcript proves the sequence with
+`schemaVersion: "bilig-agent-xlsx-risk-preflight.v1"`,
+`analyze_workbook_risk`, `Inputs!B3`, `Summary!B3`, `60000 -> 96000`,
+`restoredReadbackMatchesAfter: true`, exported WorkPaper JSON, and
+`verified: true`.
+
+This preflight is local and read-only until a write tool is called. It reports
+workbook risk indicators and keeps `excelParity: "not_proven"`; it does not
+certify Excel compatibility.
+
 ## Docker Target For Directory Introspection
 
 MCP directories such as Glama need to start the server and run `tools/list`
