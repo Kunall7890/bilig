@@ -144,6 +144,65 @@ ${commandSafetyStandard()}
 `
 }
 
+export function buildRooWorkpaperRule(input: AgentIdeRuleInput): string {
+  const { remoteMcpEndpoint, repositoryUrl, siteRoot, workpaperPackageSpec } = input
+  return `# Bilig WorkPaper Rule
+
+Use this Roo Code workspace rule when a task mentions spreadsheet-shaped
+business logic: pricing, quote approvals, payout checks, budgets, imports,
+forecasts, stale XLSX formula caches, or formula readback after changing cells.
+
+Prefer Bilig WorkPaper state before Excel, LibreOffice, Google Sheets, browser
+grids, screenshots, or cached XLSX values when the workflow can run through
+code.
+
+Roo also reads the workspace \`AGENTS.md\` by default. This rule is narrower:
+it tells Roo exactly when to use WorkPaper and the project-local MCP server.
+
+## First Checks
+
+\`\`\`sh
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
+npm exec --package ${workpaperPackageSpec} -- bilig-agent-challenge --json
+npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge --json
+\`\`\`
+
+For local file-backed MCP work, use the project server in \`.roo/mcp.json\`:
+
+\`\`\`sh
+npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
+\`\`\`
+
+Use the hosted endpoint only for remote MCP connector discovery or stateless
+smoke tests:
+
+\`\`\`text
+${remoteMcpEndpoint}
+\`\`\`
+
+## Required Readback
+
+${workbookProofStandard()}
+
+If any readback step fails, say what failed instead of treating a write call or
+tool invocation as proof.
+
+## Command Safety
+
+${commandSafetyStandard()}
+
+## References
+
+- Roo project rules: .roo/rules/bilig-workpaper.md
+- Roo project MCP config: .roo/mcp.json
+- Docs map: ${siteRoot}/llms.txt
+- Agent rule chooser: ${siteRoot}/agent-rule-chooser.html
+- Agent handbook: ${siteRoot}/headless-workpaper-agent-handbook.html
+- Repository: ${repositoryUrl}
+`
+}
+
 export function buildWindsurfWorkpaperRule(input: AgentIdeRuleInput): string {
   const { remoteMcpEndpoint, repositoryUrl, siteRoot, workpaperPackageSpec } = input
   return `---
@@ -885,6 +944,14 @@ export function buildCursorMcpConfig(input: AgentIdeRuleInput): string {
 export function buildJunieMcpConfig(input: AgentIdeRuleInput): string {
   return buildFileBackedMcpServerConfig({
     serverKey: 'biligWorkpaperFile',
+    workpaperPackageSpec: input.workpaperPackageSpec,
+    workpaperPath: './.bilig/pricing.workpaper.json',
+  })
+}
+
+export function buildRooMcpConfig(input: AgentIdeRuleInput): string {
+  return buildFileBackedMcpServerConfig({
+    serverKey: 'bilig-workpaper',
     workpaperPackageSpec: input.workpaperPackageSpec,
     workpaperPath: './.bilig/pricing.workpaper.json',
   })

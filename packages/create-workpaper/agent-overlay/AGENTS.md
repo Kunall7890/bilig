@@ -28,6 +28,7 @@ This starter includes project instructions for common coding agents:
   `.github/instructions/bilig-workpaper.instructions.md`,
   `.github/prompts/bilig-workpaper-proof.prompt.md`, and `.vscode/mcp.json`
 - Cursor: `.cursor/rules/bilig-workpaper.mdc` and `.cursor/mcp.json`
+- Roo Code: `.roo/rules/bilig-workpaper.md` and `.roo/mcp.json`
 - OpenHands: `.agents/skills/bilig-workpaper/SKILL.md`
 - OpenCode: `opencode.jsonc` and `.opencode/agents/bilig-workpaper.md`
 - Aider: `CONVENTIONS.md` loaded by `.aider.conf.yml`

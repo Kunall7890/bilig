@@ -35,10 +35,10 @@ npm run mcp:server
 
 The agent template adds `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, a Claude Code
 project skill and proof command, GitHub Copilot / VS Code instructions, Cursor,
-Junie, Aider conventions, Cline, Continue, Cascade/Devin, Windsurf rules, an OpenHands skill at
+Roo Code, Junie, Aider conventions, Cline, Continue, Cascade/Devin, Windsurf rules, an OpenHands skill at
 `.agents/skills/bilig-workpaper/SKILL.md`, OpenCode files at `opencode.jsonc`
 and `.opencode/agents/bilig-workpaper.md`, a project-root `.mcp.json` for
-Claude Code, Cursor, Junie and VS Code MCP configs, a generic MCP config at
+Claude Code, Cursor, Roo Code, Junie and VS Code MCP configs, a generic MCP config at
 `mcp/bilig-workpaper.mcp.json`, and an `agent:verify` script that runs the
 service smoke plus the package-owned basic and revenue-plan agent evaluator
 proofs. The revenue-plan evaluator checks MCP tool discovery, mutation,
