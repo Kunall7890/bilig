@@ -6,7 +6,6 @@ import {
   requireIncludes,
   requireNoUnsupportedGoogleSheetsTenXClaims,
   requireNotIncludes,
-  requirePackageKeywords,
   requirePublishedSource,
 } from './check-docs-discovery-core.ts'
 import { loadDocsDiscoveryContext } from './check-docs-discovery-context.ts'
@@ -26,6 +25,7 @@ import { requireExternalWorkbookRecalcProofDiscovery } from './check-docs-discov
 import { requireLlmsInstallDiscovery } from './check-docs-discovery-llms-install.ts'
 import { requireSharedPublicDocsDiscovery } from './check-docs-discovery-public-docs.ts'
 import { requirePackageCliSurfaceDiscovery } from './check-docs-discovery-package-cli-surfaces.ts'
+import { requirePackageMetadataDiscovery } from './check-docs-discovery-package-metadata.ts'
 import { homepageRequiredLinks, llmsRequiredLinks } from './check-docs-discovery-public-link-manifest.ts'
 import { requireBoundaryPageDiscovery } from './check-docs-discovery-boundary-pages.ts'
 import { requireAgentPublicSurfaceDiscovery } from './check-docs-discovery-agent-surfaces.ts'
@@ -180,65 +180,7 @@ requireNoUnsupportedGoogleSheetsTenXClaims(dominanceScorecard, {
   'docs/google-sheets-api-alternative-node-workpaper.md': googleSheetsApiBoundaryDoc,
   'packages/headless/README.md': headlessReadme,
 })
-requirePackageKeywords(
-  headlessPackageJson,
-  [
-    'agent-tools',
-    'excel',
-    'excel-formulas',
-    'formula-recalculation',
-    'formula-engine',
-    'headless-spreadsheet',
-    'hyperformula',
-    'mcp',
-    'mcp-server',
-    'node',
-    'spreadsheet-automation',
-    'spreadsheet-engine',
-    'spreadsheet-formulas',
-    'typescript',
-    'workbook-api',
-    'workpaper',
-    'xlsx',
-  ],
-  'packages/headless/package.json',
-)
-requireIncludes(
-  headlessPackageJson,
-  '"homepage": "https://proompteng.github.io/bilig/try-bilig-headless-in-node.html"',
-  'packages/headless/package.json',
-)
-requirePackageKeywords(
-  scopedWorkpaperPackageJson,
-  [
-    'agent-tools',
-    'ai-agents',
-    'excel-formulas',
-    'formula-engine',
-    'headless-spreadsheet',
-    'mcp',
-    'mcp-server',
-    'model-context-protocol',
-    'node-spreadsheet',
-    'node-spreadsheet-formulas',
-    'server-side-formula-engine',
-    'server-side-spreadsheet',
-    'spreadsheet-agent',
-    'spreadsheet-automation',
-    'spreadsheet-engine',
-    'spreadsheet-formula-engine',
-    'spreadsheet-formulas',
-    'workbook-agent',
-    'workpaper',
-    'xlsx',
-  ],
-  'packages/workpaper/package.json',
-)
-requireIncludes(
-  scopedWorkpaperPackageJson,
-  '"homepage": "https://proompteng.github.io/bilig/agent-framework-workbook-tools.html"',
-  'packages/workpaper/package.json',
-)
+requirePackageMetadataDiscovery({ headlessPackageJson, scopedWorkpaperPackageJson, scopedWorkpaperPackageReadme })
 requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/workpaper"', 'docs/index.html')
 requireIncludes(index, '"installUrl": "https://www.npmjs.com/package/@bilig/workpaper"', 'docs/index.html')
 requireIncludes(index, '"https://www.npmjs.com/package/@bilig/headless"', 'docs/index.html')

@@ -16,7 +16,9 @@ const expectedRuleTargets = [
   ['continue', '.continue/rules/bilig-workpaper.md'],
   ['windsurf', '.devin/rules/bilig-workpaper.md or .windsurf/rules/bilig-workpaper.md'],
   ['gemini', 'GEMINI.md, gemini-extension.json, gemini-workpaper-context.md'],
+  ['goose', 'examples/goose-workpaper-mcp/recipe.yaml'],
   ['junie', '.junie/mcp/mcp.json'],
+  ['openhands', 'AGENTS.md, .agents/skills/bilig-workpaper/SKILL.md'],
   ['qodo', 'Qodo IDE Agentic Tools MCP JSON'],
   ['trae', '.trae/mcp.json, .trae/rules/bilig-workpaper.md'],
   ['zed', '.zed/settings.json, AGENTS.md, .agents/skills/bilig-workpaper/SKILL.md'],
@@ -106,7 +108,9 @@ describe('bilig-agent-start', () => {
     ['opencode', 'opencode.jsonc, .opencode/agents/bilig-workpaper.md', 'OpenCode', 'mode: subagent'],
     ['windsurf', '.devin/rules/bilig-workpaper.md or .windsurf/rules/bilig-workpaper.md', 'Windsurf/Cascade', 'trigger: model_decision'],
     ['gemini', 'GEMINI.md, gemini-extension.json, gemini-workpaper-context.md', 'Gemini CLI', 'gemini-workpaper-context.md'],
+    ['goose', 'examples/goose-workpaper-mcp/recipe.yaml', 'Goose', 'goose recipe validate examples/goose-workpaper-mcp/recipe.yaml'],
     ['junie', '.junie/mcp/mcp.json', 'Junie', 'Junie reads project guidelines'],
+    ['openhands', 'AGENTS.md, .agents/skills/bilig-workpaper/SKILL.md', 'OpenHands', 'openhands mcp add bilig-workpaper --transport stdio'],
     ['qodo', 'Qodo IDE Agentic Tools MCP JSON', 'Qodo IDE', 'Agentic Tools MCP settings'],
     ['trae', '.trae/mcp.json, .trae/rules/bilig-workpaper.md', 'Trae', 'Project MCP is enabled'],
     [
@@ -171,6 +175,16 @@ describe('bilig-agent-start', () => {
       outputMode: 'rules',
       ruleTarget: 'junie',
     })
+    expect(parseAgentStartCliArgs(['--rules=goose'])).toEqual({
+      help: false,
+      outputMode: 'rules',
+      ruleTarget: 'goose',
+    })
+    expect(parseAgentStartCliArgs(['--rules=openhands'])).toEqual({
+      help: false,
+      outputMode: 'rules',
+      ruleTarget: 'openhands',
+    })
     expect(parseAgentStartCliArgs(['--rules=qodo'])).toEqual({
       help: false,
       outputMode: 'rules',
@@ -196,17 +210,19 @@ describe('bilig-agent-start', () => {
     expect(agentStartHelpText()).toContain('cline        .clinerules/bilig-workpaper.md')
     expect(agentStartHelpText()).toContain('opencode     opencode.jsonc, .opencode/agents/bilig-workpaper.md')
     expect(agentStartHelpText()).toContain('windsurf     .devin/rules/bilig-workpaper.md or .windsurf/rules/bilig-workpaper.md')
+    expect(agentStartHelpText()).toContain('goose        examples/goose-workpaper-mcp/recipe.yaml')
     expect(agentStartHelpText()).toContain('junie        .junie/mcp/mcp.json')
+    expect(agentStartHelpText()).toContain('openhands    AGENTS.md, .agents/skills/bilig-workpaper/SKILL.md')
     expect(agentStartHelpText()).toContain('qodo        Qodo IDE Agentic Tools MCP JSON')
     expect(agentStartHelpText()).toContain('trae         .trae/mcp.json, .trae/rules/bilig-workpaper.md')
     expect(agentStartHelpText()).toContain('zed          .zed/settings.json, AGENTS.md, .agents/skills/bilig-workpaper/SKILL.md')
     expect(agentStartHelpText()).toContain('vscode-mcp   .vscode/mcp.json')
     expect(() => parseAgentStartCliArgs(['--bad'])).toThrow('Unknown bilig-agent-start argument')
     expect(() => parseAgentStartCliArgs(['--rules', 'bad'])).toThrow(
-      'Unknown bilig-agent-start rules target: bad. Use one of: aider, codex, claude, copilot, cursor, opencode, cline, continue, windsurf, gemini, junie, qodo, trae, zed, vscode-mcp',
+      'Unknown bilig-agent-start rules target: bad. Use one of: aider, codex, claude, copilot, cursor, opencode, cline, continue, windsurf, gemini, goose, junie, openhands, qodo, trae, zed, vscode-mcp',
     )
     expect(() => parseAgentStartCliArgs(['--rules'])).toThrow(
-      'Missing target for --rules. Use one of: aider, codex, claude, copilot, cursor, opencode, cline, continue, windsurf, gemini, junie, qodo, trae, zed, vscode-mcp',
+      'Missing target for --rules. Use one of: aider, codex, claude, copilot, cursor, opencode, cline, continue, windsurf, gemini, goose, junie, openhands, qodo, trae, zed, vscode-mcp',
     )
   })
 })

@@ -16,7 +16,9 @@ const agentStartRuleTargets = [
   'continue',
   'windsurf',
   'gemini',
+  'goose',
   'junie',
+  'openhands',
   'qodo',
   'trae',
   'zed',
@@ -157,7 +159,9 @@ export function agentStartHelpText(): string {
     '  continue     .continue/rules/bilig-workpaper.md',
     '  windsurf     .devin/rules/bilig-workpaper.md or .windsurf/rules/bilig-workpaper.md',
     '  gemini       GEMINI.md, gemini-extension.json, gemini-workpaper-context.md',
+    '  goose        examples/goose-workpaper-mcp/recipe.yaml',
     '  junie        .junie/mcp/mcp.json',
+    '  openhands    AGENTS.md, .agents/skills/bilig-workpaper/SKILL.md',
     '  qodo        Qodo IDE Agentic Tools MCP JSON',
     '  trae         .trae/mcp.json, .trae/rules/bilig-workpaper.md',
     '  zed          .zed/settings.json, AGENTS.md, .agents/skills/bilig-workpaper/SKILL.md',
@@ -262,9 +266,19 @@ export function buildAgentStartDecisionCard(): AgentStartDecisionCard {
         command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules gemini',
       },
       {
+        target: 'goose',
+        file: 'examples/goose-workpaper-mcp/recipe.yaml',
+        command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules goose',
+      },
+      {
         target: 'junie',
         file: '.junie/mcp/mcp.json',
         command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules junie',
+      },
+      {
+        target: 'openhands',
+        file: 'AGENTS.md, .agents/skills/bilig-workpaper/SKILL.md',
+        command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules openhands',
       },
       {
         target: 'qodo',
@@ -344,8 +358,10 @@ function renderAgentStartRules(card: AgentStartDecisionCard, target: AgentStartR
     copilot: 'GitHub Copilot',
     cursor: 'Cursor',
     gemini: 'Gemini CLI',
+    goose: 'Goose',
     junie: 'Junie',
     opencode: 'OpenCode',
+    openhands: 'OpenHands',
     qodo: 'Qodo IDE',
     trae: 'Trae',
     'vscode-mcp': 'VS Code agent mode',
@@ -502,6 +518,20 @@ The \`.vscode/mcp.json\` file should define \`biligWorkpaperDemo\` and
 and root \`AGENTS.md\` otherwise. Keep the project-local MCP server in
 \`.junie/mcp/mcp.json\` and require computed WorkPaper readback before
 reporting a workbook edit as complete.`
+  }
+  if (target === 'openhands') {
+    return `OpenHands should read root \`AGENTS.md\` and the project skill at
+\`.agents/skills/bilig-workpaper/SKILL.md\`. Add the file-backed MCP server
+with \`openhands mcp add bilig-workpaper --transport stdio npm -- exec --yes
+--package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper
+./.bilig/pricing.workpaper.json --init-demo-workpaper --writable\`, then use
+\`/mcp\` and restart after config changes.`
+  }
+  if (target === 'goose') {
+    return `Goose should use \`examples/goose-workpaper-mcp/recipe.yaml\` for
+the local file-backed WorkPaper MCP server. Validate the recipe before sharing
+results with \`python examples/goose-workpaper-mcp/scripts/check-goose-recipe.py\`
+and \`goose recipe validate examples/goose-workpaper-mcp/recipe.yaml\`.`
   }
   if (target === 'zed') {
     return `Zed should use the project \`.zed/settings.json\` context server

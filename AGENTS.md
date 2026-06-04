@@ -27,8 +27,12 @@ or restore evidence, not a write-call status.
   `/bilig-workpaper-proof` from `.claude/commands/bilig-workpaper-proof.md`.
 - GitHub Copilot / VS Code agent mode: use `.github/copilot-instructions.md`,
   `.github/prompts/bilig-workpaper-proof.prompt.md`, and `.vscode/mcp.json`.
-- Cursor, Windsurf/Cascade, Cline, and Continue: use the matching workspace
-  rules under `.cursor/`, `.windsurf/`, `.clinerules/`, and `.continue/`;
+- Cursor: use `.cursor/rules/bilig-workpaper.mdc` and `.cursor/mcp.json`.
+- Kiro: use `.kiro/steering/bilig-workpaper.md` and
+  `.kiro/settings/mcp.json`.
+- Roo Code: use `.roo/rules/bilig-workpaper.md` and `.roo/mcp.json`.
+- Windsurf/Cascade, Cline, and Continue: use the matching workspace
+  rules under `.windsurf/`, `.clinerules/`, and `.continue/`;
   Continue can also use `.continue/mcpServers/bilig-workpaper.yaml` for the
   project-local WorkPaper MCP server.
 - Trae: use `.trae/mcp.json` for the Project MCP `bilig-workpaper` server and
@@ -39,6 +43,16 @@ or restore evidence, not a write-call status.
 - Zed: use `.zed/settings.json` for the project-local
   `context_servers.bilig-workpaper` MCP server, with root `AGENTS.md` and
   `.agents/skills/bilig-workpaper/SKILL.md` for the WorkPaper proof rule.
+- OpenHands: read root `AGENTS.md`, then use
+  `.agents/skills/bilig-workpaper/SKILL.md`; add the local MCP server with the
+  command from `docs/openhands-workpaper-mcp.md`.
+- OpenCode: use `opencode.jsonc` and
+  `.opencode/agents/bilig-workpaper.md`.
+- Aider: use `CONVENTIONS.md`, loaded by `.aider.conf.yml`.
+- Goose: validate and use `examples/goose-workpaper-mcp/recipe.yaml`.
+- JetBrains Junie: use `.junie/mcp/mcp.json`.
+- Gemini CLI: use `GEMINI.md`, `gemini-extension.json`, and
+  `gemini-workpaper-context.md`.
 - Package-level agents inspecting `node_modules/@bilig/workpaper` should read
   the published `AGENTS.md` and `SKILL.md`.
 

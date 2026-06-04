@@ -138,6 +138,10 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(docsAgentNotes, '.trae/mcp.json', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'CONVENTIONS.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.aider.conf.yml', 'docs/AGENTS.md')
+  requireIncludes(docsAgentNotes, '.agents/skills/bilig-workpaper/SKILL.md', 'docs/AGENTS.md')
+  requireIncludes(docsAgentNotes, 'openhands-workpaper-mcp.html', 'docs/AGENTS.md')
+  requireIncludes(docsAgentNotes, 'examples/goose-workpaper-mcp/recipe.yaml', 'docs/AGENTS.md')
+  requireIncludes(docsAgentNotes, 'goose-workpaper-mcp.html', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'opencode.jsonc', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.opencode/agents/bilig-workpaper.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.github/copilot-instructions.md', 'docs/AGENTS.md')
@@ -207,6 +211,16 @@ export async function requireAgentInstructionDiscovery(input: {
   )
   requireIncludes(
     docsAgentStart,
+    'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules goose',
+    'docs/agent-start.txt',
+  )
+  requireIncludes(
+    docsAgentStart,
+    'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules openhands',
+    'docs/agent-start.txt',
+  )
+  requireIncludes(
+    docsAgentStart,
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules trae',
     'docs/agent-start.txt',
   )
@@ -226,6 +240,8 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(docsAgentStart, 'CLAUDE.md', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, 'CONVENTIONS.md', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, '.aider.conf.yml', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, '.agents/skills/bilig-workpaper/SKILL.md', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, 'examples/goose-workpaper-mcp/recipe.yaml', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, '.cursor/rules/bilig-workpaper.mdc', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, '.devin/rules/bilig-workpaper.md', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, '.clinerules/bilig-workpaper.md', 'docs/agent-start.txt')
