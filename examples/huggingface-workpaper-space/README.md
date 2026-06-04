@@ -6,8 +6,12 @@ license: mit
 tags:
   - mcp-server
   - gradio
+  - agents
+  - ai-agents
   - spreadsheet
   - formulas
+  - xlsx
+  - nodejs
   - workpaper
 ---
 
@@ -21,6 +25,9 @@ WorkPaper JSON, restores it, and returns the exact values it read back. It is
 meant for agents and evaluators that need a no-key workbook API check before
 they wire Bilig into a private workflow.
 
+The template pins `@bilig/workpaper@0.161.0`, matching the current published
+Bilig WorkPaper package line.
+
 ## Local Check
 
 ```sh
@@ -32,6 +39,7 @@ Expected result:
 
 ```json
 {
+  "packageVersion": "0.161.0",
   "verified": true
 }
 ```

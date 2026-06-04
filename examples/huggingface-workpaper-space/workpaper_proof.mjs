@@ -6,6 +6,7 @@ import {
   serializeWorkPaperDocument,
 } from '@bilig/workpaper'
 
+const workpaperPackageVersion = '0.161.0'
 const nextWinRate = Number(process.argv[2] ?? '0.4')
 if (!Number.isFinite(nextWinRate) || nextWinRate < 0 || nextWinRate > 1) {
   throw new Error('win rate must be a number between 0 and 1')
@@ -54,6 +55,7 @@ try {
   const payload = {
     schemaVersion: 'bilig.huggingface.workpaper-readback.v1',
     package: '@bilig/workpaper',
+    packageVersion: workpaperPackageVersion,
     editedCell: 'Inputs!B3',
     input: {
       previousWinRate: inputBefore,
