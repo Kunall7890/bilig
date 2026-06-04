@@ -151,6 +151,9 @@ function assertDocs(): void {
   )
   assert(readme.includes('agent:verify'), 'starter README must document the agent verification script')
   assert(docs.includes('agent:verify'), 'starter docs must document the agent verification script')
+  assert(readme.includes('Kiro'), 'starter README must document the Kiro agent overlay')
+  assert(docs.includes('.kiro/settings/mcp.json'), 'starter docs must document the Kiro MCP config')
+  assert(agentDocs.includes('.kiro/steering/bilig-workpaper.md'), 'agent adoption kit must document the Kiro steering file')
   assert(
     readme.includes('bilig-evaluate --door agent-mcp --scenario revenue-plan --json'),
     'starter README must document the revenue-plan agent evaluator command',
@@ -200,6 +203,8 @@ function assertPackedTarball(): void {
     'package/agent-overlay/.clinerules/bilig-workpaper.md',
     'package/agent-overlay/.continue/rules/bilig-workpaper.md',
     'package/agent-overlay/.devin/rules/bilig-workpaper.md',
+    'package/agent-overlay/.kiro/settings/mcp.json',
+    'package/agent-overlay/.kiro/steering/bilig-workpaper.md',
     'package/agent-overlay/.mcp.json',
     'package/agent-overlay/.cursor/mcp.json',
     'package/agent-overlay/.cursor/rules/bilig-workpaper.mdc',
@@ -302,6 +307,8 @@ function assertGeneratedStarters(): void {
     '.clinerules/bilig-workpaper.md',
     '.continue/rules/bilig-workpaper.md',
     '.devin/rules/bilig-workpaper.md',
+    '.kiro/settings/mcp.json',
+    '.kiro/steering/bilig-workpaper.md',
     '.mcp.json',
     '.cursor/mcp.json',
     '.cursor/rules/bilig-workpaper.mdc',
@@ -340,6 +347,8 @@ function assertGeneratedStarters(): void {
     '.mcp.json',
     '.cursor/mcp.json',
     '.junie/mcp/mcp.json',
+    '.kiro/settings/mcp.json',
+    '.kiro/steering/bilig-workpaper.md',
     '.roo/mcp.json',
     '.roo/rules/bilig-workpaper.md',
     '.vscode/mcp.json',
@@ -405,6 +414,8 @@ function assertGeneratedStarters(): void {
     'CONVENTIONS.md',
     '.cursor/mcp.json',
     '.junie/mcp/mcp.json',
+    '.kiro/settings/mcp.json',
+    '.kiro/steering/bilig-workpaper.md',
     '.roo/mcp.json',
     '.roo/rules/bilig-workpaper.md',
     '.opencode/agents/bilig-workpaper.md',

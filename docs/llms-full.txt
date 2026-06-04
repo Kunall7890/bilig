@@ -42,8 +42,9 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
     `.opencode/agents/bilig-workpaper.md`.
 11. If you are using Aider, load `CONVENTIONS.md` through
     `.aider.conf.yml`.
-12. If you are using Cursor, Windsurf/Cascade, Cline, or Continue, use
+12. If you are using Cursor, Kiro, Windsurf/Cascade, Cline, or Continue, use
     `.cursor/rules/bilig-workpaper.mdc` or
+    `.kiro/steering/bilig-workpaper.md`,
     `.devin/rules/bilig-workpaper.md`,
     `.windsurf/rules/bilig-workpaper.md`,
     `.clinerules/bilig-workpaper.md`, or
@@ -478,7 +479,7 @@ shows the local risk report for an actual `.xlsx` before a Node service or
 coding agent trusts Bilig with it.
 Use the [coding agent rule chooser](docs/agent-rule-chooser.md) when you need
 the exact instruction, rule, prompt, or MCP config file for Codex, Claude Code,
-GitHub Copilot, VS Code, Cursor, Roo Code, Junie, OpenHands, OpenCode, Aider,
+GitHub Copilot, VS Code, Cursor, Kiro, Roo Code, Junie, OpenHands, OpenCode, Aider,
 Goose, Windsurf/Cascade, Cline, Continue, or Gemini CLI.
 
 Project site: <https://proompteng.github.io/bilig/>
@@ -497,7 +498,7 @@ Pick the path that matches the job:
 | Pull requests can commit XLSX fixtures with stale cached values         | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md) | report-only workbook findings before the workflow blocks anything.                        |
 | A Node service, route, queue, test, or tool needs workbook logic        | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)         | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.    |
 | A coding agent or MCP client needs workbook tools without UI automation | [Agent MCP evaluator](docs/eval-agent-mcp.md)                              | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`. |
-| A coding agent needs the right repo rule or MCP config file             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                    | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Roo Code, Junie, OpenHands, OpenCode, Aider, Goose, Windsurf, Cline, Continue, or Gemini. |
+| A coding agent needs the right repo rule or MCP config file             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                    | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Kiro, Roo Code, Junie, OpenHands, OpenCode, Aider, Goose, Windsurf, Cline, Continue, or Gemini. |
 | You are comparing Excel MCP servers, hosted spreadsheet agents, or file-first XLSX tools | [Spreadsheet MCP server comparison](docs/spreadsheet-mcp-server-comparison.md) | the account/session/file/runtime boundary before an agent trusts formula readback. |
 | You need to choose among agent, MCP, AI SDK, OpenAI, LangGraph, Semantic Kernel, or XLSX proof | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md) | the smallest command or example for the host boundary, plus what it does and does not prove. |
 | You need to see a successful agent session shape before adopting        | [Agent proof transcripts](docs/agent-proof-transcripts.md)                 | prompt, tool call, result, workbook state change, formula readback, JSON export, and restart verification.   |
@@ -835,6 +836,9 @@ Cursor and Windsurf/Cascade read the same proof loop from
 the Cascade rule mirrors at
 [`.devin/rules/bilig-workpaper.md`](.devin/rules/bilig-workpaper.md) and
 [`.windsurf/rules/bilig-workpaper.md`](.windsurf/rules/bilig-workpaper.md).
+Kiro reads the project steering file from
+[`.kiro/steering/bilig-workpaper.md`](.kiro/steering/bilig-workpaper.md) and the
+project MCP server from [`.kiro/settings/mcp.json`](.kiro/settings/mcp.json).
 Roo Code reads the project rule from
 [`.roo/rules/bilig-workpaper.md`](.roo/rules/bilig-workpaper.md) and the
 project MCP server from [`.roo/mcp.json`](.roo/mcp.json).
@@ -936,7 +940,7 @@ For a generated project from a blank directory, run
 is documented in [create a Bilig WorkPaper starter](docs/create-bilig-workpaper.md).
 For an agent-ready project with `AGENTS.md`, `CONVENTIONS.md`,
 `.aider.conf.yml`, `CLAUDE.md`, `GEMINI.md`,
-Copilot / Cursor / Roo Code / Junie / OpenHands / OpenCode / Aider / Cline / Continue / Windsurf rules, MCP client
+Copilot / Cursor / Kiro / Roo Code / Junie / OpenHands / OpenCode / Aider / Cline / Continue / Windsurf rules, MCP client
 configs, and an `agent:verify` script, run
 `npm create @bilig/workpaper@latest pricing-agent -- --agent`.
 For an existing repo, run
@@ -1524,7 +1528,7 @@ npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
 That adds `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`, `CLAUDE.md`,
-`GEMINI.md`, Copilot/VS Code instructions, Cursor, Roo Code, Junie, OpenCode, Aider,
+`GEMINI.md`, Copilot/VS Code instructions, Cursor, Kiro, Roo Code, Junie, OpenCode, Aider,
 Cline, Continue, Windsurf rules, and MCP client configs
 without replacing the app template or editing `package.json`.
 
@@ -1618,6 +1622,7 @@ Use the repo-local files when the agent is already inside a checkout:
 - GitHub Copilot prompt: `.github/prompts/bilig-workpaper-proof.prompt.md`
 - VS Code MCP: `.vscode/mcp.json`
 - Cursor: `.cursor/rules/bilig-workpaper.mdc`
+- Kiro: `.kiro/steering/bilig-workpaper.md` and `.kiro/settings/mcp.json`
 - Roo Code: `.roo/rules/bilig-workpaper.md` and `.roo/mcp.json`
 - Junie: `.junie/mcp/mcp.json`
 - OpenCode: `opencode.jsonc` and `.opencode/agents/bilig-workpaper.md`
@@ -3050,6 +3055,7 @@ rules instead:
   `.github/instructions/bilig-workpaper.instructions.md`,
   `.github/prompts/bilig-workpaper-proof.prompt.md`, and `.vscode/mcp.json`
 - Cursor: `.cursor/rules/bilig-workpaper.mdc`
+- Kiro: `.kiro/steering/bilig-workpaper.md` and `.kiro/settings/mcp.json`
 - Junie: `.junie/mcp/mcp.json`
 - OpenHands: `AGENTS.md`, `.agents/skills/bilig-workpaper/SKILL.md`, and
   `openhands mcp add` for the file-backed WorkPaper server
@@ -3070,7 +3076,7 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 ```
 
 The generated project includes `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`,
-`CLAUDE.md`, `GEMINI.md`, Copilot / VS Code instructions, Cursor, Junie,
+`CLAUDE.md`, `GEMINI.md`, Copilot / VS Code instructions, Cursor, Kiro, Junie,
 OpenHands, OpenCode, Aider, Cline, Continue, and Windsurf rules, plus local MCP
 configs and `npm run agent:verify`.
 
@@ -3331,6 +3337,7 @@ call alone is not success.
 | GitHub Copilot | `.github/copilot-instructions.md` plus `.github/instructions/bilig-workpaper.instructions.md`. | `.github/prompts/bilig-workpaper-proof.prompt.md` for the task prompt, `.vscode/mcp.json` in VS Code. | Copilot should return WorkPaper readback fields, not spreadsheet UI status. |
 | VS Code agent mode | `.github/copilot-instructions.md` and `.github/instructions/bilig-workpaper.instructions.md`. | `.vscode/mcp.json` for `biligWorkpaperDemo` and `biligWorkpaperFile`. | Use the workspace MCP config before copying a generic `mcpServers` manifest. |
 | Cursor | `.cursor/rules/bilig-workpaper.mdc`. | `.cursor/mcp.json` for local file-backed WorkPaper tools. | Treat `.cursorrules` as legacy; use the project rule and MCP config here. |
+| Kiro | `.kiro/steering/bilig-workpaper.md`; Kiro also loads root `AGENTS.md` when present. | `.kiro/settings/mcp.json` defines the project-local file-backed WorkPaper MCP server. | Use Kiro steering and the project MCP server before spreadsheet UI automation. |
 | Roo Code | `.roo/rules/bilig-workpaper.md`; Roo also loads root `AGENTS.md` by default. | `.roo/mcp.json` defines the project-local file-backed WorkPaper MCP server. | Use Roo's project rule and MCP server before spreadsheet UI automation. |
 | JetBrains Junie | `AGENTS.md` in the repo root; `.junie/AGENTS.md` can add narrower project memory when needed. | `.junie/mcp/mcp.json` defines the file-backed WorkPaper MCP server. | Use Junie MCP tools for workbook readback and require persisted WorkPaper evidence before reporting success. |
 | OpenHands | `AGENTS.md`, then `.agents/skills/bilig-workpaper/SKILL.md`. | `openhands mcp add bilig-workpaper --transport stdio npm -- exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable`. | Use `/mcp` in the conversation and restart after MCP config changes. |
@@ -3351,7 +3358,7 @@ npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
 That overlay writes `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`,
-`CLAUDE.md`, `GEMINI.md`, Copilot and VS Code instructions, Cursor, Roo Code, Junie,
+`CLAUDE.md`, `GEMINI.md`, Copilot and VS Code instructions, Cursor, Kiro, Roo Code, Junie,
 OpenHands, OpenCode, Aider, Cline, Continue,
 Cascade/Devin and Windsurf rules, and MCP configs. It does not overwrite an existing app
 `README.md` or `package.json`.
@@ -3370,6 +3377,8 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
   routes it to the Claude Code skill, slash command, and `.mcp.json`.
 - `.vscode/mcp.json` uses the VS Code `servers` shape. `mcp/bilig-workpaper.mcp.json`
   is the reusable `mcpServers` shape for other clients.
+- Kiro reads workspace steering from `.kiro/steering/` and project MCP servers
+  from `.kiro/settings/mcp.json`; root `AGENTS.md` stays the shared policy.
 - Roo Code reads workspace rules from `.roo/rules/` and project MCP servers
   from `.roo/mcp.json`; root `AGENTS.md` stays the shared policy.
 - Junie project MCP config lives at `.junie/mcp/mcp.json`; root `AGENTS.md`
@@ -3389,6 +3398,8 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 - [GitHub Copilot response customization](https://docs.github.com/en/copilot/concepts/prompting/response-customization)
 - [VS Code MCP configuration](https://code.visualstudio.com/docs/copilot/reference/mcp-configuration)
 - [Cursor rules](https://docs.cursor.com/en/context/rules)
+- [Kiro steering](https://kiro.dev/docs/steering/)
+- [Kiro MCP configuration](https://kiro.dev/docs/mcp/configuration/)
 - [Roo Code custom instructions](https://roocodeinc.github.io/Roo-Code/features/custom-instructions)
 - [Roo Code MCP configuration](https://roocodeinc.github.io/Roo-Code/features/mcp/using-mcp-in-roo/)
 - [Junie MCP settings](https://junie.jetbrains.com/docs/junie-plugin-mcp-settings.html)
@@ -6596,6 +6607,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | Codex                              | Local stdio MCP server or direct package import in repo tools.                                                                        | [MCP client setup](mcp-client-setup.md#codex)                                                |
 | Claude Code and Claude Desktop     | File-backed MCP server, or MCPB when a desktop extension is easier.                                                                   | [Claude MCPB guide](claude-desktop-mcpb-workpaper.md)                                        |
 | Cursor                             | Project-local `.cursor/mcp.json` pointing at `bilig-workpaper-mcp`.                                                                   | [MCP client setup](mcp-client-setup.md#cursor)                                               |
+| Kiro                               | Project `.kiro/steering/bilig-workpaper.md` plus `.kiro/settings/mcp.json` for the file-backed WorkPaper MCP server.                  | [Coding agent rule chooser](agent-rule-chooser.md)                                           |
 | Roo Code                           | Project `.roo/rules/bilig-workpaper.md` plus `.roo/mcp.json` for the file-backed WorkPaper MCP server.                                | [Coding agent rule chooser](agent-rule-chooser.md)                                           |
 | JetBrains Junie                    | Project-local `.junie/mcp/mcp.json` using the file-backed WorkPaper MCP server, with `AGENTS.md` for the shared workbook proof rule. | [Coding agent rule chooser](agent-rule-chooser.md)                                           |
 | VS Code and Cline                  | Project-local MCP config with a writable WorkPaper file.                                                                              | [MCP client setup](mcp-client-setup.md)                                                      |

@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { buildAgentJsonManifest } from './agent-discovery-agent-json.ts'
 import { buildDocsAgentInstructions, buildDocsAgentStart } from './agent-discovery-agent-instructions.ts'
 import { buildLlmsFullSources } from './agent-discovery-llms-full-sources.ts'
+import { buildKiroMcpConfig, buildKiroWorkpaperSteering } from './agent-discovery-kiro-rules.ts'
 import { mcpServerCardManifest } from './agent-discovery-mcp-card.ts'
 import { buildWorkpaperPackageAgentInstructions, buildWorkpaperPackageSkillDocument } from './agent-discovery-package-docs.ts'
 import { readTextFileIfExists } from './read-if-exists.ts'
@@ -555,6 +556,10 @@ function stripFrontmatter(content: string): string {
   return content.replace(/^---\n[\s\S]*?\n---\n+/, '').trim()
 }
 
+function withStarterWorkpaperPath(content: string): string {
+  return content.replaceAll('./.bilig/pricing.workpaper.json', '__WORKPAPER_PATH__')
+}
+
 async function buildLlmsFull(): Promise<string> {
   const sections: string[] = [
     '# Bilig llms-full',
@@ -642,6 +647,7 @@ async function generatedTargets(): Promise<ReadonlyArray<readonly [string, strin
     ['CONVENTIONS.md', buildAiderConventions(ideRuleInput)],
     ['.aider.conf.yml', buildAiderConfig()],
     ['.cursor/rules/bilig-workpaper.mdc', buildCursorWorkpaperRule(ideRuleInput)],
+    ['.kiro/steering/bilig-workpaper.md', buildKiroWorkpaperSteering(ideRuleInput)],
     ['.roo/rules/bilig-workpaper.md', buildRooWorkpaperRule(ideRuleInput)],
     ['.devin/rules/bilig-workpaper.md', buildWindsurfWorkpaperRule(ideRuleInput)],
     ['.windsurf/rules/bilig-workpaper.md', buildWindsurfWorkpaperRule(ideRuleInput)],
@@ -654,6 +660,7 @@ async function generatedTargets(): Promise<ReadonlyArray<readonly [string, strin
     ['CLAUDE.md', buildClaudeCodeProjectMemory(ideRuleInput)],
     ['.mcp.json', buildClaudeCodeMcpConfig(ideRuleInput)],
     ['.cursor/mcp.json', buildCursorMcpConfig(ideRuleInput)],
+    ['.kiro/settings/mcp.json', buildKiroMcpConfig(ideRuleInput)],
     ['.junie/mcp/mcp.json', buildJunieMcpConfig(ideRuleInput)],
     ['.roo/mcp.json', buildRooMcpConfig(ideRuleInput)],
     ['.vscode/mcp.json', buildVscodeMcpConfig(ideRuleInput)],
@@ -665,6 +672,11 @@ async function generatedTargets(): Promise<ReadonlyArray<readonly [string, strin
     ['skills/bilig-workpaper/SKILL.md', skillDocument],
     ['packages/workpaper/SKILL.md', skillDocument],
     ['packages/workpaper/AGENTS.md', docsAgentInstructions],
+    [
+      'packages/create-workpaper/agent-overlay/.kiro/steering/bilig-workpaper.md',
+      withStarterWorkpaperPath(buildKiroWorkpaperSteering(ideRuleInput)),
+    ],
+    ['packages/create-workpaper/agent-overlay/.kiro/settings/mcp.json', withStarterWorkpaperPath(buildKiroMcpConfig(ideRuleInput))],
     ['packages/headless/SKILL.md', skillDocument],
     ['packages/headless/AGENTS.md', headlessPackageAgentInstructions],
     ['packages/bilig/SKILL.md', workpaperPackageSkillDocument],

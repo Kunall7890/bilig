@@ -534,6 +534,8 @@ requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.github/pro
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.vscode/mcp.json', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.cursor/rules/bilig-workpaper.mdc', 'docs/llms.txt')
+requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.kiro/settings/mcp.json', 'docs/llms.txt')
+requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.kiro/steering/bilig-workpaper.md', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.junie/mcp/mcp.json', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/opencode.jsonc', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/.opencode/agents/bilig-workpaper.md', 'docs/llms.txt')

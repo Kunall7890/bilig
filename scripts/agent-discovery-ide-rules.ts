@@ -7,7 +7,7 @@ export interface AgentIdeRuleInput {
 
 const blockedNamingTerms = ['top' + String(50), 'top' + String(100)] as const
 
-function workbookProofStandard(): string {
+export function workbookProofStandard(): string {
   return `Before saying the workbook is updated, return readback with:
 
 - edited sheet and A1 cell;
@@ -20,7 +20,7 @@ function workbookProofStandard(): string {
 Do not claim success from a write call alone.`
 }
 
-function commandSafetyStandard(): string {
+export function commandSafetyStandard(): string {
   return `Do not build shell commands by concatenating user text. Prefer MCP
 \`command\` plus \`args\` arrays or direct TypeScript calls. Reject workbook
 paths or cell arguments containing newlines, backticks, \`$(\`, \`;\`, \`&\`,
@@ -892,7 +892,7 @@ export function buildOpenCodeMcpConfig(input: AgentIdeRuleInput): string {
   )}\n`
 }
 
-function buildFileBackedMcpServerConfig(input: {
+export function buildFileBackedMcpServerConfig(input: {
   readonly serverKey: string
   readonly workpaperPath: string
   readonly workpaperPackageSpec: string

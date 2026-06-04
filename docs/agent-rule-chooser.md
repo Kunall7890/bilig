@@ -1,7 +1,7 @@
 ---
 title: Coding agent rule chooser for Bilig WorkPaper
 published: true
-description: Pick the Bilig instruction, rule, prompt, or MCP config for Codex, Claude Code, GitHub Copilot, VS Code, Cursor, Roo Code, JetBrains Junie, OpenHands, OpenCode, Aider, Goose, Windsurf, Cline, Continue, and Gemini CLI.
+description: Pick the Bilig instruction, rule, prompt, or MCP config for Codex, Claude Code, GitHub Copilot, VS Code, Cursor, Kiro, Roo Code, JetBrains Junie, OpenHands, OpenCode, Aider, Goose, Windsurf, Cline, Continue, and Gemini CLI.
 tags: ai-agents, agent-rules, mcp, workbook formulas, coding agents
 canonical_url: https://proompteng.github.io/bilig/agent-rule-chooser.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -33,6 +33,7 @@ call alone is not success.
 | GitHub Copilot | `.github/copilot-instructions.md` plus `.github/instructions/bilig-workpaper.instructions.md`. | `.github/prompts/bilig-workpaper-proof.prompt.md` for the task prompt, `.vscode/mcp.json` in VS Code. | Copilot should return WorkPaper readback fields, not spreadsheet UI status. |
 | VS Code agent mode | `.github/copilot-instructions.md` and `.github/instructions/bilig-workpaper.instructions.md`. | `.vscode/mcp.json` for `biligWorkpaperDemo` and `biligWorkpaperFile`. | Use the workspace MCP config before copying a generic `mcpServers` manifest. |
 | Cursor | `.cursor/rules/bilig-workpaper.mdc`. | `.cursor/mcp.json` for local file-backed WorkPaper tools. | Treat `.cursorrules` as legacy; use the project rule and MCP config here. |
+| Kiro | `.kiro/steering/bilig-workpaper.md`; Kiro also loads root `AGENTS.md` when present. | `.kiro/settings/mcp.json` defines the project-local file-backed WorkPaper MCP server. | Use Kiro steering and the project MCP server before spreadsheet UI automation. |
 | Roo Code | `.roo/rules/bilig-workpaper.md`; Roo also loads root `AGENTS.md` by default. | `.roo/mcp.json` defines the project-local file-backed WorkPaper MCP server. | Use Roo's project rule and MCP server before spreadsheet UI automation. |
 | JetBrains Junie | `AGENTS.md` in the repo root; `.junie/AGENTS.md` can add narrower project memory when needed. | `.junie/mcp/mcp.json` defines the file-backed WorkPaper MCP server. | Use Junie MCP tools for workbook readback and require persisted WorkPaper evidence before reporting success. |
 | OpenHands | `AGENTS.md`, then `.agents/skills/bilig-workpaper/SKILL.md`. | `openhands mcp add bilig-workpaper --transport stdio npm -- exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable`. | Use `/mcp` in the conversation and restart after MCP config changes. |
@@ -53,7 +54,7 @@ npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
 That overlay writes `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`,
-`CLAUDE.md`, `GEMINI.md`, Copilot and VS Code instructions, Cursor, Roo Code, Junie,
+`CLAUDE.md`, `GEMINI.md`, Copilot and VS Code instructions, Cursor, Kiro, Roo Code, Junie,
 OpenHands, OpenCode, Aider, Cline, Continue,
 Cascade/Devin and Windsurf rules, and MCP configs. It does not overwrite an existing app
 `README.md` or `package.json`.
@@ -72,6 +73,8 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
   routes it to the Claude Code skill, slash command, and `.mcp.json`.
 - `.vscode/mcp.json` uses the VS Code `servers` shape. `mcp/bilig-workpaper.mcp.json`
   is the reusable `mcpServers` shape for other clients.
+- Kiro reads workspace steering from `.kiro/steering/` and project MCP servers
+  from `.kiro/settings/mcp.json`; root `AGENTS.md` stays the shared policy.
 - Roo Code reads workspace rules from `.roo/rules/` and project MCP servers
   from `.roo/mcp.json`; root `AGENTS.md` stays the shared policy.
 - Junie project MCP config lives at `.junie/mcp/mcp.json`; root `AGENTS.md`
@@ -91,6 +94,8 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 - [GitHub Copilot response customization](https://docs.github.com/en/copilot/concepts/prompting/response-customization)
 - [VS Code MCP configuration](https://code.visualstudio.com/docs/copilot/reference/mcp-configuration)
 - [Cursor rules](https://docs.cursor.com/en/context/rules)
+- [Kiro steering](https://kiro.dev/docs/steering/)
+- [Kiro MCP configuration](https://kiro.dev/docs/mcp/configuration/)
 - [Roo Code custom instructions](https://roocodeinc.github.io/Roo-Code/features/custom-instructions)
 - [Roo Code MCP configuration](https://roocodeinc.github.io/Roo-Code/features/mcp/using-mcp-in-roo/)
 - [Junie MCP settings](https://junie.jetbrains.com/docs/junie-plugin-mcp-settings.html)

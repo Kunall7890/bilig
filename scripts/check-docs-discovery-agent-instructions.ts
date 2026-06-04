@@ -32,6 +32,8 @@ export async function requireAgentInstructionDiscovery(input: {
     copilotPrompt,
     claudeCodeMcpConfig,
     cursorMcpConfig,
+    kiroMcpConfig,
+    kiroSteeringNotes,
     junieMcpConfig,
     vscodeMcpConfig,
     openCodeMcpConfig,
@@ -64,6 +66,8 @@ export async function requireAgentInstructionDiscovery(input: {
     readFile(join(repoRoot, '.github', 'prompts', 'bilig-workpaper-proof.prompt.md'), 'utf8'),
     readFile(join(repoRoot, '.mcp.json'), 'utf8'),
     readFile(join(repoRoot, '.cursor', 'mcp.json'), 'utf8'),
+    readFile(join(repoRoot, '.kiro', 'settings', 'mcp.json'), 'utf8'),
+    readFile(join(repoRoot, '.kiro', 'steering', 'bilig-workpaper.md'), 'utf8'),
     readFile(join(repoRoot, '.junie', 'mcp', 'mcp.json'), 'utf8'),
     readFile(join(repoRoot, '.vscode', 'mcp.json'), 'utf8'),
     readFile(join(repoRoot, 'opencode.jsonc'), 'utf8'),
@@ -455,6 +459,13 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(cursorMcpConfig, '"command": "npm"', '.cursor/mcp.json')
   requireIncludes(cursorMcpConfig, '"@bilig/workpaper@latest"', '.cursor/mcp.json')
   requireIncludes(cursorMcpConfig, '"./.bilig/pricing.workpaper.json"', '.cursor/mcp.json')
+  requireIncludes(kiroMcpConfig, '"bilig-workpaper"', '.kiro/settings/mcp.json')
+  requireIncludes(kiroMcpConfig, '"command": "npm"', '.kiro/settings/mcp.json')
+  requireIncludes(kiroMcpConfig, '"@bilig/workpaper@latest"', '.kiro/settings/mcp.json')
+  requireIncludes(kiroMcpConfig, '"./.bilig/pricing.workpaper.json"', '.kiro/settings/mcp.json')
+  requireIncludes(kiroSteeringNotes, 'Kiro steering', '.kiro/steering/bilig-workpaper.md')
+  requireIncludes(kiroSteeringNotes, 'bilig-evaluate --door agent-mcp --json', '.kiro/steering/bilig-workpaper.md')
+  requireIncludes(kiroSteeringNotes, 'Do not claim success from a write call alone.', '.kiro/steering/bilig-workpaper.md')
   requireIncludes(junieMcpConfig, '"biligWorkpaperFile"', '.junie/mcp/mcp.json')
   requireIncludes(junieMcpConfig, '"command": "npm"', '.junie/mcp/mcp.json')
   requireIncludes(junieMcpConfig, '"@bilig/workpaper@latest"', '.junie/mcp/mcp.json')

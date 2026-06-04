@@ -54,6 +54,7 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
         Reflect.get(capability, 'openhands_skill') ===
           'https://github.com/proompteng/bilig/blob/main/.agents/skills/bilig-workpaper/SKILL.md' &&
         Reflect.get(capability, 'opencode_agent') === 'https://github.com/proompteng/bilig/blob/main/.opencode/agents/bilig-workpaper.md' &&
+        Reflect.get(capability, 'kiro_steering') === 'https://github.com/proompteng/bilig/blob/main/.kiro/steering/bilig-workpaper.md' &&
         Reflect.get(capability, 'docs') === 'https://proompteng.github.io/bilig/agent-rule-chooser.html',
     )
   ) {
@@ -145,6 +146,7 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
         Reflect.get(capability, 'type') === 'project-mcp-configs' &&
         Reflect.get(capability, 'claude_code') === 'https://github.com/proompteng/bilig/blob/main/.mcp.json' &&
         Reflect.get(capability, 'cursor') === 'https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json' &&
+        Reflect.get(capability, 'kiro') === 'https://github.com/proompteng/bilig/blob/main/.kiro/settings/mcp.json' &&
         Reflect.get(capability, 'junie') === 'https://github.com/proompteng/bilig/blob/main/.junie/mcp/mcp.json' &&
         Reflect.get(capability, 'opencode') === 'https://github.com/proompteng/bilig/blob/main/opencode.jsonc' &&
         Reflect.get(capability, 'vscode') === 'https://github.com/proompteng/bilig/blob/main/.vscode/mcp.json' &&
@@ -403,6 +405,8 @@ const requiredPublicEntrypoints = [
   'https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-xlsx-risk-preflight.ts',
   'https://github.com/proompteng/bilig/blob/main/.mcp.json',
   'https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json',
+  'https://github.com/proompteng/bilig/blob/main/.kiro/settings/mcp.json',
+  'https://github.com/proompteng/bilig/blob/main/.kiro/steering/bilig-workpaper.md',
   'https://github.com/proompteng/bilig/blob/main/.junie/mcp/mcp.json',
   'https://github.com/proompteng/bilig/blob/main/opencode.jsonc',
   'https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json',
