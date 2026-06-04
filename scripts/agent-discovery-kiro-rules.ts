@@ -1,9 +1,5 @@
-import {
-  type AgentIdeRuleInput,
-  buildFileBackedMcpServerConfig,
-  commandSafetyStandard,
-  workbookProofStandard,
-} from './agent-discovery-ide-rules.ts'
+import { type AgentIdeRuleInput, commandSafetyStandard, workbookProofStandard } from './agent-discovery-ide-rules.ts'
+import { buildFileBackedMcpServerConfig } from './agent-discovery-mcp-configs.ts'
 
 export function buildKiroWorkpaperSteering(input: AgentIdeRuleInput): string {
   const { remoteMcpEndpoint, repositoryUrl, siteRoot, workpaperPackageSpec } = input

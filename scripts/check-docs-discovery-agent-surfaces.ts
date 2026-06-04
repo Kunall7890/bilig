@@ -218,7 +218,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   }
   for (const required of [
     'title: Workbook tools for agent frameworks',
-    'description: Pick the Bilig WorkPaper integration path for Codex, Claude, Cursor, Kiro, Roo Code, Junie, OpenHands, OpenCode, Aider, Goose, Browser Use, OpenAI Agents, Microsoft Agent Framework, Vercel AI SDK, LangChain, LangGraph, LlamaIndex, and MCP clients.',
+    'description: Pick the Bilig WorkPaper integration path for Codex, Claude, Cursor, Kiro, Roo Code, Zed, Junie, OpenHands, OpenCode, Aider, Goose, Browser Use, OpenAI Agents, Microsoft Agent Framework, Vercel AI SDK, LangChain, LangGraph, LlamaIndex, and MCP clients.',
     'npm create @bilig/workpaper@latest pricing-agent -- --agent',
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
     'npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json',
@@ -229,6 +229,8 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     '.kiro/settings/mcp.json',
     'Roo Code',
     '.roo/mcp.json',
+    'Zed',
+    '.zed/settings.json',
     'JetBrains Junie',
     '.junie/mcp/mcp.json',
     'Browser Use',
@@ -642,7 +644,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   )
   requireIncludes(
     mcpClientSetupDoc,
-    'description: Remote MCP smoke endpoint and local stdio configuration for Bilig WorkPaper in Claude, Cursor, Junie, VS Code, Cline, and Codex.',
+    'description: Remote MCP smoke endpoint and local stdio configuration for Bilig WorkPaper in Claude, Cursor, Junie, Zed, VS Code, Cline, and Codex.',
     'docs/mcp-client-setup.md',
   )
   for (const required of [
@@ -672,10 +674,15 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     '.mcp.json',
     '.cursor/mcp.json',
     '.junie/mcp/mcp.json',
+    '.zed/settings.json',
     'mcp/bilig-workpaper.mcp.json',
     'Use the biligWorkpaperFile MCP server. List sheets, read Summary!A1:B5',
     'Use the biligWorkpaperFile MCP server from .junie/mcp/mcp.json.',
     'Junie reads project guidelines from `.junie/AGENTS.md`',
+    '"context_servers"',
+    '"bilig-workpaper"',
+    'mcp:bilig-workpaper:set_cell_contents_and_readback',
+    'Use the bilig-workpaper context server from .zed/settings.json.',
     'set Inputs!B3 to 0.4 with set_cell_contents_and_readback',
     `code --add-mcp '{"name":"biligWorkpaperFile","type":"stdio","command":"npm","args":["exec","--package","${workpaperPackageSpec}","--","bilig-workpaper-mcp","--workpaper","\${workspaceFolder}/.bilig/pricing.workpaper.json","--init-demo-workpaper","--writable"]}'`,
     `code --add-mcp '{"name":"biligWorkpaperDemo","type":"http","url":"${remoteMcpEndpoint}"}'`,
@@ -690,6 +697,9 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'Use the Bilig WorkPaper MCP server from Codex.',
     'https://code.visualstudio.com/docs/copilot/reference/mcp-configuration',
     'https://docs.cline.bot/mcp/configuring-mcp-servers',
+    'https://zed.dev/docs/ai/mcp',
+    'https://zed.dev/docs/ai/rules',
+    'https://zed.dev/docs/ai/tool-permissions',
     'https://platform.openai.com/docs/docs-mcp',
   ]) {
     requireIncludes(mcpClientSetupDoc, required, 'docs/mcp-client-setup.md')

@@ -1,8 +1,8 @@
 ---
 title: MCP client setup for Bilig WorkPaper
 published: true
-description: Remote MCP smoke endpoint and local stdio configuration for Bilig WorkPaper in Claude, Cursor, Junie, VS Code, Cline, and Codex.
-tags: mcp, claude, cursor, junie, vscode, cline, codex, spreadsheet
+description: Remote MCP smoke endpoint and local stdio configuration for Bilig WorkPaper in Claude, Cursor, Junie, Zed, VS Code, Cline, and Codex.
+tags: mcp, claude, cursor, junie, zed, vscode, cline, codex, spreadsheet
 canonical_url: https://proompteng.github.io/bilig/mcp-client-setup.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png
@@ -309,6 +309,56 @@ then report the edited cell, before and after values, and whether the WorkPaper
 JSON persisted.
 ```
 
+## Zed
+
+Bilig checkouts include `.zed/settings.json` for project-local Zed MCP usage.
+Zed calls these MCP servers `context_servers`. For another repository, copy this
+shape:
+
+```json
+{
+  "context_servers": {
+    "bilig-workpaper": {
+      "command": {
+        "path": "npm",
+        "args": [
+          "exec",
+          "--yes",
+          "--package",
+          "@bilig/workpaper@latest",
+          "--",
+          "bilig-workpaper-mcp",
+          "--workpaper",
+          "./.bilig/pricing.workpaper.json",
+          "--init-demo-workpaper",
+          "--writable"
+        ],
+        "env": {}
+      },
+      "settings": {}
+    }
+  },
+  "agent": {
+    "default_profile": "write"
+  }
+}
+```
+
+Zed can use root `AGENTS.md` and `.agents/skills/bilig-workpaper/SKILL.md` as
+project context. Keep personal tool approvals in your local Zed settings when
+needed; useful permission keys include
+`mcp:bilig-workpaper:set_cell_contents_and_readback` and
+`mcp:bilig-workpaper:export_workpaper_document`.
+
+Ask Zed for a concrete readback check:
+
+```text
+Use the bilig-workpaper context server from .zed/settings.json. List sheets,
+read Summary!A1:B5, set Inputs!B3 to 0.4 with
+set_cell_contents_and_readback, export the WorkPaper document, and report
+editedCell, before, after, persistedDocumentBytes, verified, and limitations.
+```
+
 ## VS Code
 
 Bilig checkouts include `.vscode/mcp.json` for GitHub Copilot agent mode in VS
@@ -466,6 +516,12 @@ new value, before/after computed values, and persistence readback.
   <https://code.visualstudio.com/docs/copilot/reference/mcp-configuration>
 - Cline MCP configuration:
   <https://docs.cline.bot/mcp/configuring-mcp-servers>
+- Zed MCP:
+  <https://zed.dev/docs/ai/mcp>
+- Zed rules:
+  <https://zed.dev/docs/ai/rules>
+- Zed tool permissions:
+  <https://zed.dev/docs/ai/tool-permissions>
 - OpenAI Docs MCP setup for Codex, VS Code, and Cursor:
   <https://platform.openai.com/docs/docs-mcp>
 

@@ -25,6 +25,7 @@ export async function requireAgentEvaluatorDiscovery(input: {
   requireIncludes(readme, '.windsurf/rules/bilig-workpaper.md', 'README.md')
   requireIncludes(readme, '.clinerules/bilig-workpaper.md', 'README.md')
   requireIncludes(readme, '.continue/rules/bilig-workpaper.md', 'README.md')
+  requireIncludes(readme, '.zed/settings.json', 'README.md')
   requireIncludes(readme, 'opencode.jsonc', 'README.md')
   requireIncludes(readme, '.opencode/agents/bilig-workpaper.md', 'README.md')
   requireIncludes(readme, 'agent handoff prompt', 'README.md')

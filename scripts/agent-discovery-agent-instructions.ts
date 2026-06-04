@@ -50,9 +50,10 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
     \`.opencode/agents/bilig-workpaper.md\`.
 11. If you are using Aider, load \`CONVENTIONS.md\` through
     \`.aider.conf.yml\`.
-12. If you are using Cursor, Kiro, Windsurf/Cascade, Cline, or Continue, use
+12. If you are using Cursor, Kiro, Zed, Windsurf/Cascade, Cline, or Continue, use
     \`.cursor/rules/bilig-workpaper.mdc\` or
     \`.kiro/steering/bilig-workpaper.md\`,
+    \`.zed/settings.json\`,
     \`.devin/rules/bilig-workpaper.md\`,
     \`.windsurf/rules/bilig-workpaper.md\`,
     \`.clinerules/bilig-workpaper.md\`, or
@@ -152,6 +153,7 @@ npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules co
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules windsurf
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules gemini
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules junie
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules zed
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules vscode-mcp
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules opencode
 \`\`\`
@@ -162,7 +164,7 @@ For an existing repo that should receive the full starter overlay, run:
 npm create @bilig/workpaper@latest . -- --add-agent
 \`\`\`
 
-Suggested files: \`AGENTS.md\`, \`CONVENTIONS.md\`, \`.aider.conf.yml\`, \`CLAUDE.md\`, \`GEMINI.md\`, \`.github/copilot-instructions.md\`, \`.github/instructions/bilig-workpaper.instructions.md\`, \`.github/prompts/bilig-workpaper-proof.prompt.md\`, \`.vscode/mcp.json\`, \`opencode.jsonc\`, \`.opencode/agents/bilig-workpaper.md\`, \`.cursor/rules/bilig-workpaper.mdc\`, \`.kiro/steering/bilig-workpaper.md\`, \`.kiro/settings/mcp.json\`, \`.junie/mcp/mcp.json\`, \`.devin/rules/bilig-workpaper.md\`, \`.clinerules/bilig-workpaper.md\`, \`.continue/rules/bilig-workpaper.md\`, \`.continue/mcpServers/bilig-workpaper.yaml\`, \`.windsurf/rules/bilig-workpaper.md\`, \`gemini-extension.json\`, and \`gemini-workpaper-context.md\`.
+Suggested files: \`AGENTS.md\`, \`CONVENTIONS.md\`, \`.aider.conf.yml\`, \`CLAUDE.md\`, \`GEMINI.md\`, \`.github/copilot-instructions.md\`, \`.github/instructions/bilig-workpaper.instructions.md\`, \`.github/prompts/bilig-workpaper-proof.prompt.md\`, \`.vscode/mcp.json\`, \`opencode.jsonc\`, \`.opencode/agents/bilig-workpaper.md\`, \`.cursor/rules/bilig-workpaper.mdc\`, \`.kiro/steering/bilig-workpaper.md\`, \`.kiro/settings/mcp.json\`, \`.junie/mcp/mcp.json\`, \`.zed/settings.json\`, \`.devin/rules/bilig-workpaper.md\`, \`.clinerules/bilig-workpaper.md\`, \`.continue/rules/bilig-workpaper.md\`, \`.continue/mcpServers/bilig-workpaper.yaml\`, \`.windsurf/rules/bilig-workpaper.md\`, \`gemini-extension.json\`, and \`gemini-workpaper-context.md\`.
 
 ## Provider-backed formulas
 

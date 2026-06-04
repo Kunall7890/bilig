@@ -17,6 +17,7 @@ const expectedRuleTargets = [
   ['windsurf', '.devin/rules/bilig-workpaper.md or .windsurf/rules/bilig-workpaper.md'],
   ['gemini', 'GEMINI.md, gemini-extension.json, gemini-workpaper-context.md'],
   ['junie', '.junie/mcp/mcp.json'],
+  ['zed', '.zed/settings.json, AGENTS.md, .agents/skills/bilig-workpaper/SKILL.md'],
   ['vscode-mcp', '.vscode/mcp.json'],
 ] as const
 
@@ -104,6 +105,12 @@ describe('bilig-agent-start', () => {
     ['windsurf', '.devin/rules/bilig-workpaper.md or .windsurf/rules/bilig-workpaper.md', 'Windsurf/Cascade', 'trigger: model_decision'],
     ['gemini', 'GEMINI.md, gemini-extension.json, gemini-workpaper-context.md', 'Gemini CLI', 'gemini-workpaper-context.md'],
     ['junie', '.junie/mcp/mcp.json', 'Junie', 'Junie reads project guidelines'],
+    [
+      'zed',
+      '.zed/settings.json, AGENTS.md, .agents/skills/bilig-workpaper/SKILL.md',
+      'Zed',
+      'mcp:bilig-workpaper:set_cell_contents_and_readback',
+    ],
     ['vscode-mcp', '.vscode/mcp.json', 'VS Code agent mode', 'biligWorkpaperFile'],
     ['aider', 'CONVENTIONS.md, .aider.conf.yml', 'Aider', '.aider.conf.yml'],
     [
@@ -160,6 +167,11 @@ describe('bilig-agent-start', () => {
       outputMode: 'rules',
       ruleTarget: 'junie',
     })
+    expect(parseAgentStartCliArgs(['--rules=zed'])).toEqual({
+      help: false,
+      outputMode: 'rules',
+      ruleTarget: 'zed',
+    })
     expect(parseAgentStartCliArgs(['--rules=aider'])).toEqual({
       help: false,
       outputMode: 'rules',
@@ -171,13 +183,14 @@ describe('bilig-agent-start', () => {
     expect(agentStartHelpText()).toContain('opencode     opencode.jsonc, .opencode/agents/bilig-workpaper.md')
     expect(agentStartHelpText()).toContain('windsurf     .devin/rules/bilig-workpaper.md or .windsurf/rules/bilig-workpaper.md')
     expect(agentStartHelpText()).toContain('junie        .junie/mcp/mcp.json')
+    expect(agentStartHelpText()).toContain('zed          .zed/settings.json, AGENTS.md, .agents/skills/bilig-workpaper/SKILL.md')
     expect(agentStartHelpText()).toContain('vscode-mcp   .vscode/mcp.json')
     expect(() => parseAgentStartCliArgs(['--bad'])).toThrow('Unknown bilig-agent-start argument')
     expect(() => parseAgentStartCliArgs(['--rules', 'bad'])).toThrow(
-      'Unknown bilig-agent-start rules target: bad. Use one of: aider, codex, claude, copilot, cursor, opencode, cline, continue, windsurf, gemini, junie, vscode-mcp',
+      'Unknown bilig-agent-start rules target: bad. Use one of: aider, codex, claude, copilot, cursor, opencode, cline, continue, windsurf, gemini, junie, zed, vscode-mcp',
     )
     expect(() => parseAgentStartCliArgs(['--rules'])).toThrow(
-      'Missing target for --rules. Use one of: aider, codex, claude, copilot, cursor, opencode, cline, continue, windsurf, gemini, junie, vscode-mcp',
+      'Missing target for --rules. Use one of: aider, codex, claude, copilot, cursor, opencode, cline, continue, windsurf, gemini, junie, zed, vscode-mcp',
     )
   })
 })

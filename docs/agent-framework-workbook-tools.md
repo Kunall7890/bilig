@@ -1,7 +1,7 @@
 ---
 title: Workbook tools for agent frameworks
 published: true
-description: Pick the Bilig WorkPaper integration path for Codex, Claude, Cursor, Kiro, Roo Code, Junie, OpenHands, OpenCode, Aider, Goose, Browser Use, OpenAI Agents, Microsoft Agent Framework, Vercel AI SDK, LangChain, LangGraph, LlamaIndex, and MCP clients.
+description: Pick the Bilig WorkPaper integration path for Codex, Claude, Cursor, Kiro, Roo Code, Zed, Junie, OpenHands, OpenCode, Aider, Goose, Browser Use, OpenAI Agents, Microsoft Agent Framework, Vercel AI SDK, LangChain, LangGraph, LlamaIndex, and MCP clients.
 tags: ai-agents, mcp, spreadsheet-agent, workbook-api, typescript
 canonical_url: https://proompteng.github.io/bilig/agent-framework-workbook-tools.html
 image: /assets/github-social-preview.png
@@ -81,6 +81,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | Cursor                             | Project-local `.cursor/mcp.json` pointing at `bilig-workpaper-mcp`.                                                                   | [MCP client setup](mcp-client-setup.md#cursor)                                               |
 | Kiro                               | Project `.kiro/steering/bilig-workpaper.md` plus `.kiro/settings/mcp.json` for the file-backed WorkPaper MCP server.                  | [Coding agent rule chooser](agent-rule-chooser.md)                                           |
 | Roo Code                           | Project `.roo/rules/bilig-workpaper.md` plus `.roo/mcp.json` for the file-backed WorkPaper MCP server.                                | [Coding agent rule chooser](agent-rule-chooser.md)                                           |
+| Zed                                | Project `.zed/settings.json` `context_servers.bilig-workpaper` plus `AGENTS.md` and `.agents/skills/bilig-workpaper/SKILL.md`.        | [MCP client setup](mcp-client-setup.md#zed)                                                  |
 | JetBrains Junie                    | Project-local `.junie/mcp/mcp.json` using the file-backed WorkPaper MCP server, with `AGENTS.md` for the shared workbook proof rule. | [Coding agent rule chooser](agent-rule-chooser.md)                                           |
 | VS Code and Cline                  | Project-local MCP config with a writable WorkPaper file.                                                                              | [MCP client setup](mcp-client-setup.md)                                                      |
 | OpenHands                          | `AGENTS.md`, `.agents/skills/bilig-workpaper/SKILL.md`, and `openhands mcp add` for a file-backed stdio WorkPaper server.             | [OpenHands WorkPaper MCP setup](openhands-workpaper-mcp.md)                                  |

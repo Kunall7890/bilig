@@ -17,6 +17,7 @@ const agentStartRuleTargets = [
   'windsurf',
   'gemini',
   'junie',
+  'zed',
   'vscode-mcp',
 ] as const
 export type AgentStartRuleTarget = (typeof agentStartRuleTargets)[number]
@@ -155,6 +156,7 @@ export function agentStartHelpText(): string {
     '  windsurf     .devin/rules/bilig-workpaper.md or .windsurf/rules/bilig-workpaper.md',
     '  gemini       GEMINI.md, gemini-extension.json, gemini-workpaper-context.md',
     '  junie        .junie/mcp/mcp.json',
+    '  zed          .zed/settings.json, AGENTS.md, .agents/skills/bilig-workpaper/SKILL.md',
     '  vscode-mcp   .vscode/mcp.json',
     '',
   ].join('\n')
@@ -261,6 +263,11 @@ export function buildAgentStartDecisionCard(): AgentStartDecisionCard {
         command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules junie',
       },
       {
+        target: 'zed',
+        file: '.zed/settings.json, AGENTS.md, .agents/skills/bilig-workpaper/SKILL.md',
+        command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules zed',
+      },
+      {
         target: 'vscode-mcp',
         file: '.vscode/mcp.json',
         command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules vscode-mcp',
@@ -327,6 +334,7 @@ function renderAgentStartRules(card: AgentStartDecisionCard, target: AgentStartR
     opencode: 'OpenCode',
     'vscode-mcp': 'VS Code agent mode',
     windsurf: 'Windsurf/Cascade',
+    zed: 'Zed',
   }[target]
 
   const frontMatter = agentStartRuleTargetFrontMatter(target)
@@ -478,6 +486,13 @@ The \`.vscode/mcp.json\` file should define \`biligWorkpaperDemo\` and
 and root \`AGENTS.md\` otherwise. Keep the project-local MCP server in
 \`.junie/mcp/mcp.json\` and require computed WorkPaper readback before
 reporting a workbook edit as complete.`
+  }
+  if (target === 'zed') {
+    return `Zed should use the project \`.zed/settings.json\` context server
+named \`bilig-workpaper\`. Zed can also read root \`AGENTS.md\` and the
+\`.agents/skills/bilig-workpaper/SKILL.md\` project skill when available.
+Keep MCP tool approvals scoped to WorkPaper readback tools such as
+\`mcp:bilig-workpaper:set_cell_contents_and_readback\`.`
   }
   if (target === 'opencode') {
     return `OpenCode should keep the project MCP server in \`opencode.jsonc\`

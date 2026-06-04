@@ -31,6 +31,9 @@ or restore evidence, not a write-call status.
   rules under `.cursor/`, `.windsurf/`, `.clinerules/`, and `.continue/`;
   Continue can also use `.continue/mcpServers/bilig-workpaper.yaml` for the
   project-local WorkPaper MCP server.
+- Zed: use `.zed/settings.json` for the project-local
+  `context_servers.bilig-workpaper` MCP server, with root `AGENTS.md` and
+  `.agents/skills/bilig-workpaper/SKILL.md` for the WorkPaper proof rule.
 - Package-level agents inspecting `node_modules/@bilig/workpaper` should read
   the published `AGENTS.md` and `SKILL.md`.
 

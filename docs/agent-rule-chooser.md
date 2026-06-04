@@ -1,7 +1,7 @@
 ---
 title: Coding agent rule chooser for Bilig WorkPaper
 published: true
-description: Pick the Bilig instruction, rule, prompt, or MCP config for Codex, Claude Code, GitHub Copilot, VS Code, Cursor, Kiro, Roo Code, JetBrains Junie, OpenHands, OpenCode, Aider, Goose, Windsurf, Cline, Continue, and Gemini CLI.
+description: Pick the Bilig instruction, rule, prompt, or MCP config for Codex, Claude Code, GitHub Copilot, VS Code, Cursor, Kiro, Roo Code, Zed, JetBrains Junie, OpenHands, OpenCode, Aider, Goose, Windsurf, Cline, Continue, and Gemini CLI.
 tags: ai-agents, agent-rules, mcp, workbook formulas, coding agents
 canonical_url: https://proompteng.github.io/bilig/agent-rule-chooser.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -35,6 +35,7 @@ call alone is not success.
 | Cursor | `.cursor/rules/bilig-workpaper.mdc`. | `.cursor/mcp.json` for local file-backed WorkPaper tools. | Treat `.cursorrules` as legacy; use the project rule and MCP config here. |
 | Kiro | `.kiro/steering/bilig-workpaper.md`; Kiro also loads root `AGENTS.md` when present. | `.kiro/settings/mcp.json` defines the project-local file-backed WorkPaper MCP server. | Use Kiro steering and the project MCP server before spreadsheet UI automation. |
 | Roo Code | `.roo/rules/bilig-workpaper.md`; Roo also loads root `AGENTS.md` by default. | `.roo/mcp.json` defines the project-local file-backed WorkPaper MCP server. | Use Roo's project rule and MCP server before spreadsheet UI automation. |
+| Zed | `.zed/settings.json`, root `AGENTS.md`, and `.agents/skills/bilig-workpaper/SKILL.md`. | `.zed/settings.json` defines the project-local `context_servers.bilig-workpaper` MCP server. | Use Zed's context server before spreadsheet UI automation and keep tool permissions scoped to WorkPaper readback. |
 | JetBrains Junie | `AGENTS.md` in the repo root; `.junie/AGENTS.md` can add narrower project memory when needed. | `.junie/mcp/mcp.json` defines the file-backed WorkPaper MCP server. | Use Junie MCP tools for workbook readback and require persisted WorkPaper evidence before reporting success. |
 | OpenHands | `AGENTS.md`, then `.agents/skills/bilig-workpaper/SKILL.md`. | `openhands mcp add bilig-workpaper --transport stdio npm -- exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable`. | Use `/mcp` in the conversation and restart after MCP config changes. |
 | OpenCode | `opencode.jsonc`, then `.opencode/agents/bilig-workpaper.md`. | `opencode.jsonc` defines the local `bilig-workpaper` MCP server and a disabled hosted demo server. | Invoke the `@bilig-workpaper` subagent for workbook-shaped tasks and require readback fields. |
@@ -55,7 +56,7 @@ npm create @bilig/workpaper@latest . -- --add-agent
 
 That overlay writes `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`,
 `CLAUDE.md`, `GEMINI.md`, Copilot and VS Code instructions, Cursor, Kiro, Roo Code, Junie,
-OpenHands, OpenCode, Aider, Cline, Continue,
+OpenHands, OpenCode, Aider, Zed, Cline, Continue,
 Cascade/Devin and Windsurf rules, and MCP configs. It does not overwrite an existing app
 `README.md` or `package.json`.
 
@@ -77,6 +78,9 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
   from `.kiro/settings/mcp.json`; root `AGENTS.md` stays the shared policy.
 - Roo Code reads workspace rules from `.roo/rules/` and project MCP servers
   from `.roo/mcp.json`; root `AGENTS.md` stays the shared policy.
+- Zed reads project context servers from `.zed/settings.json`. Zed can use
+  `AGENTS.md` and `.agents/skills/bilig-workpaper/SKILL.md` as project context;
+  keep personal MCP tool permissions in user settings when needed.
 - Junie project MCP config lives at `.junie/mcp/mcp.json`; root `AGENTS.md`
   remains the shared project instruction file unless `.junie/AGENTS.md` is
   needed for Junie-only memory.
@@ -98,6 +102,9 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 - [Kiro MCP configuration](https://kiro.dev/docs/mcp/configuration/)
 - [Roo Code custom instructions](https://roocodeinc.github.io/Roo-Code/features/custom-instructions)
 - [Roo Code MCP configuration](https://roocodeinc.github.io/Roo-Code/features/mcp/using-mcp-in-roo/)
+- [Zed MCP](https://zed.dev/docs/ai/mcp)
+- [Zed rules](https://zed.dev/docs/ai/rules)
+- [Zed tool permissions](https://zed.dev/docs/ai/tool-permissions)
 - [Junie MCP settings](https://junie.jetbrains.com/docs/junie-plugin-mcp-settings.html)
 - [Junie guidelines and memory](https://junie.jetbrains.com/docs/guidelines-and-memory.html)
 - [OpenHands MCP servers](https://docs.openhands.dev/openhands/usage/cli/mcp-servers)

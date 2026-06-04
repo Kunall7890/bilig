@@ -91,6 +91,8 @@ rules instead:
   `.github/prompts/bilig-workpaper-proof.prompt.md`, and `.vscode/mcp.json`
 - Cursor: `.cursor/rules/bilig-workpaper.mdc`
 - Kiro: `.kiro/steering/bilig-workpaper.md` and `.kiro/settings/mcp.json`
+- Zed: `.zed/settings.json`, root `AGENTS.md`, and
+  `.agents/skills/bilig-workpaper/SKILL.md`
 - Junie: `.junie/mcp/mcp.json`
 - OpenHands: `AGENTS.md`, `.agents/skills/bilig-workpaper/SKILL.md`, and
   `openhands mcp add` for the file-backed WorkPaper server
@@ -112,7 +114,7 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 ```
 
 The generated project includes `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`,
-`CLAUDE.md`, `GEMINI.md`, Copilot / VS Code instructions, Cursor, Kiro, Junie,
+`CLAUDE.md`, `GEMINI.md`, Copilot / VS Code instructions, Cursor, Kiro, Zed, Junie,
 OpenHands, OpenCode, Aider, Cline, Continue, and Windsurf rules, plus local MCP
 configs and `npm run agent:verify`.
 

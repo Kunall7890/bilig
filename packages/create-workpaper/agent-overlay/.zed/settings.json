@@ -1,0 +1,26 @@
+{
+  "context_servers": {
+    "bilig-workpaper": {
+      "command": {
+        "path": "npm",
+        "args": [
+          "exec",
+          "--yes",
+          "--package",
+          "@bilig/workpaper@latest",
+          "--",
+          "bilig-workpaper-mcp",
+          "--workpaper",
+          "__WORKPAPER_PATH__",
+          "--init-demo-workpaper",
+          "--writable"
+        ],
+        "env": {}
+      },
+      "settings": {}
+    }
+  },
+  "agent": {
+    "default_profile": "write"
+  }
+}

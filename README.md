@@ -117,7 +117,7 @@ shows the local risk report for an actual `.xlsx` before a Node service or
 coding agent trusts Bilig with it.
 Use the [coding agent rule chooser](docs/agent-rule-chooser.md) when you need
 the exact instruction, rule, prompt, or MCP config file for Codex, Claude Code,
-GitHub Copilot, VS Code, Cursor, Kiro, Roo Code, Junie, OpenHands, OpenCode, Aider,
+GitHub Copilot, VS Code, Cursor, Kiro, Roo Code, Zed, Junie, OpenHands, OpenCode, Aider,
 Goose, Windsurf/Cascade, Cline, Continue, or Gemini CLI.
 
 Project site: <https://proompteng.github.io/bilig/>
@@ -136,7 +136,7 @@ Pick the path that matches the job:
 | Pull requests can commit XLSX fixtures with stale cached values         | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md) | report-only workbook findings before the workflow blocks anything.                        |
 | A Node service, route, queue, test, or tool needs workbook logic        | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)         | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.    |
 | A coding agent or MCP client needs workbook tools without UI automation | [Agent MCP evaluator](docs/eval-agent-mcp.md)                              | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`. |
-| A coding agent needs the right repo rule or MCP config file             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                    | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Kiro, Roo Code, Junie, OpenHands, OpenCode, Aider, Goose, Windsurf, Cline, Continue, or Gemini. |
+| A coding agent needs the right repo rule or MCP config file             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                    | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Kiro, Roo Code, Zed, Junie, OpenHands, OpenCode, Aider, Goose, Windsurf, Cline, Continue, or Gemini. |
 | You are comparing Excel MCP servers, hosted spreadsheet agents, or file-first XLSX tools | [Spreadsheet MCP server comparison](docs/spreadsheet-mcp-server-comparison.md) | the account/session/file/runtime boundary before an agent trusts formula readback. |
 | You need to choose among agent, MCP, AI SDK, OpenAI, LangGraph, Semantic Kernel, or XLSX proof | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md) | the smallest command or example for the host boundary, plus what it does and does not prove. |
 | You need to see a successful agent session shape before adopting        | [Agent proof transcripts](docs/agent-proof-transcripts.md)                 | prompt, tool call, result, workbook state change, formula readback, JSON export, and restart verification.   |
@@ -368,6 +368,7 @@ locally. Cloned checkouts expose the same workflow through
 `.cursor/rules/bilig-workpaper.mdc`, `.devin/rules/bilig-workpaper.md`,
 `.windsurf/rules/bilig-workpaper.md`, `.clinerules/bilig-workpaper.md`,
 `.continue/rules/bilig-workpaper.md`,
+`.zed/settings.json`,
 `opencode.jsonc`, `.opencode/agents/bilig-workpaper.md`,
 `.vscode/mcp.json`, and `mcp/bilig-workpaper.mcp.json`.
 The public docs expose the same agent path through
@@ -396,6 +397,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Google ADK                                                 | `McpToolset` should import workbook MCP tools and return verified formula readback before an ADK agent trusts the result.                                                       | [Google ADK WorkPaper MCP tools](https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html)                                                                                                                                                                                                                                                                                        |
 | OpenHands                                                  | `openhands mcp add` should launch the file-backed WorkPaper server while `.agents/skills` teaches readback-first workbook edits.                                                | [OpenHands WorkPaper MCP setup](https://proompteng.github.io/bilig/openhands-workpaper-mcp.html)                                                                                                                                                                                                                                                                                          |
 | OpenCode                                                   | `opencode.jsonc` should register the local WorkPaper MCP server while `.opencode/agents` keeps workbook proof work readback-first.                                             | [OpenCode WorkPaper MCP setup](https://proompteng.github.io/bilig/opencode-workpaper-mcp.html)                                                                                                                                                                                                                                                                                             |
+| Zed                                                        | `.zed/settings.json` should register the project-local `context_servers.bilig-workpaper` server while `AGENTS.md` and the project skill keep workbook edits readback-first.    | [MCP client setup](https://proompteng.github.io/bilig/mcp-client-setup.html#zed)                                                                                                                                                                                                                                                                                                            |
 | Microsoft Agent Framework                                  | `MCPStdioTool` or `MCPStreamableHTTPTool` should import workbook MCP tools and verify dependent formula readback before an agent trusts the result.                             | [Microsoft Agent Framework WorkPaper MCP tools](https://proompteng.github.io/bilig/microsoft-agent-framework-workpaper-mcp.html)                                                                                                                                                                                                                                                          |
 | Goose                                                      | A Goose recipe should launch the file-backed WorkPaper MCP server and require formula readback, export, restore, and `verified: true`.                                          | [Goose WorkPaper MCP recipe](https://proompteng.github.io/bilig/goose-workpaper-mcp.html)                                                                                                                                                                                                                                                                                                  |
 | Microsoft Semantic Kernel                                  | `MCPStdioPlugin` should import workbook tools and verify dependent formula readback before an agent trusts plugin calls.                                                        | [Semantic Kernel WorkPaper MCP plugin](https://proompteng.github.io/bilig/semantic-kernel-workpaper-mcp.html)                                                                                                                                                                                                                                                                             |
@@ -480,6 +482,11 @@ project MCP server from [`.kiro/settings/mcp.json`](.kiro/settings/mcp.json).
 Roo Code reads the project rule from
 [`.roo/rules/bilig-workpaper.md`](.roo/rules/bilig-workpaper.md) and the
 project MCP server from [`.roo/mcp.json`](.roo/mcp.json).
+Zed reads the project context server from
+[`.zed/settings.json`](.zed/settings.json), then uses root
+[`AGENTS.md`](AGENTS.md) and
+[`.agents/skills/bilig-workpaper/SKILL.md`](.agents/skills/bilig-workpaper/SKILL.md)
+for the same WorkPaper proof loop.
 Cline reads the workspace rule from
 [`.clinerules/bilig-workpaper.md`](.clinerules/bilig-workpaper.md). Continue
 reads the workspace rule from
@@ -581,7 +588,7 @@ For a generated project from a blank directory, run
 is documented in [create a Bilig WorkPaper starter](docs/create-bilig-workpaper.md).
 For an agent-ready project with `AGENTS.md`, `CONVENTIONS.md`,
 `.aider.conf.yml`, `CLAUDE.md`, `GEMINI.md`,
-Copilot / Cursor / Kiro / Roo Code / Junie / OpenHands / OpenCode / Aider / Cline / Continue / Windsurf rules, MCP client
+Copilot / Cursor / Kiro / Roo Code / Zed / Junie / OpenHands / OpenCode / Aider / Cline / Continue / Windsurf rules, MCP client
 configs, and an `agent:verify` script, run
 `npm create @bilig/workpaper@latest pricing-agent -- --agent`.
 For an existing repo, run

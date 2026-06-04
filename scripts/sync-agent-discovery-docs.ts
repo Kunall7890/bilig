@@ -6,6 +6,16 @@ import { buildAgentJsonManifest } from './agent-discovery-agent-json.ts'
 import { buildDocsAgentInstructions, buildDocsAgentStart } from './agent-discovery-agent-instructions.ts'
 import { buildLlmsFullSources } from './agent-discovery-llms-full-sources.ts'
 import { buildKiroMcpConfig, buildKiroWorkpaperSteering } from './agent-discovery-kiro-rules.ts'
+import {
+  buildClaudeCodeMcpConfig,
+  buildCursorMcpConfig,
+  buildJunieMcpConfig,
+  buildOpenCodeMcpConfig,
+  buildReusableMcpConfig,
+  buildRooMcpConfig,
+  buildVscodeMcpConfig,
+  buildZedSettingsConfig,
+} from './agent-discovery-mcp-configs.ts'
 import { mcpServerCardManifest } from './agent-discovery-mcp-card.ts'
 import { buildWorkpaperPackageAgentInstructions, buildWorkpaperPackageSkillDocument } from './agent-discovery-package-docs.ts'
 import { readTextFileIfExists } from './read-if-exists.ts'
@@ -14,23 +24,16 @@ import {
   buildAiderConfig,
   buildAiderConventions,
   buildClineWorkpaperRule,
-  buildClaudeCodeMcpConfig,
   buildClaudeCodeProjectMemory,
   buildClaudeCodeWorkpaperCommand,
   buildContinueMcpServerConfig,
   buildContinueWorkpaperRule,
-  buildCursorMcpConfig,
   buildCursorWorkpaperRule,
   buildGithubCopilotInstructions,
   buildGithubCopilotWorkpaperInstructions,
   buildGithubCopilotWorkpaperPrompt,
-  buildJunieMcpConfig,
-  buildOpenCodeMcpConfig,
   buildOpenCodeWorkpaperAgent,
-  buildReusableMcpConfig,
-  buildRooMcpConfig,
   buildRooWorkpaperRule,
-  buildVscodeMcpConfig,
   buildWindsurfWorkpaperRule,
 } from './agent-discovery-ide-rules.ts'
 
@@ -665,6 +668,7 @@ async function generatedTargets(): Promise<ReadonlyArray<readonly [string, strin
     ['.kiro/settings/mcp.json', buildKiroMcpConfig(ideRuleInput)],
     ['.junie/mcp/mcp.json', buildJunieMcpConfig(ideRuleInput)],
     ['.roo/mcp.json', buildRooMcpConfig(ideRuleInput)],
+    ['.zed/settings.json', buildZedSettingsConfig(ideRuleInput)],
     ['.vscode/mcp.json', buildVscodeMcpConfig(ideRuleInput)],
     ['opencode.jsonc', buildOpenCodeMcpConfig(ideRuleInput)],
     ['mcp/bilig-workpaper.mcp.json', buildReusableMcpConfig(ideRuleInput)],
@@ -679,6 +683,7 @@ async function generatedTargets(): Promise<ReadonlyArray<readonly [string, strin
       withStarterWorkpaperPath(buildKiroWorkpaperSteering(ideRuleInput)),
     ],
     ['packages/create-workpaper/agent-overlay/.kiro/settings/mcp.json', withStarterWorkpaperPath(buildKiroMcpConfig(ideRuleInput))],
+    ['packages/create-workpaper/agent-overlay/.zed/settings.json', withStarterWorkpaperPath(buildZedSettingsConfig(ideRuleInput))],
     [
       'packages/create-workpaper/agent-overlay/.continue/mcpServers/bilig-workpaper.yaml',
       withStarterWorkpaperPath(buildContinueMcpServerConfig(ideRuleInput)),

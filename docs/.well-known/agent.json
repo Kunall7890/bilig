@@ -245,6 +245,7 @@
       "openhands_skill": "https://github.com/proompteng/bilig/blob/main/.agents/skills/bilig-workpaper/SKILL.md",
       "opencode_agent": "https://github.com/proompteng/bilig/blob/main/.opencode/agents/bilig-workpaper.md",
       "kiro_steering": "https://github.com/proompteng/bilig/blob/main/.kiro/steering/bilig-workpaper.md",
+      "zed_skill": "https://github.com/proompteng/bilig/blob/main/.agents/skills/bilig-workpaper/SKILL.md",
       "docs": "https://proompteng.github.io/bilig/agent-rule-chooser.html",
       "challenge_command": "npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json"
     },
@@ -255,6 +256,7 @@
       "cursor": "https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json",
       "kiro": "https://github.com/proompteng/bilig/blob/main/.kiro/settings/mcp.json",
       "junie": "https://github.com/proompteng/bilig/blob/main/.junie/mcp/mcp.json",
+      "zed": "https://github.com/proompteng/bilig/blob/main/.zed/settings.json",
       "opencode": "https://github.com/proompteng/bilig/blob/main/opencode.jsonc",
       "vscode": "https://github.com/proompteng/bilig/blob/main/.vscode/mcp.json",
       "reusable": "https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json",
@@ -542,6 +544,7 @@
     "https://github.com/proompteng/bilig/blob/main/.kiro/settings/mcp.json",
     "https://github.com/proompteng/bilig/blob/main/.kiro/steering/bilig-workpaper.md",
     "https://github.com/proompteng/bilig/blob/main/.junie/mcp/mcp.json",
+    "https://github.com/proompteng/bilig/blob/main/.zed/settings.json",
     "https://github.com/proompteng/bilig/blob/main/opencode.jsonc",
     "https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json",
     "https://proompteng.github.io/bilig/agent-workbook-challenge.html",
