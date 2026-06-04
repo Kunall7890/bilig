@@ -468,6 +468,7 @@ If any readback step fails, report the blocker instead of claiming the workbook 
 - MCP server guide: ${siteRoot}/mcp-workpaper-tool-server.html
 - OpenHands MCP setup: ${siteRoot}/openhands-workpaper-mcp.html
 - OpenCode MCP setup: ${siteRoot}/opencode-workpaper-mcp.html
+- Goose MCP recipe: ${siteRoot}/goose-workpaper-mcp.html
 - Open WebUI tool setup: ${siteRoot}/open-webui-workpaper-mcp.html
 - LobeHub MCP setup: ${siteRoot}/lobehub-workpaper-mcp.html
 - AnythingLLM MCP setup: ${siteRoot}/anythingllm-workpaper-mcp.html

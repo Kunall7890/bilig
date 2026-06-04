@@ -397,6 +397,15 @@
       "source": "https://github.com/proompteng/bilig/blob/main/docs/opencode-workpaper-mcp.md"
     },
     {
+      "name": "goose-workpaper-mcp",
+      "type": "coding-agent-mcp-recipe",
+      "framework": "Goose",
+      "command": "python examples/goose-workpaper-mcp/scripts/check-goose-recipe.py",
+      "recipe_path": "https://github.com/proompteng/bilig/blob/main/examples/goose-workpaper-mcp/recipe.yaml",
+      "docs": "https://proompteng.github.io/bilig/goose-workpaper-mcp.html",
+      "source": "https://github.com/proompteng/bilig/tree/main/examples/goose-workpaper-mcp"
+    },
+    {
       "name": "mastra-workpaper-tool",
       "type": "typescript-agent-tool-smoke-test",
       "framework": "Mastra",
@@ -537,6 +546,8 @@
     "https://proompteng.github.io/bilig/opencode-workpaper-mcp.html",
     "https://github.com/proompteng/bilig/blob/main/docs/opencode-workpaper-mcp.md",
     "https://github.com/proompteng/bilig/blob/main/.opencode/agents/bilig-workpaper.md",
+    "https://proompteng.github.io/bilig/goose-workpaper-mcp.html",
+    "https://github.com/proompteng/bilig/tree/main/examples/goose-workpaper-mcp",
     "https://proompteng.github.io/bilig/smolagents-workpaper-tool.html",
     "https://proompteng.github.io/bilig/huggingface-workpaper-space.html",
     "https://bilig.proompteng.ai/mcp",

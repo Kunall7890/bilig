@@ -19,6 +19,7 @@ Google ADK WorkPaper MCP: https://proompteng.github.io/bilig/google-adk-workpape
 Microsoft Agent Framework WorkPaper MCP: https://proompteng.github.io/bilig/microsoft-agent-framework-workpaper-mcp.html
 OpenHands WorkPaper MCP setup: https://proompteng.github.io/bilig/openhands-workpaper-mcp.html
 OpenCode WorkPaper MCP setup: https://proompteng.github.io/bilig/opencode-workpaper-mcp.html
+Goose WorkPaper MCP recipe: https://proompteng.github.io/bilig/goose-workpaper-mcp.html
 OpenCode WorkPaper MCP source: https://github.com/proompteng/bilig/blob/main/docs/opencode-workpaper-mcp.md
 OpenCode WorkPaper MCP config: https://github.com/proompteng/bilig/blob/main/opencode.jsonc
 OpenCode WorkPaper agent: https://github.com/proompteng/bilig/blob/main/.opencode/agents/bilig-workpaper.md
@@ -142,6 +143,9 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   https://github.com/proompteng/bilig/blob/main/docs/agent-adoption-kit.md
   https://proompteng.github.io/bilig/agent-rule-chooser.html
   https://github.com/proompteng/bilig/blob/main/docs/agent-rule-chooser.md
+  https://proompteng.github.io/bilig/goose-workpaper-mcp.html
+  https://github.com/proompteng/bilig/blob/main/docs/goose-workpaper-mcp.md
+  https://github.com/proompteng/bilig/tree/main/examples/goose-workpaper-mcp
   `npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list`
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`.
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json`.

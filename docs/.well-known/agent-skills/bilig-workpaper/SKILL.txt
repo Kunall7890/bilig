@@ -213,6 +213,7 @@ If any readback step fails, report the blocker instead of claiming the workbook 
 - MCP server guide: https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html
 - OpenHands MCP setup: https://proompteng.github.io/bilig/openhands-workpaper-mcp.html
 - OpenCode MCP setup: https://proompteng.github.io/bilig/opencode-workpaper-mcp.html
+- Goose MCP recipe: https://proompteng.github.io/bilig/goose-workpaper-mcp.html
 - Open WebUI tool setup: https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html
 - LobeHub MCP setup: https://proompteng.github.io/bilig/lobehub-workpaper-mcp.html
 - AnythingLLM MCP setup: https://proompteng.github.io/bilig/anythingllm-workpaper-mcp.html

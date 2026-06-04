@@ -1,7 +1,7 @@
 ---
 title: Coding agent rule chooser for Bilig WorkPaper
 published: true
-description: Pick the Bilig instruction, rule, prompt, or MCP config for Codex, Claude Code, GitHub Copilot, VS Code, Cursor, JetBrains Junie, OpenHands, OpenCode, Aider, Windsurf, Cline, Continue, and Gemini CLI.
+description: Pick the Bilig instruction, rule, prompt, or MCP config for Codex, Claude Code, GitHub Copilot, VS Code, Cursor, JetBrains Junie, OpenHands, OpenCode, Aider, Goose, Windsurf, Cline, Continue, and Gemini CLI.
 tags: ai-agents, agent-rules, mcp, workbook formulas, coding agents
 canonical_url: https://proompteng.github.io/bilig/agent-rule-chooser.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -37,6 +37,7 @@ call alone is not success.
 | OpenHands | `AGENTS.md`, then `.agents/skills/bilig-workpaper/SKILL.md`. | `openhands mcp add bilig-workpaper --transport stdio npm -- exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable`. | Use `/mcp` in the conversation and restart after MCP config changes. |
 | OpenCode | `opencode.jsonc`, then `.opencode/agents/bilig-workpaper.md`. | `opencode.jsonc` defines the local `bilig-workpaper` MCP server and a disabled hosted demo server. | Invoke the `@bilig-workpaper` subagent for workbook-shaped tasks and require readback fields. |
 | Aider | `CONVENTIONS.md`, loaded by `.aider.conf.yml`. | Run the local `bilig-workpaper-mcp` command from the conventions when state must persist. | Keep Aider's answer tied to WorkPaper readback, export or restore evidence, and explicit limitations. |
+| Goose | `examples/goose-workpaper-mcp/recipe.yaml`. | The recipe launches the local file-backed WorkPaper MCP server; use hosted Streamable HTTP only for stateless smoke. | Validate the recipe, run `bilig-evaluate --door agent-mcp --json`, and require `set_cell_contents_and_readback`, `Summary!B3` `60000 -> 96000`, export, restore, and `verified: true`. |
 | Windsurf/Cascade | `.devin/rules/bilig-workpaper.md`, with `.windsurf/rules/bilig-workpaper.md` kept as a fallback. | Start with the same `bilig-evaluate --door agent-mcp --json` command, then file-backed MCP if state must persist. | The rule uses `trigger: model_decision`; require computed readback before reporting success. |
 | Cline | `.clinerules/bilig-workpaper.md`. | Add MCP separately only if your Cline setup exposes custom MCP servers. | Cline should use the workspace rule when workbook formulas, cells, or MCP spreadsheet tools appear. |
 | Continue | `.continue/rules/bilig-workpaper.md`. | Configure MCP separately through Continue if you want direct tool calls. | Local rules are version controlled; use this one for Agent, Chat, and Edit requests that touch workbook logic. |
@@ -96,6 +97,9 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 - [OpenCode agents](https://opencode.ai/docs/agents/)
 - [Aider conventions](https://aider.chat/docs/usage/conventions.html)
 - [Aider configuration](https://aider.chat/docs/config/aider_conf.html)
+- [Goose extensions](https://goose-docs.ai/docs/getting-started/using-extensions/)
+- [Goose recipes](https://goose-docs.ai/docs/guides/recipes/recipe-reference/)
+- [Goose CLI commands](https://goose-docs.ai/docs/guides/goose-cli-commands/)
 - [Windsurf/Cascade memories and rules](https://docs.windsurf.com/windsurf/cascade/memories)
 - [Cline rules](https://docs.cline.bot/customization/cline-rules)
 - [Continue rules](https://docs.continue.dev/customize/rules)
@@ -106,6 +110,7 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 - [Agent Adoption Kit](agent-adoption-kit.md)
 - [OpenHands WorkPaper MCP setup](openhands-workpaper-mcp.md)
 - [OpenCode WorkPaper MCP setup](opencode-workpaper-mcp.md)
+- [Goose WorkPaper MCP recipe](goose-workpaper-mcp.md)
 - [Agent WorkPaper proof matrix](agent-proof-matrix.md)
 - [Agent proof transcripts](agent-proof-transcripts.md)
 - [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)

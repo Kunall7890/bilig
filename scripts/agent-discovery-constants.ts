@@ -40,6 +40,7 @@ export const versionedStaticReferenceRoots = [
   'docs/open-webui-workpaper-mcp.md',
   'docs/openhands-workpaper-mcp.md',
   'docs/opencode-workpaper-mcp.md',
+  'docs/goose-workpaper-mcp.md',
   'docs/open-multi-agent-workpaper-mcp.md',
   'docs/lobehub-workpaper-mcp.md',
   'docs/anythingllm-workpaper-mcp.md',

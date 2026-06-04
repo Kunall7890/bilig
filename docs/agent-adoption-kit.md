@@ -95,6 +95,8 @@ rules instead:
   `openhands mcp add` for the file-backed WorkPaper server
 - OpenCode: `opencode.jsonc` and `.opencode/agents/bilig-workpaper.md`
 - Aider: `CONVENTIONS.md` loaded by `.aider.conf.yml`
+- Goose: `examples/goose-workpaper-mcp/recipe.yaml` for a local file-backed
+  WorkPaper MCP recipe; use hosted Streamable HTTP only for stateless smoke
 - Windsurf/Cascade: `.devin/rules/bilig-workpaper.md`, with
   `.windsurf/rules/bilig-workpaper.md` as the fallback mirror
 - Cline: `.clinerules/bilig-workpaper.md`

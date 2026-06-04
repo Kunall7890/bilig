@@ -299,6 +299,21 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
     !hasCapability(
       agentJsonCapabilities,
       (capability) =>
+        Reflect.get(capability, 'name') === 'goose-workpaper-mcp' &&
+        Reflect.get(capability, 'framework') === 'Goose' &&
+        Reflect.get(capability, 'command') === 'python examples/goose-workpaper-mcp/scripts/check-goose-recipe.py' &&
+        Reflect.get(capability, 'recipe_path') ===
+          'https://github.com/proompteng/bilig/blob/main/examples/goose-workpaper-mcp/recipe.yaml' &&
+        Reflect.get(capability, 'docs') === 'https://proompteng.github.io/bilig/goose-workpaper-mcp.html' &&
+        Reflect.get(capability, 'source') === 'https://github.com/proompteng/bilig/tree/main/examples/goose-workpaper-mcp',
+    )
+  ) {
+    throw new Error('docs/.well-known/agent.json must advertise the Goose WorkPaper MCP recipe capability')
+  }
+  if (
+    !hasCapability(
+      agentJsonCapabilities,
+      (capability) =>
         Reflect.get(capability, 'name') === 'mastra-workpaper-tool' &&
         Reflect.get(capability, 'framework') === 'Mastra' &&
         Reflect.get(capability, 'api_shape') === 'createTool -> execute -> WorkPaper readback' &&
@@ -387,6 +402,8 @@ const requiredPublicEntrypoints = [
   'https://proompteng.github.io/bilig/opencode-workpaper-mcp.html',
   'https://github.com/proompteng/bilig/blob/main/docs/opencode-workpaper-mcp.md',
   'https://github.com/proompteng/bilig/blob/main/.opencode/agents/bilig-workpaper.md',
+  'https://proompteng.github.io/bilig/goose-workpaper-mcp.html',
+  'https://github.com/proompteng/bilig/tree/main/examples/goose-workpaper-mcp',
   'https://proompteng.github.io/bilig/crewai-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/cloudflare-agents-workpaper-spreadsheet-tool.html',
   'https://proompteng.github.io/bilig/semantic-kernel-workpaper-mcp.html',

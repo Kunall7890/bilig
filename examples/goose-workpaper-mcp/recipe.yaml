@@ -1,0 +1,28 @@
+version: "1.0.0"
+title: Bilig WorkPaper MCP proof
+description: Edit workbook inputs through Bilig WorkPaper MCP and verify formula readback.
+instructions: |
+  Use Bilig WorkPaper MCP tools for workbook-shaped tasks. Do not drive Excel,
+  LibreOffice, Google Sheets, or browser grids for formula proof. Read the
+  relevant cells, call set_cell_contents_and_readback for input edits, read the
+  dependent formula output, export WorkPaper JSON, restore or restart from
+  persisted state, and report editedCell, before, after, afterRestore,
+  persistedDocumentBytes, verified, and limitations.
+extensions:
+  - type: stdio
+    name: bilig-workpaper
+    cmd: npm
+    args:
+      - exec
+      - --yes
+      - --package
+      - "@bilig/workpaper@latest"
+      - --
+      - bilig-workpaper-mcp
+      - --workpaper
+      - ./pricing.workpaper.json
+      - --init-demo-workpaper
+      - --writable
+    timeout: 300
+    description: File-backed Bilig WorkPaper MCP server for durable workbook readback proof.
+    bundled: false

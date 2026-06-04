@@ -76,6 +76,7 @@ export const docsSiteSources = [
   ['microsoft-agent-framework-workpaper-mcp.html', 'microsoft-agent-framework-workpaper-mcp.md'],
   ['openhands-workpaper-mcp.html', 'openhands-workpaper-mcp.md'],
   ['opencode-workpaper-mcp.html', 'opencode-workpaper-mcp.md'],
+  ['goose-workpaper-mcp.html', 'goose-workpaper-mcp.md'],
   ['smolagents-workpaper-tool.html', 'smolagents-workpaper-tool.md'],
   ['huggingface-workpaper-space.html', 'huggingface-workpaper-space.md'],
   ['chatgpt-apps-workpaper-mcp.html', 'chatgpt-apps-workpaper-mcp.md'],
