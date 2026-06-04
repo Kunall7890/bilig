@@ -65,6 +65,34 @@ export function buildZedSettingsConfig(input: AgentIdeRuleInput): string {
   )}\n`
 }
 
+export function buildTraeMcpConfig(input: AgentIdeRuleInput): string {
+  const { workpaperPackageSpec } = input
+  return `${JSON.stringify(
+    {
+      mcpServers: {
+        'bilig-workpaper': {
+          command: 'npm',
+          args: [
+            'exec',
+            '--yes',
+            '--package',
+            workpaperPackageSpec,
+            '--',
+            'bilig-workpaper-mcp',
+            '--workpaper',
+            './.bilig/pricing.workpaper.json',
+            '--init-demo-workpaper',
+            '--writable',
+          ],
+          env: {},
+        },
+      },
+    },
+    null,
+    2,
+  )}\n`
+}
+
 export function buildOpenCodeMcpConfig(input: AgentIdeRuleInput): string {
   const { remoteMcpEndpoint, workpaperPackageSpec } = input
   return `${JSON.stringify(

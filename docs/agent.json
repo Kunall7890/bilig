@@ -245,6 +245,7 @@
       "openhands_skill": "https://github.com/proompteng/bilig/blob/main/.agents/skills/bilig-workpaper/SKILL.md",
       "opencode_agent": "https://github.com/proompteng/bilig/blob/main/.opencode/agents/bilig-workpaper.md",
       "kiro_steering": "https://github.com/proompteng/bilig/blob/main/.kiro/steering/bilig-workpaper.md",
+      "trae_rule": "https://github.com/proompteng/bilig/blob/main/.trae/rules/bilig-workpaper.md",
       "zed_skill": "https://github.com/proompteng/bilig/blob/main/.agents/skills/bilig-workpaper/SKILL.md",
       "docs": "https://proompteng.github.io/bilig/agent-rule-chooser.html",
       "challenge_command": "npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json"
@@ -256,6 +257,7 @@
       "cursor": "https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json",
       "kiro": "https://github.com/proompteng/bilig/blob/main/.kiro/settings/mcp.json",
       "junie": "https://github.com/proompteng/bilig/blob/main/.junie/mcp/mcp.json",
+      "trae": "https://github.com/proompteng/bilig/blob/main/.trae/mcp.json",
       "zed": "https://github.com/proompteng/bilig/blob/main/.zed/settings.json",
       "opencode": "https://github.com/proompteng/bilig/blob/main/opencode.jsonc",
       "vscode": "https://github.com/proompteng/bilig/blob/main/.vscode/mcp.json",
@@ -401,6 +403,16 @@
       "source": "https://github.com/proompteng/bilig/blob/main/docs/openhands-workpaper-mcp.md"
     },
     {
+      "name": "trae-workpaper-mcp",
+      "type": "coding-agent-mcp-setup",
+      "framework": "Trae",
+      "command": "npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable",
+      "config_path": "https://github.com/proompteng/bilig/blob/main/.trae/mcp.json",
+      "rule_path": "https://github.com/proompteng/bilig/blob/main/.trae/rules/bilig-workpaper.md",
+      "docs": "https://proompteng.github.io/bilig/trae-workpaper-mcp.html",
+      "source": "https://github.com/proompteng/bilig/blob/main/docs/trae-workpaper-mcp.md"
+    },
+    {
       "name": "opencode-workpaper-mcp",
       "type": "coding-agent-mcp-setup",
       "framework": "OpenCode",
@@ -544,6 +556,8 @@
     "https://github.com/proompteng/bilig/blob/main/.kiro/settings/mcp.json",
     "https://github.com/proompteng/bilig/blob/main/.kiro/steering/bilig-workpaper.md",
     "https://github.com/proompteng/bilig/blob/main/.junie/mcp/mcp.json",
+    "https://github.com/proompteng/bilig/blob/main/.trae/mcp.json",
+    "https://github.com/proompteng/bilig/blob/main/.trae/rules/bilig-workpaper.md",
     "https://github.com/proompteng/bilig/blob/main/.zed/settings.json",
     "https://github.com/proompteng/bilig/blob/main/opencode.jsonc",
     "https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json",
@@ -562,6 +576,8 @@
     "https://proompteng.github.io/bilig/openhands-workpaper-mcp.html",
     "https://github.com/proompteng/bilig/blob/main/docs/openhands-workpaper-mcp.md",
     "https://github.com/proompteng/bilig/blob/main/.agents/skills/bilig-workpaper/SKILL.md",
+    "https://proompteng.github.io/bilig/trae-workpaper-mcp.html",
+    "https://github.com/proompteng/bilig/blob/main/docs/trae-workpaper-mcp.md",
     "https://proompteng.github.io/bilig/opencode-workpaper-mcp.html",
     "https://github.com/proompteng/bilig/blob/main/docs/opencode-workpaper-mcp.md",
     "https://github.com/proompteng/bilig/blob/main/.opencode/agents/bilig-workpaper.md",

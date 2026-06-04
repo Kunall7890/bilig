@@ -55,6 +55,7 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
           'https://github.com/proompteng/bilig/blob/main/.agents/skills/bilig-workpaper/SKILL.md' &&
         Reflect.get(capability, 'opencode_agent') === 'https://github.com/proompteng/bilig/blob/main/.opencode/agents/bilig-workpaper.md' &&
         Reflect.get(capability, 'kiro_steering') === 'https://github.com/proompteng/bilig/blob/main/.kiro/steering/bilig-workpaper.md' &&
+        Reflect.get(capability, 'trae_rule') === 'https://github.com/proompteng/bilig/blob/main/.trae/rules/bilig-workpaper.md' &&
         Reflect.get(capability, 'zed_skill') === 'https://github.com/proompteng/bilig/blob/main/.agents/skills/bilig-workpaper/SKILL.md' &&
         Reflect.get(capability, 'docs') === 'https://proompteng.github.io/bilig/agent-rule-chooser.html',
     )
@@ -149,6 +150,7 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
         Reflect.get(capability, 'cursor') === 'https://github.com/proompteng/bilig/blob/main/.cursor/mcp.json' &&
         Reflect.get(capability, 'kiro') === 'https://github.com/proompteng/bilig/blob/main/.kiro/settings/mcp.json' &&
         Reflect.get(capability, 'junie') === 'https://github.com/proompteng/bilig/blob/main/.junie/mcp/mcp.json' &&
+        Reflect.get(capability, 'trae') === 'https://github.com/proompteng/bilig/blob/main/.trae/mcp.json' &&
         Reflect.get(capability, 'zed') === 'https://github.com/proompteng/bilig/blob/main/.zed/settings.json' &&
         Reflect.get(capability, 'opencode') === 'https://github.com/proompteng/bilig/blob/main/opencode.jsonc' &&
         Reflect.get(capability, 'vscode') === 'https://github.com/proompteng/bilig/blob/main/.vscode/mcp.json' &&
@@ -306,6 +308,22 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
     !hasCapability(
       agentJsonCapabilities,
       (capability) =>
+        Reflect.get(capability, 'name') === 'trae-workpaper-mcp' &&
+        Reflect.get(capability, 'framework') === 'Trae' &&
+        Reflect.get(capability, 'command') ===
+          'npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable' &&
+        Reflect.get(capability, 'config_path') === 'https://github.com/proompteng/bilig/blob/main/.trae/mcp.json' &&
+        Reflect.get(capability, 'rule_path') === 'https://github.com/proompteng/bilig/blob/main/.trae/rules/bilig-workpaper.md' &&
+        Reflect.get(capability, 'docs') === 'https://proompteng.github.io/bilig/trae-workpaper-mcp.html' &&
+        Reflect.get(capability, 'source') === 'https://github.com/proompteng/bilig/blob/main/docs/trae-workpaper-mcp.md',
+    )
+  ) {
+    throw new Error('docs/.well-known/agent.json must advertise the Trae WorkPaper MCP capability')
+  }
+  if (
+    !hasCapability(
+      agentJsonCapabilities,
+      (capability) =>
         Reflect.get(capability, 'name') === 'opencode-workpaper-mcp' &&
         Reflect.get(capability, 'framework') === 'OpenCode' &&
         Reflect.get(capability, 'command') ===
@@ -410,6 +428,8 @@ const requiredPublicEntrypoints = [
   'https://github.com/proompteng/bilig/blob/main/.kiro/settings/mcp.json',
   'https://github.com/proompteng/bilig/blob/main/.kiro/steering/bilig-workpaper.md',
   'https://github.com/proompteng/bilig/blob/main/.junie/mcp/mcp.json',
+  'https://github.com/proompteng/bilig/blob/main/.trae/mcp.json',
+  'https://github.com/proompteng/bilig/blob/main/.trae/rules/bilig-workpaper.md',
   'https://github.com/proompteng/bilig/blob/main/.zed/settings.json',
   'https://github.com/proompteng/bilig/blob/main/opencode.jsonc',
   'https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json',
@@ -427,6 +447,8 @@ const requiredPublicEntrypoints = [
   'https://proompteng.github.io/bilig/openhands-workpaper-mcp.html',
   'https://github.com/proompteng/bilig/blob/main/docs/openhands-workpaper-mcp.md',
   'https://github.com/proompteng/bilig/blob/main/.agents/skills/bilig-workpaper/SKILL.md',
+  'https://proompteng.github.io/bilig/trae-workpaper-mcp.html',
+  'https://github.com/proompteng/bilig/blob/main/docs/trae-workpaper-mcp.md',
   'https://proompteng.github.io/bilig/opencode-workpaper-mcp.html',
   'https://github.com/proompteng/bilig/blob/main/docs/opencode-workpaper-mcp.md',
   'https://github.com/proompteng/bilig/blob/main/.opencode/agents/bilig-workpaper.md',

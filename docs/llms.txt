@@ -18,8 +18,12 @@ ChatGPT Apps WorkPaper MCP: https://proompteng.github.io/bilig/chatgpt-apps-work
 Google ADK WorkPaper MCP: https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html
 Microsoft Agent Framework WorkPaper MCP: https://proompteng.github.io/bilig/microsoft-agent-framework-workpaper-mcp.html
 OpenHands WorkPaper MCP setup: https://proompteng.github.io/bilig/openhands-workpaper-mcp.html
+Trae WorkPaper MCP setup: https://proompteng.github.io/bilig/trae-workpaper-mcp.html
 OpenCode WorkPaper MCP setup: https://proompteng.github.io/bilig/opencode-workpaper-mcp.html
 Goose WorkPaper MCP recipe: https://proompteng.github.io/bilig/goose-workpaper-mcp.html
+Trae WorkPaper MCP source: https://github.com/proompteng/bilig/blob/main/docs/trae-workpaper-mcp.md
+Trae WorkPaper MCP config: https://github.com/proompteng/bilig/blob/main/.trae/mcp.json
+Trae WorkPaper rule: https://github.com/proompteng/bilig/blob/main/.trae/rules/bilig-workpaper.md
 OpenCode WorkPaper MCP source: https://github.com/proompteng/bilig/blob/main/docs/opencode-workpaper-mcp.md
 OpenCode WorkPaper MCP config: https://github.com/proompteng/bilig/blob/main/opencode.jsonc
 OpenCode WorkPaper agent: https://github.com/proompteng/bilig/blob/main/.opencode/agents/bilig-workpaper.md
@@ -65,6 +69,8 @@ Kiro workspace steering: https://github.com/proompteng/bilig/blob/main/.kiro/ste
 Kiro MCP workspace config: https://github.com/proompteng/bilig/blob/main/.kiro/settings/mcp.json
 Roo Code workspace rule: https://github.com/proompteng/bilig/blob/main/.roo/rules/bilig-workpaper.md
 Roo Code MCP workspace config: https://github.com/proompteng/bilig/blob/main/.roo/mcp.json
+Trae MCP workspace config: https://github.com/proompteng/bilig/blob/main/.trae/mcp.json
+Trae project rule: https://github.com/proompteng/bilig/blob/main/.trae/rules/bilig-workpaper.md
 Zed MCP workspace config: https://github.com/proompteng/bilig/blob/main/.zed/settings.json
 JetBrains Junie MCP workspace config: https://github.com/proompteng/bilig/blob/main/.junie/mcp/mcp.json
 reusable MCP server config: https://github.com/proompteng/bilig/blob/main/mcp/bilig-workpaper.mcp.json

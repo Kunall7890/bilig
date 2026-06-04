@@ -218,7 +218,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   }
   for (const required of [
     'title: Workbook tools for agent frameworks',
-    'description: Pick the Bilig WorkPaper integration path for Codex, Claude, Cursor, Kiro, Roo Code, Zed, Junie, OpenHands, OpenCode, Aider, Goose, Browser Use, OpenAI Agents, Microsoft Agent Framework, Vercel AI SDK, LangChain, LangGraph, LlamaIndex, and MCP clients.',
+    'description: Pick the Bilig WorkPaper integration path for Codex, Claude, Cursor, Kiro, Roo Code, Trae, Zed, Junie, OpenHands, OpenCode, Aider, Goose, Browser Use, OpenAI Agents, Microsoft Agent Framework, Vercel AI SDK, LangChain, LangGraph, LlamaIndex, and MCP clients.',
     'npm create @bilig/workpaper@latest pricing-agent -- --agent',
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
     'npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json',
@@ -229,6 +229,9 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     '.kiro/settings/mcp.json',
     'Roo Code',
     '.roo/mcp.json',
+    'Trae',
+    '.trae/mcp.json',
+    'trae-workpaper-mcp.md',
     'Zed',
     '.zed/settings.json',
     'JetBrains Junie',
@@ -644,7 +647,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   )
   requireIncludes(
     mcpClientSetupDoc,
-    'description: Remote MCP smoke endpoint and local stdio configuration for Bilig WorkPaper in Claude, Cursor, Junie, Zed, VS Code, Cline, and Codex.',
+    'description: Remote MCP smoke endpoint and local stdio configuration for Bilig WorkPaper in Claude, Cursor, Junie, Trae, Zed, VS Code, Cline, and Codex.',
     'docs/mcp-client-setup.md',
   )
   for (const required of [
@@ -674,6 +677,10 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     '.mcp.json',
     '.cursor/mcp.json',
     '.junie/mcp/mcp.json',
+    '.trae/mcp.json',
+    'Use the bilig-workpaper MCP server from .trae/mcp.json after Project MCP is',
+    'enabled. List sheets, read Inputs!B3 and Summary!B3',
+    'Trae reads the project rule from `.trae/rules/bilig-workpaper.md`',
     '.zed/settings.json',
     'mcp/bilig-workpaper.mcp.json',
     'Use the biligWorkpaperFile MCP server. List sheets, read Summary!A1:B5',
@@ -700,6 +707,10 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'https://zed.dev/docs/ai/mcp',
     'https://zed.dev/docs/ai/rules',
     'https://zed.dev/docs/ai/tool-permissions',
+    'https://docs.trae.ai/ide/model-context-protocol',
+    'https://docs.trae.ai/ide/add-mcp-servers',
+    'https://docs.trae.ai/ide/rules',
+    'https://docs.trae.ai/ide/skills',
     'https://platform.openai.com/docs/docs-mcp',
   ]) {
     requireIncludes(mcpClientSetupDoc, required, 'docs/mcp-client-setup.md')

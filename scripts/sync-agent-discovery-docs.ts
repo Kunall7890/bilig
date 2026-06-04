@@ -13,6 +13,7 @@ import {
   buildOpenCodeMcpConfig,
   buildReusableMcpConfig,
   buildRooMcpConfig,
+  buildTraeMcpConfig,
   buildVscodeMcpConfig,
   buildZedSettingsConfig,
 } from './agent-discovery-mcp-configs.ts'
@@ -34,6 +35,7 @@ import {
   buildGithubCopilotWorkpaperPrompt,
   buildOpenCodeWorkpaperAgent,
   buildRooWorkpaperRule,
+  buildTraeWorkpaperRule,
   buildWindsurfWorkpaperRule,
 } from './agent-discovery-ide-rules.ts'
 
@@ -653,6 +655,7 @@ async function generatedTargets(): Promise<ReadonlyArray<readonly [string, strin
     ['.cursor/rules/bilig-workpaper.mdc', buildCursorWorkpaperRule(ideRuleInput)],
     ['.kiro/steering/bilig-workpaper.md', buildKiroWorkpaperSteering(ideRuleInput)],
     ['.roo/rules/bilig-workpaper.md', buildRooWorkpaperRule(ideRuleInput)],
+    ['.trae/rules/bilig-workpaper.md', buildTraeWorkpaperRule(ideRuleInput)],
     ['.devin/rules/bilig-workpaper.md', buildWindsurfWorkpaperRule(ideRuleInput)],
     ['.windsurf/rules/bilig-workpaper.md', buildWindsurfWorkpaperRule(ideRuleInput)],
     ['.clinerules/bilig-workpaper.md', buildClineWorkpaperRule(ideRuleInput)],
@@ -668,6 +671,7 @@ async function generatedTargets(): Promise<ReadonlyArray<readonly [string, strin
     ['.kiro/settings/mcp.json', buildKiroMcpConfig(ideRuleInput)],
     ['.junie/mcp/mcp.json', buildJunieMcpConfig(ideRuleInput)],
     ['.roo/mcp.json', buildRooMcpConfig(ideRuleInput)],
+    ['.trae/mcp.json', buildTraeMcpConfig(ideRuleInput)],
     ['.zed/settings.json', buildZedSettingsConfig(ideRuleInput)],
     ['.vscode/mcp.json', buildVscodeMcpConfig(ideRuleInput)],
     ['opencode.jsonc', buildOpenCodeMcpConfig(ideRuleInput)],
@@ -683,6 +687,11 @@ async function generatedTargets(): Promise<ReadonlyArray<readonly [string, strin
       withStarterWorkpaperPath(buildKiroWorkpaperSteering(ideRuleInput)),
     ],
     ['packages/create-workpaper/agent-overlay/.kiro/settings/mcp.json', withStarterWorkpaperPath(buildKiroMcpConfig(ideRuleInput))],
+    ['packages/create-workpaper/agent-overlay/.trae/mcp.json', withStarterWorkpaperPath(buildTraeMcpConfig(ideRuleInput))],
+    [
+      'packages/create-workpaper/agent-overlay/.trae/rules/bilig-workpaper.md',
+      withStarterWorkpaperPath(buildTraeWorkpaperRule(ideRuleInput)),
+    ],
     ['packages/create-workpaper/agent-overlay/.zed/settings.json', withStarterWorkpaperPath(buildZedSettingsConfig(ideRuleInput))],
     [
       'packages/create-workpaper/agent-overlay/.continue/mcpServers/bilig-workpaper.yaml',

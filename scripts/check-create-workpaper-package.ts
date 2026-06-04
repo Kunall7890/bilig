@@ -153,6 +153,9 @@ function assertDocs(): void {
   assert(docs.includes('agent:verify'), 'starter docs must document the agent verification script')
   assert(readme.includes('Kiro'), 'starter README must document the Kiro agent overlay')
   assert(docs.includes('.kiro/settings/mcp.json'), 'starter docs must document the Kiro MCP config')
+  assert(readme.includes('Trae') && readme.includes('.trae/mcp.json'), 'starter README must document the Trae MCP config')
+  assert(docs.includes('.trae/mcp.json'), 'starter docs must document the Trae MCP config')
+  assert(agentDocs.includes('.trae/rules/bilig-workpaper.md'), 'agent adoption kit must document the Trae project rule')
   assert(readme.includes('Zed') && readme.includes('.zed/settings.json'), 'starter README must document the Zed MCP config')
   assert(docs.includes('.zed/settings.json'), 'starter docs must document the Zed MCP config')
   assert(agentDocs.includes('.zed/settings.json'), 'agent adoption kit must document the Zed MCP config')
@@ -214,6 +217,8 @@ function assertPackedTarball(): void {
     'package/agent-overlay/.cursor/rules/bilig-workpaper.mdc',
     'package/agent-overlay/.roo/mcp.json',
     'package/agent-overlay/.roo/rules/bilig-workpaper.md',
+    'package/agent-overlay/.trae/mcp.json',
+    'package/agent-overlay/.trae/rules/bilig-workpaper.md',
     'package/agent-overlay/.zed/settings.json',
     'package/agent-overlay/.github/copilot-instructions.md',
     'package/agent-overlay/.github/instructions/bilig-workpaper.instructions.md',
@@ -320,6 +325,8 @@ function assertGeneratedStarters(): void {
     '.cursor/rules/bilig-workpaper.mdc',
     '.roo/mcp.json',
     '.roo/rules/bilig-workpaper.md',
+    '.trae/mcp.json',
+    '.trae/rules/bilig-workpaper.md',
     '.zed/settings.json',
     '.github/copilot-instructions.md',
     '.github/instructions/bilig-workpaper.instructions.md',
@@ -359,6 +366,8 @@ function assertGeneratedStarters(): void {
     '.kiro/steering/bilig-workpaper.md',
     '.roo/mcp.json',
     '.roo/rules/bilig-workpaper.md',
+    '.trae/mcp.json',
+    '.trae/rules/bilig-workpaper.md',
     '.zed/settings.json',
     '.vscode/mcp.json',
     'mcp/bilig-workpaper.mcp.json',
@@ -427,6 +436,8 @@ function assertGeneratedStarters(): void {
     '.kiro/steering/bilig-workpaper.md',
     '.roo/mcp.json',
     '.roo/rules/bilig-workpaper.md',
+    '.trae/mcp.json',
+    '.trae/rules/bilig-workpaper.md',
     '.zed/settings.json',
     '.opencode/agents/bilig-workpaper.md',
     '.vscode/mcp.json',

@@ -26,6 +26,8 @@ export function requireLlmsInstallDiscovery({ docsLlmsInstall, llmsFull, llmsIns
   requireIncludes(llmsInstall, '.devin/rules/bilig-workpaper.md', 'llms-install.md')
   requireIncludes(llmsInstall, '.kiro/settings/mcp.json', 'llms-install.md')
   requireIncludes(llmsInstall, '.kiro/steering/bilig-workpaper.md', 'llms-install.md')
+  requireIncludes(llmsInstall, '.trae/mcp.json', 'llms-install.md')
+  requireIncludes(llmsInstall, '.trae/rules/bilig-workpaper.md', 'llms-install.md')
   requireIncludes(llmsInstall, '.zed/settings.json', 'llms-install.md')
   requireIncludes(llmsInstall, '.junie/mcp/mcp.json', 'llms-install.md')
   requireIncludes(llmsInstall, 'opencode.jsonc', 'llms-install.md')

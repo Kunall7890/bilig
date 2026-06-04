@@ -17,6 +17,7 @@ const agentStartRuleTargets = [
   'windsurf',
   'gemini',
   'junie',
+  'trae',
   'zed',
   'vscode-mcp',
 ] as const
@@ -156,6 +157,7 @@ export function agentStartHelpText(): string {
     '  windsurf     .devin/rules/bilig-workpaper.md or .windsurf/rules/bilig-workpaper.md',
     '  gemini       GEMINI.md, gemini-extension.json, gemini-workpaper-context.md',
     '  junie        .junie/mcp/mcp.json',
+    '  trae         .trae/mcp.json, .trae/rules/bilig-workpaper.md',
     '  zed          .zed/settings.json, AGENTS.md, .agents/skills/bilig-workpaper/SKILL.md',
     '  vscode-mcp   .vscode/mcp.json',
     '',
@@ -263,6 +265,11 @@ export function buildAgentStartDecisionCard(): AgentStartDecisionCard {
         command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules junie',
       },
       {
+        target: 'trae',
+        file: '.trae/mcp.json, .trae/rules/bilig-workpaper.md',
+        command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules trae',
+      },
+      {
         target: 'zed',
         file: '.zed/settings.json, AGENTS.md, .agents/skills/bilig-workpaper/SKILL.md',
         command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules zed',
@@ -332,6 +339,7 @@ function renderAgentStartRules(card: AgentStartDecisionCard, target: AgentStartR
     gemini: 'Gemini CLI',
     junie: 'Junie',
     opencode: 'OpenCode',
+    trae: 'Trae',
     'vscode-mcp': 'VS Code agent mode',
     windsurf: 'Windsurf/Cascade',
     zed: 'Zed',
@@ -493,6 +501,12 @@ named \`bilig-workpaper\`. Zed can also read root \`AGENTS.md\` and the
 \`.agents/skills/bilig-workpaper/SKILL.md\` project skill when available.
 Keep MCP tool approvals scoped to WorkPaper readback tools such as
 \`mcp:bilig-workpaper:set_cell_contents_and_readback\`.`
+  }
+  if (target === 'trae') {
+    return `Trae should use the project \`.trae/mcp.json\` server named
+\`bilig-workpaper\` after Project MCP is enabled. Keep the workbook rule in
+\`.trae/rules/bilig-workpaper.md\` and require computed WorkPaper readback
+before reporting workbook edits as complete.`
   }
   if (target === 'opencode') {
     return `OpenCode should keep the project MCP server in \`opencode.jsonc\`

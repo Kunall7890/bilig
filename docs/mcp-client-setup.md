@@ -1,8 +1,8 @@
 ---
 title: MCP client setup for Bilig WorkPaper
 published: true
-description: Remote MCP smoke endpoint and local stdio configuration for Bilig WorkPaper in Claude, Cursor, Junie, Zed, VS Code, Cline, and Codex.
-tags: mcp, claude, cursor, junie, zed, vscode, cline, codex, spreadsheet
+description: Remote MCP smoke endpoint and local stdio configuration for Bilig WorkPaper in Claude, Cursor, Junie, Trae, Zed, VS Code, Cline, and Codex.
+tags: mcp, claude, cursor, junie, trae, zed, vscode, cline, codex, spreadsheet
 canonical_url: https://proompteng.github.io/bilig/mcp-client-setup.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png
@@ -309,6 +309,54 @@ then report the edited cell, before and after values, and whether the WorkPaper
 JSON persisted.
 ```
 
+## Trae
+
+Bilig checkouts include `.trae/mcp.json` for project-local Trae MCP usage and
+`.trae/rules/bilig-workpaper.md` for the matching project rule. Enable Project
+MCP in Trae Settings > MCP, then restart or refresh MCP tools.
+
+For another repository, copy this shape:
+
+```json
+{
+  "mcpServers": {
+    "bilig-workpaper": {
+      "command": "npm",
+      "args": [
+        "exec",
+        "--yes",
+        "--package",
+        "@bilig/workpaper@latest",
+        "--",
+        "bilig-workpaper-mcp",
+        "--workpaper",
+        "./.bilig/pricing.workpaper.json",
+        "--init-demo-workpaper",
+        "--writable"
+      ],
+      "env": {}
+    }
+  }
+}
+```
+
+Trae reads the project rule from `.trae/rules/bilig-workpaper.md`. Keep the
+rule focused on WorkPaper readback and persistence proof, and keep the hosted
+endpoint only for stateless smoke tests.
+
+Ask Trae for a concrete readback check:
+
+```text
+Use the bilig-workpaper MCP server from .trae/mcp.json after Project MCP is
+enabled. List sheets, read Inputs!B3 and Summary!B3, set Inputs!B3 to 0.4 with
+set_cell_contents_and_readback, export the WorkPaper document, and report
+editedCell, before, after, afterRestore, persistedDocumentBytes, verified, and
+limitations.
+```
+
+For a focused walkthrough, use the
+[Trae WorkPaper MCP setup](trae-workpaper-mcp.md).
+
 ## Zed
 
 Bilig checkouts include `.zed/settings.json` for project-local Zed MCP usage.
@@ -512,6 +560,14 @@ new value, before/after computed values, and persistence readback.
   <https://code.claude.com/docs/en/mcp>
 - Cursor MCP configuration:
   <https://docs.cursor.com/advanced/model-context-protocol>
+- Trae Model Context Protocol:
+  <https://docs.trae.ai/ide/model-context-protocol>
+- Trae add MCP servers:
+  <https://docs.trae.ai/ide/add-mcp-servers>
+- Trae rules:
+  <https://docs.trae.ai/ide/rules>
+- Trae skills:
+  <https://docs.trae.ai/ide/skills>
 - VS Code MCP configuration:
   <https://code.visualstudio.com/docs/copilot/reference/mcp-configuration>
 - Cline MCP configuration:

@@ -25,6 +25,8 @@ export async function requireAgentInstructionDiscovery(input: {
     clineProjectRuleNotes,
     continueProjectRuleNotes,
     continueMcpConfig,
+    traeMcpConfig,
+    traeProjectRuleNotes,
     aiderConventions,
     aiderConfig,
     openCodeAgentNotes,
@@ -60,6 +62,8 @@ export async function requireAgentInstructionDiscovery(input: {
     readFile(join(repoRoot, '.clinerules', 'bilig-workpaper.md'), 'utf8'),
     readFile(join(repoRoot, '.continue', 'rules', 'bilig-workpaper.md'), 'utf8'),
     readFile(join(repoRoot, '.continue', 'mcpServers', 'bilig-workpaper.yaml'), 'utf8'),
+    readFile(join(repoRoot, '.trae', 'mcp.json'), 'utf8'),
+    readFile(join(repoRoot, '.trae', 'rules', 'bilig-workpaper.md'), 'utf8'),
     readFile(join(repoRoot, 'CONVENTIONS.md'), 'utf8'),
     readFile(join(repoRoot, '.aider.conf.yml'), 'utf8'),
     readFile(join(repoRoot, '.opencode', 'agents', 'bilig-workpaper.md'), 'utf8'),
@@ -130,6 +134,8 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(docsAgentNotes, '.clinerules/bilig-workpaper.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.continue/rules/bilig-workpaper.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.continue/mcpServers/bilig-workpaper.yaml', 'docs/AGENTS.md')
+  requireIncludes(docsAgentNotes, '.trae/rules/bilig-workpaper.md', 'docs/AGENTS.md')
+  requireIncludes(docsAgentNotes, '.trae/mcp.json', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'CONVENTIONS.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.aider.conf.yml', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'opencode.jsonc', 'docs/AGENTS.md')
@@ -201,6 +207,11 @@ export async function requireAgentInstructionDiscovery(input: {
   )
   requireIncludes(
     docsAgentStart,
+    'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules trae',
+    'docs/agent-start.txt',
+  )
+  requireIncludes(
+    docsAgentStart,
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules vscode-mcp',
     'docs/agent-start.txt',
   )
@@ -227,6 +238,8 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(docsAgentStart, 'gemini-extension.json', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, 'gemini-workpaper-context.md', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, '.vscode/mcp.json', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, '.trae/mcp.json', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, '.trae/rules/bilig-workpaper.md', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, 'npm create @bilig/workpaper@latest . -- --add-agent', 'docs/agent-start.txt')
   requireIncludes(
     docsAgentStart,
@@ -386,6 +399,30 @@ export async function requireAgentInstructionDiscovery(input: {
     '- "--writable"',
   ] as const) {
     requireIncludes(continueMcpConfig, required, '.continue/mcpServers/bilig-workpaper.yaml')
+  }
+  for (const required of [
+    '"mcpServers"',
+    '"bilig-workpaper"',
+    '"command": "npm"',
+    '"--yes"',
+    '"--package"',
+    '"@bilig/workpaper@latest"',
+    '"bilig-workpaper-mcp"',
+    '"./.bilig/pricing.workpaper.json"',
+    '"--init-demo-workpaper"',
+    '"--writable"',
+  ] as const) {
+    requireIncludes(traeMcpConfig, required, '.trae/mcp.json')
+  }
+  for (const required of [
+    'Trae project rule',
+    'Project MCP is enabled',
+    '.trae/mcp.json',
+    'bilig-evaluate --door agent-mcp --json',
+    'Do not claim success from a write call alone.',
+    'trae-workpaper-mcp.html',
+  ] as const) {
+    requireIncludes(traeProjectRuleNotes, required, '.trae/rules/bilig-workpaper.md')
   }
 
   requireIncludes(openCodeAgentNotes, 'mode: subagent', '.opencode/agents/bilig-workpaper.md')
