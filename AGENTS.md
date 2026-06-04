@@ -28,7 +28,9 @@ or restore evidence, not a write-call status.
 - GitHub Copilot / VS Code agent mode: use `.github/copilot-instructions.md`,
   `.github/prompts/bilig-workpaper-proof.prompt.md`, and `.vscode/mcp.json`.
 - Cursor, Windsurf/Cascade, Cline, and Continue: use the matching workspace
-  rules under `.cursor/`, `.windsurf/`, `.clinerules/`, and `.continue/`.
+  rules under `.cursor/`, `.windsurf/`, `.clinerules/`, and `.continue/`;
+  Continue can also use `.continue/mcpServers/bilig-workpaper.yaml` for the
+  project-local WorkPaper MCP server.
 - Package-level agents inspecting `node_modules/@bilig/workpaper` should read
   the published `AGENTS.md` and `SKILL.md`.
 

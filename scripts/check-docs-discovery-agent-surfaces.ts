@@ -681,16 +681,26 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     `code --add-mcp '{"name":"biligWorkpaperDemo","type":"http","url":"${remoteMcpEndpoint}"}'`,
     'The useful Cursor tool set includes `list_sheets`, `read_range`',
     '.vscode/mcp.json',
-    'cline_mcp_settings.json',
-    '~/.cline/data/settings/cline_mcp_settings.json',
+    '"autoApprove": []',
+    'cline config mcp',
+    'cline config mcp --json',
+    '~/.cline/mcp.json',
     '[mcp_servers.bilig-workpaper]',
     'Codex spreadsheet MCP server',
     'Use the Bilig WorkPaper MCP server from Codex.',
     'https://code.visualstudio.com/docs/copilot/reference/mcp-configuration',
-    'https://docs.cline.bot/mcp/adding-and-configuring-servers',
+    'https://docs.cline.bot/mcp/configuring-mcp-servers',
     'https://platform.openai.com/docs/docs-mcp',
   ]) {
     requireIncludes(mcpClientSetupDoc, required, 'docs/mcp-client-setup.md')
+  }
+  for (const forbidden of [
+    'cline_mcp_settings.json',
+    '~/.cline/data/settings/cline_mcp_settings.json',
+    'data/settings/cline_mcp_settings.json',
+    'https://docs.cline.bot/mcp/adding-and-configuring-servers',
+  ] as const) {
+    requireNotIncludes(mcpClientSetupDoc, forbidden, 'docs/mcp-client-setup.md')
   }
   requireIncludes(rootPackageJson, '"mcpb:workpaper:build": "tsx scripts/build-workpaper-mcpb.ts"', 'package.json')
   for (const required of [

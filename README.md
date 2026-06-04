@@ -480,9 +480,12 @@ project MCP server from [`.kiro/settings/mcp.json`](.kiro/settings/mcp.json).
 Roo Code reads the project rule from
 [`.roo/rules/bilig-workpaper.md`](.roo/rules/bilig-workpaper.md) and the
 project MCP server from [`.roo/mcp.json`](.roo/mcp.json).
-Cline and Continue read the workspace rules from
-[`.clinerules/bilig-workpaper.md`](.clinerules/bilig-workpaper.md) and
-[`.continue/rules/bilig-workpaper.md`](.continue/rules/bilig-workpaper.md).
+Cline reads the workspace rule from
+[`.clinerules/bilig-workpaper.md`](.clinerules/bilig-workpaper.md). Continue
+reads the workspace rule from
+[`.continue/rules/bilig-workpaper.md`](.continue/rules/bilig-workpaper.md) and
+can launch direct WorkPaper tools from
+[`.continue/mcpServers/bilig-workpaper.yaml`](.continue/mcpServers/bilig-workpaper.yaml).
 Aider loads
 [`CONVENTIONS.md`](CONVENTIONS.md) through
 [`.aider.conf.yml`](.aider.conf.yml) for the same WorkPaper proof loop.

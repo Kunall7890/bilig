@@ -101,7 +101,8 @@ rules instead:
 - Windsurf/Cascade: `.devin/rules/bilig-workpaper.md`, with
   `.windsurf/rules/bilig-workpaper.md` as the fallback mirror
 - Cline: `.clinerules/bilig-workpaper.md`
-- Continue: `.continue/rules/bilig-workpaper.md`
+- Continue: `.continue/rules/bilig-workpaper.md` and
+  `.continue/mcpServers/bilig-workpaper.yaml`
 
 For a clean project that already contains those instruction files, create the
 starter:

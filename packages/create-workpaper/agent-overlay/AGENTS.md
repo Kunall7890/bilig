@@ -35,7 +35,8 @@ This starter includes project instructions for common coding agents:
 - Aider: `CONVENTIONS.md` loaded by `.aider.conf.yml`
 - Cascade/Devin: `.devin/rules/bilig-workpaper.md`
 - Cline: `.clinerules/bilig-workpaper.md`
-- Continue: `.continue/rules/bilig-workpaper.md`
+- Continue: `.continue/rules/bilig-workpaper.md` and
+  `.continue/mcpServers/bilig-workpaper.yaml`
 - Windsurf/Cascade fallback: `.windsurf/rules/bilig-workpaper.md`
 
 ## Preferred Agent Loop

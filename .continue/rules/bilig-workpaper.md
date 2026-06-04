@@ -27,6 +27,11 @@ For local file-backed MCP work:
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
+Continue users can use the checked-in workspace MCP block at
+`.continue/mcpServers/bilig-workpaper.yaml` when they want direct WorkPaper MCP
+tools from Agent mode. It launches the same local file-backed server and keeps
+edits in the project WorkPaper JSON file.
+
 For remote MCP connector discovery only:
 
 ```text

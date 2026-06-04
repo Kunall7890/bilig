@@ -24,6 +24,7 @@ export async function requireAgentInstructionDiscovery(input: {
     windsurfProjectRuleNotes,
     clineProjectRuleNotes,
     continueProjectRuleNotes,
+    continueMcpConfig,
     aiderConventions,
     aiderConfig,
     openCodeAgentNotes,
@@ -58,6 +59,7 @@ export async function requireAgentInstructionDiscovery(input: {
     readFile(join(repoRoot, '.windsurf', 'rules', 'bilig-workpaper.md'), 'utf8'),
     readFile(join(repoRoot, '.clinerules', 'bilig-workpaper.md'), 'utf8'),
     readFile(join(repoRoot, '.continue', 'rules', 'bilig-workpaper.md'), 'utf8'),
+    readFile(join(repoRoot, '.continue', 'mcpServers', 'bilig-workpaper.yaml'), 'utf8'),
     readFile(join(repoRoot, 'CONVENTIONS.md'), 'utf8'),
     readFile(join(repoRoot, '.aider.conf.yml'), 'utf8'),
     readFile(join(repoRoot, '.opencode', 'agents', 'bilig-workpaper.md'), 'utf8'),
@@ -127,6 +129,7 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(docsAgentNotes, '.windsurf/rules/bilig-workpaper.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.clinerules/bilig-workpaper.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.continue/rules/bilig-workpaper.md', 'docs/AGENTS.md')
+  requireIncludes(docsAgentNotes, '.continue/mcpServers/bilig-workpaper.yaml', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'CONVENTIONS.md', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.aider.conf.yml', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'opencode.jsonc', 'docs/AGENTS.md')
@@ -216,6 +219,7 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(docsAgentStart, '.devin/rules/bilig-workpaper.md', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, '.clinerules/bilig-workpaper.md', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, '.continue/rules/bilig-workpaper.md', 'docs/agent-start.txt')
+  requireIncludes(docsAgentStart, '.continue/mcpServers/bilig-workpaper.yaml', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, '.windsurf/rules/bilig-workpaper.md', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, 'opencode.jsonc', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, '.opencode/agents/bilig-workpaper.md', 'docs/agent-start.txt')
@@ -358,6 +362,7 @@ export async function requireAgentInstructionDiscovery(input: {
   )
 
   requireIncludes(continueProjectRuleNotes, 'name: Bilig WorkPaper Formula Check', '.continue/rules/bilig-workpaper.md')
+  requireIncludes(continueProjectRuleNotes, '.continue/mcpServers/bilig-workpaper.yaml', '.continue/rules/bilig-workpaper.md')
   requireIncludes(
     continueProjectRuleNotes,
     'npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json',
@@ -365,6 +370,23 @@ export async function requireAgentInstructionDiscovery(input: {
   )
   requireIncludes(continueProjectRuleNotes, 'Do not claim success from a write call alone.', '.continue/rules/bilig-workpaper.md')
   requireIncludes(continueProjectRuleNotes, 'https://proompteng.github.io/bilig/llms-full.txt', '.continue/rules/bilig-workpaper.md')
+  for (const required of [
+    'name: Bilig WorkPaper MCP',
+    'version: 0.0.1',
+    'schema: v1',
+    'mcpServers:',
+    '- name: Bilig WorkPaper File',
+    'type: stdio',
+    'command: npm',
+    '- "--package"',
+    '- "@bilig/workpaper@latest"',
+    '- "bilig-workpaper-mcp"',
+    '- "./.bilig/pricing.workpaper.json"',
+    '- "--init-demo-workpaper"',
+    '- "--writable"',
+  ] as const) {
+    requireIncludes(continueMcpConfig, required, '.continue/mcpServers/bilig-workpaper.yaml')
+  }
 
   requireIncludes(openCodeAgentNotes, 'mode: subagent', '.opencode/agents/bilig-workpaper.md')
   requireIncludes(openCodeAgentNotes, 'bilig-workpaper_*', '.opencode/agents/bilig-workpaper.md')

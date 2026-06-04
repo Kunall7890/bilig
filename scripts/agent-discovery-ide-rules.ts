@@ -343,6 +343,11 @@ For local file-backed MCP work:
 npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 \`\`\`
 
+Continue users can use the checked-in workspace MCP block at
+\`.continue/mcpServers/bilig-workpaper.yaml\` when they want direct WorkPaper MCP
+tools from Agent mode. It launches the same local file-backed server and keeps
+edits in the project WorkPaper JSON file.
+
 For remote MCP connector discovery only:
 
 \`\`\`text
@@ -363,6 +368,29 @@ ${commandSafetyStandard()}
 - Full context: ${siteRoot}/llms-full.txt
 - Agent handbook: ${siteRoot}/headless-workpaper-agent-handbook.html
 - Repository: ${repositoryUrl}
+`
+}
+
+export function buildContinueMcpServerConfig(input: AgentIdeRuleInput): string {
+  const { workpaperPackageSpec } = input
+  return `name: Bilig WorkPaper MCP
+version: 0.0.1
+schema: v1
+mcpServers:
+  - name: Bilig WorkPaper File
+    type: stdio
+    command: npm
+    args:
+      - "exec"
+      - "--yes"
+      - "--package"
+      - "${workpaperPackageSpec}"
+      - "--"
+      - "bilig-workpaper-mcp"
+      - "--workpaper"
+      - "./.bilig/pricing.workpaper.json"
+      - "--init-demo-workpaper"
+      - "--writable"
 `
 }
 

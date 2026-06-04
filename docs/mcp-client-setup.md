@@ -365,7 +365,7 @@ code --add-mcp '{"name":"biligWorkpaperDemo","type":"http","url":"https://bilig.
 
 Cline can run the published WorkPaper server as a local stdio MCP server. For
 the IDE extension, open the MCP Servers icon, choose the Configure tab, click
-Configure MCP Servers, and add this entry to `cline_mcp_settings.json` under
+Configure MCP Servers, and add this entry to the MCP settings JSON under
 `mcpServers`:
 
 ```json
@@ -385,17 +385,17 @@ Configure MCP Servers, and add this entry to `cline_mcp_settings.json` under
         "--writable"
       ],
       "env": {},
-      "disabled": false
+      "disabled": false,
+      "autoApprove": []
     }
   }
 }
 ```
 
-For Cline CLI, put the same `mcpServers` object in
-`~/.cline/data/settings/cline_mcp_settings.json`. If you use `CLINE_DIR` or a
-custom config path, edit that config directory's
-`data/settings/cline_mcp_settings.json` instead. Then confirm the server is
-enabled and ask Cline:
+For Cline CLI, manage the same server with `cline config mcp` or inspect it
+non-interactively with `cline config mcp --json`. Current Cline CLI installs use
+`~/.cline/mcp.json` for MCP server settings unless you have configured a custom
+Cline directory. Then confirm the server is enabled and ask Cline:
 
 ```text
 List the Bilig WorkPaper tools.
@@ -465,7 +465,7 @@ new value, before/after computed values, and persistence readback.
 - VS Code MCP configuration:
   <https://code.visualstudio.com/docs/copilot/reference/mcp-configuration>
 - Cline MCP configuration:
-  <https://docs.cline.bot/mcp/adding-and-configuring-servers>
+  <https://docs.cline.bot/mcp/configuring-mcp-servers>
 - OpenAI Docs MCP setup for Codex, VS Code, and Cursor:
   <https://platform.openai.com/docs/docs-mcp>
 

@@ -41,8 +41,8 @@ call alone is not success.
 | Aider | `CONVENTIONS.md`, loaded by `.aider.conf.yml`. | Run the local `bilig-workpaper-mcp` command from the conventions when state must persist. | Keep Aider's answer tied to WorkPaper readback, export or restore evidence, and explicit limitations. |
 | Goose | `examples/goose-workpaper-mcp/recipe.yaml`. | The recipe launches the local file-backed WorkPaper MCP server; use hosted Streamable HTTP only for stateless smoke. | Validate the recipe, run `bilig-evaluate --door agent-mcp --json`, and require `set_cell_contents_and_readback`, `Summary!B3` `60000 -> 96000`, export, restore, and `verified: true`. |
 | Windsurf/Cascade | `.devin/rules/bilig-workpaper.md`, with `.windsurf/rules/bilig-workpaper.md` kept as a fallback. | Start with the same `bilig-evaluate --door agent-mcp --json` command, then file-backed MCP if state must persist. | The rule uses `trigger: model_decision`; require computed readback before reporting success. |
-| Cline | `.clinerules/bilig-workpaper.md`. | Add MCP separately only if your Cline setup exposes custom MCP servers. | Cline should use the workspace rule when workbook formulas, cells, or MCP spreadsheet tools appear. |
-| Continue | `.continue/rules/bilig-workpaper.md`. | Configure MCP separately through Continue if you want direct tool calls. | Local rules are version controlled; use this one for Agent, Chat, and Edit requests that touch workbook logic. |
+| Cline | `.clinerules/bilig-workpaper.md`. | Add MCP through Cline's current MCP settings when direct tool calls are needed. | Cline should use the workspace rule when workbook formulas, cells, or MCP spreadsheet tools appear. |
+| Continue | `.continue/rules/bilig-workpaper.md`. | `.continue/mcpServers/bilig-workpaper.yaml` defines the project-local file-backed WorkPaper MCP server. | Use the rule for Agent, Chat, and Edit requests; use the MCP block from Continue Agent mode when the task needs direct workbook tools. |
 | Gemini CLI | `gemini-extension.json` plus `gemini-workpaper-context.md`; generated starters also include `GEMINI.md`. | `gemini extensions install https://github.com/proompteng/bilig --ref main`. | The extension starts the `bilig-workpaper` MCP server and injects the WorkPaper proof context. |
 
 ## Existing Repo Overlay
@@ -113,6 +113,7 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 - [Windsurf/Cascade memories and rules](https://docs.windsurf.com/windsurf/cascade/memories)
 - [Cline rules](https://docs.cline.bot/customization/cline-rules)
 - [Continue rules](https://docs.continue.dev/customize/rules)
+- [Continue MCP](https://docs.continue.dev/customize/deep-dives/mcp)
 - [Gemini CLI GEMINI.md context](https://google-gemini.github.io/gemini-cli/docs/cli/gemini-md.html)
 
 ## Related
