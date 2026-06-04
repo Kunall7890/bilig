@@ -31,6 +31,8 @@ This starter includes project instructions for common coding agents:
 - Kiro: `.kiro/steering/bilig-workpaper.md` and `.kiro/settings/mcp.json`
 - Roo Code: `.roo/rules/bilig-workpaper.md` and `.roo/mcp.json`
 - Trae: `.trae/rules/bilig-workpaper.md` and `.trae/mcp.json`
+- Qodo IDE: paste the `bilig-workpaper` JSON from the public Qodo setup guide
+  into Qodo Agentic Tools MCP settings; keep root `AGENTS.md` as policy
 - OpenHands: `.agents/skills/bilig-workpaper/SKILL.md`
 - OpenCode: `opencode.jsonc` and `.opencode/agents/bilig-workpaper.md`
 - Aider: `CONVENTIONS.md` loaded by `.aider.conf.yml`

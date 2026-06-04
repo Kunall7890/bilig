@@ -568,6 +568,8 @@ new value, before/after computed values, and persistence readback.
   <https://docs.trae.ai/ide/rules>
 - Trae skills:
   <https://docs.trae.ai/ide/skills>
+- Qodo Agentic Tools MCP:
+  <https://docs.qodo.ai/qodo-documentation/qodo-ide/tools-mcps/agentic-tools-mcps>
 - VS Code MCP configuration:
   <https://code.visualstudio.com/docs/copilot/reference/mcp-configuration>
 - Cline MCP configuration:

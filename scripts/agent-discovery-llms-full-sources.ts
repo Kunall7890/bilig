@@ -67,6 +67,7 @@ const llmsFullSourceSpecs = [
   ['Google ADK WorkPaper MCP Tools', 'docs/google-adk-workpaper-mcp.md'],
   ['OpenHands WorkPaper MCP Setup', 'docs/openhands-workpaper-mcp.md'],
   ['Trae WorkPaper MCP Setup', 'docs/trae-workpaper-mcp.md'],
+  ['Qodo WorkPaper MCP Setup', 'docs/qodo-workpaper-mcp.md'],
   ['OpenCode WorkPaper MCP Setup', 'docs/opencode-workpaper-mcp.md'],
   ['Goose WorkPaper MCP Recipe', 'docs/goose-workpaper-mcp.md'],
   ['smolagents WorkPaper Tool', 'docs/smolagents-workpaper-tool.md'],

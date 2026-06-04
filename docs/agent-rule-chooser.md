@@ -1,7 +1,7 @@
 ---
 title: Coding agent rule chooser for Bilig WorkPaper
 published: true
-description: Pick the Bilig instruction, rule, prompt, or MCP config for Codex, Claude Code, GitHub Copilot, VS Code, Cursor, Kiro, Roo Code, Trae, Zed, JetBrains Junie, OpenHands, OpenCode, Aider, Goose, Windsurf, Cline, Continue, and Gemini CLI.
+description: Pick the Bilig instruction, rule, prompt, or MCP config for Codex, Claude Code, GitHub Copilot, VS Code, Cursor, Kiro, Roo Code, Trae, Qodo IDE, Zed, JetBrains Junie, OpenHands, OpenCode, Aider, Goose, Windsurf, Cline, Continue, and Gemini CLI.
 tags: ai-agents, agent-rules, mcp, workbook formulas, coding agents
 canonical_url: https://proompteng.github.io/bilig/agent-rule-chooser.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -36,6 +36,7 @@ call alone is not success.
 | Kiro | `.kiro/steering/bilig-workpaper.md`; Kiro also loads root `AGENTS.md` when present. | `.kiro/settings/mcp.json` defines the project-local file-backed WorkPaper MCP server. | Use Kiro steering and the project MCP server before spreadsheet UI automation. |
 | Roo Code | `.roo/rules/bilig-workpaper.md`; Roo also loads root `AGENTS.md` by default. | `.roo/mcp.json` defines the project-local file-backed WorkPaper MCP server. | Use Roo's project rule and MCP server before spreadsheet UI automation. |
 | Trae | `.trae/rules/bilig-workpaper.md`; Trae also loads root `AGENTS.md` when present. | `.trae/mcp.json` defines the project-local file-backed WorkPaper MCP server after Project MCP is enabled. | Use Trae's project rule and MCP server before spreadsheet UI automation. |
+| Qodo IDE | `AGENTS.md` plus the [Qodo WorkPaper MCP setup](qodo-workpaper-mcp.md). | Paste the `bilig-workpaper` JSON into Qodo Agentic Tools MCP settings. | Use Qodo's local MCP tool before spreadsheet UI automation; do not claim a repo-native `.qodo` config file. |
 | Zed | `.zed/settings.json`, root `AGENTS.md`, and `.agents/skills/bilig-workpaper/SKILL.md`. | `.zed/settings.json` defines the project-local `context_servers.bilig-workpaper` MCP server. | Use Zed's context server before spreadsheet UI automation and keep tool permissions scoped to WorkPaper readback. |
 | JetBrains Junie | `AGENTS.md` in the repo root; `.junie/AGENTS.md` can add narrower project memory when needed. | `.junie/mcp/mcp.json` defines the file-backed WorkPaper MCP server. | Use Junie MCP tools for workbook readback and require persisted WorkPaper evidence before reporting success. |
 | OpenHands | `AGENTS.md`, then `.agents/skills/bilig-workpaper/SKILL.md`. | `openhands mcp add bilig-workpaper --transport stdio npm -- exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable`. | Use `/mcp` in the conversation and restart after MCP config changes. |
@@ -56,8 +57,8 @@ npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
 That overlay writes `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`,
-`CLAUDE.md`, `GEMINI.md`, Copilot and VS Code instructions, Cursor, Kiro, Roo Code, Junie,
-OpenHands, OpenCode, Aider, Zed, Cline, Continue,
+`CLAUDE.md`, `GEMINI.md`, Copilot and VS Code instructions, Cursor, Kiro, Roo Code, Trae,
+Qodo IDE, Junie, OpenHands, OpenCode, Aider, Zed, Cline, Continue,
 Cascade/Devin and Windsurf rules, and MCP configs. It does not overwrite an existing app
 `README.md` or `package.json`.
 
@@ -82,6 +83,9 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 - Trae reads project rules from `.trae/rules/` and Project MCP servers from
   `.trae/mcp.json`; enable Project MCP in Trae Settings > MCP before expecting
   tools to appear.
+- Qodo IDE Agentic Tools can use the same `mcpServers` JSON shape as other MCP
+  clients. Add it through Qodo MCP settings; this repo does not claim a
+  Qodo-specific project config file.
 - Zed reads project context servers from `.zed/settings.json`. Zed can use
   `AGENTS.md` and `.agents/skills/bilig-workpaper/SKILL.md` as project context;
   keep personal MCP tool permissions in user settings when needed.
@@ -110,6 +114,8 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 - [Trae add MCP servers](https://docs.trae.ai/ide/add-mcp-servers)
 - [Trae rules](https://docs.trae.ai/ide/rules)
 - [Trae skills](https://docs.trae.ai/ide/skills)
+- [Qodo Agentic Tools MCP](https://docs.qodo.ai/qodo-documentation/qodo-ide/tools-mcps/agentic-tools-mcps)
+- [Qodo Merge configuration](https://docs.qodo.ai/qodo-documentation/qodo-review/configuration/qodo-merge-configuration)
 - [Zed MCP](https://zed.dev/docs/ai/mcp)
 - [Zed rules](https://zed.dev/docs/ai/rules)
 - [Zed tool permissions](https://zed.dev/docs/ai/tool-permissions)

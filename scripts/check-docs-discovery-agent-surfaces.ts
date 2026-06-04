@@ -218,7 +218,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   }
   for (const required of [
     'title: Workbook tools for agent frameworks',
-    'description: Pick the Bilig WorkPaper integration path for Codex, Claude, Cursor, Kiro, Roo Code, Trae, Zed, Junie, OpenHands, OpenCode, Aider, Goose, Browser Use, OpenAI Agents, Microsoft Agent Framework, Vercel AI SDK, LangChain, LangGraph, LlamaIndex, and MCP clients.',
+    'description: Pick the Bilig WorkPaper integration path for Codex, Claude, Cursor, Kiro, Roo Code, Trae, Qodo IDE, Zed, Junie, OpenHands, OpenCode, Aider, Goose, Browser Use, OpenAI Agents, Microsoft Agent Framework, Vercel AI SDK, LangChain, LangGraph, LlamaIndex, and MCP clients.',
     'npm create @bilig/workpaper@latest pricing-agent -- --agent',
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
     'npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json',
@@ -232,6 +232,8 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'Trae',
     '.trae/mcp.json',
     'trae-workpaper-mcp.md',
+    'Qodo IDE',
+    'qodo-workpaper-mcp.md',
     'Zed',
     '.zed/settings.json',
     'JetBrains Junie',

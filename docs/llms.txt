@@ -19,11 +19,13 @@ Google ADK WorkPaper MCP: https://proompteng.github.io/bilig/google-adk-workpape
 Microsoft Agent Framework WorkPaper MCP: https://proompteng.github.io/bilig/microsoft-agent-framework-workpaper-mcp.html
 OpenHands WorkPaper MCP setup: https://proompteng.github.io/bilig/openhands-workpaper-mcp.html
 Trae WorkPaper MCP setup: https://proompteng.github.io/bilig/trae-workpaper-mcp.html
+Qodo WorkPaper MCP setup: https://proompteng.github.io/bilig/qodo-workpaper-mcp.html
 OpenCode WorkPaper MCP setup: https://proompteng.github.io/bilig/opencode-workpaper-mcp.html
 Goose WorkPaper MCP recipe: https://proompteng.github.io/bilig/goose-workpaper-mcp.html
 Trae WorkPaper MCP source: https://github.com/proompteng/bilig/blob/main/docs/trae-workpaper-mcp.md
 Trae WorkPaper MCP config: https://github.com/proompteng/bilig/blob/main/.trae/mcp.json
 Trae WorkPaper rule: https://github.com/proompteng/bilig/blob/main/.trae/rules/bilig-workpaper.md
+Qodo WorkPaper MCP source: https://github.com/proompteng/bilig/blob/main/docs/qodo-workpaper-mcp.md
 OpenCode WorkPaper MCP source: https://github.com/proompteng/bilig/blob/main/docs/opencode-workpaper-mcp.md
 OpenCode WorkPaper MCP config: https://github.com/proompteng/bilig/blob/main/opencode.jsonc
 OpenCode WorkPaper agent: https://github.com/proompteng/bilig/blob/main/.opencode/agents/bilig-workpaper.md

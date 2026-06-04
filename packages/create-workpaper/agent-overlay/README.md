@@ -47,13 +47,14 @@ Zed, Continue, and VS Code. Aider loads `CONVENTIONS.md` through `.aider.conf.ym
 `.claude/skills/bilig-workpaper/SKILL.md`; OpenHands gets the same workflow at
 `.agents/skills/bilig-workpaper/SKILL.md`; OpenCode gets `opencode.jsonc` and
 `.opencode/agents/bilig-workpaper.md`. Trae gets `.trae/mcp.json` and
-`.trae/rules/bilig-workpaper.md`. Zed gets `.zed/settings.json` with the
+`.trae/rules/bilig-workpaper.md`. Qodo IDE uses the same `mcpServers` JSON
+through Agentic Tools MCP settings rather than a repo-native file. Zed gets `.zed/settings.json` with the
 `context_servers.bilig-workpaper` MCP server. Continue gets
 `.continue/mcpServers/bilig-workpaper.yaml` for Agent-mode MCP tools. Other
 clients can use the same command from `mcp/bilig-workpaper.mcp.json`.
 
 Agent instruction files are included for Claude Code, Codex/AGENTS-aware
-tools, Gemini CLI, GitHub Copilot, VS Code agent mode, Cursor, Kiro, Roo Code, Trae, OpenHands,
+tools, Gemini CLI, GitHub Copilot, VS Code agent mode, Cursor, Kiro, Roo Code, Trae, Qodo IDE, OpenHands,
 OpenCode, Zed, Junie, Aider, Cline, Continue, Cascade/Devin, and Windsurf/Cascade. They all
 point at the same rule: read first, edit one cell or formula, recalculate, read the
 dependent output, persist or export, and report proof.

@@ -92,6 +92,8 @@ rules instead:
 - Cursor: `.cursor/rules/bilig-workpaper.mdc`
 - Kiro: `.kiro/steering/bilig-workpaper.md` and `.kiro/settings/mcp.json`
 - Trae: `.trae/rules/bilig-workpaper.md` and `.trae/mcp.json`
+- Qodo IDE: add the `bilig-workpaper` local MCP server through Qodo Agentic
+  Tools with the JSON from [Qodo WorkPaper MCP setup](qodo-workpaper-mcp.md)
 - Zed: `.zed/settings.json`, root `AGENTS.md`, and
   `.agents/skills/bilig-workpaper/SKILL.md`
 - Junie: `.junie/mcp/mcp.json`
@@ -115,7 +117,7 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 ```
 
 The generated project includes `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`,
-`CLAUDE.md`, `GEMINI.md`, Copilot / VS Code instructions, Cursor, Kiro, Trae, Zed, Junie,
+`CLAUDE.md`, `GEMINI.md`, Copilot / VS Code instructions, Cursor, Kiro, Trae, Qodo, Zed, Junie,
 OpenHands, OpenCode, Aider, Cline, Continue, and Windsurf rules, plus local MCP
 configs and `npm run agent:verify`.
 
@@ -342,6 +344,7 @@ If it almost works but adoption is blocked, open the concrete blocker:
 - [MCP client setup](mcp-client-setup.md)
 - [OpenHands WorkPaper MCP setup](openhands-workpaper-mcp.md)
 - [Trae WorkPaper MCP setup](trae-workpaper-mcp.md)
+- [Qodo WorkPaper MCP setup](qodo-workpaper-mcp.md)
 - [OpenCode WorkPaper MCP setup](opencode-workpaper-mcp.md)
 - [Agent workbook challenge](agent-workbook-challenge.md)
 - [Workbook tools for agent frameworks](agent-framework-workbook-tools.md)

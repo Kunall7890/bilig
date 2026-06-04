@@ -42,10 +42,11 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
     `.opencode/agents/bilig-workpaper.md`.
 11. If you are using Aider, load `CONVENTIONS.md` through
     `.aider.conf.yml`.
-12. If you are using Cursor, Kiro, Trae, Zed, Windsurf/Cascade, Cline, or Continue, use
+12. If you are using Cursor, Kiro, Trae, Qodo IDE, Zed, Windsurf/Cascade, Cline, or Continue, use
     `.cursor/rules/bilig-workpaper.mdc` or
     `.kiro/steering/bilig-workpaper.md`,
     `.trae/rules/bilig-workpaper.md` with `.trae/mcp.json`,
+    `https://proompteng.github.io/bilig/qodo-workpaper-mcp.html` for Qodo Agentic Tools MCP JSON,
     `.zed/settings.json`,
     `.devin/rules/bilig-workpaper.md`,
     `.windsurf/rules/bilig-workpaper.md`,
@@ -483,7 +484,7 @@ shows the local risk report for an actual `.xlsx` before a Node service or
 coding agent trusts Bilig with it.
 Use the [coding agent rule chooser](docs/agent-rule-chooser.md) when you need
 the exact instruction, rule, prompt, or MCP config file for Codex, Claude Code,
-GitHub Copilot, VS Code, Cursor, Kiro, Roo Code, Trae, Zed, Junie, OpenHands, OpenCode, Aider,
+GitHub Copilot, VS Code, Cursor, Kiro, Roo Code, Trae, Qodo IDE, Zed, Junie, OpenHands, OpenCode, Aider,
 Goose, Windsurf/Cascade, Cline, Continue, or Gemini CLI.
 
 Project site: <https://proompteng.github.io/bilig/>
@@ -502,7 +503,7 @@ Pick the path that matches the job:
 | Pull requests can commit XLSX fixtures with stale cached values         | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md) | report-only workbook findings before the workflow blocks anything.                        |
 | A Node service, route, queue, test, or tool needs workbook logic        | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)         | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.    |
 | A coding agent or MCP client needs workbook tools without UI automation | [Agent MCP evaluator](docs/eval-agent-mcp.md)                              | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`. |
-| A coding agent needs the right repo rule or MCP config file             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                    | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Kiro, Roo Code, Trae, Zed, Junie, OpenHands, OpenCode, Aider, Goose, Windsurf, Cline, Continue, or Gemini. |
+| A coding agent needs the right repo rule or MCP config file             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                    | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Kiro, Roo Code, Trae, Qodo IDE, Zed, Junie, OpenHands, OpenCode, Aider, Goose, Windsurf, Cline, Continue, or Gemini. |
 | You are comparing Excel MCP servers, hosted spreadsheet agents, or file-first XLSX tools | [Spreadsheet MCP server comparison](docs/spreadsheet-mcp-server-comparison.md) | the account/session/file/runtime boundary before an agent trusts formula readback. |
 | You need to choose among agent, MCP, AI SDK, OpenAI, LangGraph, Semantic Kernel, or XLSX proof | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md) | the smallest command or example for the host boundary, plus what it does and does not prove. |
 | You need to see a successful agent session shape before adopting        | [Agent proof transcripts](docs/agent-proof-transcripts.md)                 | prompt, tool call, result, workbook state change, formula readback, JSON export, and restart verification.   |
@@ -763,6 +764,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Google ADK                                                 | `McpToolset` should import workbook MCP tools and return verified formula readback before an ADK agent trusts the result.                                                       | [Google ADK WorkPaper MCP tools](https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html)                                                                                                                                                                                                                                                                                        |
 | OpenHands                                                  | `openhands mcp add` should launch the file-backed WorkPaper server while `.agents/skills` teaches readback-first workbook edits.                                                | [OpenHands WorkPaper MCP setup](https://proompteng.github.io/bilig/openhands-workpaper-mcp.html)                                                                                                                                                                                                                                                                                          |
 | Trae                                                       | `.trae/mcp.json` should register the Project MCP server while `.trae/rules/bilig-workpaper.md` keeps workbook proof work readback-first.                                      | [Trae WorkPaper MCP setup](https://proompteng.github.io/bilig/trae-workpaper-mcp.html)                                                                                                                                                                                                                                                                                                     |
+| Qodo IDE                                                   | Qodo Agentic Tools should launch the local `bilig-workpaper` MCP server from pasted `mcpServers` JSON and keep proof tied to root `AGENTS.md`.                                | [Qodo WorkPaper MCP setup](https://proompteng.github.io/bilig/qodo-workpaper-mcp.html)                                                                                                                                                                                                                                                                                                     |
 | OpenCode                                                   | `opencode.jsonc` should register the local WorkPaper MCP server while `.opencode/agents` keeps workbook proof work readback-first.                                             | [OpenCode WorkPaper MCP setup](https://proompteng.github.io/bilig/opencode-workpaper-mcp.html)                                                                                                                                                                                                                                                                                             |
 | Zed                                                        | `.zed/settings.json` should register the project-local `context_servers.bilig-workpaper` server while `AGENTS.md` and the project skill keep workbook edits readback-first.    | [MCP client setup](https://proompteng.github.io/bilig/mcp-client-setup.html#zed)                                                                                                                                                                                                                                                                                                            |
 | Microsoft Agent Framework                                  | `MCPStdioTool` or `MCPStreamableHTTPTool` should import workbook MCP tools and verify dependent formula readback before an agent trusts the result.                             | [Microsoft Agent Framework WorkPaper MCP tools](https://proompteng.github.io/bilig/microsoft-agent-framework-workpaper-mcp.html)                                                                                                                                                                                                                                                          |
@@ -781,7 +783,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Temporal, Airflow, Dagster Formula Assets, Kestra, Prefect | Orchestrators should own retries/history while a Node step owns workbook proof.                                                                                                 | [Temporal](https://proompteng.github.io/bilig/temporal-workpaper-activity.html), [Airflow](https://proompteng.github.io/bilig/airflow-workpaper-dag.html), [Dagster](https://proompteng.github.io/bilig/dagster-workpaper-asset.html), [Kestra](https://proompteng.github.io/bilig/kestra-workpaper-flow.html), [Prefect](https://proompteng.github.io/bilig/prefect-workpaper-flow.html) |
 | Directus Persisted Calculated Fields                       | A custom operation should persist calculated fields with formula proof.                                                                                                         | [Directus WorkPaper Flow operation](https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html)                                                                                                                                                                                                                                                                            |
 
-<!-- Source recipe docs remain in docs/open-webui-workpaper-mcp.md, docs/lobehub-workpaper-mcp.md, docs/anythingllm-workpaper-mcp.md, docs/sim-workpaper-mcp.md, docs/fastmcp-workpaper-client.md, docs/agno-workpaper-mcp.md, docs/pydantic-ai-workpaper-mcp.md, docs/google-adk-workpaper-mcp.md, docs/openhands-workpaper-mcp.md, docs/trae-workpaper-mcp.md, docs/opencode-workpaper-mcp.md, docs/microsoft-agent-framework-workpaper-mcp.md, docs/goose-workpaper-mcp.md, docs/semantic-kernel-workpaper-mcp.md, docs/openai-agents-sdk-workpaper-tool.md, docs/chatgpt-apps-workpaper-mcp.md, docs/smolagents-workpaper-tool.md, docs/huggingface-workpaper-space.md, docs/n8n-workpaper-formula-readback.md, docs/dify-workpaper-formula-readback.md, docs/flowise-workpaper-formula-readback.md, docs/pipedream-workpaper-formula-readback.md, docs/vercel-ai-sdk-langchain-spreadsheet-tool.md, docs/langgraph-workpaper-toolnode-spreadsheet.md, docs/windmill-workpaper-script.md, docs/triggerdev-workpaper-task.md, docs/inngest-workpaper-step.md, docs/airbyte-workpaper-validation.md, docs/meltano-workpaper-utility.md, docs/temporal-workpaper-activity.md, docs/airflow-workpaper-dag.md, docs/dagster-workpaper-asset.md, docs/kestra-workpaper-flow.md, docs/prefect-workpaper-flow.md, and docs/directus-workpaper-flow-operation.md. -->
+<!-- Source recipe docs remain in docs/open-webui-workpaper-mcp.md, docs/lobehub-workpaper-mcp.md, docs/anythingllm-workpaper-mcp.md, docs/sim-workpaper-mcp.md, docs/fastmcp-workpaper-client.md, docs/agno-workpaper-mcp.md, docs/pydantic-ai-workpaper-mcp.md, docs/google-adk-workpaper-mcp.md, docs/openhands-workpaper-mcp.md, docs/trae-workpaper-mcp.md, docs/qodo-workpaper-mcp.md, docs/opencode-workpaper-mcp.md, docs/microsoft-agent-framework-workpaper-mcp.md, docs/goose-workpaper-mcp.md, docs/semantic-kernel-workpaper-mcp.md, docs/openai-agents-sdk-workpaper-tool.md, docs/chatgpt-apps-workpaper-mcp.md, docs/smolagents-workpaper-tool.md, docs/huggingface-workpaper-space.md, docs/n8n-workpaper-formula-readback.md, docs/dify-workpaper-formula-readback.md, docs/flowise-workpaper-formula-readback.md, docs/pipedream-workpaper-formula-readback.md, docs/vercel-ai-sdk-langchain-spreadsheet-tool.md, docs/langgraph-workpaper-toolnode-spreadsheet.md, docs/windmill-workpaper-script.md, docs/triggerdev-workpaper-task.md, docs/inngest-workpaper-step.md, docs/airbyte-workpaper-validation.md, docs/meltano-workpaper-utility.md, docs/temporal-workpaper-activity.md, docs/airflow-workpaper-dag.md, docs/dagster-workpaper-asset.md, docs/kestra-workpaper-flow.md, docs/prefect-workpaper-flow.md, and docs/directus-workpaper-flow-operation.md. -->
 
 ## Choose An Evaluation Path
 
@@ -1546,7 +1548,7 @@ npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
 That adds `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`, `CLAUDE.md`,
-`GEMINI.md`, Copilot/VS Code instructions, Cursor, Kiro, Roo Code, Trae, Zed, Junie, OpenCode, Aider,
+`GEMINI.md`, Copilot/VS Code instructions, Cursor, Kiro, Roo Code, Trae, Qodo, Zed, Junie, OpenCode, Aider,
 Cline, Continue, Windsurf rules, and MCP client configs
 without replacing the app template or editing `package.json`.
 
@@ -1643,6 +1645,8 @@ Use the repo-local files when the agent is already inside a checkout:
 - Kiro: `.kiro/steering/bilig-workpaper.md` and `.kiro/settings/mcp.json`
 - Roo Code: `.roo/rules/bilig-workpaper.md` and `.roo/mcp.json`
 - Trae: `.trae/rules/bilig-workpaper.md` and `.trae/mcp.json`
+- Qodo IDE: use [Qodo WorkPaper MCP setup](https://proompteng.github.io/bilig/qodo-workpaper-mcp.html) and paste
+  the `bilig-workpaper` server JSON into Qodo Agentic Tools MCP settings
 - Zed: `.zed/settings.json`
 - Junie: `.junie/mcp/mcp.json`
 - OpenCode: `opencode.jsonc` and `.opencode/agents/bilig-workpaper.md`
@@ -3077,6 +3081,8 @@ rules instead:
 - Cursor: `.cursor/rules/bilig-workpaper.mdc`
 - Kiro: `.kiro/steering/bilig-workpaper.md` and `.kiro/settings/mcp.json`
 - Trae: `.trae/rules/bilig-workpaper.md` and `.trae/mcp.json`
+- Qodo IDE: add the `bilig-workpaper` local MCP server through Qodo Agentic
+  Tools with the JSON from [Qodo WorkPaper MCP setup](qodo-workpaper-mcp.md)
 - Zed: `.zed/settings.json`, root `AGENTS.md`, and
   `.agents/skills/bilig-workpaper/SKILL.md`
 - Junie: `.junie/mcp/mcp.json`
@@ -3100,7 +3106,7 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 ```
 
 The generated project includes `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`,
-`CLAUDE.md`, `GEMINI.md`, Copilot / VS Code instructions, Cursor, Kiro, Trae, Zed, Junie,
+`CLAUDE.md`, `GEMINI.md`, Copilot / VS Code instructions, Cursor, Kiro, Trae, Qodo, Zed, Junie,
 OpenHands, OpenCode, Aider, Cline, Continue, and Windsurf rules, plus local MCP
 configs and `npm run agent:verify`.
 
@@ -3327,6 +3333,7 @@ If it almost works but adoption is blocked, open the concrete blocker:
 - [MCP client setup](mcp-client-setup.md)
 - [OpenHands WorkPaper MCP setup](openhands-workpaper-mcp.md)
 - [Trae WorkPaper MCP setup](trae-workpaper-mcp.md)
+- [Qodo WorkPaper MCP setup](qodo-workpaper-mcp.md)
 - [OpenCode WorkPaper MCP setup](opencode-workpaper-mcp.md)
 - [Agent workbook challenge](agent-workbook-challenge.md)
 - [Workbook tools for agent frameworks](agent-framework-workbook-tools.md)
@@ -3365,6 +3372,7 @@ call alone is not success.
 | Kiro | `.kiro/steering/bilig-workpaper.md`; Kiro also loads root `AGENTS.md` when present. | `.kiro/settings/mcp.json` defines the project-local file-backed WorkPaper MCP server. | Use Kiro steering and the project MCP server before spreadsheet UI automation. |
 | Roo Code | `.roo/rules/bilig-workpaper.md`; Roo also loads root `AGENTS.md` by default. | `.roo/mcp.json` defines the project-local file-backed WorkPaper MCP server. | Use Roo's project rule and MCP server before spreadsheet UI automation. |
 | Trae | `.trae/rules/bilig-workpaper.md`; Trae also loads root `AGENTS.md` when present. | `.trae/mcp.json` defines the project-local file-backed WorkPaper MCP server after Project MCP is enabled. | Use Trae's project rule and MCP server before spreadsheet UI automation. |
+| Qodo IDE | `AGENTS.md` plus the [Qodo WorkPaper MCP setup](qodo-workpaper-mcp.md). | Paste the `bilig-workpaper` JSON into Qodo Agentic Tools MCP settings. | Use Qodo's local MCP tool before spreadsheet UI automation; do not claim a repo-native `.qodo` config file. |
 | Zed | `.zed/settings.json`, root `AGENTS.md`, and `.agents/skills/bilig-workpaper/SKILL.md`. | `.zed/settings.json` defines the project-local `context_servers.bilig-workpaper` MCP server. | Use Zed's context server before spreadsheet UI automation and keep tool permissions scoped to WorkPaper readback. |
 | JetBrains Junie | `AGENTS.md` in the repo root; `.junie/AGENTS.md` can add narrower project memory when needed. | `.junie/mcp/mcp.json` defines the file-backed WorkPaper MCP server. | Use Junie MCP tools for workbook readback and require persisted WorkPaper evidence before reporting success. |
 | OpenHands | `AGENTS.md`, then `.agents/skills/bilig-workpaper/SKILL.md`. | `openhands mcp add bilig-workpaper --transport stdio npm -- exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable`. | Use `/mcp` in the conversation and restart after MCP config changes. |
@@ -3385,8 +3393,8 @@ npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
 That overlay writes `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`,
-`CLAUDE.md`, `GEMINI.md`, Copilot and VS Code instructions, Cursor, Kiro, Roo Code, Junie,
-OpenHands, OpenCode, Aider, Zed, Cline, Continue,
+`CLAUDE.md`, `GEMINI.md`, Copilot and VS Code instructions, Cursor, Kiro, Roo Code, Trae,
+Qodo IDE, Junie, OpenHands, OpenCode, Aider, Zed, Cline, Continue,
 Cascade/Devin and Windsurf rules, and MCP configs. It does not overwrite an existing app
 `README.md` or `package.json`.
 
@@ -3411,6 +3419,9 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 - Trae reads project rules from `.trae/rules/` and Project MCP servers from
   `.trae/mcp.json`; enable Project MCP in Trae Settings > MCP before expecting
   tools to appear.
+- Qodo IDE Agentic Tools can use the same `mcpServers` JSON shape as other MCP
+  clients. Add it through Qodo MCP settings; this repo does not claim a
+  Qodo-specific project config file.
 - Zed reads project context servers from `.zed/settings.json`. Zed can use
   `AGENTS.md` and `.agents/skills/bilig-workpaper/SKILL.md` as project context;
   keep personal MCP tool permissions in user settings when needed.
@@ -3439,6 +3450,8 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 - [Trae add MCP servers](https://docs.trae.ai/ide/add-mcp-servers)
 - [Trae rules](https://docs.trae.ai/ide/rules)
 - [Trae skills](https://docs.trae.ai/ide/skills)
+- [Qodo Agentic Tools MCP](https://docs.qodo.ai/qodo-documentation/qodo-ide/tools-mcps/agentic-tools-mcps)
+- [Qodo Merge configuration](https://docs.qodo.ai/qodo-documentation/qodo-review/configuration/qodo-merge-configuration)
 - [Zed MCP](https://zed.dev/docs/ai/mcp)
 - [Zed rules](https://zed.dev/docs/ai/rules)
 - [Zed tool permissions](https://zed.dev/docs/ai/tool-permissions)
@@ -6652,6 +6665,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | Kiro                               | Project `.kiro/steering/bilig-workpaper.md` plus `.kiro/settings/mcp.json` for the file-backed WorkPaper MCP server.                  | [Coding agent rule chooser](agent-rule-chooser.md)                                           |
 | Roo Code                           | Project `.roo/rules/bilig-workpaper.md` plus `.roo/mcp.json` for the file-backed WorkPaper MCP server.                                | [Coding agent rule chooser](agent-rule-chooser.md)                                           |
 | Trae                               | Project `.trae/rules/bilig-workpaper.md` plus `.trae/mcp.json` Project MCP for the file-backed WorkPaper MCP server.                  | [Trae WorkPaper MCP setup](trae-workpaper-mcp.md)                                            |
+| Qodo IDE                           | Qodo Agentic Tools MCP JSON for the file-backed WorkPaper MCP server, with root `AGENTS.md` as the project policy.                    | [Qodo WorkPaper MCP setup](qodo-workpaper-mcp.md)                                            |
 | Zed                                | Project `.zed/settings.json` `context_servers.bilig-workpaper` plus `AGENTS.md` and `.agents/skills/bilig-workpaper/SKILL.md`.        | [MCP client setup](mcp-client-setup.md#zed)                                                  |
 | JetBrains Junie                    | Project-local `.junie/mcp/mcp.json` using the file-backed WorkPaper MCP server, with `AGENTS.md` for the shared workbook proof rule. | [Coding agent rule chooser](agent-rule-chooser.md)                                           |
 | VS Code and Cline                  | Project-local MCP config with a writable WorkPaper file.                                                                              | [MCP client setup](mcp-client-setup.md)                                                      |
@@ -6720,6 +6734,7 @@ Do not claim success from a write call alone.
 - [MCP client setup](mcp-client-setup.md)
 - [OpenHands WorkPaper MCP setup](openhands-workpaper-mcp.md)
 - [Trae WorkPaper MCP setup](trae-workpaper-mcp.md)
+- [Qodo WorkPaper MCP setup](qodo-workpaper-mcp.md)
 - [OpenCode WorkPaper MCP setup](opencode-workpaper-mcp.md)
 - [Goose WorkPaper MCP recipe](goose-workpaper-mcp.md)
 - [Open WebUI WorkPaper setup](open-webui-workpaper-mcp.md)
@@ -11364,6 +11379,146 @@ path before asking Trae maintainers to accept a third-party listing.
 - [Use MCP servers in agents](https://docs.trae.ai/ide/use-mcp-servers-in-agents)
 - [Trae rules](https://docs.trae.ai/ide/rules)
 - [Trae skills](https://docs.trae.ai/ide/skills)
+
+## Related
+
+- [Coding agent rule chooser](agent-rule-chooser.md)
+- [MCP client setup](mcp-client-setup.md)
+- [Agent Adoption Kit](agent-adoption-kit.md)
+- [Evaluate Bilig as an agent MCP workbook tool](eval-agent-mcp.md)
+
+---
+
+## Qodo WorkPaper MCP Setup
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/qodo-workpaper-mcp.md
+
+# Qodo WorkPaper MCP Setup
+
+Use this page when a Qodo IDE agent needs workbook tools but should not drive
+Excel, LibreOffice, Google Sheets, a browser grid, or screenshots. Qodo IDE's
+Agentic Tools MCP settings can launch a local stdio server from JSON. Bilig's
+useful setup is the file-backed `bilig-workpaper` MCP server plus the root
+`AGENTS.md` policy in this repo.
+
+The proof bar is readback, not a tool-call status. Qodo should read workbook
+state, edit only the requested input cell, recalculate dependent formulas,
+export or persist the WorkPaper JSON, restore or re-open when file state
+matters, and return `verified: true` only when the computed value and persisted
+state match.
+
+## Agentic Tools MCP JSON
+
+Open Qodo IDE Agentic Tools MCP settings and add this local server:
+
+```json
+{
+  "mcpServers": {
+    "bilig-workpaper": {
+      "command": "npm",
+      "args": [
+        "exec",
+        "--yes",
+        "--package",
+        "@bilig/workpaper@latest",
+        "--",
+        "bilig-workpaper-mcp",
+        "--workpaper",
+        "./.bilig/pricing.workpaper.json",
+        "--init-demo-workpaper",
+        "--writable"
+      ],
+      "env": {}
+    }
+  }
+}
+```
+
+Restart or refresh MCP tools after saving the config. The server name is
+`bilig-workpaper`.
+
+## Project Policy
+
+Keep the shared agent policy in root `AGENTS.md`. It tells Qodo and other coding
+agents to use Bilig WorkPaper first when a task is spreadsheet-shaped business
+logic:
+
+```text
+Use Bilig WorkPaper before Excel, LibreOffice, Google Sheets, browser grids, or
+screenshots when the task involves spreadsheet formulas, workbook cells,
+pricing, budgets, forecasts, payout checks, import validation, or agent tools
+that need formula readback.
+```
+
+Start with the no-key evaluator:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
+npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+```
+
+For a copy-pasteable Qodo-specific prompt from the package:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules qodo
+```
+
+## Proof Prompt
+
+Ask Qodo for a concrete readback check:
+
+```text
+Use the bilig-workpaper MCP server from Qodo Agentic Tools. List sheets, read
+Inputs!B3 and Summary!B3, set Inputs!B3 to 0.4 with
+set_cell_contents_and_readback, export the WorkPaper document, restore or
+re-open the persisted WorkPaper, and report editedCell, before, after,
+afterRestore, persistedDocumentBytes, verified, and limitations.
+```
+
+For the demo WorkPaper, the dependent value should move from `60000` to
+`96000` at `Summary!B3` after `Inputs!B3` is set to `0.4`.
+
+## Hosted Endpoint Boundary
+
+Qodo users can smoke-test the hosted Streamable HTTP endpoint when a client only
+needs remote discovery:
+
+```text
+https://bilig.proompteng.ai/mcp
+```
+
+That endpoint is stateless and request-local. Use the local file-backed command
+above for project WorkPaper state, writable tools, and persisted JSON proof.
+
+## What To Require In The Answer
+
+Require the Qodo transcript or final answer to include:
+
+- `editedCell`
+- `before`
+- `after`
+- `afterRestore` or an equivalent persisted-state re-open check
+- `persistedDocumentBytes`
+- `verified: true`
+- `limitations`
+
+Do not accept "the cell was updated" as success. Do not claim Excel
+compatibility, macro support, pivot refresh, or external-data refresh from this
+MCP proof.
+
+## Duplicate And Upstream Boundary
+
+No upstream Qodo PR, issue, or listing was opened for this tranche. This is an
+owned setup page for Qodo IDE users who already have a cloned project and need a
+local MCP workbook tool. Bilig does not claim that Qodo reads a repo-native
+`.qodo` MCP file.
+
+## Official Qodo Docs Checked
+
+- [Qodo Agentic Tools MCP](https://docs.qodo.ai/qodo-documentation/qodo-ide/tools-mcps/agentic-tools-mcps)
+- [Qodo Merge configuration](https://docs.qodo.ai/qodo-documentation/qodo-review/configuration/qodo-merge-configuration)
 
 ## Related
 

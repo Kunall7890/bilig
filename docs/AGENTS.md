@@ -27,10 +27,11 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
     `.opencode/agents/bilig-workpaper.md`.
 11. If you are using Aider, load `CONVENTIONS.md` through
     `.aider.conf.yml`.
-12. If you are using Cursor, Kiro, Trae, Zed, Windsurf/Cascade, Cline, or Continue, use
+12. If you are using Cursor, Kiro, Trae, Qodo IDE, Zed, Windsurf/Cascade, Cline, or Continue, use
     `.cursor/rules/bilig-workpaper.mdc` or
     `.kiro/steering/bilig-workpaper.md`,
     `.trae/rules/bilig-workpaper.md` with `.trae/mcp.json`,
+    `https://proompteng.github.io/bilig/qodo-workpaper-mcp.html` for Qodo Agentic Tools MCP JSON,
     `.zed/settings.json`,
     `.devin/rules/bilig-workpaper.md`,
     `.windsurf/rules/bilig-workpaper.md`,

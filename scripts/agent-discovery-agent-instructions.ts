@@ -50,10 +50,11 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
     \`.opencode/agents/bilig-workpaper.md\`.
 11. If you are using Aider, load \`CONVENTIONS.md\` through
     \`.aider.conf.yml\`.
-12. If you are using Cursor, Kiro, Trae, Zed, Windsurf/Cascade, Cline, or Continue, use
+12. If you are using Cursor, Kiro, Trae, Qodo IDE, Zed, Windsurf/Cascade, Cline, or Continue, use
     \`.cursor/rules/bilig-workpaper.mdc\` or
     \`.kiro/steering/bilig-workpaper.md\`,
     \`.trae/rules/bilig-workpaper.md\` with \`.trae/mcp.json\`,
+    \`${siteRoot}/qodo-workpaper-mcp.html\` for Qodo Agentic Tools MCP JSON,
     \`.zed/settings.json\`,
     \`.devin/rules/bilig-workpaper.md\`,
     \`.windsurf/rules/bilig-workpaper.md\`,
@@ -154,6 +155,7 @@ npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules co
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules windsurf
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules gemini
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules junie
+npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules qodo
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules trae
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules zed
 npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules vscode-mcp

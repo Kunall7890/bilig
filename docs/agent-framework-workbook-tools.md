@@ -1,7 +1,7 @@
 ---
 title: Workbook tools for agent frameworks
 published: true
-description: Pick the Bilig WorkPaper integration path for Codex, Claude, Cursor, Kiro, Roo Code, Trae, Zed, Junie, OpenHands, OpenCode, Aider, Goose, Browser Use, OpenAI Agents, Microsoft Agent Framework, Vercel AI SDK, LangChain, LangGraph, LlamaIndex, and MCP clients.
+description: Pick the Bilig WorkPaper integration path for Codex, Claude, Cursor, Kiro, Roo Code, Trae, Qodo IDE, Zed, Junie, OpenHands, OpenCode, Aider, Goose, Browser Use, OpenAI Agents, Microsoft Agent Framework, Vercel AI SDK, LangChain, LangGraph, LlamaIndex, and MCP clients.
 tags: ai-agents, mcp, spreadsheet-agent, workbook-api, typescript
 canonical_url: https://proompteng.github.io/bilig/agent-framework-workbook-tools.html
 image: /assets/github-social-preview.png
@@ -82,6 +82,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | Kiro                               | Project `.kiro/steering/bilig-workpaper.md` plus `.kiro/settings/mcp.json` for the file-backed WorkPaper MCP server.                  | [Coding agent rule chooser](agent-rule-chooser.md)                                           |
 | Roo Code                           | Project `.roo/rules/bilig-workpaper.md` plus `.roo/mcp.json` for the file-backed WorkPaper MCP server.                                | [Coding agent rule chooser](agent-rule-chooser.md)                                           |
 | Trae                               | Project `.trae/rules/bilig-workpaper.md` plus `.trae/mcp.json` Project MCP for the file-backed WorkPaper MCP server.                  | [Trae WorkPaper MCP setup](trae-workpaper-mcp.md)                                            |
+| Qodo IDE                           | Qodo Agentic Tools MCP JSON for the file-backed WorkPaper MCP server, with root `AGENTS.md` as the project policy.                    | [Qodo WorkPaper MCP setup](qodo-workpaper-mcp.md)                                            |
 | Zed                                | Project `.zed/settings.json` `context_servers.bilig-workpaper` plus `AGENTS.md` and `.agents/skills/bilig-workpaper/SKILL.md`.        | [MCP client setup](mcp-client-setup.md#zed)                                                  |
 | JetBrains Junie                    | Project-local `.junie/mcp/mcp.json` using the file-backed WorkPaper MCP server, with `AGENTS.md` for the shared workbook proof rule. | [Coding agent rule chooser](agent-rule-chooser.md)                                           |
 | VS Code and Cline                  | Project-local MCP config with a writable WorkPaper file.                                                                              | [MCP client setup](mcp-client-setup.md)                                                      |
@@ -150,6 +151,7 @@ Do not claim success from a write call alone.
 - [MCP client setup](mcp-client-setup.md)
 - [OpenHands WorkPaper MCP setup](openhands-workpaper-mcp.md)
 - [Trae WorkPaper MCP setup](trae-workpaper-mcp.md)
+- [Qodo WorkPaper MCP setup](qodo-workpaper-mcp.md)
 - [OpenCode WorkPaper MCP setup](opencode-workpaper-mcp.md)
 - [Goose WorkPaper MCP recipe](goose-workpaper-mcp.md)
 - [Open WebUI WorkPaper setup](open-webui-workpaper-mcp.md)

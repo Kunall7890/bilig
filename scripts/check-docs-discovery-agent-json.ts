@@ -324,6 +324,21 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
     !hasCapability(
       agentJsonCapabilities,
       (capability) =>
+        Reflect.get(capability, 'name') === 'qodo-workpaper-mcp' &&
+        Reflect.get(capability, 'framework') === 'Qodo IDE' &&
+        Reflect.get(capability, 'command') ===
+          'npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable' &&
+        Reflect.get(capability, 'config_shape') === 'mcpServers' &&
+        Reflect.get(capability, 'docs') === 'https://proompteng.github.io/bilig/qodo-workpaper-mcp.html' &&
+        Reflect.get(capability, 'source') === 'https://github.com/proompteng/bilig/blob/main/docs/qodo-workpaper-mcp.md',
+    )
+  ) {
+    throw new Error('docs/.well-known/agent.json must advertise the Qodo WorkPaper MCP capability')
+  }
+  if (
+    !hasCapability(
+      agentJsonCapabilities,
+      (capability) =>
         Reflect.get(capability, 'name') === 'opencode-workpaper-mcp' &&
         Reflect.get(capability, 'framework') === 'OpenCode' &&
         Reflect.get(capability, 'command') ===
@@ -449,6 +464,8 @@ const requiredPublicEntrypoints = [
   'https://github.com/proompteng/bilig/blob/main/.agents/skills/bilig-workpaper/SKILL.md',
   'https://proompteng.github.io/bilig/trae-workpaper-mcp.html',
   'https://github.com/proompteng/bilig/blob/main/docs/trae-workpaper-mcp.md',
+  'https://proompteng.github.io/bilig/qodo-workpaper-mcp.html',
+  'https://github.com/proompteng/bilig/blob/main/docs/qodo-workpaper-mcp.md',
   'https://proompteng.github.io/bilig/opencode-workpaper-mcp.html',
   'https://github.com/proompteng/bilig/blob/main/docs/opencode-workpaper-mcp.md',
   'https://github.com/proompteng/bilig/blob/main/.opencode/agents/bilig-workpaper.md',

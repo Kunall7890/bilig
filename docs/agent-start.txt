@@ -28,6 +28,7 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules co
 npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules windsurf
 npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules gemini
 npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules junie
+npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules qodo
 npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules trae
 npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules zed
 npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules vscode-mcp

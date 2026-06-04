@@ -17,6 +17,7 @@ const agentStartRuleTargets = [
   'windsurf',
   'gemini',
   'junie',
+  'qodo',
   'trae',
   'zed',
   'vscode-mcp',
@@ -157,6 +158,7 @@ export function agentStartHelpText(): string {
     '  windsurf     .devin/rules/bilig-workpaper.md or .windsurf/rules/bilig-workpaper.md',
     '  gemini       GEMINI.md, gemini-extension.json, gemini-workpaper-context.md',
     '  junie        .junie/mcp/mcp.json',
+    '  qodo        Qodo IDE Agentic Tools MCP JSON',
     '  trae         .trae/mcp.json, .trae/rules/bilig-workpaper.md',
     '  zed          .zed/settings.json, AGENTS.md, .agents/skills/bilig-workpaper/SKILL.md',
     '  vscode-mcp   .vscode/mcp.json',
@@ -265,6 +267,11 @@ export function buildAgentStartDecisionCard(): AgentStartDecisionCard {
         command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules junie',
       },
       {
+        target: 'qodo',
+        file: 'Qodo IDE Agentic Tools MCP JSON',
+        command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules qodo',
+      },
+      {
         target: 'trae',
         file: '.trae/mcp.json, .trae/rules/bilig-workpaper.md',
         command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules trae',
@@ -339,6 +346,7 @@ function renderAgentStartRules(card: AgentStartDecisionCard, target: AgentStartR
     gemini: 'Gemini CLI',
     junie: 'Junie',
     opencode: 'OpenCode',
+    qodo: 'Qodo IDE',
     trae: 'Trae',
     'vscode-mcp': 'VS Code agent mode',
     windsurf: 'Windsurf/Cascade',
@@ -506,6 +514,12 @@ Keep MCP tool approvals scoped to WorkPaper readback tools such as
     return `Trae should use the project \`.trae/mcp.json\` server named
 \`bilig-workpaper\` after Project MCP is enabled. Keep the workbook rule in
 \`.trae/rules/bilig-workpaper.md\` and require computed WorkPaper readback
+before reporting workbook edits as complete.`
+  }
+  if (target === 'qodo') {
+    return `Qodo IDE should add the local \`bilig-workpaper\` server through
+Agentic Tools MCP settings by pasting an \`mcpServers\` JSON block. Keep the
+project policy in root \`AGENTS.md\` and require computed WorkPaper readback
 before reporting workbook edits as complete.`
   }
   if (target === 'opencode') {

@@ -413,6 +413,16 @@
       "source": "https://github.com/proompteng/bilig/blob/main/docs/trae-workpaper-mcp.md"
     },
     {
+      "name": "qodo-workpaper-mcp",
+      "type": "coding-agent-mcp-setup",
+      "framework": "Qodo IDE",
+      "command": "npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable",
+      "config_shape": "mcpServers",
+      "docs": "https://proompteng.github.io/bilig/qodo-workpaper-mcp.html",
+      "source": "https://github.com/proompteng/bilig/blob/main/docs/qodo-workpaper-mcp.md",
+      "boundary": "Qodo IDE Agentic Tools can use the copy-paste local MCP JSON; this repo does not claim a Qodo-specific project config file."
+    },
+    {
       "name": "opencode-workpaper-mcp",
       "type": "coding-agent-mcp-setup",
       "framework": "OpenCode",
@@ -578,6 +588,8 @@
     "https://github.com/proompteng/bilig/blob/main/.agents/skills/bilig-workpaper/SKILL.md",
     "https://proompteng.github.io/bilig/trae-workpaper-mcp.html",
     "https://github.com/proompteng/bilig/blob/main/docs/trae-workpaper-mcp.md",
+    "https://proompteng.github.io/bilig/qodo-workpaper-mcp.html",
+    "https://github.com/proompteng/bilig/blob/main/docs/qodo-workpaper-mcp.md",
     "https://proompteng.github.io/bilig/opencode-workpaper-mcp.html",
     "https://github.com/proompteng/bilig/blob/main/docs/opencode-workpaper-mcp.md",
     "https://github.com/proompteng/bilig/blob/main/.opencode/agents/bilig-workpaper.md",

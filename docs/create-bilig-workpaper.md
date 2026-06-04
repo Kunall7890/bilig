@@ -96,9 +96,9 @@ curl -X POST http://localhost:8788/api/quote/approval \
 - an optional agent starter with `AGENTS.md`, `CONVENTIONS.md`,
   `.aider.conf.yml`, `CLAUDE.md`, `GEMINI.md`,
   a Claude Code project skill and proof command, GitHub Copilot / VS Code
-  instructions, Cursor, Kiro, Trae, Zed, Junie, Aider conventions, Cline, Continue, Cascade/Devin, and Windsurf
+  instructions, Cursor, Kiro, Trae, Qodo setup docs, Zed, Junie, Aider conventions, Cline, Continue, Cascade/Devin, and Windsurf
   rules, project-root `.mcp.json` for Claude Code, Cursor and VS Code MCP
-  configs, `.kiro/settings/mcp.json` for Kiro, `.trae/mcp.json` for Trae, `.zed/settings.json` for Zed,
+  configs, `.kiro/settings/mcp.json` for Kiro, `.trae/mcp.json` for Trae, Qodo Agentic Tools JSON in the docs, `.zed/settings.json` for Zed,
   `.junie/mcp/mcp.json` for Junie,
   a reusable MCP config file, and an
   `agent:verify` command that runs the service smoke plus

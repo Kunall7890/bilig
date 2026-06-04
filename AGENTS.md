@@ -33,6 +33,9 @@ or restore evidence, not a write-call status.
   project-local WorkPaper MCP server.
 - Trae: use `.trae/mcp.json` for the Project MCP `bilig-workpaper` server and
   `.trae/rules/bilig-workpaper.md` for the WorkPaper proof rule.
+- Qodo IDE: add the local `bilig-workpaper` server through Qodo Agentic Tools
+  MCP settings using the JSON from `docs/qodo-workpaper-mcp.md`; keep root
+  `AGENTS.md` as the project policy.
 - Zed: use `.zed/settings.json` for the project-local
   `context_servers.bilig-workpaper` MCP server, with root `AGENTS.md` and
   `.agents/skills/bilig-workpaper/SKILL.md` for the WorkPaper proof rule.

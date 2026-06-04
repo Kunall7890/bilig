@@ -393,6 +393,17 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
           source: `${repositoryUrl}/blob/main/docs/trae-workpaper-mcp.md`,
         },
         {
+          name: 'qodo-workpaper-mcp',
+          type: 'coding-agent-mcp-setup',
+          framework: 'Qodo IDE',
+          command: openCodeMcpCommand,
+          config_shape: 'mcpServers',
+          docs: `${siteRoot}/qodo-workpaper-mcp.html`,
+          source: `${repositoryUrl}/blob/main/docs/qodo-workpaper-mcp.md`,
+          boundary:
+            'Qodo IDE Agentic Tools can use the copy-paste local MCP JSON; this repo does not claim a Qodo-specific project config file.',
+        },
+        {
           name: 'opencode-workpaper-mcp',
           type: 'coding-agent-mcp-setup',
           framework: 'OpenCode',
@@ -545,6 +556,8 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
         `${repositoryUrl}/blob/main/.agents/skills/bilig-workpaper/SKILL.md`,
         `${siteRoot}/trae-workpaper-mcp.html`,
         `${repositoryUrl}/blob/main/docs/trae-workpaper-mcp.md`,
+        `${siteRoot}/qodo-workpaper-mcp.html`,
+        `${repositoryUrl}/blob/main/docs/qodo-workpaper-mcp.md`,
         `${siteRoot}/opencode-workpaper-mcp.html`,
         `${repositoryUrl}/blob/main/docs/opencode-workpaper-mcp.md`,
         `${repositoryUrl}/blob/main/.opencode/agents/bilig-workpaper.md`,
