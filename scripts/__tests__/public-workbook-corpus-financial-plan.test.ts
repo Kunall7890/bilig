@@ -11,9 +11,25 @@ import {
   validatePublicWorkbookCorpusFinancialPlan,
   type PublicWorkbookCorpusFinancialPlan,
 } from '../public-workbook-corpus-financial-plan.ts'
+import { defaultFinancialWorkbookQueries } from '../public-workbook-corpus-topics.ts'
 import type { PublicWorkbookSource } from '../public-workbook-corpus-types.ts'
 
 describe('public workbook financial corpus plan CLI', () => {
+  it('prioritizes formula-heavy financial model queries before generic accounting datasets', () => {
+    const financialModelIndex = defaultFinancialWorkbookQueries.indexOf('financial model')
+    const budgetWorkbookIndex = defaultFinancialWorkbookQueries.indexOf('budget workbook')
+    const workpaperIndex = defaultFinancialWorkbookQueries.indexOf('workpaper')
+    const accountingIndex = defaultFinancialWorkbookQueries.indexOf('accounting')
+
+    expect(financialModelIndex).toBeGreaterThanOrEqual(0)
+    expect(budgetWorkbookIndex).toBeGreaterThanOrEqual(0)
+    expect(workpaperIndex).toBeGreaterThanOrEqual(0)
+    expect(accountingIndex).toBeGreaterThanOrEqual(0)
+    expect(financialModelIndex).toBeLessThan(accountingIndex)
+    expect(budgetWorkbookIndex).toBeLessThan(accountingIndex)
+    expect(workpaperIndex).toBeLessThan(accountingIndex)
+  })
+
   it('plans the financial corpus lane without creating cache files or starting network work', () => {
     const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-financial-plan-'))
     const manifestPath = join(dir, 'manifest.json')
@@ -290,10 +306,10 @@ describe('public workbook financial corpus plan CLI', () => {
       'bun scripts/public-workbook-corpus.ts fetch --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --limit 5000 --fetch-batch-size 6 --max-bytes 52428800',
     )
     expect(scripts['public-workbook-corpus:resume-financial:plan']).toBe(
-      'bun scripts/public-workbook-corpus-resume-plan.ts --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --scorecard .cache/public-workbook-corpus-financial/scorecard.json --verify-checkpoint .cache/public-workbook-corpus-financial/verification-checkpoint.json --fetch-limit 5000 --fetch-batch-size 6 --fetch-plan-script-name public-workbook-corpus:fetch-financial:plan --fetch-script-name public-workbook-corpus:fetch-financial',
+      'bun scripts/public-workbook-corpus-resume-plan.ts --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --scorecard .cache/public-workbook-corpus-financial/scorecard.json --verify-checkpoint .cache/public-workbook-corpus-financial/verification-checkpoint.json --fetch-limit 5000 --fetch-batch-size 6 --discover-plan-script-name public-workbook-corpus:discover-financial:plan --discover-script-name public-workbook-corpus:discover-financial --fetch-plan-script-name public-workbook-corpus:fetch-financial:plan --fetch-script-name public-workbook-corpus:fetch-financial',
     )
     expect(scripts['public-workbook-corpus:resume-financial:check']).toBe(
-      'bun scripts/public-workbook-corpus-resume-plan.ts --check --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --scorecard .cache/public-workbook-corpus-financial/scorecard.json --verify-checkpoint .cache/public-workbook-corpus-financial/verification-checkpoint.json --fetch-limit 5000 --fetch-batch-size 6 --fetch-plan-script-name public-workbook-corpus:fetch-financial:plan --fetch-script-name public-workbook-corpus:fetch-financial',
+      'bun scripts/public-workbook-corpus-resume-plan.ts --check --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --scorecard .cache/public-workbook-corpus-financial/scorecard.json --verify-checkpoint .cache/public-workbook-corpus-financial/verification-checkpoint.json --fetch-limit 5000 --fetch-batch-size 6 --discover-plan-script-name public-workbook-corpus:discover-financial:plan --discover-script-name public-workbook-corpus:discover-financial --fetch-plan-script-name public-workbook-corpus:fetch-financial:plan --fetch-script-name public-workbook-corpus:fetch-financial',
     )
   })
 

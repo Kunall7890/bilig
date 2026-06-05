@@ -351,7 +351,6 @@ const requirementBuilders: readonly ((context: RequirementContext) => PublicWork
         `financial/accounting non-passing recorded cases: ${String(context.currentState.recordedFinancialNonPassingCaseCount)}`,
       ],
       gaps: [
-        ...(context.manifest ? [] : ['manifest artifact is missing']),
         ...countGap(
           context.currentState.financialCachedArtifactCount,
           context.currentState.financialWorkbookTargetCount,

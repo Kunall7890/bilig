@@ -102,6 +102,8 @@ export function buildPublicWorkbookCorpusResumePlanFromArgs(): PublicWorkbookCor
   const verifyBatchSize = readNumberArg('--verify-batch-size', 20)
   const fetchLimit = readNumberArg('--fetch-limit', 10_000)
   const fetchBatchSize = readNumberArg('--fetch-batch-size', 6)
+  const discoverPlanScriptName = readStringArg('--discover-plan-script-name', 'public-workbook-corpus:discover:plan')
+  const discoverScriptName = readStringArg('--discover-script-name', 'public-workbook-corpus:discover')
   const fetchPlanScriptName = readStringArg('--fetch-plan-script-name', 'public-workbook-corpus:fetch:plan')
   const fetchScriptName = readStringArg('--fetch-script-name', 'public-workbook-corpus:fetch')
   const generatedAt = readStringArg('--generated-at', new Date().toISOString())
@@ -129,6 +131,8 @@ export function buildPublicWorkbookCorpusResumePlanFromArgs(): PublicWorkbookCor
     : 0
   return buildPublicWorkbookCorpusResumePlan({
     cacheDir,
+    discoverPlanScriptName,
+    discoverScriptName,
     fetchBatchSize,
     fetchLimit,
     fetchPlanScriptName,
@@ -173,6 +177,8 @@ function fallbackPublicWorkbookCorpusFetchPlan(status: {
 
 export function buildPublicWorkbookCorpusResumePlan(args: {
   readonly cacheDir: string
+  readonly discoverPlanScriptName?: string
+  readonly discoverScriptName?: string
   readonly fetchBatchSize: number
   readonly fetchLimit: number
   readonly fetchPlanScriptName?: string
@@ -417,6 +423,8 @@ function buildDiscoverPhase(args: Parameters<typeof buildPublicWorkbookCorpusRes
   if (totalWorkItems === 0) {
     return notNeededPhase('known candidate sources can reach the target artifact count')
   }
+  const discoverPlanScriptName = args.discoverPlanScriptName ?? 'public-workbook-corpus:discover:plan'
+  const discoverScriptName = args.discoverScriptName ?? 'public-workbook-corpus:discover'
   return {
     status: phaseStatus(args.stopMarkerActive),
     reason: 'known candidate sources cannot fill the remaining artifact target',
@@ -425,11 +433,11 @@ function buildDiscoverPhase(args: Parameters<typeof buildPublicWorkbookCorpusRes
     batchCount: 1,
     ...phaseCommands(
       args.stopMarkerActive,
-      [command(['pnpm', 'public-workbook-corpus:discover:plan', '--', '--limit', String(args.fetchPlan.recommendedDiscoveryLimit)])],
+      [command(['pnpm', discoverPlanScriptName, '--', '--limit', String(args.fetchPlan.recommendedDiscoveryLimit)])],
       [
         [
           'pnpm',
-          'public-workbook-corpus:discover',
+          discoverScriptName,
           '--',
           '--manifest',
           commandPath(args.manifestPath, args.displayRootDir),
@@ -703,6 +711,7 @@ function isCorpusMutatingCommand(value: string): boolean {
     'public-workbook-corpus:verify-missing --',
     'public-workbook-corpus:verify-stale --',
     'public-workbook-corpus:discover --',
+    'public-workbook-corpus:discover-financial --',
     'public-workbook-corpus:fetch --',
     'public-workbook-corpus:fetch-financial --',
     'public-workbook-corpus:verify --',

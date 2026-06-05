@@ -300,6 +300,79 @@ describe('public workbook corpus completion audit', () => {
     expect(validatePublicWorkbookCorpusCompletionAudit(audit)).toEqual([])
   })
 
+  it('does not require the general corpus manifest for dedicated financial checklist evidence', () => {
+    const artifactA = financialWorkbookArtifact('workbook-a')
+    const artifactB = financialWorkbookArtifact('workbook-b')
+    const audit = buildPublicWorkbookCorpusCompletionAudit({
+      generatedAt: '2026-05-08T00:00:00.000Z',
+      hyperformulaSecondaryCorpus: hyperFormulaSecondaryCorpusFixture(),
+      manifest: null,
+      financialManifest: manifestWithArtifacts([artifactA, artifactB], 2),
+      financialRecordedCases: [passedCase(artifactA, 1), passedCase(artifactB, 1)],
+      recordedCases: [],
+      status: statusFixture({
+        targetWorkbookCount: 2,
+        sourceCount: 2,
+        cachedArtifactCount: 2,
+        scorecardCaseCount: 2,
+        checkpointCaseCount: 0,
+        recordedManifestArtifactCount: 2,
+        missingManifestArtifactCount: 0,
+        recordedPassedCaseCount: 2,
+        scorecardCoversManifest: true,
+        targetComplete: true,
+        gaps: [],
+      }),
+      stopMarkerActive: false,
+    })
+
+    expect(requirement(audit.checklist, 'financial-accounting-workpapers-5000')).toMatchObject({
+      passed: true,
+      gaps: [],
+    })
+  })
+
+  it('keeps a concrete next action when general corpus manifest evidence is missing', () => {
+    const artifactA = financialWorkbookArtifact('workbook-a')
+    const artifactB = financialWorkbookArtifact('workbook-b')
+    const audit = buildPublicWorkbookCorpusCompletionAudit({
+      generatedAt: '2026-05-08T00:00:00.000Z',
+      hyperformulaSecondaryCorpus: hyperFormulaSecondaryCorpusFixture(),
+      manifest: null,
+      financialManifest: manifestWithArtifacts([artifactA, artifactB], 2),
+      financialRecordedCases: [passedCase(artifactA, 1), passedCase(artifactB, 1)],
+      recordedCases: [],
+      status: statusFixture({
+        targetWorkbookCount: 2,
+        sourceCount: 2,
+        cachedArtifactCount: 2,
+        scorecardCaseCount: 2,
+        checkpointCaseCount: 0,
+        recordedManifestArtifactCount: 2,
+        missingManifestArtifactCount: 0,
+        recordedPassedCaseCount: 2,
+        scorecardCoversManifest: true,
+        targetComplete: true,
+        gaps: [],
+      }),
+      stopMarkerActive: false,
+    })
+
+    expect(audit.nextActions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'restore-public-corpus-manifest-evidence',
+          commands: [
+            'pnpm public-workbook-corpus:resume-plan:check',
+            'pnpm public-workbook-corpus:fetch:plan',
+            'pnpm public-workbook-corpus:completion-audit:check',
+          ],
+        }),
+      ]),
+    )
+    expect(validatePublicWorkbookCorpusCompletionAudit(audit)).toEqual([])
+  })
+
   it('requires topic evidence before counting dedicated financial manifest workbooks', () => {
     const financialArtifact = financialWorkbookArtifact('workbook-a')
     const untaggedArtifact = workbookArtifact('workbook-b')

@@ -110,6 +110,7 @@ export type PublicWorkbookCorpusRequirementId =
 
 export type PublicWorkbookCorpusNextActionId =
   | 'resume-public-corpus-ingest'
+  | 'restore-public-corpus-manifest-evidence'
   | 'verify-missing-cached-artifacts'
   | 'refresh-stale-verification-evidence'
   | 'fill-feature-witnesses'

@@ -37,6 +37,24 @@ export function buildPublicWorkbookCorpusAuditNextActions(args: {
       }),
     )
   }
+  if (
+    args.currentState.cachedArtifactCount > 0 &&
+    args.currentState.xlsxArtifactCount === 0 &&
+    args.currentState.nonXlsxArtifactCount === 0
+  ) {
+    actions.push(
+      nextAction({
+        id: 'restore-public-corpus-manifest-evidence',
+        priority: 2,
+        reason: 'checked-in scorecard has cached workbook evidence but the local manifest artifact is absent',
+        commands: [
+          'pnpm public-workbook-corpus:resume-plan:check',
+          'pnpm public-workbook-corpus:fetch:plan',
+          'pnpm public-workbook-corpus:completion-audit:check',
+        ],
+      }),
+    )
+  }
   if (args.currentState.missingVerificationCount > 0) {
     actions.push(
       nextAction({

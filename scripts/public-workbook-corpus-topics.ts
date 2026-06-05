@@ -3,6 +3,23 @@ import { asRecordOrNull, readArray, readString } from './public-workbook-corpus-
 export type PublicWorkbookRequiredTopic = 'financial-workpapers' | 'recent-2025-2026-workbooks'
 
 export const defaultFinancialWorkbookQueries = [
+  'financial model',
+  'financial modeling',
+  'financial workbook',
+  'financial template',
+  'financial forecast',
+  'forecast model',
+  'budget workbook',
+  'budget model',
+  'cash flow model',
+  'revenue model',
+  'workpaper',
+  'work paper',
+  'working paper',
+  'financial report',
+  'financial statement',
+  'budget',
+  'cash flow',
   'accounting',
   'accounts payable',
   'accounts receivable',
@@ -10,14 +27,10 @@ export const defaultFinancialWorkbookQueries = [
   'appropriation',
   'audit',
   'auditor',
-  'budget',
   'cash',
-  'cash flow',
   'expenditure',
   'expense',
   'financial',
-  'financial report',
-  'financial statement',
   'financial tables',
   'finance',
   'fiscal',
@@ -32,9 +45,6 @@ export const defaultFinancialWorkbookQueries = [
   'revenue',
   'taxation',
   'trial balance',
-  'workpaper',
-  'work paper',
-  'working paper',
 ] as const
 
 export const defaultRecentComplexWorkbookQueries = [

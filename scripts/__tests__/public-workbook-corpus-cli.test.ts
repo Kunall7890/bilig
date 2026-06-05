@@ -996,6 +996,41 @@ describe('public workbook corpus CLI resource guards', () => {
     expect(blockedCommands[0]).toContain('--fetch-batch-size 6')
   })
 
+  it('preserves financial discovery scripts in financial resume plans', () => {
+    const plan = buildPublicWorkbookCorpusResumePlan(
+      resumePlanArgs({
+        discoverPlanScriptName: 'public-workbook-corpus:discover-financial:plan',
+        discoverScriptName: 'public-workbook-corpus:discover-financial',
+        fetchPlanScriptName: 'public-workbook-corpus:fetch-financial:plan',
+        fetchScriptName: 'public-workbook-corpus:fetch-financial',
+        fetchPlan: {
+          candidateSourceCount: 0,
+          candidateSourceDeficitCount: 50,
+          recommendedDiscoveryLimit: 50,
+          remainingArtifactSlots: 50,
+          targetReachableFromKnownCandidates: false,
+        },
+        status: {
+          targetWorkbookCount: 50,
+          cachedArtifactCount: 0,
+          recordedManifestArtifactCount: 0,
+          missingManifestArtifactCount: 0,
+          recordedAllCasesPassed: true,
+        },
+        stopMarkerActive: false,
+      }),
+    )
+    const commands = plan.phases.discoverAdditionalSources.commands.join('\n')
+
+    expect(commands).toContain('pnpm public-workbook-corpus:discover-financial:plan -- --limit 50')
+    expect(commands).toContain(
+      'pnpm public-workbook-corpus:discover-financial -- --manifest .cache/public-workbook-corpus/manifest.json --cache-dir .cache/public-workbook-corpus --limit 50',
+    )
+    expect(commands).not.toContain('public-workbook-corpus:discover --')
+    expect(plan.phases.fetchAdditionalArtifacts.commands.join('\n')).toContain('public-workbook-corpus:fetch-financial')
+    expect(validatePublicWorkbookCorpusResumePlan(plan)).toEqual([])
+  })
+
   it('uses repo-relative paths in status suggested commands for paths inside the checkout', () => {
     const artifactA = workbookArtifact('workbook-a')
     const artifactB = workbookArtifact('workbook-b')
@@ -2066,6 +2101,18 @@ describe('public workbook corpus CLI resource guards', () => {
     expect(packageJson.scripts?.['public-workbook-corpus:resume-plan']).toBe('bun scripts/public-workbook-corpus-resume-plan.ts')
     expect(packageJson.scripts?.['public-workbook-corpus:resume-plan:check']).toBe(
       'bun scripts/public-workbook-corpus-resume-plan.ts --check',
+    )
+    expect(packageJson.scripts?.['public-workbook-corpus:resume-financial:plan']).toContain(
+      '--discover-plan-script-name public-workbook-corpus:discover-financial:plan',
+    )
+    expect(packageJson.scripts?.['public-workbook-corpus:resume-financial:plan']).toContain(
+      '--discover-script-name public-workbook-corpus:discover-financial',
+    )
+    expect(packageJson.scripts?.['public-workbook-corpus:resume-financial:check']).toContain(
+      '--discover-plan-script-name public-workbook-corpus:discover-financial:plan',
+    )
+    expect(packageJson.scripts?.['public-workbook-corpus:resume-financial:check']).toContain(
+      '--discover-script-name public-workbook-corpus:discover-financial',
     )
     expect(packageJson.scripts?.['public-workbook-corpus:feature-witness:plan']).toBe(
       'bun scripts/public-workbook-corpus-feature-witness-plan.ts',

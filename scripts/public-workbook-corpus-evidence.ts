@@ -55,8 +55,8 @@ export function hasPublicWorkbookCorpusUsedRangeEvidence(entry: PublicWorkbookCo
       range.startColumn >= 0 &&
       range.endRow >= range.startRow &&
       range.endColumn >= range.startColumn &&
-      dimension.rowCount === range.endRow + 1 &&
-      dimension.columnCount === range.endColumn + 1
+      dimension.rowCount >= range.endRow + 1 &&
+      dimension.columnCount >= range.endColumn + 1
     )
   })
 }

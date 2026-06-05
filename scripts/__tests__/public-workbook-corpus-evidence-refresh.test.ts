@@ -85,6 +85,38 @@ describe('public workbook corpus evidence refresh reasons', () => {
     expect(status.staleRecordedVerificationSample[0]?.reasons).toEqual(['missing-import-warning-classifier-evidence'])
   })
 
+  it('accepts used ranges that are bounded by larger sheet dimensions', () => {
+    const artifact = workbookArtifact('workbook-a')
+    const currentCase = importWarningUnsupportedCase(artifact, {
+      hasCurrentClassifierEvidence: true,
+      hasUsedRangeEvidence: true,
+    })
+    const status = buildPublicWorkbookCorpusStatus({
+      manifest: manifestWithArtifacts([artifact]),
+      scorecard: emptyScorecard(),
+      checkpointCases: [
+        {
+          ...currentCase,
+          workbookMetadata: {
+            ...currentCase.workbookMetadata,
+            dimensions: [
+              {
+                sheetName: 'Sheet1',
+                rowCount: 50,
+                columnCount: 35,
+                nonEmptyCellCount: 289,
+                usedRange: { startRow: 0, startColumn: 0, endRow: 47, endColumn: 33 },
+              },
+            ],
+          },
+        },
+      ],
+    })
+
+    expect(status.staleRecordedVerificationCount).toBe(0)
+    expect(status.currentRecordedUnsupportedCaseCount).toBe(1)
+  })
+
   it('marks old raw pivot classifier evidence stale after external-cache pivot detection changes', () => {
     const artifact = workbookArtifact('workbook-a')
     const status = buildPublicWorkbookCorpusStatus({
