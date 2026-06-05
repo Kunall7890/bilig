@@ -68,7 +68,7 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
     \`.continue/rules/bilig-workpaper.md\`. Continue Agent mode can also use
     \`.continue/mcpServers/bilig-workpaper.yaml\` for the project-local
     file-backed WorkPaper MCP server.
-13. Start the MCP server or import \`@bilig/workpaper\` directly.
+15. Start the MCP server or import \`@bilig/workpaper\` directly.
 
 Remote MCP clients that support Streamable HTTP can smoke-test the stateless
 demo endpoint at \`${remoteMcpEndpoint}\`. Directory scanners that inspect the

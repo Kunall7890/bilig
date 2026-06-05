@@ -124,6 +124,8 @@ export async function requireAgentInstructionDiscovery(input: {
   requireNotIncludes(headlessSkillNotes, 'argument-hint:', 'packages/headless/SKILL.md')
 
   requireIncludes(docsAgentNotes, '## Discovery Order', 'docs/AGENTS.md')
+  requireNotIncludes(docsAgentNotes, '13. Start the MCP server or import `@bilig/workpaper` directly.', 'docs/AGENTS.md')
+  requireIncludes(docsAgentNotes, '15. Start the MCP server or import `@bilig/workpaper` directly.', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'Do not claim success from a write call alone.', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, 'read\n   `CLAUDE.md` first', 'docs/AGENTS.md')
   requireIncludes(docsAgentNotes, '.claude/skills/bilig-workpaper/SKILL.md', 'docs/AGENTS.md')

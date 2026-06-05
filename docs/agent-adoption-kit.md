@@ -326,6 +326,46 @@ The exact values can change, but the evaluator result should look like this:
 Reject answers that only say a cell was written. The point of Bilig is that the
 agent returns the calculated result and saved state from the workbook itself.
 
+## Maintainer-Safe Adoption
+
+When you want a third-party agent host, MCP client, framework, or docs site to
+adopt Bilig, use the same proof bar and avoid duplicate outreach.
+
+Before opening anything upstream:
+
+- search that project for existing Bilig issues, PRs, examples, and docs links;
+- run the no-key `agent-mcp` evaluator against the currently published package;
+- decide whether the host needs a local file-backed MCP config, a hosted
+  stateless smoke endpoint, an installable rule file, or only a short docs note;
+- keep one thread per project and update it in place when proof changes.
+
+After publishing new `bilig-agent-start --rules` targets, run the public-latest
+smoke before pointing maintainers at the page:
+
+```sh
+pnpm agent:public-rules:check
+```
+
+The first upstream message should be a maintainer question, not a drive-by
+listing:
+
+```text
+Would you accept a small docs example for deterministic spreadsheet formula
+readback in this agent host? The no-key proof is:
+
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+
+The useful evidence is `verified: true`, `editedCell`, `before`, `after`,
+`afterRestore` or `afterRestart`, and persisted WorkPaper JSON bytes. I can keep
+the PR limited to this host's documented MCP/rules surface and close it if it is
+out of scope.
+```
+
+Do not open duplicate issues, duplicate PRs, or broad directory submissions
+when a project already has an active Bilig thread. A merged integration, an
+accepted issue, or a maintainer-requested PR is adoption evidence; a submitted
+form by itself is not.
+
 ## After The Check
 
 If the check matches your workflow, keep the repo so you can find it again:
