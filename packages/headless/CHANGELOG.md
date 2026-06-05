@@ -4,6 +4,16 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.163.0
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.162.0
+- Manual override: yes
+
+## Fixes
+- fix(release): allow first-time runtime npm packages (c0196223)
+- fix(xlsx): drop SheetJS CDN dependency pin (97f6e659)
+
 ## 0.162.0
 
 - Release type: minor
