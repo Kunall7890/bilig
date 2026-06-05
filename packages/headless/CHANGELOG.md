@@ -21,12 +21,12 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: yes
 
 ## Features
-- feat(xlsx): add native source-preserving XLSX package (75c1b926)
-- feat(xlsx): expose native source patch exports (64fb24be)
+- feat(xlsx): add @bilig/xlsx source-preserving package (75c1b926)
+- feat(xlsx): expose @bilig/xlsx source patch exports (64fb24be)
 
 ## Fixes
 - fix(headless): drop direct xlsx dependency (21e8e75a)
-- fix(headless): build native xlsx before package checks (dbbf2c61)
+- fix(headless): build @bilig/xlsx before package checks (dbbf2c61)
 
 ## Internal runtime changes
 - docs(discovery): add agent framework mcp recipes (dbf468bf)

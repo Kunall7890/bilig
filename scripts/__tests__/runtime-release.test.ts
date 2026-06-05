@@ -258,7 +258,7 @@ describe('runtime release helpers', () => {
     expect(RUNTIME_NPM_PACKAGE_DIRS).toContain('packages/headless')
   })
 
-  it('publishes the native XLSX implementation package before dependent runtime packages', () => {
+  it('publishes @bilig/xlsx before dependent runtime packages', () => {
     expect(RUNTIME_PACKAGE_DIRS).toContain('packages/xlsx')
     expect(RUNTIME_NPM_PACKAGE_DIRS).toContain('packages/xlsx')
     expect(RUNTIME_NPM_PACKAGE_DIRS.indexOf('packages/xlsx')).toBeLessThan(RUNTIME_NPM_PACKAGE_DIRS.indexOf('packages/headless'))

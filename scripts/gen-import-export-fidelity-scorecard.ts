@@ -316,7 +316,7 @@ function runXlsxSnapshotRoundTripFreezePanesCase(): ImportExportFidelityCase {
     direction: 'export-import',
     passed,
     coveredFeatures: ['xlsx.freezePanes.roundtrip'],
-    evidence: 'WorkbookSnapshot exported to XLSX imports back with equivalent sheet freeze-pane metadata backed by native XLSX pane nodes.',
+    evidence: 'WorkbookSnapshot exported to XLSX imports back with equivalent sheet freeze-pane metadata backed by @bilig/xlsx pane nodes.',
   })
 }
 
@@ -331,7 +331,7 @@ function runXlsxSnapshotRoundTripFiltersCase(): ImportExportFidelityCase {
     passed,
     coveredFeatures: ['xlsx.filters.roundtrip'],
     evidence:
-      'WorkbookSnapshot exported to XLSX imports back with equivalent sheet filter ranges and criteria backed by native XLSX autoFilter nodes.',
+      'WorkbookSnapshot exported to XLSX imports back with equivalent sheet filter ranges and criteria backed by @bilig/xlsx autoFilter nodes.',
   })
 }
 
@@ -345,7 +345,7 @@ function runXlsxSnapshotRoundTripSortsCase(): ImportExportFidelityCase {
     direction: 'export-import',
     passed,
     coveredFeatures: ['xlsx.sorts.roundtrip'],
-    evidence: 'WorkbookSnapshot exported to XLSX imports back with equivalent sort metadata backed by native XLSX sortState nodes.',
+    evidence: 'WorkbookSnapshot exported to XLSX imports back with equivalent sort metadata backed by @bilig/xlsx sortState nodes.',
   })
 }
 
@@ -360,7 +360,7 @@ function runXlsxSnapshotRoundTripSheetProtectionCase(): ImportExportFidelityCase
     passed,
     coveredFeatures: ['xlsx.sheetProtection.roundtrip'],
     evidence:
-      'WorkbookSnapshot exported to XLSX imports back with equivalent sheet protection metadata backed by native XLSX sheetProtection nodes.',
+      'WorkbookSnapshot exported to XLSX imports back with equivalent sheet protection metadata backed by @bilig/xlsx sheetProtection nodes.',
   })
 }
 
@@ -375,7 +375,7 @@ function runXlsxSnapshotRoundTripProtectedRangesCase(): ImportExportFidelityCase
     passed,
     coveredFeatures: ['xlsx.protectedRanges.roundtrip'],
     evidence:
-      'WorkbookSnapshot exported to XLSX imports back with equivalent protected-range metadata backed by native XLSX protectedRange nodes.',
+      'WorkbookSnapshot exported to XLSX imports back with equivalent protected-range metadata backed by @bilig/xlsx protectedRange nodes.',
   })
 }
 
@@ -390,7 +390,7 @@ function runXlsxSnapshotRoundTripDataValidationsCase(): ImportExportFidelityCase
     passed,
     coveredFeatures: ['xlsx.dataValidations.roundtrip'],
     evidence:
-      'WorkbookSnapshot exported to XLSX imports back with equivalent sheet data-validation metadata backed by native XLSX dataValidation nodes.',
+      'WorkbookSnapshot exported to XLSX imports back with equivalent sheet data-validation metadata backed by @bilig/xlsx dataValidation nodes.',
   })
 }
 

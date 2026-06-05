@@ -21,7 +21,7 @@ const workbookConfig = { maxRows: 16, maxColumns: 8, useColumnIndex: true }
 describe('macOS Desktop Excel data-table structural oracle', () => {
   it('retargets native data-table metadata through headless structural inserts', () => {
     for (const testCase of structuralDataTableCases()) {
-      const workbook = WorkPaper.buildFromSnapshot(importXlsx(testCase.buildNativeXlsx(), testCase.fileName).snapshot, workbookConfig)
+      const workbook = WorkPaper.buildFromSnapshot(importXlsx(testCase.buildBiligXlsx(), testCase.fileName).snapshot, workbookConfig)
       try {
         testCase.applyHeadlessEdit(workbook)
 
@@ -71,7 +71,7 @@ describe('macOS Desktop Excel data-table structural oracle', () => {
           expect(excelTruthImport.snapshot.sheets[0]?.metadata?.dataTableFormulas).toEqual(testCase.expectedMetadata)
 
           const headlessWorkbook = WorkPaper.buildFromSnapshot(
-            importXlsx(testCase.buildNativeXlsx(), testCase.fileName).snapshot,
+            importXlsx(testCase.buildBiligXlsx(), testCase.fileName).snapshot,
             workbookConfig,
           )
           try {
@@ -105,7 +105,7 @@ describe('macOS Desktop Excel data-table structural oracle', () => {
 interface StructuralDataTableCase {
   readonly fileName: string
   readonly buildBaseWorkbook: (includeOutputs: boolean) => WorkPaper
-  readonly buildNativeXlsx: () => Uint8Array
+  readonly buildBiligXlsx: () => Uint8Array
   readonly createDataTableOperations: readonly MacosExcelStructuralOperation[]
   readonly excelEdit: MacosExcelStructuralOperation
   readonly applyHeadlessEdit: (workbook: WorkPaper) => void
@@ -128,9 +128,9 @@ type NormalizedCellValue =
 function structuralDataTableCases(): StructuralDataTableCase[] {
   return [
     {
-      fileName: 'native-two-variable-data-table-insert-row-oracle.xlsx',
+      fileName: 'bilig-xlsx-two-variable-data-table-insert-row-oracle.xlsx',
       buildBaseWorkbook: buildTwoVariableDataTableWorkbook,
-      buildNativeXlsx: buildNativeTwoVariableDataTableXlsx,
+      buildBiligXlsx: buildBiligTwoVariableDataTableXlsx,
       createDataTableOperations: [{ kind: 'createDataTable', range: 'B2:D4', rowInput: 'A1', columnInput: 'A2' }],
       excelEdit: { kind: 'insertRows', range: '1:1' },
       applyHeadlessEdit: (workbook) => workbook.addRows(1, 0, 1),
@@ -146,9 +146,9 @@ function structuralDataTableCases(): StructuralDataTableCase[] {
       staleDataTableAnchors: ['C3'],
     },
     {
-      fileName: 'native-two-variable-data-table-insert-column-oracle.xlsx',
+      fileName: 'bilig-xlsx-two-variable-data-table-insert-column-oracle.xlsx',
       buildBaseWorkbook: buildTwoVariableDataTableWorkbook,
-      buildNativeXlsx: buildNativeTwoVariableDataTableXlsx,
+      buildBiligXlsx: buildBiligTwoVariableDataTableXlsx,
       createDataTableOperations: [{ kind: 'createDataTable', range: 'B2:D4', rowInput: 'A1', columnInput: 'A2' }],
       excelEdit: { kind: 'insertColumns', range: 'A:A' },
       applyHeadlessEdit: (workbook) => workbook.addColumns(1, 0, 1),
@@ -164,9 +164,9 @@ function structuralDataTableCases(): StructuralDataTableCase[] {
       staleDataTableAnchors: ['C3'],
     },
     {
-      fileName: 'native-one-variable-data-table-insert-row-oracle.xlsx',
+      fileName: 'bilig-xlsx-one-variable-data-table-insert-row-oracle.xlsx',
       buildBaseWorkbook: buildOneVariableDataTableWorkbook,
-      buildNativeXlsx: buildNativeOneVariableDataTableXlsx,
+      buildBiligXlsx: buildBiligOneVariableDataTableXlsx,
       createDataTableOperations: [
         { kind: 'createDataTable', range: 'B1:D2', rowInput: 'A1' },
         { kind: 'createDataTable', range: 'A5:B8', columnInput: 'A1' },
@@ -189,9 +189,9 @@ function structuralDataTableCases(): StructuralDataTableCase[] {
       staleDataTableAnchors: ['C2', 'B6'],
     },
     {
-      fileName: 'native-one-variable-data-table-insert-column-oracle.xlsx',
+      fileName: 'bilig-xlsx-one-variable-data-table-insert-column-oracle.xlsx',
       buildBaseWorkbook: buildOneVariableDataTableWorkbook,
-      buildNativeXlsx: buildNativeOneVariableDataTableXlsx,
+      buildBiligXlsx: buildBiligOneVariableDataTableXlsx,
       createDataTableOperations: [
         { kind: 'createDataTable', range: 'B1:D2', rowInput: 'A1' },
         { kind: 'createDataTable', range: 'A5:B8', columnInput: 'A1' },
@@ -248,7 +248,7 @@ function buildOneVariableDataTableWorkbook(includeOutputs: boolean): WorkPaper {
   )
 }
 
-function buildNativeTwoVariableDataTableXlsx(): Uint8Array {
+function buildBiligTwoVariableDataTableXlsx(): Uint8Array {
   const workbook = buildTwoVariableDataTableWorkbook(true)
   try {
     const zip = unzipSync(exportXlsx(workbook.exportSnapshot()))
@@ -265,7 +265,7 @@ function buildNativeTwoVariableDataTableXlsx(): Uint8Array {
   }
 }
 
-function buildNativeOneVariableDataTableXlsx(): Uint8Array {
+function buildBiligOneVariableDataTableXlsx(): Uint8Array {
   const workbook = buildOneVariableDataTableWorkbook(true)
   try {
     const zip = unzipSync(exportXlsx(workbook.exportSnapshot()))

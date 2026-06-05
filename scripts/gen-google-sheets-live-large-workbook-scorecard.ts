@@ -24,7 +24,7 @@ import {
 } from './json-scorecard-helpers.ts'
 import { formatJsonForRepo } from './scorecard-format.ts'
 
-export type GoogleSheetsLiveLargeWorkbookWorkload = 'native-import-read-dense-mixed-100k' | 'native-import-read-dense-mixed-250k'
+export type GoogleSheetsLiveLargeWorkbookWorkload = '@bilig/xlsx-import-read-dense-mixed-100k' | '@bilig/xlsx-import-read-dense-mixed-250k'
 
 type VerificationValue = boolean | number | string | null
 
@@ -44,7 +44,7 @@ export interface GoogleSheetsLiveLargeWorkbookCapture {
     readonly transport: 'google-drive-connector'
     readonly sourceWorkbook: 'bilig-xlsx-google-sheets-conversion'
     readonly valueRenderOption: 'UNFORMATTED_VALUE'
-    readonly measuredGoogleSheetsOperation: 'native-xlsx-import-and-read-terminal-cell'
+    readonly measuredGoogleSheetsOperation: '@bilig/xlsx-import-and-read-terminal-cell'
     readonly sampleCount: number
     readonly samplingOrder: 'engine-isolated-bilig-then-google-sheets'
   }
@@ -110,7 +110,7 @@ export interface GoogleSheetsLiveLargeWorkbookScorecard {
   readonly benchmark: {
     readonly sampleCount: number
     readonly valueRenderOption: 'UNFORMATTED_VALUE'
-    readonly measuredGoogleSheetsOperation: 'native-xlsx-import-and-read-terminal-cell'
+    readonly measuredGoogleSheetsOperation: '@bilig/xlsx-import-and-read-terminal-cell'
     readonly measuredBiligOperation: 'import-snapshot'
     readonly samplingOrder: 'engine-isolated-bilig-then-google-sheets'
   }
@@ -149,14 +149,14 @@ const TEN_X_RATIO = 0.1
 const caseSpecs = [
   {
     id: 'google-sheets-live-large-workbook-import-read-dense-mixed-100k',
-    workload: 'native-import-read-dense-mixed-100k',
+    workload: '@bilig/xlsx-import-read-dense-mixed-100k',
     corpusCaseId: 'dense-mixed-100k',
     sheetName: 'Grid',
     terminalAddress: 'C25000',
   },
   {
     id: 'google-sheets-live-large-workbook-import-read-dense-mixed-250k',
-    workload: 'native-import-read-dense-mixed-250k',
+    workload: '@bilig/xlsx-import-read-dense-mixed-250k',
     corpusCaseId: 'dense-mixed-250k',
     sheetName: 'Grid',
     terminalAddress: 'C62500',
@@ -229,7 +229,7 @@ export function emitGoogleSheetsLargeWorkbookXlsx(targetDirectory: string): void
         targetDirectory,
         uploadMode: 'native_google_sheets',
         valueRenderOption: 'UNFORMATTED_VALUE',
-        measuredGoogleSheetsOperation: 'native-xlsx-import-and-read-terminal-cell',
+        measuredGoogleSheetsOperation: '@bilig/xlsx-import-and-read-terminal-cell',
         outputs,
       },
       null,
@@ -300,7 +300,7 @@ export function parseGoogleSheetsLiveLargeWorkbookCapture(value: Record<string, 
       transport: literalField(capture, 'transport', 'google-drive-connector'),
       sourceWorkbook: literalField(capture, 'sourceWorkbook', 'bilig-xlsx-google-sheets-conversion'),
       valueRenderOption: literalField(capture, 'valueRenderOption', 'UNFORMATTED_VALUE'),
-      measuredGoogleSheetsOperation: literalField(capture, 'measuredGoogleSheetsOperation', 'native-xlsx-import-and-read-terminal-cell'),
+      measuredGoogleSheetsOperation: literalField(capture, 'measuredGoogleSheetsOperation', '@bilig/xlsx-import-and-read-terminal-cell'),
       sampleCount: numberField(capture, 'sampleCount'),
       samplingOrder: literalField(capture, 'samplingOrder', 'engine-isolated-bilig-then-google-sheets'),
     },
@@ -336,7 +336,7 @@ export function parseGoogleSheetsLiveLargeWorkbookScorecard(value: Record<string
     benchmark: {
       sampleCount: numberField(benchmark, 'sampleCount'),
       valueRenderOption: literalField(benchmark, 'valueRenderOption', 'UNFORMATTED_VALUE'),
-      measuredGoogleSheetsOperation: literalField(benchmark, 'measuredGoogleSheetsOperation', 'native-xlsx-import-and-read-terminal-cell'),
+      measuredGoogleSheetsOperation: literalField(benchmark, 'measuredGoogleSheetsOperation', '@bilig/xlsx-import-and-read-terminal-cell'),
       measuredBiligOperation: literalField(benchmark, 'measuredBiligOperation', 'import-snapshot'),
       samplingOrder: literalField(benchmark, 'samplingOrder', 'engine-isolated-bilig-then-google-sheets'),
     },
@@ -603,7 +603,7 @@ function parseVerificationValue(value: unknown): VerificationValue {
 }
 
 function parseWorkload(value: string): GoogleSheetsLiveLargeWorkbookWorkload {
-  if (value === 'native-import-read-dense-mixed-100k' || value === 'native-import-read-dense-mixed-250k') {
+  if (value === '@bilig/xlsx-import-read-dense-mixed-100k' || value === '@bilig/xlsx-import-read-dense-mixed-250k') {
     return value
   }
   throw new Error(`Unexpected Google Sheets live large-workbook workload: ${value}`)

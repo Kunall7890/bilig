@@ -9,7 +9,7 @@ function zipEntry(xml: string): Uint8Array {
 }
 
 describe('dense SheetJS parse routing', () => {
-  it('uses native XLSX range decoding to gate wide worksheet dimensions', () => {
+  it('uses @bilig/xlsx range decoding to gate wide worksheet dimensions', () => {
     const workbookZip = {
       'xl/worksheets/sheet1.xml': zipEntry('<worksheet><dimension ref="A1:DX10"/></worksheet>'),
     }

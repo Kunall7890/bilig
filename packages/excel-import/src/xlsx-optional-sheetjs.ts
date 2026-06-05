@@ -37,7 +37,7 @@ export function loadOptionalSheetJs(): SheetJsModule {
       throw error
     }
     throw new Error(
-      'SheetJS xlsx is not a production dependency of @bilig/excel-import. Install xlsx only for legacy SheetJS fallback import/export paths, or use the native @bilig/xlsx source-preserving XLSX path.',
+      'SheetJS xlsx is not a production dependency of @bilig/excel-import. Install xlsx only for legacy SheetJS fallback import/export paths, or use the @bilig/xlsx source-preserving XLSX path.',
       { cause: error },
     )
   }

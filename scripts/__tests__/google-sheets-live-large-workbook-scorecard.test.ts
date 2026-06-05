@@ -29,7 +29,7 @@ describe('Google Sheets live large-workbook scorecard', () => {
       benchmark: {
         sampleCount: 3,
         valueRenderOption: 'UNFORMATTED_VALUE',
-        measuredGoogleSheetsOperation: 'native-xlsx-import-and-read-terminal-cell',
+        measuredGoogleSheetsOperation: '@bilig/xlsx-import-and-read-terminal-cell',
         measuredBiligOperation: 'import-snapshot',
         samplingOrder: 'engine-isolated-bilig-then-google-sheets',
       },

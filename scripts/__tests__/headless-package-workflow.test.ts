@@ -66,15 +66,15 @@ describe('headless package workflow', () => {
       .filter((block) => block.includes('pnpm --filter bilig-workpaper build'))
     expect(runtimeBuildBlocks.length).toBeGreaterThanOrEqual(3)
     for (const runtimeBuildBlock of runtimeBuildBlocks) {
-      const nativeXlsxBuildIndex = runtimeBuildBlock.indexOf('pnpm --filter @bilig/xlsx build')
+      const biligXlsxBuildIndex = runtimeBuildBlock.indexOf('pnpm --filter @bilig/xlsx build')
       const excelImportBuildIndex = runtimeBuildBlock.indexOf('pnpm --filter @bilig/excel-import build')
       const scopedXlsxBuildIndex = runtimeBuildBlock.indexOf('pnpm --filter @bilig/xlsx-formula-recalc build')
       const headlessBuildIndex = runtimeBuildBlock.indexOf('pnpm --filter @bilig/headless build')
       const unscopedWorkpaperBuildIndex = runtimeBuildBlock.indexOf('pnpm --filter bilig-workpaper build')
-      expect(nativeXlsxBuildIndex).toBeGreaterThanOrEqual(0)
-      expect(nativeXlsxBuildIndex).toBeLessThan(headlessBuildIndex)
+      expect(biligXlsxBuildIndex).toBeGreaterThanOrEqual(0)
+      expect(biligXlsxBuildIndex).toBeLessThan(headlessBuildIndex)
       if (excelImportBuildIndex >= 0) {
-        expect(nativeXlsxBuildIndex).toBeLessThan(excelImportBuildIndex)
+        expect(biligXlsxBuildIndex).toBeLessThan(excelImportBuildIndex)
         expect(excelImportBuildIndex).toBeLessThan(headlessBuildIndex)
       }
       expect(scopedXlsxBuildIndex).toBeLessThan(headlessBuildIndex)

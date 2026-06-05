@@ -351,7 +351,7 @@
       "passed": true,
       "coveredFeatures": ["xlsx.freezePanes.roundtrip"],
       "missingFeatures": [],
-      "evidence": "WorkbookSnapshot exported to XLSX imports back with equivalent sheet freeze-pane metadata backed by native XLSX pane nodes."
+      "evidence": "WorkbookSnapshot exported to XLSX imports back with equivalent sheet freeze-pane metadata backed by @bilig/xlsx pane nodes."
     },
     {
       "id": "xlsx-snapshot-roundtrip-filters",
@@ -361,7 +361,7 @@
       "passed": true,
       "coveredFeatures": ["xlsx.filters.roundtrip"],
       "missingFeatures": [],
-      "evidence": "WorkbookSnapshot exported to XLSX imports back with equivalent sheet filter ranges and criteria backed by native XLSX autoFilter nodes."
+      "evidence": "WorkbookSnapshot exported to XLSX imports back with equivalent sheet filter ranges and criteria backed by @bilig/xlsx autoFilter nodes."
     },
     {
       "id": "xlsx-snapshot-roundtrip-sorts",
@@ -371,7 +371,7 @@
       "passed": true,
       "coveredFeatures": ["xlsx.sorts.roundtrip"],
       "missingFeatures": [],
-      "evidence": "WorkbookSnapshot exported to XLSX imports back with equivalent sort metadata backed by native XLSX sortState nodes."
+      "evidence": "WorkbookSnapshot exported to XLSX imports back with equivalent sort metadata backed by @bilig/xlsx sortState nodes."
     },
     {
       "id": "xlsx-snapshot-roundtrip-sheet-protection",
@@ -381,7 +381,7 @@
       "passed": true,
       "coveredFeatures": ["xlsx.sheetProtection.roundtrip"],
       "missingFeatures": [],
-      "evidence": "WorkbookSnapshot exported to XLSX imports back with equivalent sheet protection metadata backed by native XLSX sheetProtection nodes."
+      "evidence": "WorkbookSnapshot exported to XLSX imports back with equivalent sheet protection metadata backed by @bilig/xlsx sheetProtection nodes."
     },
     {
       "id": "xlsx-snapshot-roundtrip-protected-ranges",
@@ -391,7 +391,7 @@
       "passed": true,
       "coveredFeatures": ["xlsx.protectedRanges.roundtrip"],
       "missingFeatures": [],
-      "evidence": "WorkbookSnapshot exported to XLSX imports back with equivalent protected-range metadata backed by native XLSX protectedRange nodes."
+      "evidence": "WorkbookSnapshot exported to XLSX imports back with equivalent protected-range metadata backed by @bilig/xlsx protectedRange nodes."
     },
     {
       "id": "xlsx-snapshot-roundtrip-data-validations",
@@ -401,7 +401,7 @@
       "passed": true,
       "coveredFeatures": ["xlsx.dataValidations.roundtrip"],
       "missingFeatures": [],
-      "evidence": "WorkbookSnapshot exported to XLSX imports back with equivalent sheet data-validation metadata backed by native XLSX dataValidation nodes."
+      "evidence": "WorkbookSnapshot exported to XLSX imports back with equivalent sheet data-validation metadata backed by @bilig/xlsx dataValidation nodes."
     },
     {
       "id": "xlsx-snapshot-roundtrip-tables",

@@ -50,7 +50,7 @@ describe('@bilig/xlsx package boundary', () => {
     expect(manifestSource).not.toMatch(/"xlsx"\s*:/u)
   })
 
-  it('keeps native source free of SheetJS imports', () => {
+  it('keeps @bilig/xlsx source free of SheetJS imports', () => {
     for (const sourceFile of sourceFiles(join(packageDir, 'src'))) {
       const source = readFileSync(sourceFile, 'utf8')
       expect(source, sourceFile).not.toMatch(/from\s+["']xlsx["']/u)

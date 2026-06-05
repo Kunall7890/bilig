@@ -10,7 +10,7 @@ vi.mock('xlsx', () => ({
   },
 }))
 
-describe('native XLSX external companion cache hydration', () => {
+describe('@bilig/xlsx external companion cache hydration', () => {
   it('reads referenced companion workbook cells without SheetJS', async () => {
     const { readExternalWorkbookCacheFromInput } = await import('../xlsx-external-cache.js')
     const reference: WorkbookExternalWorkbookReferenceSnapshot = {

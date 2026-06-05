@@ -9,9 +9,9 @@ import {
   decodeCellAddress,
   decodeCellRange,
   encodeCellRange,
-  exportXlsxSourceLiteralPatches as exportNativeXlsxSourceLiteralPatches,
-  exportXlsxSourceLiteralPatchesToFile as exportNativeXlsxSourceLiteralPatchesToFile,
-  exportXlsxSourceLiteralPatchesToFileAsync as exportNativeXlsxSourceLiteralPatchesToFileAsync,
+  exportXlsxSourceLiteralPatches as exportBiligXlsxSourceLiteralPatches,
+  exportXlsxSourceLiteralPatchesToFile as exportBiligXlsxSourceLiteralPatchesToFile,
+  exportXlsxSourceLiteralPatchesToFileAsync as exportBiligXlsxSourceLiteralPatchesToFileAsync,
   type FilePreparedZipEntry,
   type PreparedZipEntry,
   type PreparedZipEntrySizes,
@@ -799,15 +799,15 @@ function cleanupTemporaryFiles(paths: readonly string[]): void {
 }
 
 export function exportXlsxSourceLiteralPatches(input: XlsxSourceLiteralPatchExportInput): Uint8Array {
-  return exportNativeXlsxSourceLiteralPatches(input)
+  return exportBiligXlsxSourceLiteralPatches(input)
 }
 
 export function exportXlsxSourceLiteralPatchesToFile(input: XlsxSourceLiteralPatchFileExportInput): XlsxSourceLiteralPatchFileExportResult {
-  return exportNativeXlsxSourceLiteralPatchesToFile(input)
+  return exportBiligXlsxSourceLiteralPatchesToFile(input)
 }
 
 export async function exportXlsxSourceLiteralPatchesToFileAsync(
   input: XlsxSourceLiteralPatchFileExportInput,
 ): Promise<XlsxSourceLiteralPatchFileExportResult> {
-  return exportNativeXlsxSourceLiteralPatchesToFileAsync(input)
+  return exportBiligXlsxSourceLiteralPatchesToFileAsync(input)
 }

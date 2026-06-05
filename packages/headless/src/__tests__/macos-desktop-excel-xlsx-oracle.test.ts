@@ -920,8 +920,8 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
     }
   })
 
-  it('imports native two-variable data-table outputs into headless calculable formulas', () => {
-    const imported = importXlsx(buildNativeDataTableXlsx(), 'headless-native-data-table-oracle.xlsx')
+  it('imports @bilig/xlsx two-variable data-table outputs into headless calculable formulas', () => {
+    const imported = importXlsx(buildBiligDataTableXlsx(), 'headless-bilig-xlsx-data-table-oracle.xlsx')
     expect(imported.warnings).not.toContain(dataTableFormulasWarning)
     expect(imported.snapshot.sheets[0]?.metadata?.dataTableFormulas?.formulas).toEqual([
       {
@@ -943,8 +943,8 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
     }
   })
 
-  it('imports native one-variable data-table outputs into headless calculable formulas', () => {
-    const imported = importXlsx(buildNativeOneVariableDataTableXlsx(), 'headless-native-one-variable-data-table-oracle.xlsx')
+  it('imports @bilig/xlsx one-variable data-table outputs into headless calculable formulas', () => {
+    const imported = importXlsx(buildBiligOneVariableDataTableXlsx(), 'headless-bilig-xlsx-one-variable-data-table-oracle.xlsx')
     expect(imported.warnings).not.toContain(dataTableFormulasWarning)
     expect(imported.snapshot.sheets[0]?.metadata?.dataTableFormulas?.formulas).toEqual([
       {
@@ -2491,7 +2491,7 @@ function buildOneVariableDataTableOracleWorkbook(includeOutputs: boolean): WorkP
   )
 }
 
-function buildNativeDataTableXlsx(): Uint8Array {
+function buildBiligDataTableXlsx(): Uint8Array {
   const workbook = buildDataTableOracleWorkbook(true)
   try {
     const zip = unzipSync(exportXlsx(workbook.exportSnapshot()))
@@ -2508,7 +2508,7 @@ function buildNativeDataTableXlsx(): Uint8Array {
   }
 }
 
-function buildNativeOneVariableDataTableXlsx(): Uint8Array {
+function buildBiligOneVariableDataTableXlsx(): Uint8Array {
   const workbook = buildOneVariableDataTableOracleWorkbook(true)
   try {
     const zip = unzipSync(exportXlsx(workbook.exportSnapshot()))

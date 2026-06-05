@@ -287,7 +287,7 @@ export function buildFixtureInput(): BuildScorecardInput {
       benchmark: {
         sampleCount: 3,
         valueRenderOption: 'UNFORMATTED_VALUE',
-        measuredGoogleSheetsOperation: 'native-xlsx-import-and-read-terminal-cell',
+        measuredGoogleSheetsOperation: '@bilig/xlsx-import-and-read-terminal-cell',
         measuredBiligOperation: 'import-snapshot',
         samplingOrder: 'engine-isolated-bilig-then-google-sheets',
       },
@@ -313,13 +313,13 @@ export function buildFixtureInput(): BuildScorecardInput {
       cases: [
         googleSheetsLargeWorkbookCase(
           'google-sheets-live-large-workbook-import-read-dense-mixed-100k',
-          'native-import-read-dense-mixed-100k',
+          '@bilig/xlsx-import-read-dense-mixed-100k',
           'dense-mixed-100k',
           100_000,
         ),
         googleSheetsLargeWorkbookCase(
           'google-sheets-live-large-workbook-import-read-dense-mixed-250k',
-          'native-import-read-dense-mixed-250k',
+          '@bilig/xlsx-import-read-dense-mixed-250k',
           'dense-mixed-250k',
           250_000,
         ),

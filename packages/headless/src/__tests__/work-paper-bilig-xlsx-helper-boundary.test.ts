@@ -1,11 +1,11 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it, vi } from 'vitest'
-import type * as NativeXlsx from '@bilig/xlsx'
+import type * as BiligXlsx from '@bilig/xlsx'
 
 import { exportWorkPaperXlsx } from '../xlsx.js'
 
 vi.mock('@bilig/excel-import', async () => {
-  const biligXlsx = await vi.importActual<typeof NativeXlsx>('@bilig/xlsx')
+  const biligXlsx = await vi.importActual<typeof BiligXlsx>('@bilig/xlsx')
   return {
     createFileImportedXlsxSourceReader: () => {
       throw new Error('file source reader should not be created in this test')

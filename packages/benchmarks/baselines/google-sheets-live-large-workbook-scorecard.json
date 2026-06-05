@@ -17,7 +17,7 @@
   "benchmark": {
     "sampleCount": 3,
     "valueRenderOption": "UNFORMATTED_VALUE",
-    "measuredGoogleSheetsOperation": "native-xlsx-import-and-read-terminal-cell",
+    "measuredGoogleSheetsOperation": "@bilig/xlsx-import-and-read-terminal-cell",
     "measuredBiligOperation": "import-snapshot",
     "samplingOrder": "engine-isolated-bilig-then-google-sheets"
   },
@@ -79,7 +79,7 @@
   "cases": [
     {
       "id": "google-sheets-live-large-workbook-import-read-dense-mixed-100k",
-      "workload": "native-import-read-dense-mixed-100k",
+      "workload": "@bilig/xlsx-import-read-dense-mixed-100k",
       "corpusCaseId": "dense-mixed-100k",
       "materializedCells": 100000,
       "sampleCount": 3,
@@ -139,7 +139,7 @@
     },
     {
       "id": "google-sheets-live-large-workbook-import-read-dense-mixed-250k",
-      "workload": "native-import-read-dense-mixed-250k",
+      "workload": "@bilig/xlsx-import-read-dense-mixed-250k",
       "corpusCaseId": "dense-mixed-250k",
       "materializedCells": 250000,
       "sampleCount": 3,

@@ -1,10 +1,10 @@
 {
   "name": "@bilig/xlsx",
   "version": "0.163.0",
-  "description": "Native XLSX ZIP, address, and source-preserving patch primitives for Bilig.",
+  "description": "@bilig/xlsx ZIP, address, and source-preserving patch primitives for Bilig.",
   "keywords": [
     "bilig",
-    "native",
+    "source-preserving",
     "spreadsheet",
     "xlsx",
     "zip"
