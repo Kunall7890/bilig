@@ -1,6 +1,5 @@
-import * as XLSX from 'xlsx'
-
 import { parseFormula, type FormulaNode } from '@bilig/formula'
+import { decodeCellAddress, decodeColumnAddress } from '@bilig/xlsx'
 import type { FormulaCellRecord, WorkPaperXlsxFormulaSkipReason } from './check-workpaper-xlsx-corpus-types.ts'
 
 interface FormulaDependencyRange {
@@ -240,7 +239,7 @@ function dependencyRangeFromRangeRef(
 
 function decodeFormulaCellAddress(address: string): { r: number; c: number } | undefined {
   try {
-    return XLSX.utils.decode_cell(address.replaceAll('$', ''))
+    return decodeCellAddress(address.replaceAll('$', ''))
   } catch {
     return undefined
   }
@@ -248,7 +247,7 @@ function decodeFormulaCellAddress(address: string): { r: number; c: number } | u
 
 function decodeFormulaColumn(column: string): number | undefined {
   try {
-    return XLSX.utils.decode_col(column.replaceAll('$', ''))
+    return decodeColumnAddress(column.replaceAll('$', ''))
   } catch {
     return undefined
   }

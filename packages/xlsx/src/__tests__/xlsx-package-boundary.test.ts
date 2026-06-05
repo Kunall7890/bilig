@@ -12,6 +12,7 @@ import {
   encodeCellRange,
   normalizeCellAddress,
   readXlsxTargetCell,
+  readXlsxWorkbookCells,
   readXlsxZipEntries,
   readXmlAttribute,
   worksheetCellElementPattern,
@@ -185,6 +186,73 @@ describe('@bilig/xlsx package boundary', () => {
     expect(readXlsxTargetCell(bytes, 'Strings', 'A1')?.value).toBe('Plain shared')
     expect(readXlsxTargetCell(bytes, 'Strings', 'B1')?.value).toBe('Rich shared')
     expect(readXlsxTargetCell(bytes, 'Strings', 'C1')?.value).toBe(' Inline & text ')
+  })
+
+  it('scans workbook cells and formulas without SheetJS', () => {
+    const sharedStringsXml = [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="1" uniqueCount="1">',
+      '<si><r><t>Shared </t></r><r><t>label</t></r></si>',
+      '</sst>',
+    ].join('')
+    const bytes = writeSimpleXlsxWorkbook({
+      sharedStringsXml,
+      sheets: [
+        {
+          name: 'Model',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Shared label', sharedStringIndex: 0 },
+            { address: 'B1', row: 0, col: 1, formula: 'SUM(C1:C2)', value: 7 },
+            { address: 'C1', row: 0, col: 2, value: 3 },
+            { address: 'C2', row: 1, col: 2, value: 4 },
+            { address: 'D3', row: 2, col: 3, formula: '1/0', error: '#DIV/0!' },
+          ],
+        },
+      ],
+    })
+
+    const workbook = readXlsxWorkbookCells(bytes)
+    const sheet = workbook.sheets[0]
+
+    expect(workbook.hasFormulaMarkup).toBe(true)
+    expect(sheet?.name).toBe('Model')
+    expect(sheet?.rowCount).toBe(3)
+    expect(sheet?.columnCount).toBe(4)
+    expect(sheet?.cells.map((cell) => [cell.address, cell.formula, cell.type, cell.value])).toEqual([
+      ['A1', null, 's', 'Shared label'],
+      ['B1', 'SUM(C1:C2)', null, 7],
+      ['C1', null, null, 3],
+      ['C2', null, null, 4],
+      ['D3', '1/0', 'e', '#DIV/0!'],
+    ])
+  })
+
+  it('infers workbook cell addresses from row positions without SheetJS', () => {
+    const zip = readXlsxZipEntries(
+      writeSimpleXlsxWorkbook({
+        sheets: [
+          {
+            name: 'NoRefs',
+            cells: [
+              { address: 'A1', row: 0, col: 0, value: 'alpha' },
+              { address: 'B1', row: 0, col: 1, value: 12 },
+            ],
+          },
+        ],
+      }),
+    )
+    const sheetXml = textDecoder
+      .decode(zip['xl/worksheets/sheet1.xml'])
+      .replace('<c r="A1" t="inlineStr">', '<c t="inlineStr">')
+      .replace('<c r="B1">', '<c>')
+    zip['xl/worksheets/sheet1.xml'] = new TextEncoder().encode(sheetXml)
+
+    const workbook = readXlsxWorkbookCells(zip)
+
+    expect(workbook.sheets[0]?.cells.map((cell) => [cell.address, cell.value])).toEqual([
+      ['A1', 'alpha'],
+      ['B1', 12],
+    ])
   })
 
   it('writes border styles with @bilig/xlsx simple workbooks', () => {

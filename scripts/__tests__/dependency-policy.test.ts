@@ -23,6 +23,7 @@ const nativeXlsxFixtureScripts = [
   'scripts/gen-security-posture-scorecard.ts',
   'scripts/gen-workpaper-xlsx-corpus-fixtures.ts',
 ] as const
+const nativeXlsxCorpusProofScripts = ['scripts/check-workpaper-xlsx-corpus.ts', 'scripts/workpaper-xlsx-volatile-dependencies.ts'] as const
 
 function packageManifestPaths(): string[] {
   return packageManifestDirs.flatMap((dir) => {
@@ -98,6 +99,12 @@ describe('repository dependency policy', () => {
 
   it('keeps native XLSX fixture generation on @bilig/xlsx instead of SheetJS', () => {
     const violations = nativeXlsxFixtureScripts.filter((path) => hasRuntimeXlsxImport(readFileSync(join(repoRoot, path), 'utf8')))
+
+    expect(violations).toEqual([])
+  })
+
+  it('keeps WorkPaper XLSX corpus proof readback on @bilig/xlsx instead of SheetJS', () => {
+    const violations = nativeXlsxCorpusProofScripts.filter((path) => hasRuntimeXlsxImport(readFileSync(join(repoRoot, path), 'utf8')))
 
     expect(violations).toEqual([])
   })

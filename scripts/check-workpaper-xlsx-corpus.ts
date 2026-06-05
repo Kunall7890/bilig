@@ -5,12 +5,12 @@ import { spawnSync } from 'node:child_process'
 import { basename, extname, join, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { fileURLToPath } from 'node:url'
-import * as XLSX from 'xlsx'
 
 import { attachRuntimeSnapshot } from '@bilig/core'
 import { importXlsx } from '@bilig/excel-import'
 import { WorkPaper, type WorkPaperConfig, type WorkPaperSheet } from '@bilig/headless'
 import { formatErrorCode, ValueTag, type CellValue, type WorkbookFormulaAuditEntrySnapshot, type WorkbookSnapshot } from '@bilig/protocol'
+import { decodeCellAddress, encodeCellAddress, readXlsxWorkbookCells, type XlsxWorkbookCell } from '@bilig/xlsx'
 import type {
   CachedFormulaValue,
   CellContent,
@@ -349,57 +349,38 @@ function emptySkippedByReason(): Record<WorkPaperXlsxFormulaSkipReason, number> 
 
 function prepareWorkbook(filePath: string, skippedByReason: Record<WorkPaperXlsxFormulaSkipReason, number>): PreparedWorkbook {
   const workbookBytes = readFileSync(filePath)
-  const workbook = XLSX.read(workbookBytes, {
-    type: 'buffer',
-    cellFormula: true,
-    cellNF: true,
-    cellText: false,
-    cellDates: false,
-    bookFiles: true,
-    bookVBA: true,
-  })
+  const workbook = readXlsxWorkbookCells(workbookBytes)
   const sheets: Record<string, WorkPaperSheet> = {}
   let formulaCells: FormulaCellRecord[] = []
   let maxRows = 1
   let maxColumns = 1
 
-  for (const sheetName of workbook.SheetNames) {
-    const sheet = workbook.Sheets[sheetName]
-    const range = sheet?.['!ref'] ? XLSX.utils.decode_range(sheet['!ref']) : undefined
-    const rowCount = range ? range.e.r + 1 : 1
-    const columnCount = range ? range.e.c + 1 : 1
-    maxRows = Math.max(maxRows, rowCount)
-    maxColumns = Math.max(maxColumns, columnCount)
+  for (const sheet of workbook.sheets) {
+    const sheetName = sheet.name
+    const rowCount = sheet.rowCount
+    const columnCount = sheet.columnCount
+    maxRows = Math.max(maxRows, rowCount, sheet.range.e.r + 1)
+    maxColumns = Math.max(maxColumns, columnCount, sheet.range.e.c + 1)
     const rows: CellContent[][] = Array.from({ length: rowCount }, () => Array.from<CellContent>({ length: columnCount }).fill(null))
 
-    if (sheet && range) {
-      for (let row = range.s.r; row <= range.e.r; row += 1) {
-        for (let col = range.s.c; col <= range.e.c; col += 1) {
-          const address = XLSX.utils.encode_cell({ r: row, c: col })
-          const cell = sheet[address]
-          if (!cell) {
-            continue
-          }
-          const formula = formulaText(cell)
-          if (formula) {
-            rows[row][col] = formulaInput(formula)
-            const formulaRecord = formulaCellRecord(sheetName, address, row, col, formula, cell)
-            formulaCells.push(formulaRecord)
-            if (formulaRecord.skipReason) {
-              skippedByReason[formulaRecord.skipReason] += 1
-            }
-            continue
-          }
-          rows[row][col] = literalCellContent(cell)
+    for (const cell of sheet.cells) {
+      const formula = formulaText(cell)
+      if (formula) {
+        rows[cell.row][cell.col] = formulaInput(formula)
+        const formulaRecord = formulaCellRecord(sheetName, cell.address, cell.row, cell.col, formula, cell)
+        formulaCells.push(formulaRecord)
+        if (formulaRecord.skipReason) {
+          skippedByReason[formulaRecord.skipReason] += 1
         }
+        continue
       }
+      rows[cell.row][cell.col] = literalCellContent(cell)
     }
 
     sheets[sheetName] = rows
   }
 
-  const importedSnapshot =
-    formulaCells.length > 0 || workbookHasFormulaMarkup(workbook) ? importXlsx(workbookBytes, basename(filePath)).snapshot : null
+  const importedSnapshot = workbook.hasUnresolvedFormulaMarkup ? importXlsx(workbookBytes, basename(filePath)).snapshot : null
   if (importedSnapshot) {
     formulaCells = addFormulaAuditFallbackCells(sheets, formulaCells, importedSnapshot, skippedByReason)
   }
@@ -416,27 +397,6 @@ function prepareWorkbook(filePath: string, skippedByReason: Record<WorkPaperXlsx
     maxRows,
     maxColumns,
   }
-}
-
-function workbookHasFormulaMarkup(workbook: XLSX.WorkBook): boolean {
-  if (!('files' in workbook)) {
-    return false
-  }
-  const files = workbook['files']
-  if (!isRecord(files)) {
-    return false
-  }
-  for (const [path, file] of Object.entries(files)) {
-    if (!path.startsWith('xl/worksheets/') || !path.endsWith('.xml') || !isRecord(file)) {
-      continue
-    }
-    const content = file['content']
-    const xml = typeof content === 'string' ? content : content instanceof Uint8Array ? new TextDecoder().decode(content) : null
-    if (xml && /<f\b/u.test(xml)) {
-      return true
-    }
-  }
-  return false
 }
 
 function addFormulaAuditFallbackCells(
@@ -471,16 +431,16 @@ function formulaAuditFallbackCellRecord(auditEntry: WorkbookFormulaAuditEntrySna
     return null
   }
 
-  let decodedAddress: XLSX.CellAddress
+  let decodedAddress: { readonly r: number; readonly c: number }
   try {
-    decodedAddress = XLSX.utils.decode_cell(auditEntry.address)
+    decodedAddress = decodeCellAddress(auditEntry.address)
   } catch {
     return null
   }
 
   const baseRecord = {
     sheetName: auditEntry.sheetName,
-    address: XLSX.utils.encode_cell(decodedAddress),
+    address: encodeCellAddress(decodedAddress),
     row: decodedAddress.r,
     col: decodedAddress.c,
     formula: auditEntry.formula,
@@ -543,7 +503,7 @@ function formulaCellRecord(
   row: number,
   col: number,
   formula: string,
-  cell: XLSX.CellObject,
+  cell: XlsxWorkbookCell,
 ): FormulaCellRecord {
   if (volatileOrEnvironmentFunctionPattern.test(formula)) {
     return {
@@ -736,11 +696,11 @@ function maxFileBytesFor(options: WorkPaperXlsxCorpusOptions): number {
   return Math.trunc(maxFileBytes)
 }
 
-function formulaText(cell: XLSX.CellObject): string | null {
-  if (typeof cell.f !== 'string') {
+function formulaText(cell: XlsxWorkbookCell): string | null {
+  if (typeof cell.formula !== 'string') {
     return null
   }
-  const trimmed = cell.f.trim()
+  const trimmed = cell.formula.trim()
   return trimmed.length > 0 ? trimmed : null
 }
 
@@ -748,31 +708,31 @@ function formulaInput(formula: string): string {
   return formula.startsWith('=') ? formula : `=${formula}`
 }
 
-function literalCellContent(cell: XLSX.CellObject): CellContent {
-  if (typeof cell.v === 'number' || typeof cell.v === 'string' || typeof cell.v === 'boolean') {
-    return cell.v
+function literalCellContent(cell: XlsxWorkbookCell): CellContent {
+  if (typeof cell.value === 'number' || typeof cell.value === 'string' || typeof cell.value === 'boolean') {
+    return cell.value
   }
   return null
 }
 
-function cachedFormulaValue(cell: XLSX.CellObject): CachedFormulaValue | null {
+function cachedFormulaValue(cell: XlsxWorkbookCell): CachedFormulaValue | null {
   if (!cellHasCachedValue(cell)) {
     return null
   }
-  if (cell.t === 'e') {
+  if (cell.type === 'e') {
     return { kind: 'error', value: cachedErrorText(cell) }
   }
-  if (cell.v === null) {
+  if (cell.value === null) {
     return { kind: 'blank' }
   }
-  if (typeof cell.v === 'number') {
-    return Number.isFinite(cell.v) ? { kind: 'number', value: cell.v } : null
+  if (typeof cell.value === 'number') {
+    return Number.isFinite(cell.value) ? { kind: 'number', value: cell.value } : null
   }
-  if (typeof cell.v === 'string') {
-    return { kind: cell.t === 'e' ? 'error' : 'string', value: cell.v }
+  if (typeof cell.value === 'string') {
+    return { kind: cell.type === 'e' ? 'error' : 'string', value: cell.value }
   }
-  if (typeof cell.v === 'boolean') {
-    return { kind: 'boolean', value: cell.v }
+  if (typeof cell.value === 'boolean') {
+    return { kind: 'boolean', value: cell.value }
   }
   return null
 }
@@ -797,18 +757,18 @@ function cachedFormulaValueFromAudit(auditEntry: WorkbookFormulaAuditEntrySnapsh
   return null
 }
 
-function cachedErrorText(cell: XLSX.CellObject): string {
-  if (typeof cell.w === 'string') {
-    return cell.w
+function cachedErrorText(cell: XlsxWorkbookCell): string {
+  if (typeof cell.value === 'number') {
+    return xlsxErrorTextByCode.get(cell.value) ?? String(cell.value)
   }
-  if (typeof cell.v === 'number') {
-    return xlsxErrorTextByCode.get(cell.v) ?? String(cell.v)
+  if (typeof cell.value === 'string') {
+    return cell.value
   }
-  return String(cell.v)
+  return String(cell.rawValue)
 }
 
-function cellHasCachedValue(cell: XLSX.CellObject): boolean {
-  return Object.hasOwn(cell, 'v') && cell.v !== undefined
+function cellHasCachedValue(cell: XlsxWorkbookCell): boolean {
+  return cell.hasValue && cell.rawValue !== ''
 }
 
 function normalizeCellValue(value: CellValue): CachedFormulaValue {

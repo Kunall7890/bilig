@@ -59,6 +59,11 @@
       "import": "./dist/targeted-cell-reader.js",
       "default": "./dist/targeted-cell-reader.js"
     },
+    "./workbook-cell-reader": {
+      "types": "./dist/workbook-cell-reader.d.ts",
+      "import": "./dist/workbook-cell-reader.js",
+      "default": "./dist/workbook-cell-reader.js"
+    },
     "./zip-reader": {
       "types": "./dist/zip-reader.d.ts",
       "import": "./dist/zip-reader.js",
