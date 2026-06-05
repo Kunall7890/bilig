@@ -1209,7 +1209,12 @@ jobs:
           set -euo pipefail
           test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}"
           test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}"
-          unset NODE_AUTH_TOKEN
+          if [[ "${ALLOW_NEW_NPM_PACKAGES}" == "true" && "${DRY_RUN}" != "true" ]]; then
+            test -n "${NODE_AUTH_TOKEN:-}"
+            echo "Using npm automation token for first-time runtime package creation"
+          else
+            unset NODE_AUTH_TOKEN
+          fi
           bun scripts/publish-runtime-package-set.ts
 
       - name: Upload WorkPaper MCPB release asset
