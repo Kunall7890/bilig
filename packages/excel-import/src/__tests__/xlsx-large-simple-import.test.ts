@@ -112,6 +112,38 @@ describe('large simple XLSX import fast path', () => {
     })
   })
 
+  it('imports small native-only workbooks without SheetJS fallback', () => {
+    const bytes = buildLargeSimpleWorkbook({
+      includeSharedStrings: false,
+      worksheetXml: [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+        '<dimension ref="A1:B2"/>',
+        '<sheetData>',
+        '<row r="1"><c r="A1" t="inlineStr"><is><t>Metric</t></is></c><c r="B1" t="inlineStr"><is><t>Value</t></is></c></row>',
+        '<row r="2"><c r="A2" t="inlineStr"><is><t>Revenue</t></is></c><c r="B2"><f>1200*5</f><v>6000</v></c></row>',
+        '</sheetData>',
+        '</worksheet>',
+      ].join(''),
+    })
+
+    expect(bytes.byteLength).toBeLessThan(1_000_000)
+    const imported = importXlsx(bytes, 'small-native-only.xlsx', { nativeOnly: true })
+
+    expect(imported.snapshot.sheets[0]?.cells).toEqual([
+      { address: 'A1', value: 'Metric' },
+      { address: 'B1', value: 'Value' },
+      { address: 'A2', value: 'Revenue' },
+      { address: 'B2', formula: '1200*5', value: 6000 },
+    ])
+    expect(imported.preview.sheets[0]).toMatchObject({
+      name: 'Data',
+      rowCount: 2,
+      columnCount: 2,
+      nonEmptyCellCount: 4,
+    })
+  })
+
   it('preflights public import materialization limits before building snapshot cell objects', () => {
     const rows: string[] = []
     for (let row = 1; row <= 4; row += 1) {

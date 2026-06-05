@@ -71,6 +71,7 @@ export interface XlsxImportOptions {
   readonly externalLinkCacheArtifactMode?: XlsxExternalLinkCacheArtifactMode
   readonly limits?: XlsxImportLimits | false
   readonly preferNativeSimpleImport?: boolean
+  readonly nativeOnly?: boolean
 }
 
 export interface XlsxImportRoutePlan {
@@ -150,6 +151,7 @@ export function planXlsxImportRoute(args: {
   const bypassLargeSimpleByteThreshold =
     shouldBypassLargeSimpleByteThresholdForPackageArtifacts(args.workbookZip) && !hasFullImporterOnlyPackageMetadata(args.workbookZip)
   const hasMaterializationLimits = args.options.limits !== undefined && args.options.limits !== false
+  const nativeOnly = args.options.nativeOnly === true
   const needsCalcChainFormulaCountInspection =
     hasCalcChain && args.sourceByteLength >= denseSheetJsByteThreshold && args.sourceByteLength < largeCalcChainStreamingByteThreshold
   const hasLargeCalcChainFormulaSet =
@@ -160,7 +162,8 @@ export function planXlsxImportRoute(args: {
   const preferNativeSimpleImport = args.options.preferNativeSimpleImport === true
   const shouldTryLargeSimpleImport =
     !hasExternalWorkbookCompanions &&
-    (!hasCalcChain ||
+    (nativeOnly ||
+      !hasCalcChain ||
       args.sourceByteLength >= largeCalcChainStreamingByteThreshold ||
       hasLargeCalcChainFormulaSet ||
       bypassLargeSimpleByteThreshold)
@@ -169,7 +172,7 @@ export function planXlsxImportRoute(args: {
     bypassLargeSimpleByteThreshold,
     hasExternalWorkbookCompanions,
     inspectionOptions:
-      hasMaterializationLimits || bypassLargeSimpleByteThreshold || preferNativeSimpleImport ? { minByteLength: 0 } : undefined,
+      hasMaterializationLimits || bypassLargeSimpleByteThreshold || preferNativeSimpleImport || nativeOnly ? { minByteLength: 0 } : undefined,
     shouldInspectBeforeLargeSimpleRouting: hasMaterializationLimits || needsCalcChainFormulaCountInspection,
     shouldInspectBeforeSheetJsFallback: args.options.limits !== false && args.sourceByteLength >= denseSheetJsByteThreshold,
     shouldTryLargeSimpleImport,
@@ -179,7 +182,7 @@ export function planXlsxImportRoute(args: {
       allowCachedUnsupportedFormulaText,
     ),
     createLargeSimpleImportOptions: (overrides = {}) => ({
-      ...(hasMaterializationLimits || bypassLargeSimpleByteThreshold || preferNativeSimpleImport ? { minByteLength: 0 } : {}),
+      ...(hasMaterializationLimits || bypassLargeSimpleByteThreshold || preferNativeSimpleImport || nativeOnly ? { minByteLength: 0 } : {}),
       allowUnsupportedFormulaText: allowCachedUnsupportedFormulaText,
       allowUnsupportedCellMetadata: allowCachedUnsupportedFormulaText,
       releaseArenaAfterMaterialization: true,

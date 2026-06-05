@@ -2,8 +2,8 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { exportXlsxSourceLiteralPatches, readXlsxTargetCell } from '@bilig/xlsx'
 import ExcelJS from 'exceljs'
-import * as XLSX from 'xlsx'
 import { recalculateExceljsWorkbook } from 'exceljs-formula-recalc'
 import { recalculateXlsx } from 'xlsx-formula-recalc'
 import XlsxPopulate from 'xlsx-populate'
@@ -11,7 +11,7 @@ import XlsxPopulate from 'xlsx-populate'
 const exampleDir = dirname(fileURLToPath(import.meta.url))
 const outputDir = join(exampleDir, 'dist')
 const sourcePath = join(outputDir, 'bridge-source.xlsx')
-const sheetjsPath = join(outputDir, 'bridge-sheetjs-recalculated.xlsx')
+const biligXlsxPath = join(outputDir, 'bridge-bilig-xlsx-recalculated.xlsx')
 const xlsxPopulatePath = join(outputDir, 'bridge-xlsx-populate-recalculated.xlsx')
 const exceljsPath = join(outputDir, 'bridge-exceljs-recalculated.xlsx')
 
@@ -20,8 +20,8 @@ mkdirSync(outputDir, { recursive: true })
 const sourceXlsx = await createSourceXlsx()
 writeFileSync(sourcePath, sourceXlsx)
 
-const sheetjs = runSheetJsBridge(sourceXlsx)
-writeFileSync(sheetjsPath, sheetjs.xlsx)
+const biligXlsx = runBiligXlsxBridge(sourceXlsx)
+writeFileSync(biligXlsxPath, biligXlsx.xlsx)
 
 const xlsxPopulate = await runXlsxPopulateBridge(sourceXlsx)
 writeFileSync(xlsxPopulatePath, xlsxPopulate.xlsx)
@@ -32,10 +32,10 @@ writeFileSync(exceljsPath, exceljs.xlsx)
 const output = {
   sourceXlsx: sourcePath,
   workflows: {
-    sheetjs: {
-      staleCachedValueBeforeRecalc: sheetjs.staleCachedValue,
-      recalculatedValue: sheetjs.recalculatedValue,
-      outputXlsx: sheetjsPath,
+    biligXlsx: {
+      staleCachedValueBeforeRecalc: biligXlsx.staleCachedValue,
+      recalculatedValue: biligXlsx.recalculatedValue,
+      outputXlsx: biligXlsxPath,
     },
     xlsxPopulate: {
       staleCachedValueBeforeRecalc: xlsxPopulate.staleCachedValue,
@@ -50,10 +50,10 @@ const output = {
     },
   },
   checks: {
-    sheetjs: sheetjs.verified,
+    biligXlsx: biligXlsx.verified,
     xlsxPopulate: xlsxPopulate.verified,
     exceljs: exceljs.verified,
-    allExpectedValuesMatched: sheetjs.verified && xlsxPopulate.verified && exceljs.verified,
+    allExpectedValuesMatched: biligXlsx.verified && xlsxPopulate.verified && exceljs.verified,
   },
 }
 
@@ -85,25 +85,27 @@ async function createSourceXlsx() {
   return Buffer.from(await workbook.xlsx.writeBuffer())
 }
 
-function runSheetJsBridge(sourceXlsxBytes) {
-  const workbook = XLSX.read(sourceXlsxBytes, { type: 'buffer' })
-  const inputs = workbook.Sheets.Inputs
-  const summary = workbook.Sheets.Summary
-  inputs.B2.v = 48
-  inputs.B3.v = 1500
+function runBiligXlsxBridge(sourceXlsxBytes) {
+  const staleCachedValue = readNativeNumberCell(readXlsxTargetCell(sourceXlsxBytes, 'Summary', 'B2'), 'Summary!B2')
+  const editedBytes = exportXlsxSourceLiteralPatches({
+    source: sourceXlsxBytes,
+    patches: [
+      { sheetName: 'Inputs', address: 'B2', value: 48 },
+      { sheetName: 'Inputs', address: 'B3', value: 1500 },
+    ],
+  })
 
-  const editedBytes = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
   const recalculated = recalculateXlsx(editedBytes, {
-    fileName: 'bridge-sheetjs.xlsx',
+    fileName: 'bridge-bilig-xlsx.xlsx',
     reads: ['Summary!B2'],
   })
   const recalculatedValue = readNumberCell(recalculated.reads['Summary!B2'], 'Summary!B2')
 
   return {
-    staleCachedValue: summary.B2.v,
+    staleCachedValue,
     recalculatedValue,
     xlsx: Buffer.from(recalculated.xlsx),
-    verified: summary.B2.v === 48000 && recalculatedValue === 72000,
+    verified: staleCachedValue === 48000 && recalculatedValue === 72000,
   }
 }
 
@@ -159,6 +161,13 @@ function readNumberCell(cell, target) {
     return cell.value
   }
   throw new Error(`Expected numeric readback at ${target}, got ${JSON.stringify(cell)}`)
+}
+
+function readNativeNumberCell(cell, target) {
+  if (cell && typeof cell.value === 'number') {
+    return cell.value
+  }
+  throw new Error(`Expected native numeric readback at ${target}, got ${JSON.stringify(cell)}`)
 }
 
 function readFormulaResult(cell, target) {

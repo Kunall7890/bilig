@@ -118,6 +118,22 @@ describe('@bilig/xlsx package boundary', () => {
     expect(textDecoder.decode(zip['xl/worksheets/sheet1.xml'])).toContain('<f>TEXTJOIN(&quot;-&quot;,TRUE,B1:B2)</f>')
   })
 
+  it('writes column sizes in native importer pixel units', () => {
+    const zip = readXlsxZipEntries(
+      writeSimpleXlsxWorkbook({
+        sheets: [
+          {
+            name: 'Widths',
+            columns: [{ index: 0, size: 132 }],
+            cells: [{ address: 'A1', row: 0, col: 0, value: 'wide' }],
+          },
+        ],
+      }),
+    )
+
+    expect(textDecoder.decode(zip['xl/worksheets/sheet1.xml'])).toContain('<cols><col min="1" max="1" width="22" customWidth="1"/></cols>')
+  })
+
   it('writes cached formula error cells in simple workbooks', () => {
     const zip = readXlsxZipEntries(
       writeSimpleXlsxWorkbook({

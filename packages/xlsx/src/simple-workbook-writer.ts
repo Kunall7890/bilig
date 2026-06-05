@@ -519,7 +519,7 @@ function columnsXml(columns: readonly SimpleXlsxAxisEntry[] | undefined): string
     }
     const attributes = [`min="${String(first.index + 1)}"`, `max="${String(last.index + 1)}"`]
     if (first.size !== undefined && Number.isFinite(first.size) && first.size > 0) {
-      attributes.push(`width="${String(Math.max(0.1, first.size / 7))}"`, 'customWidth="1"')
+      attributes.push(`width="${String(Math.max(0.1, first.size / 6))}"`, 'customWidth="1"')
     }
     if (first.hidden === true) {
       attributes.push('hidden="1"')

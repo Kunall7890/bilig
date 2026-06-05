@@ -4,8 +4,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
 
 import { SpreadsheetEngine } from '../packages/core/src/engine.js'
 import { exportXlsx, importCsv, importXlsx, manualCalculationModeWarning } from '../packages/excel-import/src/index.js'
@@ -515,12 +515,19 @@ function runXlsxExternalDataProvenanceCase(): ImportExportFidelityCase {
 }
 
 function createFormulaContextAuditWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([[2, null]])
-  sheet.B1 = { t: 'n', f: 'A1*2', v: 4 }
-  sheet['!ref'] = 'A1:B1'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Sheet1')
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Sheet1',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 2 },
+            { address: 'B1', row: 0, col: 1, formula: 'A1*2', value: 4 },
+          ],
+        },
+      ],
+    }),
+  )
   const workbookXml = strFromU8(zip['xl/workbook.xml'] ?? new Uint8Array())
   const workbookXmlWithCalcPr = /<calcPr\b/u.test(workbookXml)
     ? workbookXml.replace(/<calcPr\b[^>]*\/>/u, '<calcPr calcId="191029" forceFullCalc="1"/>')
@@ -538,9 +545,7 @@ function createFormulaContextAuditWorkbookBytes(): Uint8Array {
 }
 
 function createExternalCacheOnlyPivotWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([[]]), 'Pivot')
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(writeSimpleXlsxWorkbook({ sheets: [{ name: 'Pivot', cells: [] }] }))
   zip['xl/workbook.xml'] = strToU8(
     strFromU8(zip['xl/workbook.xml'] ?? new Uint8Array()).replace(
       '</sheets>',
@@ -580,9 +585,19 @@ function createExternalCacheOnlyPivotWorkbookBytes(): Uint8Array {
 }
 
 function createExternalDataWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['Local'], [1]]), 'Model')
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Model',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Local' },
+            { address: 'A2', row: 1, col: 0, value: 1 },
+          ],
+        },
+      ],
+    }),
+  )
   zip['xl/workbook.xml'] = strToU8(
     strFromU8(zip['xl/workbook.xml'] ?? new Uint8Array()).replace(
       '</workbook>',
@@ -662,14 +677,19 @@ function runXlsxRuntimeFeaturePolicyWarningCase(): ImportExportFidelityCase {
 }
 
 function createMacroEnabledWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['safe macro workbook value']]), 'Sheet1')
-  workbook.Workbook = {
-    WBProps: { CodeName: 'ThisWorkbook' },
-    Sheets: [{ name: 'Sheet1', CodeName: 'Sheet1' }],
-  }
-  workbook.vbaraw = new Uint8Array([1, 2, 3, 4])
-  return XLSX.write(workbook, { bookType: 'xlsm', type: 'buffer', bookVBA: true })
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Sheet1',
+        cells: [{ address: 'A1', row: 0, col: 0, value: 'safe macro workbook value' }],
+      },
+    ],
+    macro: {
+      vbaProject: new Uint8Array([1, 2, 3, 4]),
+      workbookCodeName: 'ThisWorkbook',
+      sheetCodeNames: [{ sheetName: 'Sheet1', codeName: 'Sheet1' }],
+    },
+  })
 }
 
 function runExternalSheetsExcelImportExportComparisonCase(): ImportExportFidelityCase {

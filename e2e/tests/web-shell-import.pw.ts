@@ -1,10 +1,21 @@
 import { basename } from 'node:path'
+import { readFileSync } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
 import { expect, type Page, test } from '@playwright/test'
-import * as XLSX from 'xlsx'
+import {
+  decodeCellAddress,
+  encodeCellAddress,
+  readXlsxWorkbookCells,
+  writeSimpleXlsxWorkbook,
+  type SimpleXlsxAxisEntry,
+  type SimpleXlsxCell,
+  type SimpleXlsxMergeRange,
+  type SimpleXlsxSheet,
+} from '@bilig/xlsx'
 import { getProductColumnWidth, gotoWorkbookShell, waitForWorkbookReady } from './web-shell-helpers.js'
 
 const XLSX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+type WorkbookFixtureValue = boolean | number | string | null
 
 interface WorkbookImportExpectation {
   readonly workbookName: string
@@ -19,21 +30,44 @@ interface WorkbookImportExpectation {
   }[]
 }
 
-function writeWorkbook(workbook: XLSX.WorkBook): Uint8Array {
-  const bytes: unknown = XLSX.write(workbook, {
-    bookType: 'xlsx',
-    type: 'buffer',
-  })
-  if (!(bytes instanceof Uint8Array)) {
-    throw new Error('Expected XLSX writer to return workbook bytes')
+function fixtureCells(rows: ReadonlyArray<ReadonlyArray<WorkbookFixtureValue>>): SimpleXlsxCell[] {
+  const cells: SimpleXlsxCell[] = []
+  for (let row = 0; row < rows.length; row += 1) {
+    const rowValues = rows[row] ?? []
+    for (let col = 0; col < rowValues.length; col += 1) {
+      const value = rowValues[col]
+      if (value === null || value === undefined) {
+        continue
+      }
+      cells.push({ address: encodeCellAddress({ r: row, c: col }), row, col, value })
+    }
   }
-  return bytes
+  return cells
+}
+
+function formulaCell(address: string, formula: string): SimpleXlsxCell {
+  const { r, c } = decodeCellAddress(address)
+  return { address, row: r, col: c, formula }
+}
+
+function columnSizes(sizes: readonly number[]): SimpleXlsxAxisEntry[] {
+  return sizes.map((size, index) => ({ index, size }))
+}
+
+function rowSizes(entries: readonly (number | null)[]): SimpleXlsxAxisEntry[] {
+  return entries.flatMap((size, index) => (size === null ? [] : [{ index, size }]))
+}
+
+function merge(startAddress: string, endAddress: string): SimpleXlsxMergeRange {
+  return { startAddress, endAddress }
+}
+
+function writeWorkbook(sheets: readonly SimpleXlsxSheet[]): Uint8Array {
+  return writeSimpleXlsxWorkbook({ sheets })
 }
 
 function buildMultiSheetOperationsWorkbook(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-
-  const dashboard = XLSX.utils.aoa_to_sheet([
+  const dashboardCells = fixtureCells([
     ['OPERATIONS DASHBOARD', null, null, null],
     [],
     ['Metric', 'Value'],
@@ -41,29 +75,25 @@ function buildMultiSheetOperationsWorkbook(): Uint8Array {
     ['Open balance'],
     ['Completion rate'],
   ])
-  dashboard.B4 = { t: 'n', f: 'SUM(Ledger!F:F)' }
-  dashboard.B5 = { t: 'n', f: 'SUMIF(Ledger!H:H,"Open",Ledger!G:G)' }
-  dashboard.B6 = { t: 'n', f: 'IF(B4>0,1-B5/B4,0)' }
-  dashboard['!ref'] = 'A1:D6'
-  dashboard['!cols'] = [{ wpx: 180 }, { wpx: 118 }, { wpx: 96 }, { wpx: 96 }]
-  dashboard['!rows'] = [{ hpx: 30 }, {}, { hpx: 24 }]
-  dashboard['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }]
+  dashboardCells.push(
+    formulaCell('B4', 'SUM(Ledger!F:F)'),
+    formulaCell('B5', 'SUMIF(Ledger!H:H,"Open",Ledger!G:G)'),
+    formulaCell('B6', 'IF(B4>0,1-B5/B4,0)'),
+  )
 
-  const ledger = XLSX.utils.aoa_to_sheet([
+  const ledgerCells = fixtureCells([
     ['OPERATIONS LEDGER', null, null, null, null, null, null, null],
     [],
     ['ID', 'Date', 'Owner', 'Workstream', 'Category', 'Budget', 'Open Balance', 'Status'],
     ['OP001', 45292, 'Facilities', 'Office refresh', 'Capital', 12000, null, 'Open'],
     ['OP002', 45323, 'Engineering', 'Data migration', 'Platform', 18000, null, 'Open'],
   ])
-  ledger.G4 = { t: 'n', f: 'F4-SUMIF(Rollforward!$B:$B,A4,Rollforward!$E:$E)' }
-  ledger.G5 = { t: 'n', f: 'F5-SUMIF(Rollforward!$B:$B,A5,Rollforward!$E:$E)' }
-  ledger['!ref'] = 'A1:H5'
-  ledger['!cols'] = [{ wpx: 132 }, { wpx: 96 }, { wpx: 142 }, { wpx: 210 }, { wpx: 138 }, { wpx: 118 }, { wpx: 138 }, { wpx: 92 }]
-  ledger['!rows'] = [{ hpx: 30 }, {}, { hpx: 24 }]
-  ledger['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }]
+  ledgerCells.push(
+    formulaCell('G4', 'F4-SUMIF(Rollforward!$B:$B,A4,Rollforward!$E:$E)'),
+    formulaCell('G5', 'F5-SUMIF(Rollforward!$B:$B,A5,Rollforward!$E:$E)'),
+  )
 
-  const rollforward = XLSX.utils.aoa_to_sheet([
+  const rollforwardCells = fixtureCells([
     ['ROLLFORWARD', null, null, null, null],
     [],
     ['Period', 'Item ID', 'Description', 'Monthly Change', 'Cumulative Change'],
@@ -71,57 +101,70 @@ function buildMultiSheetOperationsWorkbook(): Uint8Array {
     ['Feb 2024', 'OP001', 'Office refresh'],
     ['Mar 2024', 'OP002', 'Data migration'],
   ])
-  rollforward.D4 = { t: 'n', f: 'VLOOKUP(B4,Ledger!A:F,6,FALSE())/12' }
-  rollforward.E4 = { t: 'n', f: 'D4' }
-  rollforward.D5 = { t: 'n', f: 'VLOOKUP(B5,Ledger!A:F,6,FALSE())/12' }
-  rollforward.E5 = { t: 'n', f: 'IF(B5=B4,E4+D5,D5)' }
-  rollforward.D6 = { t: 'n', f: 'VLOOKUP(B6,Ledger!A:F,6,FALSE())/12' }
-  rollforward.E6 = { t: 'n', f: 'IF(B6=B5,E5+D6,D6)' }
-  rollforward['!ref'] = 'A1:E6'
-  rollforward['!cols'] = [{ wpx: 112 }, { wpx: 96 }, { wpx: 210 }, { wpx: 126 }, { wpx: 148 }]
-  rollforward['!rows'] = [{ hpx: 30 }, {}, { hpx: 24 }]
-  rollforward['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }]
+  rollforwardCells.push(
+    formulaCell('D4', 'VLOOKUP(B4,Ledger!A:F,6,FALSE())/12'),
+    formulaCell('E4', 'D4'),
+    formulaCell('D5', 'VLOOKUP(B5,Ledger!A:F,6,FALSE())/12'),
+    formulaCell('E5', 'IF(B5=B4,E4+D5,D5)'),
+    formulaCell('D6', 'VLOOKUP(B6,Ledger!A:F,6,FALSE())/12'),
+    formulaCell('E6', 'IF(B6=B5,E5+D6,D6)'),
+  )
 
-  XLSX.utils.book_append_sheet(workbook, dashboard, 'Dashboard')
-  XLSX.utils.book_append_sheet(workbook, ledger, 'Ledger')
-  XLSX.utils.book_append_sheet(workbook, rollforward, 'Rollforward')
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['Category'], ['Capital'], ['Platform']]), 'Lookups')
-
-  return writeWorkbook(workbook)
+  return writeWorkbook([
+    {
+      name: 'Dashboard',
+      cells: dashboardCells,
+      columns: columnSizes([180, 118, 96, 96]),
+      rows: rowSizes([30, null, 24]),
+      merges: [merge('A1', 'D1')],
+    },
+    {
+      name: 'Ledger',
+      cells: ledgerCells,
+      columns: columnSizes([132, 96, 142, 210, 138, 118, 138, 92]),
+      rows: rowSizes([30, null, 24]),
+      merges: [merge('A1', 'H1')],
+    },
+    {
+      name: 'Rollforward',
+      cells: rollforwardCells,
+      columns: columnSizes([112, 96, 210, 126, 148]),
+      rows: rowSizes([30, null, 24]),
+      merges: [merge('A1', 'E1')],
+    },
+    {
+      name: 'Lookups',
+      cells: fixtureCells([['Category'], ['Capital'], ['Platform']]),
+    },
+  ])
 }
 
 function buildSingleSheetPlanningWorkbook(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
+  const cells = fixtureCells([
     ['Monthly Planning Schedule', null, null, null, null, null, null, null, null],
     ['Owner', 'Workstream', 'Start Date', 'End Date', 'Budget', 'Jan 2026', 'Feb 2026', 'Planned', 'Remaining'],
     ['TenantWorks', 'Facilities platform', 46054, 46234, 6600],
     ['Blue Harbor', 'Insurance binder', 46023, 46388, 12000],
   ])
-  sheet.F3 = { t: 'n', f: 'ROUND(IFERROR($E3*MAX(0,MIN($D3,EOMONTH(DATE(2026,1,1),0))-MAX($C3,DATE(2026,1,1))+1)/($D3-$C3+1),0),2)' }
-  sheet.G3 = { t: 'n', f: 'ROUND(IFERROR($E3*MAX(0,MIN($D3,EOMONTH(DATE(2026,2,1),0))-MAX($C3,DATE(2026,2,1))+1)/($D3-$C3+1),0),2)' }
-  sheet.H3 = { t: 'n', f: 'ROUND(SUM(F3:G3),2)' }
-  sheet.I3 = { t: 'n', f: 'ROUND(E3-H3,2)' }
-  sheet.F4 = { t: 'n', f: 'ROUND(IFERROR($E4*MAX(0,MIN($D4,EOMONTH(DATE(2026,1,1),0))-MAX($C4,DATE(2026,1,1))+1)/($D4-$C4+1),0),2)' }
-  sheet.G4 = { t: 'n', f: 'ROUND(IFERROR($E4*MAX(0,MIN($D4,EOMONTH(DATE(2026,2,1),0))-MAX($C4,DATE(2026,2,1))+1)/($D4-$C4+1),0),2)' }
-  sheet.H4 = { t: 'n', f: 'ROUND(SUM(F4:G4),2)' }
-  sheet.I4 = { t: 'n', f: 'ROUND(E4-H4,2)' }
-  sheet['!ref'] = 'A1:I4'
-  sheet['!cols'] = [
-    { wpx: 168 },
-    { wpx: 190 },
-    { wpx: 104 },
-    { wpx: 104 },
-    { wpx: 118 },
-    { wpx: 96 },
-    { wpx: 96 },
-    { wpx: 134 },
-    { wpx: 138 },
-  ]
-  sheet['!rows'] = [{ hpx: 30 }, { hpx: 24 }]
-  sheet['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }]
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Monthly Plan')
-  return writeWorkbook(workbook)
+  cells.push(
+    formulaCell('F3', 'ROUND(IFERROR($E3*MAX(0,MIN($D3,EOMONTH(DATE(2026,1,1),0))-MAX($C3,DATE(2026,1,1))+1)/($D3-$C3+1),0),2)'),
+    formulaCell('G3', 'ROUND(IFERROR($E3*MAX(0,MIN($D3,EOMONTH(DATE(2026,2,1),0))-MAX($C3,DATE(2026,2,1))+1)/($D3-$C3+1),0),2)'),
+    formulaCell('H3', 'ROUND(SUM(F3:G3),2)'),
+    formulaCell('I3', 'ROUND(E3-H3,2)'),
+    formulaCell('F4', 'ROUND(IFERROR($E4*MAX(0,MIN($D4,EOMONTH(DATE(2026,1,1),0))-MAX($C4,DATE(2026,1,1))+1)/($D4-$C4+1),0),2)'),
+    formulaCell('G4', 'ROUND(IFERROR($E4*MAX(0,MIN($D4,EOMONTH(DATE(2026,2,1),0))-MAX($C4,DATE(2026,2,1))+1)/($D4-$C4+1),0),2)'),
+    formulaCell('H4', 'ROUND(SUM(F4:G4),2)'),
+    formulaCell('I4', 'ROUND(E4-H4,2)'),
+  )
+  return writeWorkbook([
+    {
+      name: 'Monthly Plan',
+      cells,
+      columns: columnSizes([168, 190, 104, 104, 118, 96, 96, 134, 138]),
+      rows: rowSizes([30, 24]),
+      merges: [merge('A1', 'I1')],
+    },
+  ])
 }
 
 async function writeFixture(testInfo: { outputPath: (pathSegment: string) => string }, name: string, bytes: Uint8Array): Promise<string> {
@@ -135,42 +178,31 @@ function normalizeWorkbookName(fileName: string): string {
 }
 
 function readExternalWorkbookExpectation(path: string): WorkbookImportExpectation {
-  const workbook = XLSX.readFile(path, {
-    cellFormula: true,
-    cellText: false,
-  })
+  const workbook = readXlsxWorkbookCells(readFileSync(path))
   const cells: WorkbookImportExpectation['cells'] = []
-  for (const sheetName of workbook.SheetNames) {
-    const sheet = workbook.Sheets[sheetName]
-    if (!sheet?.['!ref']) {
-      continue
-    }
-    const range = XLSX.utils.decode_range(sheet['!ref'])
-    for (let row = range.s.r; row <= range.e.r && cells.length < 6; row += 1) {
-      for (let col = range.s.c; col <= range.e.c && cells.length < 6; col += 1) {
-        const address = XLSX.utils.encode_cell({ r: row, c: col })
-        const cell = sheet[address]
-        if (!cell) {
-          continue
-        }
-        if (typeof cell.f === 'string' && cell.f.trim().length > 0) {
-          cells.push({ sheetName, address, value: `=${cell.f}` })
-          continue
-        }
-        if (typeof cell.v === 'string' && cell.v.trim().length > 0) {
-          cells.push({ sheetName, address, value: cell.v })
-        }
+  for (const sheet of workbook.sheets) {
+    for (const cell of sheet.cells) {
+      if (cells.length >= 6) {
+        break
+      }
+      if (typeof cell.formula === 'string' && cell.formula.trim().length > 0) {
+        cells.push({ sheetName: sheet.name, address: cell.address, value: `=${cell.formula}` })
+        continue
+      }
+      if (typeof cell.value === 'string' && cell.value.trim().length > 0) {
+        cells.push({ sheetName: sheet.name, address: cell.address, value: cell.value })
       }
     }
   }
-  if (workbook.SheetNames.length === 0 || cells.length === 0) {
+  const sheetNames = workbook.sheets.map((sheet) => sheet.name)
+  if (sheetNames.length === 0 || cells.length === 0) {
     throw new Error('External workbook verifier needs at least one sheet and one string or formula cell')
   }
   return {
     workbookName: normalizeWorkbookName(path),
     uploadFileName: basename(path),
-    sheetNames: workbook.SheetNames,
-    activeSheetName: workbook.SheetNames[0] ?? 'Sheet1',
+    sheetNames,
+    activeSheetName: sheetNames[0] ?? 'Sheet1',
     cells,
   }
 }

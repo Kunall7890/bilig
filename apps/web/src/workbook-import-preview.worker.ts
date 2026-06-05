@@ -34,7 +34,7 @@ self.addEventListener('message', (event: MessageEvent<WorkbookImportPreviewMessa
   void (async () => {
     try {
       const bytes = new Uint8Array(await message.file.arrayBuffer())
-      const imported = importWorkbookFile(bytes, message.file.name, message.contentType)
+      const imported = importWorkbookFile(bytes, message.file.name, message.contentType, { xlsx: { nativeOnly: true } })
       self.postMessage(
         {
           type: 'success',

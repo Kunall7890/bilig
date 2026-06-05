@@ -534,6 +534,11 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string, op
     }
     return largeSimpleImport
   }
+  if (options.nativeOnly === true) {
+    spooledUntouchedExportSource?.release?.()
+    spooledUntouchedExportSource = undefined
+    throw new Error('Native XLSX import could not materialize this workbook without SheetJS fallback.')
+  }
   if (!inspection && route.shouldInspectBeforeSheetJsFallback) {
     inspection = spooledUntouchedExportSource
       ? inspectLargeSimpleXlsxByteSource(spooledUntouchedExportSource, fileName, route.inspectionOptions)

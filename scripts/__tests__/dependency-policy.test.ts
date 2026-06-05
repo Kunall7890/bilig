@@ -20,10 +20,16 @@ const liveScorecardFixtureScripts = [
 ] as const
 const nativeXlsxFixtureScripts = [
   ...liveScorecardFixtureScripts,
+  'e2e/tests/web-shell-import.pw.ts',
+  'scripts/gen-import-export-fidelity-scorecard.ts',
   'scripts/gen-security-posture-scorecard.ts',
   'scripts/gen-workpaper-xlsx-corpus-fixtures.ts',
 ] as const
 const nativeXlsxCorpusProofScripts = ['scripts/check-workpaper-xlsx-corpus.ts', 'scripts/workpaper-xlsx-volatile-dependencies.ts'] as const
+const nativeXlsxExampleScripts = [
+  'examples/recalc-bridge-workflows/smoke.mjs',
+  'examples/recalc-bridge-workflows/stackoverflow-sheetjs-63085785.mjs',
+] as const
 
 function packageManifestPaths(): string[] {
   return packageManifestDirs.flatMap((dir) => {
@@ -105,6 +111,12 @@ describe('repository dependency policy', () => {
 
   it('keeps WorkPaper XLSX corpus proof readback on @bilig/xlsx instead of SheetJS', () => {
     const violations = nativeXlsxCorpusProofScripts.filter((path) => hasRuntimeXlsxImport(readFileSync(join(repoRoot, path), 'utf8')))
+
+    expect(violations).toEqual([])
+  })
+
+  it('keeps recalculation bridge examples on @bilig/xlsx instead of SheetJS fixture edits', () => {
+    const violations = nativeXlsxExampleScripts.filter((path) => hasRuntimeXlsxImport(readFileSync(join(repoRoot, path), 'utf8')))
 
     expect(violations).toEqual([])
   })
