@@ -94,12 +94,7 @@
     "@bilig/formula": "workspace:*",
     "@bilig/protocol": "workspace:*",
     "@bilig/wasm-kernel": "workspace:*",
-    "@bilig/xlsx": "workspace:*",
-    "fast-xml-parser": "5.7.3",
-    "fflate": "0.3.11",
-    "fflate-stream": "npm:fflate@0.8.3",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
-    "xlsx-js-style": "1.2.0"
+    "@bilig/xlsx": "workspace:*"
   },
   "engines": {
     "node": ">=22.0.0"

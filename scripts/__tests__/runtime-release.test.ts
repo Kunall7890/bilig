@@ -380,12 +380,12 @@ describe('runtime release helpers', () => {
       default: './dist/xlsx.js',
     })
     expect(manifest.dependencies).not.toHaveProperty('@bilig/excel-import')
-    expect(manifest.dependencies).toMatchObject({
-      'fast-xml-parser': '5.7.3',
-      fflate: '0.3.11',
-      xlsx: 'https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz',
-      'xlsx-js-style': '1.2.0',
-    })
+    expect(manifest.dependencies).toHaveProperty('@bilig/xlsx', 'workspace:*')
+    expect(manifest.dependencies).not.toHaveProperty('fast-xml-parser')
+    expect(manifest.dependencies).not.toHaveProperty('fflate')
+    expect(manifest.dependencies).not.toHaveProperty('fflate-stream')
+    expect(manifest.dependencies).not.toHaveProperty('xlsx')
+    expect(manifest.dependencies).not.toHaveProperty('xlsx-js-style')
   })
 
   it('matches runtime-affecting publish paths', () => {
