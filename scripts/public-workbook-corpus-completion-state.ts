@@ -36,7 +36,10 @@ export function buildPublicWorkbookCorpusAuditState(args: {
   })
   return {
     targetWorkbookCount: args.status.targetWorkbookCount,
-    financialWorkbookTargetCount: financialWorkbookTargetCount(args.status.targetWorkbookCount),
+    financialWorkbookTargetCount: financialWorkbookTargetCount(
+      args.status.targetWorkbookCount,
+      args.financialManifest?.targetWorkbookCount,
+    ),
     sourceCount: args.status.sourceCount,
     fetchCandidateSourceCount: fetchPlan?.candidateSourceCount ?? 0,
     fetchCandidateSourceDeficitCount:

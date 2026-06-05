@@ -17,8 +17,8 @@ const requiredFeatureWitnesses = [
   },
 ] as const
 
-export function financialWorkbookTargetCount(targetWorkbookCount: number): number {
-  return Math.min(5_000, targetWorkbookCount)
+export function financialWorkbookTargetCount(targetWorkbookCount: number, financialTargetWorkbookCount = targetWorkbookCount): number {
+  return Math.min(5_000, financialTargetWorkbookCount)
 }
 
 export function hasFinancialTopicEvidence(entry: { readonly topicEvidence?: readonly string[] }): boolean {

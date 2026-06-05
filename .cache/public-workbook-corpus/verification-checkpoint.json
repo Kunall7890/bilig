@@ -1,22 +1,7 @@
 {
   "schemaVersion": 1,
-  "suite": "public-workbook-corpus",
-  "generatedAt": "2026-06-05T17:48:03.593Z",
-  "summary": {
-    "targetWorkbookCount": 52,
-    "sourceCount": 102,
-    "cachedWorkbookCount": 52,
-    "importedWorkbookCount": 52,
-    "passedWorkbookCount": 38,
-    "failedWorkbookCount": 0,
-    "errorWorkbookCount": 0,
-    "unsupportedWorkbookCount": 14,
-    "formulaOracleComparisonCount": 529,
-    "formulaOracleMatchCount": 529,
-    "structuralSmokeRunCount": 50,
-    "allCachedWorkbooksPassed": true,
-    "remainingToTarget": 0
-  },
+  "suite": "public-workbook-corpus-verification-checkpoint",
+  "generatedAt": "2026-06-05T17:48:03.592Z",
   "cases": [
     {
       "id": "workbook-ba595024c9c74b53",

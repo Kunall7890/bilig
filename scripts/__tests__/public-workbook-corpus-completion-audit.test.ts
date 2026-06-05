@@ -332,6 +332,57 @@ describe('public workbook corpus completion audit', () => {
     })
   })
 
+  it('keeps dedicated financial target stable when general feature witnesses raise the corpus target', () => {
+    const financialArtifactA = financialWorkbookArtifact('workbook-a')
+    const financialArtifactB = financialWorkbookArtifact('workbook-b')
+    const chartWitness = workbookArtifactWithHashNibble('workbook-chart', 'c')
+    const conditionalFormatWitness = workbookArtifactWithHashNibble('workbook-conditional-format', 'd')
+    const audit = buildPublicWorkbookCorpusCompletionAudit({
+      generatedAt: '2026-05-08T00:00:00.000Z',
+      hyperformulaSecondaryCorpus: hyperFormulaSecondaryCorpusFixture(),
+      manifest: manifestWithArtifacts([financialArtifactA, financialArtifactB, chartWitness, conditionalFormatWitness], 4),
+      financialManifest: manifestWithArtifacts([financialArtifactA, financialArtifactB], 2),
+      financialRecordedCases: [passedCase(financialArtifactA, 1), passedCase(financialArtifactB, 1)],
+      recordedCases: [
+        passedCase(financialArtifactA, 1),
+        passedCase(financialArtifactB, 1),
+        passedCase(chartWitness, 1),
+        passedCase(conditionalFormatWitness, 1),
+      ],
+      status: statusFixture({
+        targetWorkbookCount: 4,
+        sourceCount: 4,
+        cachedArtifactCount: 4,
+        scorecardCaseCount: 4,
+        checkpointCaseCount: 0,
+        recordedManifestArtifactCount: 4,
+        missingManifestArtifactCount: 0,
+        recordedPassedCaseCount: 4,
+        scorecardCoversManifest: true,
+        targetComplete: true,
+        gaps: [],
+      }),
+      stopMarkerActive: false,
+    })
+
+    expect(audit.currentState).toMatchObject({
+      targetWorkbookCount: 4,
+      financialWorkbookTargetCount: 2,
+      financialCachedArtifactCount: 2,
+      recordedFinancialManifestArtifactCount: 2,
+    })
+    expect(requirement(audit.checklist, 'financial-accounting-workpapers-5000')).toMatchObject({
+      passed: true,
+      gaps: [],
+      evidence: expect.arrayContaining([
+        'financial/accounting workbook target: 2',
+        'financial/accounting cached artifacts: 2/2',
+        'financial/accounting recorded verification cases: 2/2',
+      ]),
+    })
+    expect(validatePublicWorkbookCorpusCompletionAudit(audit, { requireComplete: true })).toEqual([])
+  })
+
   it('keeps a concrete next action when general corpus manifest evidence is missing', () => {
     const artifactA = financialWorkbookArtifact('workbook-a')
     const artifactB = financialWorkbookArtifact('workbook-b')
@@ -1115,6 +1166,15 @@ function workbookArtifact(id: string): PublicWorkbookArtifact {
       title: 'Creative Commons Attribution 4.0 International',
       evidenceUrl: 'https://creativecommons.org/licenses/by/4.0/',
     },
+  }
+}
+
+function workbookArtifactWithHashNibble(id: string, hashNibble: string): PublicWorkbookArtifact {
+  const sha256 = hashNibble.repeat(64)
+  return {
+    ...workbookArtifact(id),
+    cachePath: `files/${sha256}.xlsx`,
+    sha256,
   }
 }
 
