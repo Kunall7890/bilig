@@ -11,6 +11,7 @@ const ALLOWED_BILIG_INSTANCE_METHODS = [
   'compileScalarFormula',
   'dispose',
   'exportSnapshot',
+  'exportSourcePreservingXlsxSnapshot',
   'getCalculationSettings',
   'getCellDisplayValue',
   'getCellFormulaDiagnostics',
