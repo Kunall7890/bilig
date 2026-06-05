@@ -257,7 +257,7 @@ function fastBorderStyle(value: NonNullable<CellStyleRecord['borders']>[keyof No
     return 'dotted'
   }
   if (value.style === 'double') {
-    return 'thick'
+    return 'double'
   }
   return value.weight
 }

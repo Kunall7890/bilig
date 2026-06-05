@@ -14,8 +14,8 @@ import { encodeFormulaForXlsx } from './xlsx-formula-translation.js'
 
 const maxGeneratedRangeCells = 200_000
 
-const supportedWorkbookMetadataKeys = new Set(['definedNames', 'styles', 'formats'])
-const supportedSheetMetadataKeys = new Set(['rows', 'columns', 'styleRanges', 'formatRanges', 'merges', 'filters'])
+const supportedWorkbookMetadataKeys = new Set(['definedNames', 'styles', 'styleArtifacts', 'formats'])
+const supportedSheetMetadataKeys = new Set(['rows', 'columns', 'styleRanges', 'styleArtifacts', 'formatRanges', 'merges', 'filters'])
 
 function hasUnsupportedMetadata(metadata: object | undefined, supportedKeys: ReadonlySet<string>): boolean {
   if (!metadata) {
@@ -65,6 +65,48 @@ function canMaterializeRanges(sheet: WorkbookSnapshot['sheets'][number]): boolea
   return true
 }
 
+function styleArtifactAddressCount(sheet: WorkbookSnapshot['sheets'][number]): number {
+  return (sheet.metadata?.styleArtifacts?.cellStyleIndexes.length ?? 0) + (sheet.metadata?.styleArtifacts?.blankCellAddresses?.length ?? 0)
+}
+
+function canMaterializeStyleArtifacts(snapshot: WorkbookSnapshot): boolean {
+  const workbookStyleArtifacts = snapshot.workbook.metadata?.styleArtifacts
+  const hasSheetStyleArtifacts = snapshot.sheets.some((sheet) => styleArtifactAddressCount(sheet) > 0)
+  if (!workbookStyleArtifacts && !hasSheetStyleArtifacts) {
+    return true
+  }
+  if (!workbookStyleArtifacts?.stylesXml || workbookStyleArtifacts.theme) {
+    return false
+  }
+  if ((snapshot.workbook.metadata?.styles?.length ?? 0) > 0 || (snapshot.workbook.metadata?.formats?.length ?? 0) > 0) {
+    return false
+  }
+  let generatedCells = 0
+  for (const sheet of snapshot.sheets) {
+    if ((sheet.metadata?.styleRanges?.length ?? 0) > 0 || (sheet.metadata?.formatRanges?.length ?? 0) > 0) {
+      return false
+    }
+    if (sheet.cells.some((cell) => cell.format?.trim())) {
+      return false
+    }
+    for (const entry of sheet.metadata?.styleArtifacts?.cellStyleIndexes ?? []) {
+      if (!Number.isSafeInteger(entry.styleIndex) || entry.styleIndex < 0 || !isValidCellAddress(entry.address)) {
+        return false
+      }
+    }
+    for (const address of sheet.metadata?.styleArtifacts?.blankCellAddresses ?? []) {
+      if (!isValidCellAddress(address)) {
+        return false
+      }
+    }
+    generatedCells += styleArtifactAddressCount(sheet)
+    if (generatedCells > maxGeneratedRangeCells) {
+      return false
+    }
+  }
+  return true
+}
+
 function hasOnlySimpleFilters(sheet: WorkbookSnapshot['sheets'][number]): boolean {
   return (sheet.metadata?.filters ?? []).every((filter) => !filter.criteria || filter.criteria.length === 0)
 }
@@ -74,6 +116,9 @@ function canUseBiligSimpleWriter(snapshot: WorkbookSnapshot): boolean {
     return false
   }
   if (hasUnsupportedMetadata(snapshot.workbook.metadata, supportedWorkbookMetadataKeys)) {
+    return false
+  }
+  if (!canMaterializeStyleArtifacts(snapshot)) {
     return false
   }
   return snapshot.sheets.every(
@@ -118,6 +163,15 @@ function readCellCoordinates(address: string): { readonly row: number; readonly 
   return { row: decoded.s.r, col: decoded.s.c }
 }
 
+function isValidCellAddress(address: string): boolean {
+  try {
+    readCellCoordinates(address)
+    return true
+  } catch {
+    return false
+  }
+}
+
 function ensureCell(cellsByAddress: Map<string, SimpleXlsxCell>, address: string): SimpleXlsxCell {
   const existing = cellsByAddress.get(address)
   if (existing) {
@@ -158,6 +212,13 @@ function simpleSheetCells(
       replaceCell(cellsByAddress, cell, { styleId: styleRange.styleId })
     }
   }
+  for (const entry of sheet.metadata?.styleArtifacts?.cellStyleIndexes ?? []) {
+    const cell = ensureCell(cellsByAddress, entry.address)
+    replaceCell(cellsByAddress, cell, { styleIndex: entry.styleIndex })
+  }
+  for (const address of sheet.metadata?.styleArtifacts?.blankCellAddresses ?? []) {
+    ensureCell(cellsByAddress, address)
+  }
   for (const formatRange of sheet.metadata?.formatRanges ?? []) {
     const format = formatCodesById.get(formatRange.formatId)?.trim()
     if (!format || format === 'General') {
@@ -172,6 +233,9 @@ function simpleSheetCells(
 }
 
 function simpleStyles(snapshot: WorkbookSnapshot): readonly SimpleXlsxStyle[] | undefined {
+  if (snapshot.workbook.metadata?.styleArtifacts?.stylesXml) {
+    return undefined
+  }
   const styles = snapshot.workbook.metadata?.styles
   return styles && styles.length > 0 ? styles : undefined
 }
@@ -249,9 +313,11 @@ function simpleWorkbook(snapshot: WorkbookSnapshot): SimpleXlsxWorkbook {
   const formatCodesById = new Map((snapshot.workbook.metadata?.formats ?? []).map((format) => [format.id, format.code]))
   const styles = simpleStyles(snapshot)
   const definedNames = simpleDefinedNames(snapshot, exportSheetNamesByOriginalName, exportSheetIndexesByOriginalName)
+  const stylesXml = snapshot.workbook.metadata?.styleArtifacts?.stylesXml
   return {
     sheets: orderedSheets.map((sheet) => simpleSheet(sheet, exportSheetNamesByOriginalName.get(sheet.name) ?? sheet.name, formatCodesById)),
     ...(styles ? { styles } : {}),
+    ...(stylesXml ? { stylesXml } : {}),
     ...(definedNames ? { definedNames } : {}),
   }
 }

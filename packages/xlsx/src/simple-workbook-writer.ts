@@ -11,6 +11,7 @@ export interface SimpleXlsxCell {
   readonly value?: SimpleXlsxCellValue | null
   readonly formula?: string
   readonly styleId?: string
+  readonly styleIndex?: number
   readonly numberFormat?: string
 }
 
@@ -103,6 +104,7 @@ export interface SimpleXlsxSheet {
 export interface SimpleXlsxWorkbook {
   readonly sheets: readonly SimpleXlsxSheet[]
   readonly styles?: readonly SimpleXlsxStyle[]
+  readonly stylesXml?: string
   readonly definedNames?: readonly SimpleXlsxDefinedName[]
 }
 
@@ -113,6 +115,7 @@ interface RegisteredStyle {
 
 interface StyleRegistry {
   readonly styleIndexByKey: ReadonlyMap<string, number>
+  readonly acceptsDirectStyleIndexes: boolean
   readonly stylesXml: string
 }
 
@@ -288,6 +291,13 @@ function collectRegisteredStyles(workbook: SimpleXlsxWorkbook): readonly Registe
 }
 
 function buildStyleRegistry(workbook: SimpleXlsxWorkbook): StyleRegistry {
+  if (workbook.stylesXml !== undefined) {
+    return {
+      styleIndexByKey: new Map(),
+      acceptsDirectStyleIndexes: true,
+      stylesXml: workbook.stylesXml,
+    }
+  }
   const styleById = new Map((workbook.styles ?? []).map((style) => [style.id, style]))
   const registeredStyles = collectRegisteredStyles(workbook)
   const customFormats = [
@@ -346,10 +356,18 @@ function buildStyleRegistry(workbook: SimpleXlsxWorkbook): StyleRegistry {
     '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>',
     '</styleSheet>',
   ].join('')
-  return { styleIndexByKey, stylesXml }
+  return { styleIndexByKey, acceptsDirectStyleIndexes: false, stylesXml }
 }
 
 function styleIndexForCell(cell: SimpleXlsxCell, registry: StyleRegistry): number | undefined {
+  if (
+    registry.acceptsDirectStyleIndexes &&
+    cell.styleIndex !== undefined &&
+    Number.isSafeInteger(cell.styleIndex) &&
+    cell.styleIndex >= 0
+  ) {
+    return cell.styleIndex
+  }
   const index = registry.styleIndexByKey.get(styleKey(createRegisteredStyle(cell.styleId, cell.numberFormat)))
   return index && index > 0 ? index : undefined
 }

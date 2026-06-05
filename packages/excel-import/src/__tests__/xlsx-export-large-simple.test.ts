@@ -65,13 +65,17 @@ describe('large simple XLSX export', () => {
     expect(workbook.Sheets['Wide']?.['!ref']).toBe('A3040')
   }, 15_000)
 
-  it('exports sparse raw style artifacts without widening the SheetJS writer scan range', () => {
+  it('exports sparse raw style artifacts through the @bilig/xlsx writer', () => {
     const start = performance.now()
     const exported = exportXlsx(buildSparseStyleArtifactSnapshot())
     const durationMs = performance.now() - start
-    const sheetXml = strFromU8(unzipSync(exported)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+    const zip = unzipSync(exported)
+    const stylesXml = strFromU8(zip['xl/styles.xml'] ?? new Uint8Array())
+    const sheetXml = strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
 
     expect(durationMs).toBeLessThan(3_000 * readBenchmarkTolerance())
+    expect(zip['xl/sharedStrings.xml']).toBeUndefined()
+    expect(stylesXml).toBe(minimalStylesXml)
     expect(sheetXml).toContain('<dimension ref="A1:CF65000"/>')
     expect(sheetXml).toContain('<c r="CF65000" s="1"/>')
   }, 15_000)
@@ -184,16 +188,6 @@ function buildSparseStyleArtifactSnapshot(): WorkbookSnapshot {
         order: 0,
         cells: [{ address: 'A1', value: 'Header' }],
         metadata: {
-          richTextArtifacts: {
-            cells: [
-              {
-                address: 'A1',
-                text: 'Header',
-                storage: 'sharedString',
-                xml: '<si><r><rPr><b/></rPr><t>Header</t></r></si>',
-              },
-            ],
-          },
           styleArtifacts: {
             cellStyleIndexes: Array.from({ length: 65_000 }, (_entry, index) => ({
               address: `CF${String(index + 1)}`,

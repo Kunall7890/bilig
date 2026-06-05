@@ -75,7 +75,7 @@ describe('@bilig/xlsx package boundary', () => {
     expect(encodeCellRange({ s: { r: 0, c: 0 }, e: { r: 2, c: 2 } })).toBe('A1:C3')
   })
 
-  it('exports native XML helpers for package readers without SheetJS', () => {
+  it('exports XML helpers for @bilig/xlsx package readers without SheetJS', () => {
     expect(readXmlAttribute('<sheet name="A &amp; B" r:id="rId1"/>', 'name')).toBe('A & B')
     const cells = [
       ...'<sheetData><row><c r="A1"><v>1</v></c><c r="B2" t="str"><v>x</v></c></row></sheetData>'.matchAll(worksheetCellElementPattern),
@@ -145,4 +145,54 @@ describe('@bilig/xlsx package boundary', () => {
     expect(stylesXml).toContain('applyBorder="1"')
     expect(sheetXml).toContain('<c r="B7" s="1"><v>42</v></c>')
   })
+
+  it('preserves raw style XML and direct style indexes in simple workbooks', () => {
+    const workbook = {
+      stylesXml: minimalRawStylesXml,
+      sheets: [
+        {
+          name: 'Sparse',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Header' },
+            { address: 'CF65000', row: 64_999, col: 83, styleIndex: 1 },
+          ],
+        },
+      ],
+    }
+    const zip = readXlsxZipEntries(writeSimpleXlsxWorkbook(workbook))
+    const stylesXml = textDecoder.decode(zip['xl/styles.xml'])
+    const sheetXml = textDecoder.decode(zip['xl/worksheets/sheet1.xml'])
+
+    expect(stylesXml).toBe(minimalRawStylesXml)
+    expect(sheetXml).toContain('<dimension ref="A1:CF65000"/>')
+    expect(sheetXml).toContain('<c r="CF65000" s="1"/>')
+  })
+
+  it('only applies direct style indexes when raw styles XML is supplied', () => {
+    const workbook = {
+      sheets: [
+        {
+          name: 'Sheet 1',
+          cells: [{ address: 'B2', row: 1, col: 1, value: 7, styleIndex: 42 }],
+        },
+      ],
+    }
+    const zip = readXlsxZipEntries(writeSimpleXlsxWorkbook(workbook))
+    const sheetXml = textDecoder.decode(zip['xl/worksheets/sheet1.xml'])
+
+    expect(sheetXml).toContain('<c r="B2"><v>7</v></c>')
+    expect(sheetXml).not.toContain('s="42"')
+  })
 })
+
+const minimalRawStylesXml = [
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+  '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+  '<fonts count="1"><font><sz val="11"/><name val="Aptos"/></font></fonts>',
+  '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>',
+  '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>',
+  '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>',
+  '<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>',
+  '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>',
+  '</styleSheet>',
+].join('')
