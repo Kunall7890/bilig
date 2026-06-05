@@ -8,14 +8,33 @@ import {
   type SimpleXlsxStyle,
   type SimpleXlsxWorkbook,
 } from '@bilig/xlsx'
-import type { WorkbookSnapshot } from '@bilig/protocol'
+import type { WorkbookRichTextCellSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import { buildExportDefinedNames } from './xlsx-defined-names.js'
 import { encodeFormulaForXlsx } from './xlsx-formula-translation.js'
 
 const maxGeneratedRangeCells = 200_000
 
 const supportedWorkbookMetadataKeys = new Set(['definedNames', 'styles', 'styleArtifacts', 'formats'])
-const supportedSheetMetadataKeys = new Set(['rows', 'columns', 'styleRanges', 'styleArtifacts', 'formatRanges', 'merges', 'filters'])
+const supportedSheetMetadataKeys = new Set([
+  'rows',
+  'columns',
+  'styleRanges',
+  'styleArtifacts',
+  'formatRanges',
+  'merges',
+  'filters',
+  'richTextArtifacts',
+])
+
+interface SimpleRichTextPatch {
+  readonly sharedStringIndex?: number
+  readonly inlineStringXml?: string
+}
+
+interface SimpleRichTextExportPlan {
+  readonly cellsBySheet: ReadonlyMap<WorkbookSnapshot['sheets'][number], ReadonlyMap<string, SimpleRichTextPatch>>
+  readonly sharedStringsXml?: string
+}
 
 function hasUnsupportedMetadata(metadata: object | undefined, supportedKeys: ReadonlySet<string>): boolean {
   if (!metadata) {
@@ -107,6 +126,55 @@ function canMaterializeStyleArtifacts(snapshot: WorkbookSnapshot): boolean {
   return true
 }
 
+function richTextArtifactCells(sheet: WorkbookSnapshot['sheets'][number]): readonly WorkbookRichTextCellSnapshot[] {
+  return sheet.metadata?.richTextArtifacts?.cells ?? []
+}
+
+function richTextArtifactXmlMatchesStorage(artifact: WorkbookRichTextCellSnapshot): boolean {
+  if (artifact.storage === 'sharedString') {
+    return /^\s*<((?:[A-Za-z_][\w.-]*:)?si)\b[^>]*(?:\/>|>[\s\S]*?<\/\1>)\s*$/u.test(artifact.xml)
+  }
+  return /^\s*<((?:[A-Za-z_][\w.-]*:)?is)\b[^>]*(?:\/>|>[\s\S]*?<\/\1>)\s*$/u.test(artifact.xml)
+}
+
+function richTextSourceStringCellsByAddress(
+  sheet: WorkbookSnapshot['sheets'][number],
+): ReadonlyMap<string, WorkbookSnapshot['sheets'][number]['cells'][number]> {
+  return new Map(
+    sheet.cells.flatMap((cell) => (typeof cell.value === 'string' && !cell.formula ? ([[cell.address, cell]] as const) : ([] as const))),
+  )
+}
+
+function matchingRichTextArtifacts(sheet: WorkbookSnapshot['sheets'][number]): readonly WorkbookRichTextCellSnapshot[] {
+  const cellsByAddress = richTextSourceStringCellsByAddress(sheet)
+  return richTextArtifactCells(sheet).filter((artifact) => {
+    const cell = cellsByAddress.get(artifact.address)
+    return cell?.value === artifact.text
+  })
+}
+
+function canMaterializeRichTextArtifacts(snapshot: WorkbookSnapshot): boolean {
+  let generatedCells = 0
+  for (const sheet of snapshot.sheets) {
+    for (const artifact of richTextArtifactCells(sheet)) {
+      if (!isValidCellAddress(artifact.address)) {
+        return false
+      }
+    }
+    const artifacts = matchingRichTextArtifacts(sheet)
+    generatedCells += artifacts.length
+    if (generatedCells > maxGeneratedRangeCells) {
+      return false
+    }
+    for (const artifact of artifacts) {
+      if (!richTextArtifactXmlMatchesStorage(artifact)) {
+        return false
+      }
+    }
+  }
+  return true
+}
+
 function hasOnlySimpleFilters(sheet: WorkbookSnapshot['sheets'][number]): boolean {
   return (sheet.metadata?.filters ?? []).every((filter) => !filter.criteria || filter.criteria.length === 0)
 }
@@ -119,6 +187,9 @@ function canUseBiligSimpleWriter(snapshot: WorkbookSnapshot): boolean {
     return false
   }
   if (!canMaterializeStyleArtifacts(snapshot)) {
+    return false
+  }
+  if (!canMaterializeRichTextArtifacts(snapshot)) {
     return false
   }
   return snapshot.sheets.every(
@@ -193,10 +264,12 @@ function replaceCell(cellsByAddress: Map<string, SimpleXlsxCell>, cell: SimpleXl
 function simpleSheetCells(
   sheet: WorkbookSnapshot['sheets'][number],
   formatCodesById: ReadonlyMap<string, string>,
+  richTextPatches: ReadonlyMap<string, SimpleRichTextPatch> | undefined,
 ): readonly SimpleXlsxCell[] {
   const cellsByAddress = new Map<string, SimpleXlsxCell>()
   for (const cell of sheet.cells) {
     const decoded = readCellCoordinates(cell.address)
+    const richTextPatch = richTextPatches?.get(cell.address)
     cellsByAddress.set(cell.address, {
       address: cell.address,
       row: decoded.row,
@@ -204,6 +277,7 @@ function simpleSheetCells(
       ...(cell.value !== undefined ? { value: cell.value } : {}),
       ...(cell.formula ? { formula: encodeFormulaForXlsx(cell.formula.replace(/^=/u, '')) } : {}),
       ...(cell.format?.trim() ? { numberFormat: cell.format.trim() } : {}),
+      ...richTextPatch,
     })
   }
   for (const styleRange of sheet.metadata?.styleRanges ?? []) {
@@ -267,10 +341,49 @@ function simpleDefinedNames(
   return output.length > 0 ? output : undefined
 }
 
+function sharedStringsXml(items: readonly string[]): string | undefined {
+  if (items.length === 0) {
+    return undefined
+  }
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    `<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${String(items.length)}" uniqueCount="${String(
+      items.length,
+    )}">`,
+    ...items,
+    '</sst>',
+  ].join('')
+}
+
+function buildRichTextExportPlan(snapshot: WorkbookSnapshot): SimpleRichTextExportPlan {
+  const cellsBySheet = new Map<WorkbookSnapshot['sheets'][number], Map<string, SimpleRichTextPatch>>()
+  const sharedStringItems: string[] = []
+  for (const sheet of snapshot.sheets.toSorted((left, right) => left.order - right.order)) {
+    const cellPatches = new Map<string, SimpleRichTextPatch>()
+    for (const artifact of matchingRichTextArtifacts(sheet)) {
+      if (artifact.storage === 'sharedString') {
+        cellPatches.set(artifact.address, { sharedStringIndex: sharedStringItems.length })
+        sharedStringItems.push(artifact.xml)
+        continue
+      }
+      cellPatches.set(artifact.address, { inlineStringXml: artifact.xml })
+    }
+    if (cellPatches.size > 0) {
+      cellsBySheet.set(sheet, cellPatches)
+    }
+  }
+  const outputSharedStringsXml = sharedStringsXml(sharedStringItems)
+  return {
+    cellsBySheet,
+    ...(outputSharedStringsXml !== undefined ? { sharedStringsXml: outputSharedStringsXml } : {}),
+  }
+}
+
 function simpleSheet(
   sheet: WorkbookSnapshot['sheets'][number],
   exportName: string,
   formatCodesById: ReadonlyMap<string, string>,
+  richTextPatches: ReadonlyMap<string, SimpleRichTextPatch> | undefined,
 ): SimpleXlsxSheet {
   const rows = sheet.metadata?.rows?.map((row) => ({
     index: row.index,
@@ -292,7 +405,7 @@ function simpleSheet(
   }))
   return {
     name: exportName,
-    cells: simpleSheetCells(sheet, formatCodesById),
+    cells: simpleSheetCells(sheet, formatCodesById, richTextPatches),
     ...(rows && rows.length > 0 ? { rows } : {}),
     ...(columns && columns.length > 0 ? { columns } : {}),
     ...(merges && merges.length > 0 ? { merges } : {}),
@@ -311,13 +424,22 @@ function simpleWorkbook(snapshot: WorkbookSnapshot): SimpleXlsxWorkbook {
     exportSheetIndexesByOriginalName.set(sheet.name, exportSheetIndexesByOriginalName.size)
   }
   const formatCodesById = new Map((snapshot.workbook.metadata?.formats ?? []).map((format) => [format.id, format.code]))
+  const richTextPlan = buildRichTextExportPlan(snapshot)
   const styles = simpleStyles(snapshot)
   const definedNames = simpleDefinedNames(snapshot, exportSheetNamesByOriginalName, exportSheetIndexesByOriginalName)
   const stylesXml = snapshot.workbook.metadata?.styleArtifacts?.stylesXml
   return {
-    sheets: orderedSheets.map((sheet) => simpleSheet(sheet, exportSheetNamesByOriginalName.get(sheet.name) ?? sheet.name, formatCodesById)),
+    sheets: orderedSheets.map((sheet) =>
+      simpleSheet(
+        sheet,
+        exportSheetNamesByOriginalName.get(sheet.name) ?? sheet.name,
+        formatCodesById,
+        richTextPlan.cellsBySheet.get(sheet),
+      ),
+    ),
     ...(styles ? { styles } : {}),
     ...(stylesXml ? { stylesXml } : {}),
+    ...(richTextPlan.sharedStringsXml ? { sharedStringsXml: richTextPlan.sharedStringsXml } : {}),
     ...(definedNames ? { definedNames } : {}),
   }
 }

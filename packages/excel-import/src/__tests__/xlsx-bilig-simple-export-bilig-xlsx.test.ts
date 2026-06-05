@@ -168,6 +168,99 @@ Promise.all([
     expect(output.hasDimension).toBe(true)
     expect(output.hasSharedStrings).toBe(false)
   }, 15_000)
+
+  it('exports rich text artifacts with @bilig/xlsx without loading SheetJS xlsx', () => {
+    const script = `
+const { createRequire } = require('node:module')
+const requireForCache = createRequire(process.cwd() + '/package.json')
+Promise.all([
+  import('./packages/excel-import/src/index.ts'),
+  import('./packages/xlsx/src/index.ts'),
+])
+  .then(([{ exportXlsx }, { readXlsxZipEntries }]) => {
+    const sharedRichStringXml = [
+      '<si>',
+      '<r><rPr><b/><sz val="10"/><color rgb="FF1F4E79"/><rFont val="Aptos"/></rPr><t>Important:</t></r>',
+      '<r><rPr><i/><sz val="10"/><color rgb="FFC00000"/><rFont val="Aptos"/></rPr><t xml:space="preserve"> Before signing off</t></r>',
+      '</si>',
+    ].join('')
+    const inlineRichStringXml = [
+      '<is>',
+      '<r><rPr><u/><sz val="11"/><color rgb="FF008000"/><rFont val="Aptos"/></rPr><t>Revenue</t></r>',
+      '<r><rPr><sz val="11"/><rFont val="Aptos"/></rPr><t xml:space="preserve"> sensitivity</t></r>',
+      '</is>',
+    ].join('')
+    const snapshot = {
+      version: 1,
+      workbook: { name: 'bilig-xlsx-rich-text-export' },
+      sheets: [
+        {
+          id: 1,
+          name: 'Labels',
+          order: 0,
+          cells: [
+            { address: 'A1', value: 'Important: Before signing off' },
+            { address: 'B1', value: 'Revenue sensitivity' },
+          ],
+          metadata: {
+            richTextArtifacts: {
+              cells: [
+                {
+                  address: 'A1',
+                  text: 'Important: Before signing off',
+                  storage: 'sharedString',
+                  xml: sharedRichStringXml,
+                },
+                {
+                  address: 'B1',
+                  text: 'Revenue sensitivity',
+                  storage: 'inlineString',
+                  xml: inlineRichStringXml,
+                },
+              ],
+            },
+          },
+        },
+      ],
+    }
+    const exported = exportXlsx(snapshot)
+    const zip = readXlsxZipEntries(exported)
+    const sharedStringsXml = new TextDecoder().decode(zip['xl/sharedStrings.xml'])
+    const sheetXml = new TextDecoder().decode(zip['xl/worksheets/sheet1.xml'])
+    const loaded = Object.keys(requireForCache.cache).filter((path) =>
+      /[\\\\/]node_modules[\\\\/](?:\\.pnpm[\\\\/]xlsx@[^\\\\/]+[\\\\/]node_modules[\\\\/]xlsx|xlsx)(?:[\\\\/]|$)/u.test(path)
+    )
+    process.stdout.write(JSON.stringify({
+      loaded,
+      bytes: exported.byteLength,
+      hasSharedStringPart: sharedStringsXml.includes(sharedRichStringXml),
+      hasSharedStringCell: sheetXml.includes('<c r="A1" t="s"><v>0</v></c>'),
+      hasInlineStringCell: sheetXml.includes('<c r="B1" t="inlineStr">' + inlineRichStringXml + '</c>'),
+    }) + '\\n')
+  })
+  .catch((error) => {
+    console.error(error)
+    process.exit(1)
+  })
+`
+    const result = spawnSync('pnpm', ['exec', 'tsx', '--eval', script], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+
+    expect(result.status, result.stderr).toBe(0)
+    const output: unknown = JSON.parse(result.stdout)
+    expect(isRichTextArtifactOutput(output)).toBe(true)
+    if (!isRichTextArtifactOutput(output)) {
+      throw new Error(`Unexpected child output: ${result.stdout}`)
+    }
+    expect(output.loaded).toEqual([])
+    expect(output.bytes).toBeGreaterThan(0)
+    expect(output.hasSharedStringPart).toBe(true)
+    expect(output.hasSharedStringCell).toBe(true)
+    expect(output.hasInlineStringCell).toBe(true)
+  }, 15_000)
 })
 
 function isBiligXlsxExportOutput(value: unknown): value is {
@@ -209,6 +302,27 @@ function isSparseStyleArtifactOutput(value: unknown): value is {
     typeof value['hasTailStyle'] === 'boolean' &&
     typeof value['hasDimension'] === 'boolean' &&
     typeof value['hasSharedStrings'] === 'boolean'
+  )
+}
+
+function isRichTextArtifactOutput(value: unknown): value is {
+  readonly loaded: readonly string[]
+  readonly bytes: number
+  readonly hasSharedStringPart: boolean
+  readonly hasSharedStringCell: boolean
+  readonly hasInlineStringCell: boolean
+} {
+  if (!isRecord(value)) {
+    return false
+  }
+  const loaded = value['loaded']
+  return (
+    Array.isArray(loaded) &&
+    loaded.every((entry) => typeof entry === 'string') &&
+    typeof value['bytes'] === 'number' &&
+    typeof value['hasSharedStringPart'] === 'boolean' &&
+    typeof value['hasSharedStringCell'] === 'boolean' &&
+    typeof value['hasInlineStringCell'] === 'boolean'
   )
 }
 

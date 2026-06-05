@@ -168,6 +168,38 @@ describe('@bilig/xlsx package boundary', () => {
     expect(sheetXml).toContain('<c r="CF65000" s="1"/>')
   })
 
+  it('writes rich shared strings and inline strings with @bilig/xlsx simple workbooks', () => {
+    const sharedStringsXml = [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="1" uniqueCount="1">',
+      '<si><r><rPr><b/></rPr><t>Important</t></r></si>',
+      '</sst>',
+    ].join('')
+    const inlineStringXml = '<is><r><rPr><i/></rPr><t>Inline rich</t></r></is>'
+    const workbook = {
+      sharedStringsXml,
+      sheets: [
+        {
+          name: 'Labels',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Important', sharedStringIndex: 0 },
+            { address: 'B1', row: 0, col: 1, value: 'Inline rich', inlineStringXml },
+          ],
+        },
+      ],
+    }
+    const zip = readXlsxZipEntries(writeSimpleXlsxWorkbook(workbook))
+    const contentTypesXml = textDecoder.decode(zip['[Content_Types].xml'])
+    const relsXml = textDecoder.decode(zip['xl/_rels/workbook.xml.rels'])
+    const sheetXml = textDecoder.decode(zip['xl/worksheets/sheet1.xml'])
+
+    expect(textDecoder.decode(zip['xl/sharedStrings.xml'])).toBe(sharedStringsXml)
+    expect(contentTypesXml).toContain('/xl/sharedStrings.xml')
+    expect(relsXml).toContain('relationships/sharedStrings')
+    expect(sheetXml).toContain('<c r="A1" t="s"><v>0</v></c>')
+    expect(sheetXml).toContain(`<c r="B1" t="inlineStr">${inlineStringXml}</c>`)
+  })
+
   it('only applies direct style indexes when raw styles XML is supplied', () => {
     const workbook = {
       sheets: [

@@ -13,6 +13,8 @@ export interface SimpleXlsxCell {
   readonly styleId?: string
   readonly styleIndex?: number
   readonly numberFormat?: string
+  readonly sharedStringIndex?: number
+  readonly inlineStringXml?: string
 }
 
 export interface SimpleXlsxAxisEntry {
@@ -105,6 +107,7 @@ export interface SimpleXlsxWorkbook {
   readonly sheets: readonly SimpleXlsxSheet[]
   readonly styles?: readonly SimpleXlsxStyle[]
   readonly stylesXml?: string
+  readonly sharedStringsXml?: string
   readonly definedNames?: readonly SimpleXlsxDefinedName[]
 }
 
@@ -372,10 +375,14 @@ function styleIndexForCell(cell: SimpleXlsxCell, registry: StyleRegistry): numbe
   return index && index > 0 ? index : undefined
 }
 
-function cellValueXml(
-  value: SimpleXlsxCellValue | null | undefined,
-  formula: string | undefined,
-): { readonly type: string; readonly valueXml: string } {
+function cellValueXml(cell: SimpleXlsxCell, formula: string | undefined): { readonly type: string; readonly valueXml: string } {
+  if (!formula && cell.sharedStringIndex !== undefined && Number.isSafeInteger(cell.sharedStringIndex) && cell.sharedStringIndex >= 0) {
+    return { type: 's', valueXml: `<v>${String(cell.sharedStringIndex)}</v>` }
+  }
+  if (!formula && cell.inlineStringXml !== undefined) {
+    return { type: 'inlineStr', valueXml: cell.inlineStringXml }
+  }
+  const value = cell.value
   if (value === undefined || value === null) {
     return { type: '', valueXml: '' }
   }
@@ -394,7 +401,7 @@ function cellValueXml(
 function cellXml(cell: SimpleXlsxCell, registry: StyleRegistry): string {
   const styleIndex = styleIndexForCell(cell, registry)
   const formula = cell.formula?.replace(/^=/u, '')
-  const { type, valueXml } = cellValueXml(cell.value, formula)
+  const { type, valueXml } = cellValueXml(cell, formula)
   const attributes = [
     `r="${escapeXmlAttribute(cell.address)}"`,
     styleIndex !== undefined ? `s="${String(styleIndex)}"` : null,
@@ -585,7 +592,7 @@ function definedNamesXmlForWorkbook(definedNames: readonly SimpleXlsxDefinedName
     .join('')}</definedNames>`
 }
 
-function workbookRelationshipsXml(sheetCount: number): string {
+function workbookRelationshipsXml(sheetCount: number, hasSharedStrings: boolean): string {
   const sheetRelationships = Array.from(
     { length: sheetCount },
     (_entry, index) =>
@@ -599,6 +606,9 @@ function workbookRelationshipsXml(sheetCount: number): string {
     sheetRelationships,
     `<Relationship Id="rId${String(sheetCount + 1)}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>`,
     `<Relationship Id="rId${String(sheetCount + 2)}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>`,
+    hasSharedStrings
+      ? `<Relationship Id="rId${String(sheetCount + 3)}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>`
+      : '',
     '</Relationships>',
   ].join('')
 }
@@ -614,12 +624,15 @@ function rootRelationshipsXml(): string {
   ].join('')
 }
 
-function contentTypesXml(sheetCount: number): string {
+function contentTypesXml(sheetCount: number, hasSharedStrings: boolean): string {
   const worksheets = Array.from(
     { length: sheetCount },
     (_entry, index) =>
       `<Override PartName="/xl/worksheets/sheet${String(index + 1)}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`,
   ).join('')
+  const sharedStrings = hasSharedStrings
+    ? '<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>'
+    : ''
   return [
     xmlDeclaration(),
     `<Types xmlns="${contentTypesNs}">`,
@@ -628,6 +641,7 @@ function contentTypesXml(sheetCount: number): string {
     '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>',
     '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>',
     `<Override PartName="/xl/theme/theme1.xml" ContentType="${themeContentType}"/>`,
+    sharedStrings,
     '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>',
     '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>',
     worksheets,
@@ -691,15 +705,19 @@ export function writeSimpleXlsxWorkbook(workbook: SimpleXlsxWorkbook): Uint8Arra
     throw new Error('Cannot write an XLSX workbook without worksheets')
   }
   const registry = buildStyleRegistry(workbook)
+  const hasSharedStrings = workbook.sharedStringsXml !== undefined
   const zip: Record<string, Uint8Array> = {
-    '[Content_Types].xml': new TextEncoder().encode(contentTypesXml(workbook.sheets.length)),
+    '[Content_Types].xml': new TextEncoder().encode(contentTypesXml(workbook.sheets.length, hasSharedStrings)),
     '_rels/.rels': new TextEncoder().encode(rootRelationshipsXml()),
     'docProps/app.xml': new TextEncoder().encode(appPropertiesXml(workbook.sheets.length)),
     'docProps/core.xml': new TextEncoder().encode(corePropertiesXml()),
     'xl/workbook.xml': new TextEncoder().encode(workbookXml(workbook)),
-    'xl/_rels/workbook.xml.rels': new TextEncoder().encode(workbookRelationshipsXml(workbook.sheets.length)),
+    'xl/_rels/workbook.xml.rels': new TextEncoder().encode(workbookRelationshipsXml(workbook.sheets.length, hasSharedStrings)),
     'xl/styles.xml': new TextEncoder().encode(registry.stylesXml),
     'xl/theme/theme1.xml': new TextEncoder().encode(themeXml()),
+  }
+  if (workbook.sharedStringsXml !== undefined) {
+    zip['xl/sharedStrings.xml'] = new TextEncoder().encode(workbook.sharedStringsXml)
   }
   workbook.sheets.forEach((sheet, index) => {
     zip[`xl/worksheets/sheet${String(index + 1)}.xml`] = new TextEncoder().encode(worksheetXml(sheet, registry))
