@@ -1,4 +1,12 @@
-import * as XLSX from 'xlsx'
+import {
+  getZipText,
+  readXmlAttribute,
+  readXlsxZipEntries,
+  workbookSheetPathEntriesFromSource,
+  worksheetCellElementPattern,
+  worksheetCellOpeningTagPattern,
+  type XlsxZipEntries,
+} from '@bilig/xlsx'
 
 import type { LiteralInput, WorkbookExternalWorkbookReferenceSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import type {
@@ -6,6 +14,8 @@ import type {
   XlsxExternalWorkbookHydrationMatchKind,
   XlsxExternalWorkbookInput,
 } from './xlsx-import-limits.js'
+import { readLargeSimpleSharedStrings, type LargeSimpleSharedStrings } from './xlsx-large-simple-shared-strings.js'
+import { decodeXmlText } from './xlsx-large-simple-xml-text.js'
 
 interface ExternalCachedNumber {
   readonly kind: 'number'
@@ -55,12 +65,6 @@ export interface ImportedExternalLinkCacheRefreshResult {
 export type ImportedExternalLinkCacheUsage = Map<number, Map<string, Set<string>>>
 type ImportedExternalWorkbookReferences = Map<number, WorkbookExternalWorkbookReferenceSnapshot>
 
-interface SheetJsReadableCell {
-  readonly t?: unknown
-  readonly v?: unknown
-  readonly w?: unknown
-}
-
 export type ImportedExternalCacheSheetMap = ReadonlyMap<string, string>
 
 export interface ImportedExternalCacheSheetSnapshot {
@@ -72,10 +76,6 @@ export interface ImportedExternalCacheSheetSnapshot {
 export interface ImportedExternalCacheSheetPlan {
   readonly sheetsByExternalSheet: ReadonlyMap<string, ImportedExternalCacheSheetSnapshot>
   readonly sheetNamesByExternalSheet: ImportedExternalCacheSheetMap
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
 }
 
 function normalizeSheetName(sheetName: string): string {
@@ -255,27 +255,27 @@ export function resolveExternalWorkbookInputForReference(
   }
 }
 
-function sheetJsErrorLiteral(value: unknown, formattedValue: unknown): string {
-  if (typeof formattedValue === 'string' && formattedValue.startsWith('#')) {
-    return formattedValue
+const errorLiteralByCode = new Map<number, string>([
+  [0, '#NULL!'],
+  [7, '#DIV/0!'],
+  [15, '#VALUE!'],
+  [23, '#REF!'],
+  [29, '#NAME?'],
+  [36, '#NUM!'],
+  [42, '#N/A'],
+  [43, '#GETTING_DATA'],
+])
+
+function externalCachedErrorLiteral(rawValue: string): string {
+  const decoded = decodeXmlText(rawValue.trim())
+  if (decoded.startsWith('#')) {
+    return decoded
   }
-  if (typeof value === 'string') {
-    return value
+  const numericCode = Number(decoded)
+  if (Number.isInteger(numericCode)) {
+    return errorLiteralByCode.get(numericCode) ?? decoded
   }
-  const errorLiteralByCode = new Map<number, string>([
-    [0, '#NULL!'],
-    [7, '#DIV/0!'],
-    [15, '#VALUE!'],
-    [23, '#REF!'],
-    [29, '#NAME?'],
-    [36, '#NUM!'],
-    [42, '#N/A'],
-    [43, '#GETTING_DATA'],
-  ])
-  if (typeof value === 'number') {
-    return errorLiteralByCode.get(value) ?? String(value)
-  }
-  return typeof formattedValue === 'string' ? formattedValue : externalCachedStringLiteral(value)
+  return decoded
 }
 
 function externalCachedStringLiteral(value: unknown): string {
@@ -289,35 +289,110 @@ function externalCachedStringLiteral(value: unknown): string {
   return serialized ?? ''
 }
 
-function sheetJsCellToExternalCachedValue(cell: SheetJsReadableCell): ExternalCachedValue | null {
-  const value = cell.v
-  if (value === undefined || value === null) {
+function readWorkbookSheetNames(zip: XlsxZipEntries): string[] {
+  const workbookXml = getZipText(zip, 'xl/workbook.xml')
+  if (!workbookXml) {
+    return []
+  }
+  return [...workbookXml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?sheet\b(?:[^>"']|"[^"]*"|'[^']*')*\/?>/gu)].flatMap((match) => {
+    const name = readXmlAttribute(match[0], 'name')
+    return name ? [name] : []
+  })
+}
+
+function readExternalWorkbookSheetEntries(
+  zip: XlsxZipEntries,
+  referencedSheetNames: readonly string[],
+): Map<string, { readonly name: string; readonly path: string }> {
+  const workbookSheetNames = readWorkbookSheetNames(zip)
+  const requestedSheetNames = workbookSheetNames.length > 0 ? workbookSheetNames : referencedSheetNames
+  return new Map(
+    workbookSheetPathEntriesFromSource(zip, requestedSheetNames).map((entry) => [
+      normalizeSheetName(entry.name),
+      { name: entry.name, path: entry.path },
+    ]),
+  )
+}
+
+function readExternalSharedStrings(zip: XlsxZipEntries): LargeSimpleSharedStrings {
+  const sharedStringsXml = getZipText(zip, 'xl/sharedStrings.xml')
+  return sharedStringsXml ? readLargeSimpleSharedStrings(sharedStringsXml) : []
+}
+
+function readCellValueXml(cellXml: string): string | null {
+  return /<((?:[A-Za-z_][\w.-]*:)?v)\b(?:[^>"']|"[^"]*"|'[^']*')*>([\s\S]*?)<\/\1>/u.exec(cellXml)?.[2] ?? null
+}
+
+function readCellInlineString(cellXml: string): string | null {
+  const inlineStringXml = /<((?:[A-Za-z_][\w.-]*:)?is)\b(?:[^>"']|"[^"]*"|'[^']*')*>([\s\S]*?)<\/\1>/u.exec(cellXml)?.[2]
+  if (inlineStringXml === undefined) {
     return null
   }
-  const cellType = typeof cell.t === 'string' ? cell.t : undefined
-  if (cellType === 'b' || typeof value === 'boolean') {
-    return { kind: 'boolean', value: value === true || value === 1 || value === '1' }
-  }
-  if (cellType === 'e') {
-    return { kind: 'error', value: sheetJsErrorLiteral(value, cell.w) }
-  }
-  if (cellType === 's' || cellType === 'str') {
-    return { kind: 'string', value: externalCachedStringLiteral(value) }
-  }
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return { kind: 'number', value }
-  }
-  return { kind: 'string', value: externalCachedStringLiteral(value) }
+  return [...inlineStringXml.matchAll(/<((?:[A-Za-z_][\w.-]*:)?t)\b(?:[^>"']|"[^"]*"|'[^']*')*>([\s\S]*?)<\/\1>/gu)]
+    .map((match) => decodeXmlText(match[2] ?? ''))
+    .join('')
 }
 
-function sheetJsSheetName(workbook: XLSX.WorkBook, sheetName: string): string | undefined {
-  return workbook.SheetNames.find((candidate) => normalizeSheetName(candidate) === normalizeSheetName(sheetName))
+function readSharedStringValue(sharedStrings: LargeSimpleSharedStrings, rawValue: string): string | null {
+  const index = Number(decodeXmlText(rawValue.trim()))
+  if (!Number.isSafeInteger(index) || index < 0) {
+    return null
+  }
+  return sharedStrings[index]?.text ?? null
 }
 
-function readExternalWorkbookSheetCache(sheet: XLSX.WorkSheet, usedAddresses?: ReadonlySet<string>): ExternalCachedCells {
+function nativeCellToExternalCachedValue(
+  cellXml: string,
+  openingTag: string,
+  sharedStrings: LargeSimpleSharedStrings,
+): ExternalCachedValue | null {
+  const cellType = readXmlAttribute(openingTag, 't')
+  if (cellType === 'inlineStr') {
+    const inlineString = readCellInlineString(cellXml)
+    return inlineString === null ? null : { kind: 'string', value: inlineString }
+  }
+  const rawValue = readCellValueXml(cellXml)
+  if (rawValue === null) {
+    return null
+  }
+  switch (cellType) {
+    case 'b': {
+      const normalized = decodeXmlText(rawValue).trim().toLocaleLowerCase('en-US')
+      return { kind: 'boolean', value: normalized === '1' || normalized === 'true' }
+    }
+    case 'e':
+      return { kind: 'error', value: externalCachedErrorLiteral(rawValue) }
+    case 's': {
+      const value = readSharedStringValue(sharedStrings, rawValue)
+      return value === null ? null : { kind: 'string', value }
+    }
+    case 'str':
+      return { kind: 'string', value: decodeXmlText(rawValue) }
+    case null:
+    default:
+      break
+  }
+  const decodedValue = decodeXmlText(rawValue).trim()
+  const numberValue = Number(decodedValue)
+  return Number.isFinite(numberValue)
+    ? { kind: 'number', value: numberValue }
+    : { kind: 'string', value: externalCachedStringLiteral(decodedValue) }
+}
+
+function readExternalWorkbookSheetCache(
+  sheetXml: string,
+  sharedStrings: LargeSimpleSharedStrings,
+  usedAddresses?: ReadonlySet<string>,
+): ExternalCachedCells {
   const cells: ExternalCachedCells = new Map()
-  for (const [address, rawCell] of Object.entries(sheet)) {
-    if (address.startsWith('!') || !isRecord(rawCell)) {
+  for (const match of sheetXml.matchAll(worksheetCellElementPattern)) {
+    const cellXml = match[0]
+    const openingTag = worksheetCellOpeningTagPattern.exec(cellXml)?.[0]
+    if (!openingTag) {
+      continue
+    }
+    const address = readXmlAttribute(openingTag, 'r')
+    if (!address) {
       continue
     }
     const normalizedAddress = normalizeCellAddress(address)
@@ -327,7 +402,7 @@ function readExternalWorkbookSheetCache(sheet: XLSX.WorkSheet, usedAddresses?: R
     if (usedAddresses && !usedAddresses.has(normalizedAddress)) {
       continue
     }
-    const cachedValue = sheetJsCellToExternalCachedValue(rawCell)
+    const cachedValue = nativeCellToExternalCachedValue(cellXml, openingTag, sharedStrings)
     if (cachedValue) {
       cells.set(normalizedAddress, cachedValue)
     }
@@ -345,16 +420,11 @@ export function readExternalWorkbookCacheFromInput(
   reference: WorkbookExternalWorkbookReferenceSnapshot,
   usage: ImportedExternalLinkCacheUsage | undefined,
 ): ExternalCachedSheets {
-  const workbook = XLSX.read(toUint8Array(input.bytes), {
-    type: 'array',
-    cellFormula: true,
-    cellNF: false,
-    cellStyles: false,
-    cellText: false,
-    cellDates: false,
-  })
+  const zip = readXlsxZipEntries(toUint8Array(input.bytes))
   const referencedSheetNames = reference.sheetNames ?? []
-  const sheetNames = referencedSheetNames.length > 0 ? referencedSheetNames : workbook.SheetNames
+  const workbookSheetsByName = readExternalWorkbookSheetEntries(zip, referencedSheetNames)
+  const sharedStrings = readExternalSharedStrings(zip)
+  const sheetNames = referencedSheetNames.length > 0 ? referencedSheetNames : [...workbookSheetsByName.values()].map((entry) => entry.name)
   const sheets: ExternalCachedSheets = new Map()
   const bookUsage = usage?.get(reference.bookIndex)
   for (const linkedSheetName of sheetNames) {
@@ -363,12 +433,12 @@ export function readExternalWorkbookCacheFromInput(
     if (bookUsage && !usedAddresses) {
       continue
     }
-    const workbookSheetName = sheetJsSheetName(workbook, linkedSheetName)
-    const worksheet = workbookSheetName ? workbook.Sheets[workbookSheetName] : undefined
-    if (!worksheet) {
+    const workbookSheet = workbookSheetsByName.get(normalizedSheetName)
+    const worksheetXml = workbookSheet ? getZipText(zip, workbookSheet.path) : null
+    if (!worksheetXml) {
       continue
     }
-    const cells = readExternalWorkbookSheetCache(worksheet, usedAddresses)
+    const cells = readExternalWorkbookSheetCache(worksheetXml, sharedStrings, usedAddresses)
     if (cells.size > 0) {
       sheets.set(normalizedSheetName, { sheetName: linkedSheetName, cells })
     }

@@ -8,7 +8,6 @@ const packageManifestDirs = ['.', 'packages', 'apps', 'examples'] as const
 const forbiddenDependencySources = Object.freeze(['cdn.sheetjs.com'])
 const excelImportRuntimeXlsxImportAllowlist = new Set([
   'packages/excel-import/src/xlsx-export.ts',
-  'packages/excel-import/src/xlsx-external-cache.ts',
   'packages/excel-import/src/xlsx-sheetjs-import.ts',
 ])
 

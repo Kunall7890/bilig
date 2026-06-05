@@ -11,6 +11,8 @@ import {
   encodeCellAddress,
   encodeCellRange,
   normalizeCellAddress,
+  readXmlAttribute,
+  worksheetCellElementPattern,
 } from '../index.js'
 
 const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
@@ -64,5 +66,14 @@ describe('@bilig/xlsx package boundary', () => {
     expect(normalizeCellAddress('$b$7')).toBe('B7')
     expect(decodeCellRange('C3:A1')).toEqual({ s: { r: 0, c: 0 }, e: { r: 2, c: 2 } })
     expect(encodeCellRange({ s: { r: 0, c: 0 }, e: { r: 2, c: 2 } })).toBe('A1:C3')
+  })
+
+  it('exports native XML helpers for package readers without SheetJS', () => {
+    expect(readXmlAttribute('<sheet name="A &amp; B" r:id="rId1"/>', 'name')).toBe('A & B')
+    const cells = [
+      ...'<sheetData><row><c r="A1"><v>1</v></c><c r="B2" t="str"><v>x</v></c></row></sheetData>'.matchAll(worksheetCellElementPattern),
+    ].map((match) => match[0])
+
+    expect(cells).toHaveLength(2)
   })
 })
