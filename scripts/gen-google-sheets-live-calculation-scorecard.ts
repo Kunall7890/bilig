@@ -4,7 +4,6 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-import * as XLSX from 'xlsx'
 import {
   calculationLiveCaseSpecs,
   calculationLiveFormulaCell,
@@ -135,18 +134,7 @@ function main(): void {
 }
 
 function createGoogleSheetsFormulaWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.read(createCalculationCaseWorkbookBytes(), { type: 'buffer' })
-  const worksheet = workbook.Sheets[calculationLiveWorksheetName]
-  if (!worksheet) {
-    throw new Error(`Missing worksheet in Google Sheets calculation workbook: ${calculationLiveWorksheetName}`)
-  }
-  for (const caseSpec of calculationLiveCaseSpecs) {
-    worksheet[calculationLiveFormulaCell(caseSpec)] = {
-      t: 'n',
-      f: caseSpec.formula.replace(/^=/u, ''),
-    }
-  }
-  return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
+  return createCalculationCaseWorkbookBytes({ includeFormulas: true })
 }
 
 export function buildGoogleSheetsLiveCalculationScorecard(

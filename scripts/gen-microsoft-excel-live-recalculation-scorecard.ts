@@ -9,7 +9,6 @@ import { performance } from 'node:perf_hooks'
 
 import { WorkPaper } from '@bilig/headless'
 import { ValueTag } from '@bilig/protocol'
-import * as XLSX from 'xlsx'
 import { summarizeNumbers, type NumericSummary } from '../packages/benchmarks/src/stats.js'
 import {
   buildConditionalAggregationSheet,
@@ -28,6 +27,7 @@ import {
   stringArrayField,
   stringField,
 } from './json-scorecard-helpers.ts'
+import { writeBiligXlsxFixtureWorkbook } from './bilig-xlsx-fixture-writer.ts'
 import { formatJsonForRepo } from './scorecard-format.ts'
 
 export type MicrosoftExcelLiveRecalculationWorkload =
@@ -429,10 +429,7 @@ function runExcelSample(workload: MicrosoftExcelLiveRecalculationWorkload): Exce
 }
 
 function createExcelWorkbookBytes(workload: MicrosoftExcelLiveRecalculationWorkload): Uint8Array {
-  const worksheet = aoaToFormulaWorksheet(sheetForWorkload(workload))
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, worksheetName)
-  return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
+  return writeBiligXlsxFixtureWorkbook({ sheetName: worksheetName, rows: sheetForWorkload(workload) })
 }
 
 function createRecalculationAppleScript(workload: MicrosoftExcelLiveRecalculationWorkload): string {
@@ -567,22 +564,6 @@ function workpaperVerification(
         terminalChainValue: normalizeProtocolValue(workbook.getCellValue({ sheet: sheetId, row: rebuildRowCount - 1, col: 5 })),
       }
   }
-}
-
-function aoaToFormulaWorksheet(sheet: RecalculationSheet): XLSX.WorkSheet {
-  const worksheet = XLSX.utils.aoa_to_sheet(
-    sheet.map((row) => row.map((cell) => (typeof cell === 'string' && cell.startsWith('=') ? null : cell))),
-  )
-  for (let rowIndex = 0; rowIndex < sheet.length; rowIndex += 1) {
-    const row = sheet[rowIndex] ?? []
-    for (let colIndex = 0; colIndex < row.length; colIndex += 1) {
-      const cell = row[colIndex]
-      if (typeof cell === 'string' && cell.startsWith('=')) {
-        worksheet[XLSX.utils.encode_cell({ r: rowIndex, c: colIndex })] = { t: 'n', f: cell.slice(1) }
-      }
-    }
-  }
-  return worksheet
 }
 
 function parseExcelSampleOutput(rawOutput: string): ExcelSampleResult {

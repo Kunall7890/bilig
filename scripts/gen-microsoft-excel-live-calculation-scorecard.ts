@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url'
 
 import { WorkPaper } from '@bilig/headless'
 import { ValueTag } from '@bilig/protocol'
-import * as XLSX from 'xlsx'
+import { writeBiligXlsxFixtureWorkbook } from './bilig-xlsx-fixture-writer.ts'
 import {
   arrayField,
   asObject,
@@ -557,14 +557,19 @@ function evaluateLiveExcelCases(): LiveExcelEvaluation {
 }
 
 function createExcelWorkbookBytes(): Uint8Array {
-  const worksheet = XLSX.utils.aoa_to_sheet(buildCaseRowsForXlsx())
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, worksheetName)
-  return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
+  return writeBiligXlsxFixtureWorkbook({
+    sheetName: worksheetName,
+    rows: buildCaseRowsForXlsx(),
+    formulaStrings: 'as-blanks',
+  })
 }
 
-export function createCalculationCaseWorkbookBytes(): Uint8Array {
-  return createExcelWorkbookBytes()
+export function createCalculationCaseWorkbookBytes(options: { readonly includeFormulas?: boolean } = {}): Uint8Array {
+  return writeBiligXlsxFixtureWorkbook({
+    sheetName: worksheetName,
+    rows: options.includeFormulas === true ? buildCaseRowsForWorkPaper() : buildCaseRowsForXlsx(),
+    formulaStrings: options.includeFormulas === true ? 'as-formulas' : 'as-blanks',
+  })
 }
 
 function createReadCasesAppleScript(): string {

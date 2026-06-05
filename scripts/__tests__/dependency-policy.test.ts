@@ -10,6 +10,12 @@ const excelImportRuntimeXlsxImportAllowlist = new Set([
   'packages/excel-import/src/xlsx-export.ts',
   'packages/excel-import/src/xlsx-sheetjs-import.ts',
 ])
+const liveScorecardFixtureScripts = [
+  'scripts/gen-google-sheets-live-calculation-scorecard.ts',
+  'scripts/gen-google-sheets-live-recalculation-scorecard.ts',
+  'scripts/gen-microsoft-excel-live-calculation-scorecard.ts',
+  'scripts/gen-microsoft-excel-live-recalculation-scorecard.ts',
+] as const
 
 function packageManifestPaths(): string[] {
   return packageManifestDirs.flatMap((dir) => {
@@ -59,6 +65,10 @@ function runtimeXlsxImportViolations(path: string): string[] {
   return excelImportRuntimeXlsxImportAllowlist.has(relative) ? [] : [relative]
 }
 
+function hasRuntimeXlsxImport(source: string): boolean {
+  return /(?:^|\n)\s*import\s+\*\s+as\s+\w+\s+from\s+['"]xlsx['"]|require\(['"]xlsx['"]\)|import\(['"]xlsx['"]\)/u.test(source)
+}
+
 describe('repository dependency policy', () => {
   it('does not pin package dependencies to the SheetJS CDN tarball', () => {
     const violations = packageManifestPaths().flatMap(packageDependencySourceViolations)
@@ -75,6 +85,12 @@ describe('repository dependency policy', () => {
 
   it('keeps @bilig/excel-import runtime SheetJS imports isolated to the parser and writer boundary', () => {
     const violations = sourceFiles(join(repoRoot, 'packages/excel-import/src')).flatMap(runtimeXlsxImportViolations)
+
+    expect(violations).toEqual([])
+  })
+
+  it('keeps live scorecard fixture generation on @bilig/xlsx instead of SheetJS', () => {
+    const violations = liveScorecardFixtureScripts.filter((path) => hasRuntimeXlsxImport(readFileSync(join(repoRoot, path), 'utf8')))
 
     expect(violations).toEqual([])
   })
