@@ -13,8 +13,10 @@ const excelImportRuntimeXlsxImportAllowlist = new Set([
 const liveScorecardFixtureScripts = [
   'scripts/gen-google-sheets-live-calculation-scorecard.ts',
   'scripts/gen-google-sheets-live-recalculation-scorecard.ts',
+  'scripts/gen-google-sheets-live-structural-scorecard.ts',
   'scripts/gen-microsoft-excel-live-calculation-scorecard.ts',
   'scripts/gen-microsoft-excel-live-recalculation-scorecard.ts',
+  'scripts/gen-microsoft-excel-live-structural-scorecard.ts',
 ] as const
 
 function packageManifestPaths(): string[] {

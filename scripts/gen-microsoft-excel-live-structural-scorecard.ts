@@ -9,9 +9,9 @@ import { performance } from 'node:perf_hooks'
 
 import { WorkPaper } from '@bilig/headless'
 import { ValueTag } from '@bilig/protocol'
-import * as XLSX from 'xlsx'
 import { summarizeNumbers, type NumericSummary } from '../packages/benchmarks/src/stats.js'
 import { buildOverlappingAggregateSheet, buildStructuralColumnSheet } from '../packages/benchmarks/src/workpaper-benchmark-fixtures.js'
+import { writeBiligXlsxFixtureWorkbook } from './bilig-xlsx-fixture-writer.ts'
 import {
   arrayField,
   asObject,
@@ -385,12 +385,10 @@ function runExcelSample(operation: MicrosoftExcelLiveStructuralOperation): Excel
 }
 
 function createExcelWorkbookBytes(operation: MicrosoftExcelLiveStructuralOperation): Uint8Array {
-  const worksheet = XLSX.utils.aoa_to_sheet(
-    operation.includes('columns') ? buildStructuralColumnSheet(rowCount) : buildOverlappingAggregateSheet(rowCount),
-  )
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, worksheetName)
-  return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
+  return writeBiligXlsxFixtureWorkbook({
+    sheetName: worksheetName,
+    rows: operation.includes('columns') ? buildStructuralColumnSheet(rowCount) : buildOverlappingAggregateSheet(rowCount),
+  })
 }
 
 function createStructuralAppleScript(operation: MicrosoftExcelLiveStructuralOperation): string {
