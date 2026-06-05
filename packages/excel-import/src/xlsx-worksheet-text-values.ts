@@ -1,6 +1,5 @@
-import * as XLSX from 'xlsx'
-
 import { toLiteralInput } from './workbook-import-helpers.js'
+import { normalizeCellAddress } from '@bilig/xlsx'
 import { decodeExcelEscapedText } from './xlsx-escaped-text.js'
 import { workbookSheetPath } from './xlsx-workbook-sheet-paths.js'
 import { getZipText, readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
@@ -65,7 +64,7 @@ function normalizeAddress(address: string): string | null {
     return null
   }
   try {
-    return XLSX.utils.encode_cell(XLSX.utils.decode_cell(address.replaceAll('$', '')))
+    return normalizeCellAddress(address)
   } catch {
     return null
   }

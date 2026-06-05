@@ -37,6 +37,11 @@ import {
   readXlsxZipEntriesLazyFromByteSource,
   type XlsxZipByteSource,
 } from './xlsx-zip.js'
+import type {
+  XlsxSourceLiteralPatchExportInput,
+  XlsxSourceLiteralPatchFileExportInput,
+  XlsxSourceLiteralPatchFileExportResult,
+} from './xlsx-source-preserving-export.js'
 
 export { manualCalculationModeWarning, precisionAsDisplayedCalculationWarning } from './xlsx-calculation-settings.js'
 export {
@@ -77,6 +82,10 @@ export {
   normalizeWorkbookImportContentType,
 } from './workbook-import-content-types.js'
 export type { ExcelWorkbookImportContentType, WorkbookImportContentType } from './workbook-import-content-types.js'
+export { createFileImportedXlsxSourceReader, createTempFileImportedXlsxSourceReader } from './xlsx-source-bytes.js'
+export type { ImportedXlsxSourceReader } from './xlsx-source-bytes.js'
+export { importXlsxFromZipByteSource } from './xlsx-byte-source-import.js'
+export type { XlsxByteSourceImportOptions } from './xlsx-byte-source-import.js'
 
 const requireModule = createRequire(import.meta.url)
 const bundledLocalModules = readBundledLocalModules()
@@ -91,6 +100,14 @@ declare global {
 
 interface XlsxExportModule {
   readonly exportXlsx: (snapshot: WorkbookSnapshot) => Uint8Array
+}
+
+interface XlsxSourcePreservingExportModule {
+  readonly exportXlsxSourceLiteralPatches: (input: XlsxSourceLiteralPatchExportInput) => Uint8Array
+  readonly exportXlsxSourceLiteralPatchesToFile: (input: XlsxSourceLiteralPatchFileExportInput) => XlsxSourceLiteralPatchFileExportResult
+  readonly exportXlsxSourceLiteralPatchesToFileAsync: (
+    input: XlsxSourceLiteralPatchFileExportInput,
+  ) => Promise<XlsxSourceLiteralPatchFileExportResult>
 }
 
 interface CsvImportModule {
@@ -127,6 +144,7 @@ interface LargeSimpleInspectModule {
 }
 
 let xlsxExportModule: XlsxExportModule | undefined
+let xlsxSourcePreservingExportModule: XlsxSourcePreservingExportModule | undefined
 let csvImportModule: CsvImportModule | undefined
 let sheetJsImportModule: SheetJsImportModule | undefined
 let largeSimpleImportModule: LargeSimpleImportModule | undefined
@@ -135,6 +153,13 @@ let largeSimpleInspectModule: LargeSimpleInspectModule | undefined
 function loadXlsxExportModule(): XlsxExportModule {
   xlsxExportModule ??= readXlsxExportModule(readBundledLocalModule('./xlsx-export.js') ?? requireLocalModule('./xlsx-export.js'))
   return xlsxExportModule
+}
+
+function loadXlsxSourcePreservingExportModule(): XlsxSourcePreservingExportModule {
+  xlsxSourcePreservingExportModule ??= readXlsxSourcePreservingExportModule(
+    readBundledLocalModule('./xlsx-source-preserving-export.js') ?? requireLocalModule('./xlsx-source-preserving-export.js'),
+  )
+  return xlsxSourcePreservingExportModule
 }
 
 function loadCsvImportModule(): CsvImportModule {
@@ -168,6 +193,7 @@ function readBundledLocalModules(): Readonly<Record<string, unknown>> {
     return import.meta.glob(
       [
         './xlsx-export.ts',
+        './xlsx-source-preserving-export.ts',
         './csv-import.ts',
         './xlsx-sheetjs-import.ts',
         './xlsx-large-simple-import.ts',
@@ -207,6 +233,24 @@ function isXlsxExportFunction(value: unknown): value is XlsxExportModule['export
   return typeof value === 'function'
 }
 
+function isXlsxSourceLiteralPatchExportFunction(
+  value: unknown,
+): value is XlsxSourcePreservingExportModule['exportXlsxSourceLiteralPatches'] {
+  return typeof value === 'function'
+}
+
+function isXlsxSourceLiteralPatchFileExportFunction(
+  value: unknown,
+): value is XlsxSourcePreservingExportModule['exportXlsxSourceLiteralPatchesToFile'] {
+  return typeof value === 'function'
+}
+
+function isXlsxSourceLiteralPatchAsyncFileExportFunction(
+  value: unknown,
+): value is XlsxSourcePreservingExportModule['exportXlsxSourceLiteralPatchesToFileAsync'] {
+  return typeof value === 'function'
+}
+
 function isCsvImportFunction(value: unknown): value is CsvImportModule['importCsv'] {
   return typeof value === 'function'
 }
@@ -230,7 +274,27 @@ function isLargeSimpleInspectFunction(value: unknown): value is TryInspectLargeS
 function readXlsxExportModule(value: unknown): XlsxExportModule {
   const loadedExportXlsx = isRecord(value) ? value['exportXlsx'] : undefined
   if (isXlsxExportFunction(loadedExportXlsx)) {
-    return { exportXlsx: loadedExportXlsx }
+    return {
+      exportXlsx: loadedExportXlsx,
+    }
+  }
+  throw new Error('XLSX export module is missing required exports')
+}
+
+function readXlsxSourcePreservingExportModule(value: unknown): XlsxSourcePreservingExportModule {
+  const loadedExportXlsxSourceLiteralPatches = isRecord(value) ? value['exportXlsxSourceLiteralPatches'] : undefined
+  const loadedExportXlsxSourceLiteralPatchesToFile = isRecord(value) ? value['exportXlsxSourceLiteralPatchesToFile'] : undefined
+  const loadedExportXlsxSourceLiteralPatchesToFileAsync = isRecord(value) ? value['exportXlsxSourceLiteralPatchesToFileAsync'] : undefined
+  if (
+    isXlsxSourceLiteralPatchExportFunction(loadedExportXlsxSourceLiteralPatches) &&
+    isXlsxSourceLiteralPatchFileExportFunction(loadedExportXlsxSourceLiteralPatchesToFile) &&
+    isXlsxSourceLiteralPatchAsyncFileExportFunction(loadedExportXlsxSourceLiteralPatchesToFileAsync)
+  ) {
+    return {
+      exportXlsxSourceLiteralPatches: loadedExportXlsxSourceLiteralPatches,
+      exportXlsxSourceLiteralPatchesToFile: loadedExportXlsxSourceLiteralPatchesToFile,
+      exportXlsxSourceLiteralPatchesToFileAsync: loadedExportXlsxSourceLiteralPatchesToFileAsync,
+    }
   }
   throw new Error('XLSX export module is missing required exports')
 }
@@ -273,6 +337,20 @@ function readLargeSimpleInspectModule(value: unknown): LargeSimpleInspectModule 
 
 export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   return loadXlsxExportModule().exportXlsx(snapshot)
+}
+
+export function exportXlsxSourceLiteralPatches(input: XlsxSourceLiteralPatchExportInput): Uint8Array {
+  return loadXlsxSourcePreservingExportModule().exportXlsxSourceLiteralPatches(input)
+}
+
+export function exportXlsxSourceLiteralPatchesToFile(input: XlsxSourceLiteralPatchFileExportInput): XlsxSourceLiteralPatchFileExportResult {
+  return loadXlsxSourcePreservingExportModule().exportXlsxSourceLiteralPatchesToFile(input)
+}
+
+export function exportXlsxSourceLiteralPatchesToFileAsync(
+  input: XlsxSourceLiteralPatchFileExportInput,
+): Promise<XlsxSourceLiteralPatchFileExportResult> {
+  return loadXlsxSourcePreservingExportModule().exportXlsxSourceLiteralPatchesToFileAsync(input)
 }
 
 export function importCsv(csv: string, fileName: string, options?: CsvParseOptions): ImportedWorkbook {

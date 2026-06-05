@@ -292,7 +292,19 @@ export async function requireSharedPublicDocsDiscovery(args: {
       { path: 'packages/excel-import/README.md', content: args.excelImportReadme },
       { path: 'docs/public-api.md', content: args.publicApi },
     ],
-    ['@bilig/headless/xlsx', "import { exportXlsx, importXlsx } from '@bilig/headless/xlsx'", 'workbook.exportSnapshot()'],
+    ['@bilig/headless/xlsx', 'workbook.exportSnapshot()'],
+  )
+  requireIncludes(
+    args.excelImportReadme,
+    "import { exportXlsx, importXlsx } from '@bilig/headless/xlsx'",
+    'packages/excel-import/README.md',
+  )
+  requireDocumentsInclude(
+    [
+      { path: 'packages/headless/README.md', content: args.headlessReadme },
+      { path: 'docs/public-api.md', content: args.publicApi },
+    ],
+    ['importXlsxFile', 'exportWorkPaperXlsxToFileAsync'],
   )
 
   requireDocumentNotIncludes({ path: 'packages/headless/README.md', content: args.headlessReadme }, [

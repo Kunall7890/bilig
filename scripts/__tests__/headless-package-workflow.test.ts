@@ -39,6 +39,7 @@ describe('headless package workflow', () => {
     const mcpDirectoryDoc = readFileSync(resolve(repoRoot, 'docs/mcp-spreadsheet-server-directory.md'), 'utf8')
     expect(source).toMatch(/['"]packages\/excel-import\/\*\*['"]/)
     expect(source).toMatch(/['"]packages\/workbook\/\*\*['"]/)
+    expect(source).toMatch(/['"]packages\/xlsx\/\*\*['"]/)
     expect(source).toMatch(/['"]packages\/bilig\/\*\*['"]/)
     expect(source).toMatch(/['"]packages\/workpaper\/\*\*['"]/)
     expect(source).toMatch(/['"]packages\/create-workpaper\/\*\*['"]/)
@@ -50,6 +51,7 @@ describe('headless package workflow', () => {
     expect(source).toMatch(/['"]packages\/bilig-exceljs-formula-recalc\/\*\*['"]/)
     expect(source).toMatch(/['"]integrations\/n8n-nodes-workpaper\/\*\*['"]/)
     expect(source).toContain('pnpm --filter @bilig/excel-import build')
+    expect(source).toContain('pnpm --filter @bilig/xlsx build')
     expect(source).toContain('pnpm --filter @bilig/workbook build')
     expect(source).toContain('pnpm --filter bilig-workpaper build')
     expect(source).toContain('pnpm --filter @bilig/workpaper build')
@@ -64,9 +66,17 @@ describe('headless package workflow', () => {
       .filter((block) => block.includes('pnpm --filter bilig-workpaper build'))
     expect(runtimeBuildBlocks.length).toBeGreaterThanOrEqual(3)
     for (const runtimeBuildBlock of runtimeBuildBlocks) {
+      const nativeXlsxBuildIndex = runtimeBuildBlock.indexOf('pnpm --filter @bilig/xlsx build')
+      const excelImportBuildIndex = runtimeBuildBlock.indexOf('pnpm --filter @bilig/excel-import build')
       const scopedXlsxBuildIndex = runtimeBuildBlock.indexOf('pnpm --filter @bilig/xlsx-formula-recalc build')
       const headlessBuildIndex = runtimeBuildBlock.indexOf('pnpm --filter @bilig/headless build')
       const unscopedWorkpaperBuildIndex = runtimeBuildBlock.indexOf('pnpm --filter bilig-workpaper build')
+      expect(nativeXlsxBuildIndex).toBeGreaterThanOrEqual(0)
+      expect(nativeXlsxBuildIndex).toBeLessThan(headlessBuildIndex)
+      if (excelImportBuildIndex >= 0) {
+        expect(nativeXlsxBuildIndex).toBeLessThan(excelImportBuildIndex)
+        expect(excelImportBuildIndex).toBeLessThan(headlessBuildIndex)
+      }
       expect(scopedXlsxBuildIndex).toBeLessThan(headlessBuildIndex)
       expect(headlessBuildIndex).toBeLessThan(unscopedWorkpaperBuildIndex)
     }
@@ -85,6 +95,8 @@ describe('headless package workflow', () => {
     expect(source).toContain('packages/excel-import')
     expect(source).toContain('packages/workbook/package.json')
     expect(source).toContain('packages/workbook')
+    expect(source).toContain('packages/xlsx/package.json')
+    expect(source).toContain('packages/xlsx')
     expect(source).toContain('packages/bilig/package.json')
     expect(source).toContain('packages/bilig')
     expect(source).toContain('packages/workpaper/package.json')

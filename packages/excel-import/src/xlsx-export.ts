@@ -59,8 +59,27 @@ import {
   worksheetCellElementPattern,
   worksheetCellOpeningTagPattern,
 } from './xlsx-style-xml.js'
-import { readImportedXlsxSourceBytes, readImportedXlsxSourceCellPatches } from './xlsx-source-bytes.js'
-import { tryExportSourcePreservingXlsx } from './xlsx-source-preserving-export.js'
+import { readImportedXlsxSourceBytes, readImportedXlsxSourceCellPatches, readImportedXlsxSourceReference } from './xlsx-source-bytes.js'
+import {
+  exportXlsxSourceLiteralPatches,
+  exportXlsxSourceLiteralPatchesToFileAsync,
+  exportXlsxSourceLiteralPatchesToFile,
+  tryExportSourcePreservingXlsx,
+  type XlsxSourceLiteralPatch,
+  type XlsxSourceLiteralPatchExportInput,
+  type XlsxSourceLiteralPatchFileExportInput,
+  type XlsxSourceLiteralPatchFileExportResult,
+} from './xlsx-source-preserving-export.js'
+
+export {
+  exportXlsxSourceLiteralPatches,
+  exportXlsxSourceLiteralPatchesToFileAsync,
+  exportXlsxSourceLiteralPatchesToFile,
+  type XlsxSourceLiteralPatch,
+  type XlsxSourceLiteralPatchExportInput,
+  type XlsxSourceLiteralPatchFileExportInput,
+  type XlsxSourceLiteralPatchFileExportResult,
+}
 
 function buildExportColumns(columns: readonly WorkbookAxisEntrySnapshot[] | undefined): XLSX.ColInfo[] | undefined {
   if (!columns || columns.length === 0) {
@@ -714,13 +733,14 @@ function applyMacroCodeNamesToWorkbook(
 }
 
 export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
-  const importedSourceBytes = readImportedXlsxSourceBytes(snapshot)
-  if (importedSourceBytes !== undefined) {
+  const importedSource = readImportedXlsxSourceReference(snapshot)
+  if (importedSource !== undefined) {
     const sourceCellPatches = readImportedXlsxSourceCellPatches(snapshot)
     if (sourceCellPatches.length === 0) {
-      return new Uint8Array(importedSourceBytes)
+      const importedSourceBytes = readImportedXlsxSourceBytes(snapshot)
+      return importedSourceBytes === undefined ? new Uint8Array() : new Uint8Array(importedSourceBytes)
     }
-    const sourcePreservingBytes = tryExportSourcePreservingXlsx(snapshot, importedSourceBytes)
+    const sourcePreservingBytes = tryExportSourcePreservingXlsx(snapshot, importedSource)
     if (sourcePreservingBytes !== null) {
       return sourcePreservingBytes
     }

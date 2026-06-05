@@ -6,6 +6,9 @@ const importedXlsxSourceCellPatches = Symbol.for('bilig.importedXlsxSourceCellPa
 export type ImportedXlsxSourceReader = {
   readonly byteLength: number
   readBytes(): Uint8Array
+  readRange?(start: number, end: number): Uint8Array
+  readRangeInto?(start: number, end: number, target: Uint8Array): Uint8Array
+  release?(): void
 }
 
 export type ImportedXlsxSourceReference = Uint8Array | ImportedXlsxSourceReader

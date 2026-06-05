@@ -1029,9 +1029,11 @@ of `@bilig/core`:
 `@bilig/headless/xlsx` exposes the CSV/XLSX boundary for WorkPaper consumers:
 
 - `importXlsx(bytes, fileName)`
+- `importXlsxFile(path, fileName?, options?)`
 - `importCsv(text, fileName, options?)`
 - `importWorkbookFile(bytes, fileName, contentType, options?)`
 - `exportXlsx(snapshot)`
+- `exportWorkPaperXlsxToFileAsync(workbook, outputPath)`
 - `CSV_CONTENT_TYPE`
 - `XLSX_CONTENT_TYPE`
 
@@ -1043,11 +1045,10 @@ pnpm add @bilig/headless
 ```
 
 ```ts
-import { readFileSync, writeFileSync } from 'node:fs'
 import { WorkPaper } from '@bilig/headless'
-import { exportXlsx, importXlsx } from '@bilig/headless/xlsx'
+import { exportWorkPaperXlsxToFileAsync, importXlsxFile } from '@bilig/headless/xlsx'
 
-const imported = importXlsx(new Uint8Array(readFileSync('model.xlsx')), 'model.xlsx')
+const imported = importXlsxFile('model.xlsx')
 const workbook = WorkPaper.buildFromSnapshot(imported.snapshot, {
   useColumnIndex: true,
 })
@@ -1057,15 +1058,21 @@ const firstSheet = firstSheetName === undefined ? undefined : workbook.getSheetI
 if (firstSheet === undefined) throw new Error('Workbook has no sheets')
 
 workbook.setCellContents({ sheet: firstSheet, row: 1, col: 1 }, 150_000)
-writeFileSync('model-edited.xlsx', exportXlsx(workbook.exportSnapshot()))
+await exportWorkPaperXlsxToFileAsync(workbook, 'model-edited.xlsx')
 workbook.dispose()
 ```
 
-Use `importXlsx(...).snapshot` with `WorkPaper.buildFromSnapshot()` when a
-consumer needs Excel workbook metadata such as defined names, tables, and
-translated structured references. `WorkPaper.buildFromSheets()` remains a
-metadata-free array/sheet constructor. Use `workbook.exportSnapshot()` with
-`exportXlsx()` to write an edited WorkPaper back to XLSX.
+Use `importXlsxFile(...).snapshot` with `WorkPaper.buildFromSnapshot()` when a
+large XLSX already lives on disk and a consumer needs Excel workbook metadata
+such as defined names, tables, and translated structured references.
+`WorkPaper.buildFromSheets()` remains a metadata-free array/sheet constructor.
+For large imported workbooks with scalar literal edits,
+`exportWorkPaperXlsxToFileAsync()` can patch the original XLSX package from its
+preserved source reader and write to disk without forcing a full in-memory
+export snapshot. Use `importXlsx(bytes, fileName)` for already-materialized
+bytes, and use `workbook.exportSnapshot()` with `exportXlsx()` for generated
+workbooks or edits that cannot be represented as source-preserving scalar
+patches.
 
 ### Core types added in the current tranche
 

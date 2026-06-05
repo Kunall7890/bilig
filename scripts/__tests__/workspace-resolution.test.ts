@@ -29,6 +29,14 @@ describe('workspace resolution', () => {
       packageDir: 'packages/workpaper',
       sourceEntry: 'packages/workpaper/src/xlsx.ts',
     })
+    expect(resolution['@bilig/xlsx']).toEqual({
+      packageDir: 'packages/xlsx',
+      sourceEntry: 'packages/xlsx/src/index.ts',
+    })
+    expect(resolution['@bilig/xlsx/address']).toEqual({
+      packageDir: 'packages/xlsx',
+      sourceEntry: 'packages/xlsx/src/address.ts',
+    })
     expect(resolution['@bilig/xlsx-formula-recalc']).toEqual({
       packageDir: 'packages/bilig-xlsx-formula-recalc',
       sourceEntry: 'packages/bilig-xlsx-formula-recalc/src/index.ts',

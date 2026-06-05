@@ -39,7 +39,7 @@ export interface GoogleSheetsLiveCalculationCapture {
   }
   readonly capture: {
     readonly transport: 'google-drive-connector'
-    readonly sourceWorkbook: 'xlsx-native-google-sheets-conversion'
+    readonly sourceWorkbook: 'bilig-xlsx-google-sheets-conversion'
     readonly valueRenderOption: 'UNFORMATTED_VALUE'
     readonly worksheetName: string
   }
@@ -214,7 +214,7 @@ export function parseGoogleSheetsLiveCalculationCapture(value: Record<string, un
     },
     capture: {
       transport: literalField(capture, 'transport', 'google-drive-connector'),
-      sourceWorkbook: literalField(capture, 'sourceWorkbook', 'xlsx-native-google-sheets-conversion'),
+      sourceWorkbook: literalField(capture, 'sourceWorkbook', 'bilig-xlsx-google-sheets-conversion'),
       valueRenderOption: literalField(capture, 'valueRenderOption', 'UNFORMATTED_VALUE'),
       worksheetName: stringField(capture, 'worksheetName'),
     },

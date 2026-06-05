@@ -11,7 +11,7 @@ import {
 } from './xlsx-import-limits.js'
 import type { tryInspectLargeSimpleXlsxHeadless } from './xlsx-large-simple-headless-inspect.js'
 import type { tryImportLargeSimpleXlsx } from './xlsx-large-simple-import.js'
-import { attachImportedXlsxSourceReader, detachImportedXlsxSourceBytes } from './xlsx-source-bytes.js'
+import { attachImportedXlsxSourceReader, detachImportedXlsxSourceBytes, type ImportedXlsxSourceReader } from './xlsx-source-bytes.js'
 import type { prepareSheetJsParserXlsxBytesFromZip } from './xlsx-style-only-blank-cells.js'
 import { readXlsxZipEntriesLazy, readXlsxZipEntriesLazyFromByteSource, type XlsxZipByteSource, type XlsxZipEntries } from './xlsx-zip.js'
 
@@ -109,10 +109,7 @@ export function importXlsxFromZipByteSource(
   }
   if (largeSimpleImport) {
     if (options.attachSourceReaderForUntouchedExport !== false) {
-      attachImportedXlsxSourceReader(largeSimpleImport.snapshot, {
-        byteLength: source.byteLength,
-        readBytes: () => readAllSourceBytes(source),
-      })
+      attachImportedXlsxSourceReader(largeSimpleImport.snapshot, importedXlsxSourceReaderFromByteSource(source))
     }
     return largeSimpleImport
   }
@@ -340,6 +337,19 @@ function inspectLargeSimpleXlsxSource(
 
 function readAllSourceBytes(source: XlsxZipByteSource): Uint8Array {
   return source.readRange(0, source.byteLength)
+}
+
+function importedXlsxSourceReaderFromByteSource(source: XlsxZipByteSource): ImportedXlsxSourceReader {
+  return isImportedXlsxSourceReader(source)
+    ? source
+    : {
+        byteLength: source.byteLength,
+        readBytes: () => readAllSourceBytes(source),
+      }
+}
+
+function isImportedXlsxSourceReader(source: XlsxZipByteSource): source is XlsxZipByteSource & ImportedXlsxSourceReader {
+  return typeof (source as Partial<ImportedXlsxSourceReader>).readBytes === 'function'
 }
 
 export function borrowXlsxZipByteSource(source: XlsxZipByteSource): XlsxZipByteSource {

@@ -1,6 +1,6 @@
 import type { LiteralInput, WorkbookSnapshot } from '@bilig/protocol'
 import { randomUUID } from 'node:crypto'
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, unlinkSync, writeSync } from 'node:fs'
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, statSync, unlinkSync, writeSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { XlsxZipByteSource } from './xlsx-zip.js'
@@ -69,6 +69,10 @@ export function readImportedXlsxSourceBytes(snapshot: WorkbookSnapshot): Uint8Ar
   return source instanceof Uint8Array ? source : source?.readBytes()
 }
 
+export function readImportedXlsxSourceReference(snapshot: WorkbookSnapshot): ImportedXlsxSourceReference | undefined {
+  return (snapshot as SnapshotWithImportedXlsxSource)[importedXlsxSourceBytes]
+}
+
 export function readImportedXlsxSourceCellPatches(snapshot: WorkbookSnapshot): readonly ImportedXlsxSourceCellPatch[] {
   return (snapshot as SnapshotWithImportedXlsxSource)[importedXlsxSourceCellPatches] ?? []
 }
@@ -91,9 +95,16 @@ export function createTempFileImportedXlsxSourceReader(bytes: Uint8Array): Impor
   mkdirSync(directory, { recursive: true })
   const path = join(directory, `${randomUUID()}.xlsx`)
   writeTempSourceBytes(path, bytes)
-  const reader = new TempFileImportedXlsxSourceReader(path, bytes.byteLength)
+  const reader = new FileImportedXlsxSourceReader(path, bytes.byteLength, true)
   tempFileSourceFinalizer?.register(reader, path, reader)
   return reader
+}
+
+export function createFileImportedXlsxSourceReader(
+  path: string,
+  byteLength = statSync(path).size,
+): ImportedXlsxSourceReader & XlsxZipByteSource {
+  return new FileImportedXlsxSourceReader(path, byteLength, false)
 }
 
 function writeTempSourceBytes(path: string, bytes: Uint8Array): void {
@@ -111,12 +122,13 @@ function writeTempSourceBytes(path: string, bytes: Uint8Array): void {
   }
 }
 
-class TempFileImportedXlsxSourceReader implements ImportedXlsxSourceReader, XlsxZipByteSource {
+class FileImportedXlsxSourceReader implements ImportedXlsxSourceReader, XlsxZipByteSource {
   private released = false
 
   constructor(
     private readonly path: string,
     readonly byteLength: number,
+    private readonly deleteOnRelease: boolean,
   ) {}
 
   readBytes(): Uint8Array {
@@ -177,11 +189,13 @@ class TempFileImportedXlsxSourceReader implements ImportedXlsxSourceReader, Xlsx
       return
     }
     this.released = true
-    tempFileSourceFinalizer?.unregister(this)
-    try {
-      unlinkSync(this.path)
-    } catch {
-      // The temp source is best-effort cleanup. Export still works if the file was already removed.
+    if (this.deleteOnRelease) {
+      tempFileSourceFinalizer?.unregister(this)
+      try {
+        unlinkSync(this.path)
+      } catch {
+        // The temp source is best-effort cleanup. Export still works if the file was already removed.
+      }
     }
   }
 }

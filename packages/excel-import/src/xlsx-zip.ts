@@ -12,7 +12,7 @@ export interface XlsxZipByteSource {
   inflateRawRangeChunksAsync?(
     start: number,
     end: number,
-    onChunk: XlsxZipChunkConsumer,
+    onChunk: XlsxZipAsyncChunkConsumer,
     options: { readonly chunkSize: number },
   ): Promise<boolean>
   release?(): void
@@ -26,6 +26,7 @@ export interface XlsxZipEntryMetadata {
 }
 
 export type XlsxZipChunkConsumer = (chunk: Uint8Array) => boolean | void
+export type XlsxZipAsyncChunkConsumer = (chunk: Uint8Array) => boolean | void | Promise<boolean | void>
 
 export function readXlsxZipEntries(source: XlsxZipSource): XlsxZipEntries {
   if (!(source instanceof Uint8Array)) {
@@ -115,7 +116,7 @@ export function forEachInflatedXlsxZipEntryChunk(
 export async function forEachInflatedXlsxZipEntryChunkAsync(
   zip: XlsxZipEntries,
   path: string,
-  onChunk: XlsxZipChunkConsumer,
+  onChunk: XlsxZipAsyncChunkConsumer,
   options: { readonly chunkSize?: number; readonly forceStreamingInflate?: boolean } = {},
 ): Promise<boolean> {
   const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
@@ -125,13 +126,27 @@ export async function forEachInflatedXlsxZipEntryChunkAsync(
     return false
   }
   if (!metadata || !source || !entry) {
-    return forEachInflatedXlsxZipEntryChunk(zip, path, onChunk, options)
+    return forEachInflatedXlsxZipEntryChunkInMemoryAsync(zip, path, onChunk, options.chunkSize ?? defaultZipEntryChunkSize)
   }
   await inflateCentralDirectoryEntryChunksAsync(source, entry.localHeaderOffset, entry.compressedSize, entry.compressionMethod, onChunk, {
     forceStreamingInflate: options.forceStreamingInflate === true,
     chunkSize: options.chunkSize ?? defaultZipEntryChunkSize,
     uncompressedSize: entry.uncompressedSize,
   })
+  return true
+}
+
+async function forEachInflatedXlsxZipEntryChunkInMemoryAsync(
+  zip: XlsxZipEntries,
+  path: string,
+  onChunk: XlsxZipAsyncChunkConsumer,
+  chunkSize: number,
+): Promise<boolean> {
+  const inflated = zip[normalizeZipPath(path)]
+  if (!inflated) {
+    return false
+  }
+  await emitInflatedChunksAsync(inflated, chunkSize, onChunk)
   return true
 }
 
@@ -426,7 +441,7 @@ async function inflateCentralDirectoryEntryChunksAsync(
   localHeaderOffset: number,
   compressedSize: number,
   compressionMethod: number,
-  onChunk: XlsxZipChunkConsumer,
+  onChunk: XlsxZipAsyncChunkConsumer,
   options: { readonly chunkSize: number; readonly forceStreamingInflate: boolean; readonly uncompressedSize: number },
 ): Promise<void> {
   const localHeader = readLocalFileHeader(source, localHeaderOffset)
@@ -442,7 +457,7 @@ async function inflateCentralDirectoryEntryChunksAsync(
   }
   if (compressionMethod === storedCompressionMethod) {
     const storedChunkScratch = source.readRangeInto ? new Uint8Array(Math.max(1, Math.trunc(options.chunkSize))) : undefined
-    forEachSourceChunk(source, dataStart, dataEnd, options.chunkSize, onChunk, storedChunkScratch)
+    await forEachSourceChunkAsync(source, dataStart, dataEnd, options.chunkSize, onChunk, storedChunkScratch)
     return
   }
   if (compressionMethod !== deflatedCompressionMethod) {
@@ -457,14 +472,15 @@ async function inflateCentralDirectoryEntryChunksAsync(
   if (await inflateCentralDirectoryEntryChunksWithNodeZlibAsync(source, dataStart, dataEnd, onChunk, options.chunkSize)) {
     return
   }
-  inflateCentralDirectoryEntryChunks(source, localHeaderOffset, compressedSize, compressionMethod, onChunk, options)
+  const inflated = inflateCentralDirectoryEntry(source, localHeaderOffset, compressedSize, compressionMethod)
+  await emitInflatedChunksAsync(inflated, options.chunkSize, onChunk)
 }
 
 async function inflateCentralDirectoryEntryChunksWithNodeZlibAsync(
   source: XlsxZipByteSource,
   dataStart: number,
   dataEnd: number,
-  onChunk: XlsxZipChunkConsumer,
+  onChunk: XlsxZipAsyncChunkConsumer,
   chunkSize: number,
 ): Promise<boolean> {
   try {
@@ -486,7 +502,7 @@ async function inflateCentralDirectoryEntryChunksWithNodeZlibAsync(
     try {
       for await (const chunk of compressedStream.pipe(inflate)) {
         const bytes = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk)
-        if (!emitInflatedChunks(bytes, chunkSize, onChunk)) {
+        if (!(await emitInflatedChunksAsync(bytes, chunkSize, onChunk))) {
           compressedStream.destroy()
           inflate.destroy()
           return true
@@ -500,6 +516,16 @@ async function inflateCentralDirectoryEntryChunksWithNodeZlibAsync(
   } catch {
     return false
   }
+}
+
+async function emitInflatedChunksAsync(chunk: Uint8Array, chunkSize: number, onChunk: XlsxZipAsyncChunkConsumer): Promise<boolean> {
+  for (let offset = 0; offset < chunk.byteLength; offset += chunkSize) {
+    // oxlint-disable-next-line eslint(no-await-in-loop) -- ZIP stream chunks must preserve order and backpressure.
+    if ((await onChunk(chunk.subarray(offset, Math.min(chunk.byteLength, offset + chunkSize)))) === false) {
+      return false
+    }
+  }
+  return true
 }
 
 function emitInflatedChunks(chunk: Uint8Array, chunkSize: number, onChunk: XlsxZipChunkConsumer): boolean {
@@ -542,6 +568,27 @@ function forEachSourceChunk(
   }
   for (let offset = start; offset < end; offset += normalizedChunkSize) {
     if (onChunk(readSourceRange(source, offset, Math.min(end, offset + normalizedChunkSize), scratch)) === false) {
+      return
+    }
+  }
+}
+
+async function forEachSourceChunkAsync(
+  source: XlsxZipByteSource,
+  start: number,
+  end: number,
+  chunkSize: number,
+  onChunk: XlsxZipAsyncChunkConsumer,
+  scratch: Uint8Array | undefined = undefined,
+): Promise<void> {
+  const normalizedChunkSize = Math.max(1, Math.trunc(chunkSize))
+  if (start === end) {
+    await onChunk(readSourceRange(source, start, end, scratch))
+    return
+  }
+  for (let offset = start; offset < end; offset += normalizedChunkSize) {
+    // oxlint-disable-next-line eslint(no-await-in-loop) -- Source chunks must preserve read order and consumer backpressure.
+    if ((await onChunk(readSourceRange(source, offset, Math.min(end, offset + normalizedChunkSize), scratch))) === false) {
       return
     }
   }

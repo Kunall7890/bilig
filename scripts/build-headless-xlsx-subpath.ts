@@ -16,8 +16,115 @@ mkdirSync(headlessDistDir, { recursive: true })
 rmSync(bundledXlsxDistDir, { recursive: true, force: true })
 cpSync(excelImportDistDir, bundledXlsxDistDir, { recursive: true })
 
-writeFileSync(join(headlessDistDir, 'xlsx.js'), "export * from './xlsx-internal/index.js'\n")
-writeFileSync(join(headlessDistDir, 'xlsx.d.ts'), "export * from './xlsx-internal/index.js'\n")
+writeFileSync(
+  join(headlessDistDir, 'xlsx.js'),
+  `import { writeFile } from 'node:fs/promises'
+import { basename } from 'node:path'
+import {
+  createFileImportedXlsxSourceReader,
+  exportXlsx,
+  exportXlsxSourceLiteralPatchesToFileAsync,
+  importXlsxFromZipByteSource,
+} from './xlsx-internal/index.js'
+
+export * from './xlsx-internal/index.js'
+
+const importedXlsxSourceBytes = Symbol.for('bilig.importedXlsxSourceBytes')
+const importedXlsxSourceCellPatches = Symbol.for('bilig.importedXlsxSourceCellPatches')
+
+function isSourceReference(value) {
+  return value instanceof Uint8Array || (value && typeof value.byteLength === 'number' && typeof value.readBytes === 'function')
+}
+
+function sourcePreservingPatchInputFromSnapshot(snapshot) {
+  const source = snapshot[importedXlsxSourceBytes]
+  const patches = snapshot[importedXlsxSourceCellPatches]
+  if (!isSourceReference(source) || !Array.isArray(patches) || patches.length === 0) {
+    return null
+  }
+  const literalPatches = patches
+    .filter((patch) => {
+      const value = patch?.value
+      return (
+        patch &&
+        (patch.kind === undefined || patch.kind === 'literal') &&
+        typeof patch.sheetName === 'string' &&
+        typeof patch.address === 'string' &&
+        (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
+      )
+    })
+    .map((patch) => ({
+      sheetName: patch.sheetName,
+      address: patch.address,
+      value: patch.value,
+    }))
+  return literalPatches.length > 0
+    ? {
+        source,
+        patches: literalPatches,
+        sheetNames: snapshot.sheets.map((sheet) => sheet.name),
+        workbookName: snapshot.workbook.name,
+      }
+    : null
+}
+
+export function exportWorkPaperXlsx(workbook) {
+  const snapshot =
+    typeof workbook.exportSourcePreservingXlsxSnapshot === 'function'
+      ? workbook.exportSourcePreservingXlsxSnapshot()
+      : null
+  return exportXlsx(snapshot ?? workbook.exportSnapshot())
+}
+
+export async function exportWorkPaperXlsxToFileAsync(workbook, outputPath) {
+  const snapshot =
+    typeof workbook.exportSourcePreservingXlsxSnapshot === 'function'
+      ? workbook.exportSourcePreservingXlsxSnapshot()
+      : null
+  const sourcePreservingInput = snapshot ? sourcePreservingPatchInputFromSnapshot(snapshot) : null
+  if (sourcePreservingInput) {
+    return exportXlsxSourceLiteralPatchesToFileAsync({
+      ...sourcePreservingInput,
+      outputPath,
+    })
+  }
+
+  const exported = exportXlsx(workbook.exportSnapshot())
+  await writeFile(outputPath, exported)
+  return { bytesWritten: exported.byteLength }
+}
+
+export function importXlsxFile(path, fileName = basename(path), options) {
+  const source = createFileImportedXlsxSourceReader(path)
+  try {
+    return importXlsxFromZipByteSource(source, fileName, options)
+  } catch (error) {
+    source.release?.()
+    throw error
+  }
+}
+`,
+)
+writeFileSync(
+  join(headlessDistDir, 'xlsx.d.ts'),
+  `import type { WorkbookSnapshot } from '@bilig/protocol'
+import type { ImportedWorkbook, XlsxByteSourceImportOptions, XlsxSourceLiteralPatchFileExportResult } from './xlsx-internal/index.js'
+
+export * from './xlsx-internal/index.js'
+
+export interface WorkPaperXlsxExportSource {
+  exportSnapshot(): WorkbookSnapshot
+  exportSourcePreservingXlsxSnapshot?(): WorkbookSnapshot | null
+}
+
+export declare function exportWorkPaperXlsx(workbook: WorkPaperXlsxExportSource): Uint8Array
+export declare function exportWorkPaperXlsxToFileAsync(
+  workbook: WorkPaperXlsxExportSource,
+  outputPath: string,
+): Promise<XlsxSourceLiteralPatchFileExportResult>
+export declare function importXlsxFile(path: string, fileName?: string, options?: XlsxByteSourceImportOptions): ImportedWorkbook
+`,
+)
 writeFileSync(
   join(headlessDistDir, 'formula-clinic-bin.js'),
   `#!/usr/bin/env node

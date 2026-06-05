@@ -40,7 +40,7 @@ export interface GoogleSheetsLiveStructuralCapture {
   readonly generatedAt: string
   readonly capture: {
     readonly transport: 'google-drive-connector'
-    readonly sourceWorkbook: 'xlsx-native-google-sheets-conversion'
+    readonly sourceWorkbook: 'bilig-xlsx-google-sheets-conversion'
     readonly valueRenderOption: 'UNFORMATTED_VALUE'
     readonly measuredGoogleSheetsOperation: 'structural-edit-and-read-verification-values'
     readonly sampleCount: number
@@ -280,7 +280,7 @@ export function parseGoogleSheetsLiveStructuralCapture(value: Record<string, unk
     generatedAt: stringField(value, 'generatedAt'),
     capture: {
       transport: literalField(capture, 'transport', 'google-drive-connector'),
-      sourceWorkbook: literalField(capture, 'sourceWorkbook', 'xlsx-native-google-sheets-conversion'),
+      sourceWorkbook: literalField(capture, 'sourceWorkbook', 'bilig-xlsx-google-sheets-conversion'),
       valueRenderOption: literalField(capture, 'valueRenderOption', 'UNFORMATTED_VALUE'),
       measuredGoogleSheetsOperation: literalField(capture, 'measuredGoogleSheetsOperation', 'structural-edit-and-read-verification-values'),
       sampleCount: numberField(capture, 'sampleCount'),

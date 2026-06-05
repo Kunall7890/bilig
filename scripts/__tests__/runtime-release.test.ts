@@ -258,6 +258,14 @@ describe('runtime release helpers', () => {
     expect(RUNTIME_NPM_PACKAGE_DIRS).toContain('packages/headless')
   })
 
+  it('publishes the native XLSX implementation package before dependent runtime packages', () => {
+    expect(RUNTIME_PACKAGE_DIRS).toContain('packages/xlsx')
+    expect(RUNTIME_NPM_PACKAGE_DIRS).toContain('packages/xlsx')
+    expect(RUNTIME_NPM_PACKAGE_DIRS.indexOf('packages/xlsx')).toBeLessThan(RUNTIME_NPM_PACKAGE_DIRS.indexOf('packages/headless'))
+    expect(isRuntimeAffectingPath('packages/xlsx/package.json')).toBe(true)
+    expect(isRuntimePackageContentPath('packages/xlsx/src/index.ts')).toBe(true)
+  })
+
   it('publishes the create-workpaper starter through the common runtime workflow', () => {
     expect(RUNTIME_PACKAGE_DIRS).toContain('packages/create-workpaper')
     expect(RUNTIME_NPM_PACKAGE_DIRS).toContain('packages/create-workpaper')

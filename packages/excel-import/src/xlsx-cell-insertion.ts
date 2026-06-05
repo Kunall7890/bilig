@@ -1,5 +1,4 @@
-import * as XLSX from 'xlsx'
-
+import { decodeCellAddress, decodeCellRange, encodeCellRange, type XlsxCellRange } from '@bilig/xlsx'
 import { escapeXmlAttribute } from './xlsx-export-xml.js'
 
 interface MissingCellXml {
@@ -13,16 +12,16 @@ const worksheetCellElementPattern = /<c\b[^>]*(?:\/>|>[\s\S]*?<\/c>)/gu
 const worksheetCellOpeningTagPattern = /^<c\b[^>]*(?:\/>|>)/u
 
 function rowNumberForAddress(address: string): number {
-  return XLSX.utils.decode_cell(address).r + 1
+  return decodeCellAddress(address).r + 1
 }
 
 function columnIndexForAddress(address: string): number {
-  return XLSX.utils.decode_cell(address).c
+  return decodeCellAddress(address).c
 }
 
-function updateRangeWithAddress(range: XLSX.Range | null, address: string): XLSX.Range | null {
+function updateRangeWithAddress(range: XlsxCellRange | null, address: string): XlsxCellRange | null {
   try {
-    const decoded = XLSX.utils.decode_cell(address)
+    const decoded = decodeCellAddress(address)
     return range
       ? {
           s: {
@@ -43,21 +42,21 @@ function updateRangeWithAddress(range: XLSX.Range | null, address: string): XLSX
   }
 }
 
-function existingWorksheetDimensionRange(sheetXml: string): XLSX.Range | null {
+function existingWorksheetDimensionRange(sheetXml: string): XlsxCellRange | null {
   const dimensionXml = findXmlElement(sheetXml, 'dimension')?.xml
   const ref = dimensionXml ? /\bref="([^"]+)"/u.exec(dimensionXml)?.[1] : undefined
   if (!ref) {
     return null
   }
   try {
-    return XLSX.utils.decode_range(ref)
+    return decodeCellRange(ref)
   } catch {
     return null
   }
 }
 
-function setWorksheetDimensionRef(sheetXml: string, range: XLSX.Range): string {
-  const ref = escapeXmlAttribute(XLSX.utils.encode_range(range))
+function setWorksheetDimensionRef(sheetXml: string, range: XlsxCellRange): string {
+  const ref = escapeXmlAttribute(encodeCellRange(range))
   const dimensionElement = findXmlElement(sheetXml, 'dimension')
   if (dimensionElement) {
     const dimensionXml = /\bref="[^"]*"/u.test(dimensionElement.xml)
@@ -74,7 +73,7 @@ function expandWorksheetDimensionForMissingCells(sheetXml: string, cells: readon
   for (const cell of cells) {
     range = updateRangeWithAddress(range, cell.address)
   }
-  if (!range || (originalRange && XLSX.utils.encode_range(range) === XLSX.utils.encode_range(originalRange))) {
+  if (!range || (originalRange && encodeCellRange(range) === encodeCellRange(originalRange))) {
     return sheetXml
   }
   return setWorksheetDimensionRef(sheetXml, range)

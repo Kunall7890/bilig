@@ -43,7 +43,7 @@ export interface GoogleSheetsLiveRecalculationCapture {
   readonly generatedAt: string
   readonly capture: {
     readonly transport: 'google-drive-connector'
-    readonly sourceWorkbook: 'xlsx-native-google-sheets-conversion'
+    readonly sourceWorkbook: 'bilig-xlsx-google-sheets-conversion'
     readonly valueRenderOption: 'UNFORMATTED_VALUE'
     readonly measuredGoogleSheetsOperation: 'edit-and-read-recalculated-values'
     readonly sampleCount: number
@@ -324,7 +324,7 @@ export function parseGoogleSheetsLiveRecalculationCapture(value: Record<string, 
     generatedAt: stringField(value, 'generatedAt'),
     capture: {
       transport: literalField(capture, 'transport', 'google-drive-connector'),
-      sourceWorkbook: literalField(capture, 'sourceWorkbook', 'xlsx-native-google-sheets-conversion'),
+      sourceWorkbook: literalField(capture, 'sourceWorkbook', 'bilig-xlsx-google-sheets-conversion'),
       valueRenderOption: literalField(capture, 'valueRenderOption', 'UNFORMATTED_VALUE'),
       measuredGoogleSheetsOperation: literalField(capture, 'measuredGoogleSheetsOperation', 'edit-and-read-recalculated-values'),
       sampleCount: numberField(capture, 'sampleCount'),

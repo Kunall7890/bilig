@@ -1,67 +1,172 @@
 import type { WorkbookSnapshot } from '@bilig/protocol'
-import { createRequire } from 'node:module'
+import {
+  createFileImportedXlsxSourceReader as createFileImportedXlsxSourceReaderImpl,
+  createTempFileImportedXlsxSourceReader as createTempFileImportedXlsxSourceReaderImpl,
+  exportXlsx as exportXlsxImpl,
+  exportXlsxSourceLiteralPatches as exportXlsxSourceLiteralPatchesImpl,
+  exportXlsxSourceLiteralPatchesToFile as exportXlsxSourceLiteralPatchesToFileImpl,
+  exportXlsxSourceLiteralPatchesToFileAsync as exportXlsxSourceLiteralPatchesToFileAsyncImpl,
+  importXlsx as importXlsxImpl,
+  importXlsxFromZipByteSource as importXlsxFromZipByteSourceImpl,
+  type ImportedWorkbook,
+  type XlsxByteSourceImportOptions,
+  type XlsxImportOptions,
+} from '@bilig/excel-import'
+import { writeFile } from 'node:fs/promises'
+import { basename } from 'node:path'
 
-interface ImportedWorkbook {
-  readonly snapshot: WorkbookSnapshot
+export interface XlsxSourceLiteralPatch {
+  readonly sheetName: string
+  readonly address: string
+  readonly value: string | number | boolean | null
 }
 
-interface HeadlessXlsxModule {
-  readonly exportXlsx: (snapshot: WorkbookSnapshot) => Uint8Array
-  readonly importXlsx: (bytes: Uint8Array | ArrayBuffer, fileName: string, options?: unknown) => ImportedWorkbook
+export interface XlsxSourceLiteralPatchExportInput {
+  readonly source: Uint8Array | XlsxSourceReader
+  readonly patches: readonly XlsxSourceLiteralPatch[]
+  readonly sheetNames?: readonly string[]
+  readonly workbookName?: string
 }
 
-type HeadlessExportXlsx = HeadlessXlsxModule['exportXlsx']
-type HeadlessImportXlsx = HeadlessXlsxModule['importXlsx']
-
-const requireModule = createRequire(import.meta.url)
-let loadedModule: HeadlessXlsxModule | undefined
-
-function loadHeadlessXlsxModule(): HeadlessXlsxModule {
-  loadedModule ??= readHeadlessXlsxModule(
-    tryRequire('@bilig/excel-import') ?? tryRequire('../../excel-import/src/index.ts') ?? tryRequire('../../excel-import/dist/index.js'),
-  )
-  return loadedModule
+export interface XlsxSourceLiteralPatchFileExportInput extends XlsxSourceLiteralPatchExportInput {
+  readonly outputPath: string
 }
 
-function tryRequire(path: string): unknown {
-  try {
-    return requireModule(path)
-  } catch (error) {
-    if (isRecord(error) && error['code'] === 'MODULE_NOT_FOUND') {
-      return undefined
-    }
-    throw error
-  }
+export interface XlsxSourceLiteralPatchFileExportResult {
+  readonly bytesWritten: number
 }
 
-function readHeadlessXlsxModule(value: unknown): HeadlessXlsxModule {
-  const loadedExportXlsx = isRecord(value) ? value['exportXlsx'] : undefined
-  const loadedImportXlsx = isRecord(value) ? value['importXlsx'] : undefined
-  if (isHeadlessExportXlsx(loadedExportXlsx) && isHeadlessImportXlsx(loadedImportXlsx)) {
-    return {
-      exportXlsx: loadedExportXlsx,
-      importXlsx: loadedImportXlsx,
-    }
-  }
-  throw new Error('Bilig headless XLSX subpath is missing importXlsx/exportXlsx')
+export interface XlsxSourceReader {
+  readonly byteLength: number
+  readBytes(): Uint8Array
+  readRange?(start: number, end: number): Uint8Array
+  readRangeInto?(start: number, end: number, target: Uint8Array): Uint8Array
+  release?(): void
 }
 
-function isHeadlessExportXlsx(value: unknown): value is HeadlessExportXlsx {
-  return typeof value === 'function'
+export interface XlsxZipSourceReader extends XlsxSourceReader {
+  readRange(start: number, end: number): Uint8Array
 }
 
-function isHeadlessImportXlsx(value: unknown): value is HeadlessImportXlsx {
-  return typeof value === 'function'
+export interface WorkPaperXlsxExportSource {
+  exportSnapshot(): WorkbookSnapshot
+  exportSourcePreservingXlsxSnapshot?(): WorkbookSnapshot | null
+}
+
+const importedXlsxSourceBytes = Symbol.for('bilig.importedXlsxSourceBytes')
+const importedXlsxSourceCellPatches = Symbol.for('bilig.importedXlsxSourceCellPatches')
+
+type SnapshotWithImportedXlsxSource = WorkbookSnapshot & {
+  readonly [importedXlsxSourceBytes]?: Uint8Array | XlsxSourceReader
+  readonly [importedXlsxSourceCellPatches]?: readonly unknown[]
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
-export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
-  return loadHeadlessXlsxModule().exportXlsx(snapshot)
+function isXlsxSourceReader(value: unknown): value is XlsxSourceReader {
+  return isRecord(value) && typeof value['byteLength'] === 'number' && typeof value['readBytes'] === 'function'
 }
 
-export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string, options?: unknown): ImportedWorkbook {
-  return loadHeadlessXlsxModule().importXlsx(bytes, fileName, options)
+function isXlsxSourceReference(value: unknown): value is Uint8Array | XlsxSourceReader {
+  return value instanceof Uint8Array || isXlsxSourceReader(value)
+}
+
+function isScalarXlsxPatchValue(value: unknown): value is XlsxSourceLiteralPatch['value'] {
+  return value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+}
+
+function isXlsxSourceLiteralPatch(value: unknown): value is XlsxSourceLiteralPatch {
+  return (
+    isRecord(value) &&
+    (value['kind'] === undefined || value['kind'] === 'literal') &&
+    typeof value['sheetName'] === 'string' &&
+    typeof value['address'] === 'string' &&
+    isScalarXlsxPatchValue(value['value'])
+  )
+}
+
+function sourcePreservingPatchInputFromSnapshot(snapshot: WorkbookSnapshot): XlsxSourceLiteralPatchExportInput | null {
+  const sourceSnapshot = snapshot as SnapshotWithImportedXlsxSource
+  const source = sourceSnapshot[importedXlsxSourceBytes]
+  const patches = sourceSnapshot[importedXlsxSourceCellPatches]
+  if (!isXlsxSourceReference(source) || patches === undefined || patches.length === 0) {
+    return null
+  }
+  const literalPatches = patches.filter(isXlsxSourceLiteralPatch).map((patch) => ({
+    sheetName: patch.sheetName,
+    address: patch.address,
+    value: patch.value,
+  }))
+  return literalPatches.length > 0
+    ? {
+        source,
+        patches: literalPatches,
+        sheetNames: snapshot.sheets.map((sheet) => sheet.name),
+        workbookName: snapshot.workbook.name,
+      }
+    : null
+}
+
+export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
+  return exportXlsxImpl(snapshot)
+}
+
+export function createFileImportedXlsxSourceReader(path: string, byteLength?: number): XlsxZipSourceReader {
+  return createFileImportedXlsxSourceReaderImpl(path, byteLength)
+}
+
+export function createTempFileImportedXlsxSourceReader(bytes: Uint8Array): XlsxZipSourceReader {
+  return createTempFileImportedXlsxSourceReaderImpl(bytes)
+}
+
+export function exportXlsxSourceLiteralPatches(input: XlsxSourceLiteralPatchExportInput): Uint8Array {
+  return exportXlsxSourceLiteralPatchesImpl(input)
+}
+
+export function exportXlsxSourceLiteralPatchesToFile(input: XlsxSourceLiteralPatchFileExportInput): XlsxSourceLiteralPatchFileExportResult {
+  return exportXlsxSourceLiteralPatchesToFileImpl(input)
+}
+
+export function exportXlsxSourceLiteralPatchesToFileAsync(
+  input: XlsxSourceLiteralPatchFileExportInput,
+): Promise<XlsxSourceLiteralPatchFileExportResult> {
+  return exportXlsxSourceLiteralPatchesToFileAsyncImpl(input)
+}
+
+export function exportWorkPaperXlsx(workbook: WorkPaperXlsxExportSource): Uint8Array {
+  return exportXlsx(workbook.exportSourcePreservingXlsxSnapshot?.() ?? workbook.exportSnapshot())
+}
+
+export async function exportWorkPaperXlsxToFileAsync(
+  workbook: WorkPaperXlsxExportSource,
+  outputPath: string,
+): Promise<XlsxSourceLiteralPatchFileExportResult> {
+  const sourcePreservingSnapshot = workbook.exportSourcePreservingXlsxSnapshot?.()
+  const sourcePreservingInput = sourcePreservingSnapshot ? sourcePreservingPatchInputFromSnapshot(sourcePreservingSnapshot) : null
+  if (sourcePreservingInput) {
+    return exportXlsxSourceLiteralPatchesToFileAsync({
+      ...sourcePreservingInput,
+      outputPath,
+    })
+  }
+
+  const exported = exportXlsx(workbook.exportSnapshot())
+  await writeFile(outputPath, exported)
+  return { bytesWritten: exported.byteLength }
+}
+
+export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string, options?: XlsxImportOptions): ImportedWorkbook {
+  return importXlsxImpl(bytes, fileName, options)
+}
+
+export function importXlsxFile(path: string, fileName = basename(path), options?: XlsxByteSourceImportOptions): ImportedWorkbook {
+  const source = createFileImportedXlsxSourceReader(path)
+  try {
+    return importXlsxFromZipByteSourceImpl(source, fileName, options)
+  } catch (error) {
+    source.release?.()
+    throw error
+  }
 }

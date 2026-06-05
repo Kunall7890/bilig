@@ -6,6 +6,7 @@ export const RUNTIME_PACKAGE_CONTENT_PATH_PATTERNS = [
   'packages/protocol/**',
   'packages/workbook/**',
   'packages/wasm-kernel/**',
+  'packages/xlsx/**',
   'packages/formula/**',
   'packages/core/**',
   'packages/excel-import/**',

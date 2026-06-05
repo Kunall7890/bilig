@@ -42,7 +42,7 @@ export interface GoogleSheetsLiveLargeWorkbookCapture {
   readonly generatedAt: string
   readonly capture: {
     readonly transport: 'google-drive-connector'
-    readonly sourceWorkbook: 'xlsx-native-google-sheets-conversion'
+    readonly sourceWorkbook: 'bilig-xlsx-google-sheets-conversion'
     readonly valueRenderOption: 'UNFORMATTED_VALUE'
     readonly measuredGoogleSheetsOperation: 'native-xlsx-import-and-read-terminal-cell'
     readonly sampleCount: number
@@ -298,7 +298,7 @@ export function parseGoogleSheetsLiveLargeWorkbookCapture(value: Record<string, 
     generatedAt: stringField(value, 'generatedAt'),
     capture: {
       transport: literalField(capture, 'transport', 'google-drive-connector'),
-      sourceWorkbook: literalField(capture, 'sourceWorkbook', 'xlsx-native-google-sheets-conversion'),
+      sourceWorkbook: literalField(capture, 'sourceWorkbook', 'bilig-xlsx-google-sheets-conversion'),
       valueRenderOption: literalField(capture, 'valueRenderOption', 'UNFORMATTED_VALUE'),
       measuredGoogleSheetsOperation: literalField(capture, 'measuredGoogleSheetsOperation', 'native-xlsx-import-and-read-terminal-cell'),
       sampleCount: numberField(capture, 'sampleCount'),

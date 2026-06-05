@@ -152,7 +152,7 @@ mcp:server`.
 
 Current checked npm footprint for `@bilig/headless@0.161.0`:
 
-- Pack dry run: `835 kB` tarball, `5.11 MB` unpacked, `811` package entries.
+- Pack dry run: `849 kB` tarball, `5.20 MB` unpacked, `817` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper; reduced workbook reports use the
@@ -552,18 +552,22 @@ The public framework guide is
 ## XLSX Import And Export
 
 Use the `@bilig/headless/xlsx` subpath for XLSX import, WorkPaper calculation,
-edits, and XLSX export from the same published npm package:
+edits, and XLSX export from the same published npm package. For large imported
+XLSX files, prefer `importXlsxFile(path)` with
+`exportWorkPaperXlsxToFileAsync(workbook, outputPath)`: the import reads through
+the file-backed ZIP byte-source path, and scalar literal exports patch the
+original XLSX package from that source reader instead of forcing the full
+`exportSnapshot() -> exportXlsx()` in-memory round trip.
 
 ```sh
 pnpm add @bilig/headless
 ```
 
 ```ts
-import { readFileSync, writeFileSync } from 'node:fs'
 import { WorkPaper } from '@bilig/headless'
-import { exportXlsx, importXlsx } from '@bilig/headless/xlsx'
+import { exportWorkPaperXlsxToFileAsync, importXlsxFile } from '@bilig/headless/xlsx'
 
-const imported = importXlsx(new Uint8Array(readFileSync('model.xlsx')), 'model.xlsx')
+const imported = importXlsxFile('model.xlsx')
 const workbook = WorkPaper.buildFromSnapshot(imported.snapshot, {
   evaluationTimeoutMs: 30_000,
   useColumnIndex: true,
@@ -576,7 +580,7 @@ if (firstSheet === undefined) throw new Error('Workbook has no sheets')
 workbook.setCellContents({ sheet: firstSheet, row: 1, col: 1 }, 150_000)
 const displayValue = workbook.getCellDisplayValue({ sheet: firstSheet, row: 1, col: 1 })
 
-writeFileSync('model-edited.xlsx', exportXlsx(workbook.exportSnapshot()))
+await exportWorkPaperXlsxToFileAsync(workbook, 'model-edited.xlsx')
 workbook.dispose()
 
 console.log({ displayValue })

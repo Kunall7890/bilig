@@ -12,6 +12,7 @@ on:
       - 'packages/protocol/**'
       - 'packages/workbook/**'
       - 'packages/wasm-kernel/**'
+      - 'packages/xlsx/**'
       - 'packages/excel-import/**'
       - 'packages/bilig/**'
       - 'packages/workpaper/**'
@@ -152,6 +153,7 @@ jobs:
           pnpm --filter @bilig/protocol build
           pnpm --filter @bilig/workbook build
           pnpm --filter @bilig/wasm-kernel build
+          pnpm --filter @bilig/xlsx build
           pnpm --filter @bilig/formula build
           pnpm --filter @bilig/core build
           pnpm --filter @bilig/excel-import build
@@ -168,7 +170,7 @@ jobs:
       - name: Lint runtime package sources
         run: |
           set -euo pipefail
-          pnpm exec oxlint --config .oxlintrc.json --type-aware --deny-warnings packages/headless/src packages/excel-import/src packages/bilig/src
+          pnpm exec oxlint --config .oxlintrc.json --type-aware --deny-warnings packages/headless/src packages/excel-import/src packages/xlsx/src packages/bilig/src
 
       - name: Run import and headless parity tests
         run: |
@@ -248,6 +250,7 @@ jobs:
             packages/protocol
             packages/workbook
             packages/wasm-kernel
+            packages/xlsx
             packages/formula
             packages/core
             packages/excel-import
@@ -775,6 +778,7 @@ jobs:
             'packages/protocol/package.json',
             'packages/workbook/package.json',
             'packages/wasm-kernel/package.json',
+            'packages/xlsx/package.json',
             'packages/formula/package.json',
             'packages/core/package.json',
             'packages/excel-import/package.json',
@@ -881,6 +885,7 @@ jobs:
             packages/protocol/package.json
             packages/workbook/package.json
             packages/wasm-kernel/package.json
+            packages/xlsx/package.json
             packages/formula/package.json
             packages/core/package.json
             packages/excel-import/package.json
@@ -938,6 +943,7 @@ jobs:
           pnpm --filter @bilig/protocol build
           pnpm --filter @bilig/workbook build
           pnpm --filter @bilig/wasm-kernel build
+          pnpm --filter @bilig/xlsx build
           pnpm --filter @bilig/formula build
           pnpm --filter @bilig/core build
           pnpm --filter xlsx-formula-recalc build
@@ -1065,6 +1071,7 @@ jobs:
           pnpm --filter @bilig/protocol build
           pnpm --filter @bilig/workbook build
           pnpm --filter @bilig/wasm-kernel build
+          pnpm --filter @bilig/xlsx build
           pnpm --filter @bilig/formula build
           pnpm --filter @bilig/core build
           pnpm --filter @bilig/excel-import build

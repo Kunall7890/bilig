@@ -175,6 +175,10 @@
     "packageDir": "packages/workpaper",
     "sourceEntry": "packages/workpaper/src/xlsx.ts"
   },
+  "@bilig/xlsx": {
+    "packageDir": "packages/xlsx",
+    "sourceEntry": "packages/xlsx/src/index.ts"
+  },
   "@bilig/xlsx-formula-recalc": {
     "packageDir": "packages/bilig-xlsx-formula-recalc",
     "sourceEntry": "packages/bilig-xlsx-formula-recalc/src/index.ts"
@@ -190,6 +194,14 @@
   "@bilig/xlsx-formula-recalc/workbook-compatibility-report": {
     "packageDir": "packages/bilig-xlsx-formula-recalc",
     "sourceEntry": "packages/bilig-xlsx-formula-recalc/src/workbook-compatibility-report.ts"
+  },
+  "@bilig/xlsx/address": {
+    "packageDir": "packages/xlsx",
+    "sourceEntry": "packages/xlsx/src/address.ts"
+  },
+  "@bilig/xlsx/source-preserving-zip": {
+    "packageDir": "packages/xlsx",
+    "sourceEntry": "packages/xlsx/src/source-preserving-zip.ts"
   },
   "@bilig/zero-sync": {
     "packageDir": "packages/zero-sync",

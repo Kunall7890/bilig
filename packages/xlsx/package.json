@@ -1,16 +1,15 @@
 {
-  "name": "@bilig/excel-import",
+  "name": "@bilig/xlsx",
   "version": "0.161.0",
-  "description": "CSV/XLSX workbook snapshot import and supported XLSX export helpers for bilig.",
+  "description": "Native XLSX ZIP, address, and source-preserving patch primitives for Bilig.",
   "keywords": [
     "bilig",
-    "excel",
-    "export",
-    "import",
+    "native",
     "spreadsheet",
-    "xlsx"
+    "xlsx",
+    "zip"
   ],
-  "homepage": "https://github.com/proompteng/bilig/tree/main/packages/excel-import#readme",
+  "homepage": "https://github.com/proompteng/bilig/tree/main/packages/xlsx#readme",
   "bugs": {
     "url": "https://github.com/proompteng/bilig/issues"
   },
@@ -18,7 +17,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/proompteng/bilig.git",
-    "directory": "packages/excel-import"
+    "directory": "packages/xlsx"
   },
   "files": [
     "dist",
@@ -34,6 +33,16 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./address": {
+      "types": "./dist/address.d.ts",
+      "import": "./dist/address.js",
+      "default": "./dist/address.js"
+    },
+    "./source-preserving-zip": {
+      "types": "./dist/source-preserving-zip.d.ts",
+      "import": "./dist/source-preserving-zip.js",
+      "default": "./dist/source-preserving-zip.js"
     }
   },
   "publishConfig": {
@@ -41,18 +50,6 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json"
-  },
-  "dependencies": {
-    "@bilig/core": "workspace:*",
-    "@bilig/formula": "workspace:*",
-    "@bilig/protocol": "workspace:*",
-    "@bilig/wasm-kernel": "workspace:*",
-    "@bilig/xlsx": "workspace:*",
-    "fast-xml-parser": "5.7.3",
-    "fflate": "0.3.11",
-    "fflate-stream": "npm:fflate@0.8.3",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
-    "xlsx-js-style": "1.2.0"
   },
   "engines": {
     "node": ">=22.0.0"
