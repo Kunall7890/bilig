@@ -49,7 +49,7 @@ import { addExportWorksheetPropertiesToXlsxBytes } from './xlsx-sheet-properties
 import { applyExportSheetVisibilitiesToWorkbook } from './xlsx-sheet-visibility.js'
 import { addExportSlicerConnectionArtifactsToXlsxBytes } from './xlsx-slicer-connection-artifacts.js'
 import { addExportSparklinesToXlsxBytes } from './xlsx-sparklines.js'
-import { addExportHyperlinksToWorksheet, hasExportHyperlinks } from './xlsx-hyperlinks.js'
+import { addExportHyperlinkDisplaysToXlsxBytes, addExportHyperlinksToWorksheet, hasExportHyperlinks } from './xlsx-hyperlinks.js'
 import { preserveSnapshotNumberFormats } from './xlsx-export-number-formats.js'
 import { escapeXmlAttribute, getZipText, setXmlAttribute, setZipText } from './xlsx-export-xml.js'
 import {
@@ -888,5 +888,6 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
     snapshot,
   )
   const cellMetadataBytes = addExportCellMetadataToXlsxBytes(addExportPrinterSettingsToXlsxBytes(printPageSetupBytes, snapshot), snapshot)
-  return addExportNativeSpillsToXlsxBytes(cellMetadataBytes, snapshot)
+  const nativeSpillBytes = addExportNativeSpillsToXlsxBytes(cellMetadataBytes, snapshot)
+  return addExportHyperlinkDisplaysToXlsxBytes(nativeSpillBytes, snapshot)
 }

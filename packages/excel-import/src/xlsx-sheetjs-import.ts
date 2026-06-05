@@ -39,6 +39,7 @@ import {
   attachImportedRuntimeCoordinates,
   createImportedRuntimeSheetCells,
   pushImportedSnapshotCell,
+  sortImportedSnapshotCells,
   type ImportedRuntimeCellCoordinate,
   type ImportedRuntimeSheetCells,
 } from './imported-runtime-coordinates.js'
@@ -713,6 +714,7 @@ function importParsedSheetJsWorkbook(args: {
       }
     }
     flushActiveStyleRow()
+    sortImportedSnapshotCells(cells, runtimeCellCoords)
     const styleRanges = styleRunsToRanges(sheetName, styleRuns)
     runtimeSheetCells.push(
       createImportedRuntimeSheetCells({

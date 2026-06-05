@@ -74,6 +74,9 @@ describe('run-ci', () => {
     )
     expect(source).toContain("bunScript('agent discovery docs check', 'scripts/sync-agent-discovery-docs.ts', '--check')")
     expect(source).toContain("await runSequential('static direct checks'")
+    expect(source).toMatch(
+      /direct\(\s*'dependency policy check',\s*workspaceBin\('vitest'\),\s*'run',\s*'scripts\/__tests__\/dependency-policy\.test\.ts',\s*'--configLoader',\s*'runner',?\s*\)/u,
+    )
     expect(source).not.toContain("pnpm('protocol check'")
     expect(source).not.toContain("pnpm('wasm build'")
     expect(source).not.toContain("pnpm('correctness public workbook corpus'")

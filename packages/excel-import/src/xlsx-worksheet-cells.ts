@@ -33,6 +33,16 @@ function denseWorksheetCell(row: unknown, column: number): Record<string, unknow
   return isRecord(cell) ? cell : null
 }
 
+function compareWorksheetCellAddresses(left: string, right: string): number {
+  const leftCell = XLSX.utils.decode_cell(left)
+  const rightCell = XLSX.utils.decode_cell(right)
+  return leftCell.r - rightCell.r || leftCell.c - rightCell.c || left.localeCompare(right)
+}
+
+function sortedSparseWorksheetCellAddresses(sheet: XLSX.WorkSheet): string[] {
+  return Object.keys(sheet).filter(isWorksheetCellAddress).toSorted(compareWorksheetCellAddresses)
+}
+
 export function worksheetCellAt(sheet: XLSX.WorkSheet, row: number, column: number): Record<string, unknown> | null {
   const denseRows = denseWorksheetRows(sheet)
   if (denseRows) {
@@ -62,9 +72,9 @@ export function* worksheetCellRecords(sheet: XLSX.WorkSheet): Generator<Workshee
     return
   }
 
-  for (const address in sheet) {
+  for (const address of sortedSparseWorksheetCellAddresses(sheet)) {
     const value: unknown = sheet[address]
-    if (!isWorksheetCellAddress(address) || !isRecord(value)) {
+    if (!isRecord(value)) {
       continue
     }
     yield { address, cell: value }
@@ -93,9 +103,9 @@ export function* worksheetCellEntries(sheet: XLSX.WorkSheet): Generator<Workshee
     return
   }
 
-  for (const address in sheet) {
+  for (const address of sortedSparseWorksheetCellAddresses(sheet)) {
     const value: unknown = sheet[address]
-    if (!isWorksheetCellAddress(address) || !isRecord(value)) {
+    if (!isRecord(value)) {
       continue
     }
     const decoded = XLSX.utils.decode_cell(address)

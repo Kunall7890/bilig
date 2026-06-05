@@ -63,6 +63,30 @@ export function pushImportedSnapshotCell(
   coords.push({ row, col })
 }
 
+export function sortImportedSnapshotCells(
+  cells: WorkbookSnapshot['sheets'][number]['cells'],
+  coords: ImportedRuntimeCellCoordinate[],
+): void {
+  if (cells.length < 2) {
+    return
+  }
+  const sorted = cells
+    .map((cell, index) => ({
+      cell,
+      coord: coords[index] ?? { row: cell.row ?? 0, col: cell.col ?? 0 },
+      index,
+    }))
+    .toSorted(
+      (left, right) =>
+        left.coord.row - right.coord.row ||
+        left.coord.col - right.coord.col ||
+        left.cell.address.localeCompare(right.cell.address) ||
+        left.index - right.index,
+    )
+  cells.splice(0, cells.length, ...sorted.map((entry) => entry.cell))
+  coords.splice(0, coords.length, ...sorted.map((entry) => entry.coord))
+}
+
 export function attachImportedRuntimeCoordinates(
   snapshot: WorkbookSnapshot,
   sheetCells: readonly ImportedRuntimeSheetCells[],

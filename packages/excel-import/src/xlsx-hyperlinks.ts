@@ -1,6 +1,8 @@
 import * as XLSX from 'xlsx'
+import { unzipSync, zipSync } from 'fflate'
 
 import type { SheetMetadataSnapshot, WorkbookHyperlinkSnapshot, WorkbookSnapshot } from '@bilig/protocol'
+import { getZipText, setXmlAttribute, setZipText } from './xlsx-export-xml.js'
 import { worksheetCellRecords } from './xlsx-worksheet-cells.js'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -24,6 +26,26 @@ function readHyperlinkTarget(link: Record<string, unknown>): string | undefined 
   return location ? `#${location}` : undefined
 }
 
+function readCellDisplayText(cell: Record<string, unknown>): string | undefined {
+  const formatted = readNonEmptyString(cell['w'])
+  if (formatted) {
+    return formatted
+  }
+  const raw = cell['v']
+  if (typeof raw === 'string') {
+    return readNonEmptyString(raw)
+  }
+  if (typeof raw === 'number' || typeof raw === 'boolean') {
+    return String(raw)
+  }
+  return undefined
+}
+
+function readXmlAttribute(tag: string, attributeName: string): string | undefined {
+  const match = new RegExp(`\\b${attributeName}=("|')([\\s\\S]*?)\\1`, 'u').exec(tag)
+  return match?.[2]
+}
+
 export function readImportedSheetHyperlinks(sheetName: string, sheet: XLSX.WorkSheet): WorkbookHyperlinkSnapshot[] | undefined {
   const hyperlinks: WorkbookHyperlinkSnapshot[] = []
   for (const { address, cell } of worksheetCellRecords(sheet)) {
@@ -36,7 +58,7 @@ export function readImportedSheetHyperlinks(sheetName: string, sheet: XLSX.WorkS
       continue
     }
     const tooltip = readNonEmptyString(link['Tooltip'])
-    const display = readNonEmptyString(link['display'])
+    const display = readNonEmptyString(link['display']) ?? readCellDisplayText(cell)
     hyperlinks.push({
       sheetName,
       address,
@@ -67,6 +89,45 @@ export function addExportHyperlinksToWorksheet(worksheet: XLSX.WorkSheet, sheet:
     }
     worksheet[hyperlink.address] = cell
   }
+}
+
+export function addExportHyperlinkDisplaysToXlsxBytes(bytes: Uint8Array, snapshot: WorkbookSnapshot): Uint8Array {
+  const sheets = snapshot.sheets.toSorted((left, right) => left.order - right.order)
+  const displayEntries = sheets.map((sheet) => {
+    const displaysByAddress = new Map<string, string>()
+    for (const hyperlink of sheet.metadata?.hyperlinks ?? []) {
+      if (hyperlink.sheetName !== sheet.name || !hyperlink.display || hyperlink.display.trim().length === 0) {
+        continue
+      }
+      displaysByAddress.set(hyperlink.address, hyperlink.display)
+    }
+    return displaysByAddress
+  })
+  if (!displayEntries.some((entry) => entry.size > 0)) {
+    return bytes
+  }
+  const zip = unzipSync(bytes)
+  let changed = false
+  for (const [index, displaysByAddress] of displayEntries.entries()) {
+    if (displaysByAddress.size === 0) {
+      continue
+    }
+    const path = `xl/worksheets/sheet${String(index + 1)}.xml`
+    const worksheetXml = getZipText(zip, path)
+    if (!worksheetXml) {
+      continue
+    }
+    const nextWorksheetXml = worksheetXml.replace(/<(?:[A-Za-z_][\w.-]*:)?hyperlink\b[^>]*\/?>/gu, (tag) => {
+      const ref = readXmlAttribute(tag, 'ref')
+      const display = ref ? displaysByAddress.get(ref) : undefined
+      return display ? setXmlAttribute(tag, 'display', display) : tag
+    })
+    if (nextWorksheetXml !== worksheetXml) {
+      setZipText(zip, path, nextWorksheetXml)
+      changed = true
+    }
+  }
+  return changed ? zipSync(zip) : bytes
 }
 
 export function hasExportHyperlinks(metadata: SheetMetadataSnapshot | undefined): boolean {
