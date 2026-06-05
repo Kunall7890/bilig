@@ -4,6 +4,33 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.162.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.161.0
+- Manual override: yes
+
+## Features
+- feat(xlsx): add native source-preserving XLSX package (75c1b926)
+- feat(xlsx): expose native source patch exports (64fb24be)
+
+## Fixes
+- fix(headless): drop direct xlsx dependency (21e8e75a)
+- fix(headless): build native xlsx before package checks (dbbf2c61)
+
+## Internal runtime changes
+- docs(discovery): add agent framework mcp recipes (dbf468bf)
+- docs(agent): add Aider WorkPaper conventions (bafb31fe)
+- docs(agent): add Goose WorkPaper MCP recipe (bd0da1d2)
+- docs(agent): add xlsx risk preflight proof (5a71e298)
+- docs(agent): add Roo Code WorkPaper rules (36d994e5)
+- docs(agent): add Kiro WorkPaper steering (4bf0979f)
+- docs(agent): add Continue WorkPaper MCP config (8fd0d04d)
+- docs(agent): add Zed WorkPaper MCP setup (4ad94655)
+- docs(agent): add Trae WorkPaper MCP setup (ee8001c1)
+- docs(agent): add Qodo WorkPaper MCP setup (7e4028ee)
+- docs(agent): add OpenHands and Goose start rules (5184b55a)
+
 ## 0.161.0
 
 - Release type: minor
