@@ -47,6 +47,15 @@ function largeSourceWorkbookBytes(): Uint8Array {
   return zipSync(zip)
 }
 
+function fallbackSourceWorkbookBytes(): Uint8Array {
+  const zip = unzipSync(sourceWorkbookBytes())
+  zip['xl/threadedComments/threadedComment1.xml'] = strToU8(
+    '<threadedComments xmlns="http://schemas.microsoft.com/office/spreadsheetml/2018/threadedcomments"/>',
+  )
+  zip['docProps/fallback-padding.bin'] = deterministicBytes(2_000_000)
+  return zipSync(zip)
+}
+
 function deterministicBytes(length: number): Uint8Array {
   const bytes = new Uint8Array(length)
   let state = 0x9e3779b9
@@ -278,6 +287,32 @@ describe('WorkPaper source-preserving XLSX export', () => {
       const sheetXml = strFromU8(exportedZip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
       expect(cellXml(sheetXml, 'A1')).toContain('<v>31</v>')
       expect(strFromU8(exportedZip['customXml/item1.xml'] ?? new Uint8Array())).toBe('<keep source="true"/>')
+    } finally {
+      workbook.dispose()
+      rmSync(directory, { recursive: true, force: true })
+    }
+  })
+
+  it('keeps SheetJS fallback byte-source imports range-patchable without source rereads', async () => {
+    const sourceBytes = fallbackSourceWorkbookBytes()
+    const source = instrumentedSourceReaderForTest(sourceBytes)
+    const imported = importXlsxFromZipByteSource(source, 'source-preserving-byte-source-fallback.xlsx', { limits: false })
+    const workbook = WorkPaper.buildFromSnapshot(imported.snapshot)
+    const fullRangeReadsAfterBuild = source.fullRangeReadCount()
+    const directory = mkdtempSync(join(tmpdir(), 'bilig-workpaper-byte-source-fallback-patch-'))
+    try {
+      const outputPath = join(directory, 'patched.xlsx')
+      workbook.setCellContents({ sheet: 1, row: 0, col: 0 }, 37)
+
+      const result = await exportWorkPaperXlsxToFileAsync(workbook, outputPath)
+
+      expect(result.bytesWritten).toBeGreaterThan(0)
+      expect(source.fullRangeReadCount()).toBe(fullRangeReadsAfterBuild)
+      const exportedZip = unzipSync(readFileSync(outputPath))
+      const sheetXml = strFromU8(exportedZip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+      expect(cellXml(sheetXml, 'A1')).toContain('<v>37</v>')
+      expect(strFromU8(exportedZip['customXml/item1.xml'] ?? new Uint8Array())).toBe('<keep source="true"/>')
+      expect(exportedZip['xl/threadedComments/threadedComment1.xml']).toBeDefined()
     } finally {
       workbook.dispose()
       rmSync(directory, { recursive: true, force: true })

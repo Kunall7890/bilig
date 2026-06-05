@@ -1,12 +1,13 @@
 import { strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
+import * as XLSX from 'xlsx'
 
 import { importXlsx } from '../index.js'
 import { exportXlsx } from '../xlsx-export.js'
 import { importXlsxFromZipByteSource } from '../xlsx-byte-source-import.js'
 import { tryInspectLargeSimpleXlsxHeadless } from '../xlsx-large-simple-headless-inspect.js'
 import { tryImportLargeSimpleXlsx } from '../xlsx-large-simple-import.js'
-import { detachImportedXlsxSourceBytes } from '../xlsx-source-bytes.js'
+import { detachImportedXlsxSourceBytes, readImportedXlsxSourceReference } from '../xlsx-source-bytes.js'
 import { readLazyXlsxZipSourceByteLength, readXlsxZipEntriesLazy, type XlsxZipByteSource } from '../xlsx-zip.js'
 
 describe('large simple XLSX import ZIP ownership', () => {
@@ -123,7 +124,7 @@ describe('large simple XLSX import ZIP ownership', () => {
     const exported = exportXlsx(imported.snapshot)
     const roundTripped = importXlsx(exported, 'roundtrip.xlsx')
 
-    expect(imported.snapshot.sheets[0]?.cells).toEqual([
+    expect(imported.snapshot.sheets[0]?.cells.map(({ address, value }) => ({ address, value }))).toEqual([
       { address: 'A1', value: 'Alpha' },
       { address: 'B1', value: 'Beta' },
     ])
@@ -149,12 +150,34 @@ describe('large simple XLSX import ZIP ownership', () => {
     const releasePhase = imported.stats?.phaseTelemetry.find((entry) => entry.phase === 'zip-source-release')
     const exported = exportXlsx(imported.snapshot)
 
-    expect(imported.snapshot.sheets[0]?.cells).toEqual([
+    expect(imported.snapshot.sheets[0]?.cells.map(({ address, value }) => ({ address, value }))).toEqual([
       { address: 'A1', value: 'Alpha' },
       { address: 'B1', value: 'Beta' },
     ])
     expect(releasePhase?.ownedSourceBytesBeforeRelease).toBeGreaterThan(8 * 1024 * 1024)
     expect(releasePhase?.ownedSourceBytesAfterRelease).toBe(0)
+    expect(exported).toStrictEqual(bytes)
+    expect(detachImportedXlsxSourceBytes(imported.snapshot)).toBe(true)
+  }, 30_000)
+
+  it('spools large SheetJS fallback source bytes as a reader for unchanged export', () => {
+    const bytes = buildSheetJsFallbackWorkbook({
+      'docProps/padding.bin': deterministicBytes(9_000_000),
+      'xl/threadedComments/threadedComment1.xml': strToU8(
+        '<threadedComments xmlns="http://schemas.microsoft.com/office/spreadsheetml/2018/threadedcomments"/>',
+      ),
+    })
+
+    const imported = importXlsx(bytes, 'large-public-fallback-source-spool.xlsx', { limits: false })
+    const importedSource = readImportedXlsxSourceReference(imported.snapshot)
+    const exported = exportXlsx(imported.snapshot)
+
+    expect(importedSource).toBeDefined()
+    expect(importedSource instanceof Uint8Array).toBe(false)
+    expect(imported.snapshot.sheets[0]?.cells.map(({ address, value }) => ({ address, value }))).toEqual([
+      { address: 'A1', value: 'Alpha' },
+      { address: 'B1', value: 'Beta' },
+    ])
     expect(exported).toStrictEqual(bytes)
     expect(detachImportedXlsxSourceBytes(imported.snapshot)).toBe(true)
   }, 30_000)
@@ -211,6 +234,15 @@ describe('large simple XLSX import ZIP ownership', () => {
     ])
   })
 })
+
+function buildSheetJsFallbackWorkbook(extraEntries: Readonly<Record<string, Uint8Array>>): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['Alpha', 'Beta']]), 'Data')
+  return zipSync({
+    ...unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })),
+    ...extraEntries,
+  })
+}
 
 function buildSharedStringWorkbook(extraEntries: Readonly<Record<string, Uint8Array>> = {}): Uint8Array {
   return zipSync({

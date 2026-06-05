@@ -11,7 +11,12 @@ import {
 } from './xlsx-import-limits.js'
 import type { tryInspectLargeSimpleXlsxHeadless } from './xlsx-large-simple-headless-inspect.js'
 import type { tryImportLargeSimpleXlsx } from './xlsx-large-simple-import.js'
-import { attachImportedXlsxSourceReader, detachImportedXlsxSourceBytes, type ImportedXlsxSourceReader } from './xlsx-source-bytes.js'
+import {
+  attachImportedXlsxSourceReader,
+  detachImportedXlsxSourceBytes,
+  type ImportedXlsxSourceReader,
+  type ImportedXlsxSourceReference,
+} from './xlsx-source-bytes.js'
 import type { prepareSheetJsParserXlsxBytesFromZip } from './xlsx-style-only-blank-cells.js'
 import { readXlsxZipEntriesLazy, readXlsxZipEntriesLazyFromByteSource, type XlsxZipByteSource, type XlsxZipEntries } from './xlsx-zip.js'
 
@@ -33,7 +38,7 @@ interface SheetJsImporterModule {
     fileName: string,
     contentType: typeof XLSX_CONTENT_TYPE,
     workbookZip: XlsxZipEntries | null,
-    sourceBytesForUntouchedExport?: Uint8Array,
+    sourceForUntouchedExport?: ImportedXlsxSourceReference,
     options?: XlsxImportOptions,
   ) => ImportedWorkbook
   readonly importXlsxFromPreparedSheetJsParserData: (
@@ -153,12 +158,16 @@ function importXlsxFromMaterializedSource(
   options: XlsxByteSourceImportOptions,
 ): ImportedWorkbook {
   const data = readAllSourceBytes(source)
+  const sourceForUntouchedExport =
+    options.attachSourceReaderForUntouchedExport !== false && (options.externalWorkbooks?.length ?? 0) === 0
+      ? importedXlsxSourceReaderFromByteSource(source)
+      : undefined
   const imported = loadSheetJsImporterModule().importSheetJsWorkbook(
     data,
     fileName,
     XLSX_CONTENT_TYPE,
     readMaterializedWorkbookZip(data),
-    undefined,
+    sourceForUntouchedExport,
     options,
   )
   if (options.attachSourceReaderForUntouchedExport === false) {
@@ -339,12 +348,18 @@ function readAllSourceBytes(source: XlsxZipByteSource): Uint8Array {
   return source.readRange(0, source.byteLength)
 }
 
-function importedXlsxSourceReaderFromByteSource(source: XlsxZipByteSource): ImportedXlsxSourceReader {
+function importedXlsxSourceReaderFromByteSource(source: XlsxZipByteSource): ImportedXlsxSourceReader & Partial<XlsxZipByteSource> {
   return isImportedXlsxSourceReader(source)
     ? source
     : {
         byteLength: source.byteLength,
         readBytes: () => readAllSourceBytes(source),
+        readRange: (start: number, end: number) => source.readRange(start, end),
+        ...(source.readRangeInto
+          ? {
+              readRangeInto: (start: number, end: number, target: Uint8Array) => source.readRangeInto!(start, end, target),
+            }
+          : {}),
       }
 }
 

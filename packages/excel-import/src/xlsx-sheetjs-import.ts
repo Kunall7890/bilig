@@ -93,6 +93,7 @@ import { readImportedWorkbookTables } from './xlsx-tables.js'
 import { readImportedWorkbookThreadedCommentArtifacts } from './xlsx-threaded-comment-artifacts.js'
 import { readImportedWorkbookDataValidations } from './xlsx-validations.js'
 import { readImportedWorkbookViewState } from './xlsx-view-state.js'
+import { canAttachSourceForUntouchedSheetJsExport } from './xlsx-sheetjs-source-attach-policy.js'
 import {
   LEGACY_XLS_CONTENT_TYPE,
   XLSM_CONTENT_TYPE,
@@ -105,7 +106,7 @@ import type { ImportedWorkbook } from './workbook-import-result.js'
 import { readImportedWorkbookProtection } from './xlsx-workbook-protection.js'
 import { workbookDirectorySheetPaths, workbookSheetPathsByName } from './xlsx-workbook-sheet-paths.js'
 import { readImportedWorkbookDocumentPropertiesArtifacts, readImportedWorkbookProperties } from './xlsx-workbook-properties.js'
-import { attachImportedXlsxSourceBytes } from './xlsx-source-bytes.js'
+import { attachImportedXlsxSourceReference, type ImportedXlsxSourceReference } from './xlsx-source-bytes.js'
 import { worksheetCellAt, worksheetCellEntries, worksheetCellEntriesAtAddresses } from './xlsx-worksheet-cells.js'
 import { readImportedWorksheetTextValues } from './xlsx-worksheet-text-values.js'
 import { releaseInflatedLazyXlsxZipEntries } from './xlsx-zip.js'
@@ -251,7 +252,7 @@ export function importSheetJsWorkbook(
   fileName: string,
   contentType: ExcelWorkbookImportContentType,
   workbookZip: Unzipped | null,
-  sourceBytesForUntouchedExport?: Uint8Array,
+  sourceForUntouchedExport?: ImportedXlsxSourceReference,
   options: XlsxImportOptions = {},
 ): ImportedWorkbook {
   const denseSheetJsParse = shouldUseDenseSheetJsParse(data, workbookZip, {
@@ -273,7 +274,7 @@ export function importSheetJsWorkbook(
     workbookZip,
     fallbackArtifactSource: parserData,
     sourceFileSizeBytes: data.byteLength,
-    ...(sourceBytesForUntouchedExport ? { sourceBytesForUntouchedExport } : {}),
+    ...(sourceForUntouchedExport ? { sourceForUntouchedExport } : {}),
     options,
   })
 }
@@ -318,19 +319,11 @@ function importParsedSheetJsWorkbook(args: {
   readonly workbookZip: Unzipped | null
   readonly fallbackArtifactSource: Uint8Array
   readonly sourceFileSizeBytes: number
-  readonly sourceBytesForUntouchedExport?: Uint8Array
+  readonly sourceForUntouchedExport?: ImportedXlsxSourceReference
   readonly options?: XlsxImportOptions
 }): ImportedWorkbook {
-  const {
-    workbook,
-    fileName,
-    contentType,
-    workbookZip,
-    fallbackArtifactSource,
-    sourceFileSizeBytes,
-    sourceBytesForUntouchedExport,
-    options,
-  } = args
+  const { workbook, fileName, contentType, workbookZip, fallbackArtifactSource, sourceFileSizeBytes, sourceForUntouchedExport, options } =
+    args
   const workbookName = normalizeWorkbookName(fileName)
   const artifactPathSource = contentType === LEGACY_XLS_CONTENT_TYPE ? undefined : (workbookZip ?? fallbackArtifactSource)
   const sheetPathsByName = workbookSheetPathsByName(workbook, artifactPathSource)
@@ -453,6 +446,8 @@ function importParsedSheetJsWorkbook(args: {
     (importedChartDrawingArtifacts?.chartArtifacts.chartSheetArtifacts ?? []).map((artifact) => artifact.name),
   )
 
+  let hasImportedHyperlinks = false
+  let hasImportedComments = false
   let ignoredCommentsSeen = false
   let externalWorkbookReferenceWarningSeen = warnings.includes(externalWorkbookReferencesWarning)
   let volatileFormulaWarningSeen = false
@@ -493,6 +488,12 @@ function importParsedSheetJsWorkbook(args: {
     const importedDataTableFormulaCells = buildImportedDataTableFormulaCells(importedDataTableFormulasForSheet)
     unsupportedDataTableFormulaCount += importedDataTableFormulaCells.unsupportedCount
     const importedHyperlinks = readImportedSheetHyperlinks(sheetName, sheet)
+    if (importedHyperlinks && importedHyperlinks.length > 0) {
+      hasImportedHyperlinks = true
+    }
+    if (importedComments.commentThreads && importedComments.commentThreads.length > 0) {
+      hasImportedComments = true
+    }
     if (importedComments.ignoredCount > 0 && !ignoredCommentsSeen) {
       ignoredCommentsSeen = true
       warnings.push('Some cell comments were ignored during XLSX import.')
@@ -500,6 +501,9 @@ function importParsedSheetJsWorkbook(args: {
     const importedLegacyCommentVml = importedComments.commentThreads
       ? buildImportedLegacyCommentVmlSnapshot(importedLegacyCommentVmlBySheet.get(sheetName), importedComments.commentThreads)
       : undefined
+    if (importedLegacyCommentVml) {
+      hasImportedComments = true
+    }
     const importedArrayFormulaSheetSpills = readImportedArrayFormulaSpills(sheetName, sheet)
     if (importedArrayFormulaSheetSpills) {
       importedArrayFormulaSpills.push(...importedArrayFormulaSheetSpills)
@@ -920,12 +924,25 @@ function importParsedSheetJsWorkbook(args: {
   }
 
   const restoredSnapshot = attachImportedRuntimeCoordinates(snapshot, runtimeSheetCells)
+  const hasExternalWorkbookCompanions = (options?.externalWorkbooks?.length ?? 0) > 0
   if (
-    shouldUseCachedFormulaOpenModeForImportedWorkbook &&
-    sourceBytesForUntouchedExport !== undefined &&
-    (contentType === XLSX_CONTENT_TYPE || contentType === XLSM_CONTENT_TYPE)
+    sourceForUntouchedExport !== undefined &&
+    canAttachSourceForUntouchedSheetJsExport({
+      source: sourceForUntouchedExport,
+      contentType,
+      shouldUseCachedFormulaOpenMode: shouldUseCachedFormulaOpenModeForImportedWorkbook,
+      hasExternalWorkbookCompanions,
+      hasMaterializedExternalCacheSheets: materializedExternalCacheSheets.length > 0,
+      hasTables: (importedTables?.length ?? 0) > 0,
+      hasImportedFilters: importedFiltersBySheet.size > 0,
+      hasSlicerConnectionArtifacts: importedSlicerConnectionArtifacts !== undefined,
+      hasConditionalFormats: importedConditionalFormatsBySheet.size > 0 || importedConditionalFormatArtifactsBySheet.size > 0,
+      hasHyperlinks: hasImportedHyperlinks,
+      hasComments: hasImportedComments || importedRichTextArtifactsBySheet.size > 0,
+      hasMacroPayload: importedMacroPayload !== null,
+    })
   ) {
-    attachImportedXlsxSourceBytes(restoredSnapshot, sourceBytesForUntouchedExport)
+    attachImportedXlsxSourceReference(restoredSnapshot, sourceForUntouchedExport)
   }
 
   return {

@@ -28,6 +28,7 @@ import {
   attachImportedXlsxSourceBytes,
   attachImportedXlsxSourceReader,
   createTempFileImportedXlsxSourceReader,
+  type ImportedXlsxSourceReference,
   type ImportedXlsxSourceReader,
 } from './xlsx-source-bytes.js'
 import {
@@ -120,7 +121,7 @@ interface SheetJsImportModule {
     fileName: string,
     contentType: ExcelWorkbookImportContentType,
     workbookZip: Unzipped | null,
-    sourceBytesForUntouchedExport?: Uint8Array,
+    sourceForUntouchedExport?: ImportedXlsxSourceReference,
     options?: XlsxImportOptions,
   ) => ImportedWorkbook
   readonly importXlsxFromPreparedSheetJsParserData: (
@@ -362,10 +363,10 @@ function importSheetJsWorkbook(
   fileName: string,
   contentType: ExcelWorkbookImportContentType,
   workbookZip: Unzipped | null,
-  sourceBytesForUntouchedExport?: Uint8Array,
+  sourceForUntouchedExport?: ImportedXlsxSourceReference,
   options?: XlsxImportOptions,
 ): ImportedWorkbook {
-  return loadSheetJsImportModule().importSheetJsWorkbook(data, fileName, contentType, workbookZip, sourceBytesForUntouchedExport, options)
+  return loadSheetJsImportModule().importSheetJsWorkbook(data, fileName, contentType, workbookZip, sourceForUntouchedExport, options)
 }
 
 export function importXlsxFromPreparedSheetJsParserData(
@@ -545,21 +546,38 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string, op
       : spooledUntouchedExportSource
         ? spooledUntouchedExportSource.readBytes()
         : readLazyXlsxZipSource(workbookZip)
-  spooledUntouchedExportSource?.release?.()
-  spooledUntouchedExportSource = undefined
   if (!fallbackData || fallbackData.byteLength === 0) {
+    spooledUntouchedExportSource?.release?.()
+    spooledUntouchedExportSource = undefined
     throw new InvalidXlsxZipContainerError()
   }
-  const sourceBytesForUntouchedExport = ownedSource.bytes.byteLength > 0 ? ownedSource.bytes : fallbackData
-  const imported = importSheetJsWorkbook(
-    fallbackData,
-    fileName,
-    XLSX_CONTENT_TYPE,
-    readValidXlsxZipContainer(fallbackData, 'lazy'),
-    sourceBytesForUntouchedExport,
-    options,
-  )
-  return imported
+  const shouldRetainSourceForUntouchedExport = (options.externalWorkbooks?.length ?? 0) === 0
+  const sourceForUntouchedExport: ImportedXlsxSourceReference | undefined = shouldRetainSourceForUntouchedExport
+    ? ownedSource.bytes.byteLength > 0
+      ? ownedSource.bytes
+      : (spooledUntouchedExportSource ?? fallbackData)
+    : undefined
+  const spooledSourceRetainedForSnapshot =
+    spooledUntouchedExportSource !== undefined && sourceForUntouchedExport === spooledUntouchedExportSource
+  try {
+    const imported = importSheetJsWorkbook(
+      fallbackData,
+      fileName,
+      XLSX_CONTENT_TYPE,
+      readValidXlsxZipContainer(fallbackData, 'lazy'),
+      sourceForUntouchedExport,
+      options,
+    )
+    if (!spooledSourceRetainedForSnapshot) {
+      spooledUntouchedExportSource?.release?.()
+    }
+    spooledUntouchedExportSource = undefined
+    return imported
+  } catch (error) {
+    spooledUntouchedExportSource?.release?.()
+    spooledUntouchedExportSource = undefined
+    throw error
+  }
 }
 
 export function importXlsm(bytes: Uint8Array | ArrayBuffer, fileName: string): ImportedWorkbook {

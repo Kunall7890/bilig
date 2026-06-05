@@ -16,7 +16,7 @@ export interface ImportedXlsxSourceReader {
   release?(): void
 }
 
-type ImportedXlsxSourceReference = Uint8Array | ImportedXlsxSourceReader
+export type ImportedXlsxSourceReference = Uint8Array | ImportedXlsxSourceReader
 
 export interface ImportedXlsxSourceCellPatch {
   readonly kind: 'literal'
@@ -43,7 +43,7 @@ export function attachImportedXlsxSourceReader(snapshot: WorkbookSnapshot, sourc
   return attachImportedXlsxSourceReference(snapshot, source)
 }
 
-function attachImportedXlsxSourceReference(snapshot: WorkbookSnapshot, source: ImportedXlsxSourceReference): WorkbookSnapshot {
+export function attachImportedXlsxSourceReference(snapshot: WorkbookSnapshot, source: ImportedXlsxSourceReference): WorkbookSnapshot {
   Object.defineProperty(snapshot, importedXlsxSourceBytes, {
     configurable: true,
     enumerable: false,
