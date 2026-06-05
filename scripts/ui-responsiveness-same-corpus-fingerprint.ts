@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 
-import * as XLSX from 'xlsx'
+import { readXlsxTargetCell, readXlsxZipEntries } from '@bilig/xlsx'
 
 import type { WorkbookBenchmarkCorpusCase } from '../packages/benchmarks/src/workbook-corpus.js'
 import type { SameCorpusCaptureCorpusVerification } from './gen-ui-responsiveness-live-browser-scorecard.ts'
@@ -39,13 +39,9 @@ export function verifyXlsxCorpusFingerprint(
   method: SameCorpusCaptureCorpusVerification['method'],
 ): SameCorpusCaptureCorpusVerification {
   const fingerprint = buildSameCorpusFingerprint(corpus)
-  const workbook = XLSX.read(Buffer.from(bytes), { type: 'buffer' })
-  const worksheet = workbook.Sheets[fingerprint.sheetName]
-  if (!worksheet) {
-    throw new Error(`Same-corpus XLSX is missing sheet: ${fingerprint.sheetName}`)
-  }
+  const archive = readXlsxZipEntries(bytes)
   const checkedCells = fingerprint.checkedCells.map((cell) => {
-    const actual = normalizeSpreadsheetValue(worksheet[cell.address]?.v)
+    const actual = normalizeSpreadsheetValue(readSameCorpusFingerprintCell(archive, fingerprint.sheetName, cell.address)?.value)
     if (actual !== cell.expected) {
       throw new Error(
         `Same-corpus XLSX cell mismatch at ${fingerprint.sheetName}!${cell.address}: expected ${cell.expected}, got ${actual}`,
@@ -65,6 +61,21 @@ export function verifyXlsxCorpusFingerprint(
     corpusFingerprint: fingerprint.corpusFingerprint,
     sourceWorkbookSha256: fingerprint.corpusFingerprint.snapshotSha256,
     checkedCells,
+  }
+}
+
+function readSameCorpusFingerprintCell(
+  archive: ReturnType<typeof readXlsxZipEntries>,
+  sheetName: string,
+  address: string,
+): ReturnType<typeof readXlsxTargetCell> {
+  try {
+    return readXlsxTargetCell(archive, sheetName, address)
+  } catch (error) {
+    if (error instanceof Error && error.message === `XLSX workbook is missing sheet: ${sheetName}`) {
+      throw new Error(`Same-corpus XLSX is missing sheet: ${sheetName}`, { cause: error })
+    }
+    throw error
   }
 }
 

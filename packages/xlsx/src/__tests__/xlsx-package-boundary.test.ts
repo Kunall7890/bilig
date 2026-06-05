@@ -11,6 +11,7 @@ import {
   encodeCellAddress,
   encodeCellRange,
   normalizeCellAddress,
+  readXlsxTargetCell,
   readXlsxZipEntries,
   readXmlAttribute,
   worksheetCellElementPattern,
@@ -130,6 +131,60 @@ describe('@bilig/xlsx package boundary', () => {
     const sheetXml = textDecoder.decode(zip['xl/worksheets/sheet1.xml'])
 
     expect(sheetXml).toContain('<c r="C3" t="e"><f>1/0</f><v>#DIV/0!</v></c>')
+  })
+
+  it('reads targeted cached formula cells without SheetJS', () => {
+    const bytes = writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Readback',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'label' },
+            { address: 'B2', row: 1, col: 1, formula: 'A1&"-ok"', value: 'label-ok' },
+            { address: 'C3', row: 2, col: 2, formula: '1+1', value: 2 },
+            { address: 'D4', row: 3, col: 3, value: true },
+          ],
+        },
+      ],
+    })
+
+    expect(readXlsxTargetCell(bytes, 'Readback', 'B2')).toMatchObject({
+      address: 'B2',
+      formula: 'A1&"-ok"',
+      rawValue: 'label-ok',
+      type: 'str',
+      value: 'label-ok',
+    })
+    expect(readXlsxTargetCell(bytes, 'Readback', 'C3')?.value).toBe(2)
+    expect(readXlsxTargetCell(bytes, 'Readback', 'D4')?.value).toBe(true)
+    expect(readXlsxTargetCell(bytes, 'Readback', 'E5')).toBeNull()
+  })
+
+  it('reads shared and inline string target cells without SheetJS', () => {
+    const sharedStringsXml = [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="2" uniqueCount="2">',
+      '<si><t>Plain shared</t></si>',
+      '<si><r><t>Rich </t></r><r><t>shared</t></r></si>',
+      '</sst>',
+    ].join('')
+    const bytes = writeSimpleXlsxWorkbook({
+      sharedStringsXml,
+      sheets: [
+        {
+          name: 'Strings',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Plain shared', sharedStringIndex: 0 },
+            { address: 'B1', row: 0, col: 1, value: 'Rich shared', sharedStringIndex: 1 },
+            { address: 'C1', row: 0, col: 2, value: ' Inline & text ' },
+          ],
+        },
+      ],
+    })
+
+    expect(readXlsxTargetCell(bytes, 'Strings', 'A1')?.value).toBe('Plain shared')
+    expect(readXlsxTargetCell(bytes, 'Strings', 'B1')?.value).toBe('Rich shared')
+    expect(readXlsxTargetCell(bytes, 'Strings', 'C1')?.value).toBe(' Inline & text ')
   })
 
   it('writes border styles with @bilig/xlsx simple workbooks', () => {

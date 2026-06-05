@@ -54,6 +54,11 @@
       "import": "./dist/simple-workbook-writer.js",
       "default": "./dist/simple-workbook-writer.js"
     },
+    "./targeted-cell-reader": {
+      "types": "./dist/targeted-cell-reader.d.ts",
+      "import": "./dist/targeted-cell-reader.js",
+      "default": "./dist/targeted-cell-reader.js"
+    },
     "./zip-reader": {
       "types": "./dist/zip-reader.d.ts",
       "import": "./dist/zip-reader.js",

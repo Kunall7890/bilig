@@ -20,6 +20,10 @@ export function decodeXmlAttribute(value: string): string {
     .replace(/&amp;/gu, '&')
 }
 
+export function decodeXmlText(value: string): string {
+  return decodeXmlAttribute(value)
+}
+
 export function readXmlAttribute(tag: string, name: string): string | null {
   const escapedName = name.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
   const doubleQuoted = new RegExp(`(?:^|\\s)${escapedName}="([^"]*)"`, 'u').exec(tag)
@@ -28,6 +32,16 @@ export function readXmlAttribute(tag: string, name: string): string | null {
   }
   const singleQuoted = new RegExp(`(?:^|\\s)${escapedName}='([^']*)'`, 'u').exec(tag)
   return singleQuoted ? decodeXmlAttribute(singleQuoted[1] ?? '') : null
+}
+
+export function getXmlElementText(xml: string, name: string): string | null {
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+  return (
+    new RegExp(
+      `<(?:[A-Za-z_][\\w.-]*:)?${escapedName}\\b(?:[^>"']|"[^"]*"|'[^']*')*>([\\s\\S]*?)<\\/(?:[A-Za-z_][\\w.-]*:)?${escapedName}>`,
+      'u',
+    ).exec(xml)?.[1] ?? null
+  )
 }
 
 export function setXmlAttribute(tag: string, name: string, value: string): string {

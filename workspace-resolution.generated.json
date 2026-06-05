@@ -211,6 +211,10 @@
     "packageDir": "packages/xlsx",
     "sourceEntry": "packages/xlsx/src/source-preserving-zip.ts"
   },
+  "@bilig/xlsx/targeted-cell-reader": {
+    "packageDir": "packages/xlsx",
+    "sourceEntry": "packages/xlsx/src/targeted-cell-reader.ts"
+  },
   "@bilig/xlsx/zip-reader": {
     "packageDir": "packages/xlsx",
     "sourceEntry": "packages/xlsx/src/zip-reader.ts"

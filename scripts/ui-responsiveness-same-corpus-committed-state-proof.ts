@@ -3,8 +3,8 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 
-import { strFromU8, unzipSync } from 'fflate'
-import * as XLSX from 'xlsx'
+import { readXlsxTargetCell, readXlsxZipEntries, type XlsxZipEntries } from '@bilig/xlsx'
+import { strFromU8 } from 'fflate'
 
 import { readOoxmlIndexedColor } from './ooxml-indexed-colors.ts'
 import type { SameCorpusMutationTargetSelection } from './ui-responsiveness-same-corpus-mutation-proof-page.ts'
@@ -540,41 +540,17 @@ function readGoogleSheetsExportTargetReadback(
   bytes: Uint8Array,
   target: SameCorpusMutationTargetSelection,
 ): SameCorpusMutationTargetReadback {
-  const workbook = XLSX.read(Buffer.from(bytes), {
-    cellFormula: true,
-    cellStyles: true,
-    cellText: false,
-    type: 'buffer',
-  })
-  const worksheet = workbook.Sheets[target.sheetName]
-  if (!worksheet) {
-    throw new Error(`Google Sheets committed-state XLSX export is missing sheet ${target.sheetName}`)
-  }
-  const cell = worksheet[normalizeTargetStartAddress(target.startAddress)]
-  const formula = typeof cell?.f === 'string' && cell.f.trim().length > 0 ? `=${cell.f.trim().replace(/^=/u, '')}` : null
-  const value = normalizeSpreadsheetValue(cell?.v)
+  const archive = readXlsxZipEntries(bytes)
+  const cell = readXlsxTargetCell(archive, target.sheetName, normalizeTargetStartAddress(target.startAddress))
+  const formula = typeof cell?.formula === 'string' && cell.formula.trim().length > 0 ? `=${cell.formula.trim().replace(/^=/u, '')}` : null
+  const value = normalizeSpreadsheetValue(cell?.value)
   return {
     value,
     formula,
-    fillColor: readXlsxCellFillColor(cell) ?? readOoxmlCellFillColor(bytes, target),
+    fillColor: readOoxmlCellFillColor(archive, target),
     visibleText: value ?? formula,
     source: 'google-sheets-xlsx-export',
   }
-}
-
-function readXlsxCellFillColor(cell: XLSX.CellObject | undefined): string | null {
-  const style = asRecord(readXlsxCellStyle(cell))
-  const fill = asRecord(style?.fill)
-  const fgColor = asRecord(fill?.fgColor)
-  const bgColor = asRecord(fill?.bgColor)
-  return normalizeXlsxRgb(fgColor?.rgb) ?? normalizeXlsxRgb(bgColor?.rgb) ?? null
-}
-
-function readXlsxCellStyle(cell: XLSX.CellObject | undefined): unknown {
-  if (!cell || typeof cell !== 'object' || !('s' in cell)) {
-    return null
-  }
-  return cell.s
 }
 
 function normalizeXlsxRgb(value: unknown): string | null {
@@ -588,8 +564,7 @@ function normalizeXlsxRgb(value: unknown): string | null {
   return /^[0-9a-f]{6}$/u.test(hex) ? `#${hex}` : null
 }
 
-function readOoxmlCellFillColor(bytes: Uint8Array, target: SameCorpusMutationTargetSelection): string | null {
-  const archive = unzipSync(bytes)
+function readOoxmlCellFillColor(archive: XlsxZipEntries, target: SameCorpusMutationTargetSelection): string | null {
   const sheetPath = readOoxmlSheetPath(archive, target.sheetName)
   if (!sheetPath) {
     return null
@@ -802,7 +777,7 @@ function applyOoxmlTint(hexColor: string, tintValue: string | null): string {
   return `#${tintedChannels.join('')}`
 }
 
-function readOoxmlText(archive: Record<string, Uint8Array>, path: string): string | null {
+function readOoxmlText(archive: XlsxZipEntries, path: string): string | null {
   const bytes = archive[path]
   return bytes ? strFromU8(bytes) : null
 }
@@ -919,10 +894,6 @@ function stableJsonValue(value: unknown): unknown {
     )
   }
   return value
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === 'object' ? Object.fromEntries(Object.entries(value)) : null
 }
 
 function sha256Hex(bytes: Uint8Array): string {

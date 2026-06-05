@@ -57,6 +57,7 @@
       "@bilig/xlsx/simple-workbook-writer": ["./packages/xlsx/src/simple-workbook-writer.ts"],
       "@bilig/xlsx/source-preserving-literal-patches": ["./packages/xlsx/src/source-preserving-literal-patches.ts"],
       "@bilig/xlsx/source-preserving-zip": ["./packages/xlsx/src/source-preserving-zip.ts"],
+      "@bilig/xlsx/targeted-cell-reader": ["./packages/xlsx/src/targeted-cell-reader.ts"],
       "@bilig/xlsx/zip-reader": ["./packages/xlsx/src/zip-reader.ts"],
       "@bilig/zero-sync": ["./packages/zero-sync/src/index.ts"],
       "bilig-workpaper": ["./packages/bilig/src/index.ts"],

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
-import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
+import { decodeCellAddress, readXlsxZipEntries, writeSimpleXlsxWorkbook } from '@bilig/xlsx'
+import { strFromU8, strToU8, zipSync } from 'fflate'
 import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -477,25 +477,31 @@ function mockGoogleSheetsExportPage(
 }
 
 function xlsxBytesForTargetValue(sheetName: string, address: string, value: string): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const worksheet = XLSX.utils.aoa_to_sheet([[]])
-  worksheet[address] = { t: 's', v: value }
-  worksheet['!ref'] = `A1:${address}`
-  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  const { r, c } = decodeCellAddress(address)
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: sheetName,
+        cells: [{ address, row: r, col: c, value }],
+      },
+    ],
+  })
 }
 
 function xlsxBytesForFormulaResult(sheetName: string, address: string, formula: string, value: number): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const worksheet = XLSX.utils.aoa_to_sheet([[]])
-  worksheet[address] = { f: formula, t: 'n', v: value }
-  worksheet['!ref'] = `A1:${address}`
-  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  const { r, c } = decodeCellAddress(address)
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: sheetName,
+        cells: [{ address, row: r, col: c, formula, value }],
+      },
+    ],
+  })
 }
 
 function xlsxBytesForTargetFill(sheetName: string, address: string, value: string, fillColor: string): Uint8Array {
-  const archive = unzipSync(xlsxBytesForTargetValue(sheetName, address, value))
+  const archive = readXlsxZipEntries(xlsxBytesForTargetValue(sheetName, address, value))
   const stylesXml = strFromU8(archive['xl/styles.xml'] ?? new Uint8Array())
   const sheetXml = strFromU8(archive['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
   archive['xl/styles.xml'] = strToU8(addTargetFillStyle(stylesXml, fillColor))
@@ -504,7 +510,7 @@ function xlsxBytesForTargetFill(sheetName: string, address: string, value: strin
 }
 
 function xlsxBytesForTargetThemeFill(sheetName: string, address: string, value: string, fillColor: string): Uint8Array {
-  const archive = unzipSync(xlsxBytesForTargetValue(sheetName, address, value))
+  const archive = readXlsxZipEntries(xlsxBytesForTargetValue(sheetName, address, value))
   const stylesXml = strFromU8(archive['xl/styles.xml'] ?? new Uint8Array())
   const sheetXml = strFromU8(archive['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
   const themeXml = strFromU8(archive['xl/theme/theme1.xml'] ?? new Uint8Array())
@@ -515,7 +521,7 @@ function xlsxBytesForTargetThemeFill(sheetName: string, address: string, value: 
 }
 
 function xlsxBytesForTargetIndexedFill(sheetName: string, address: string, value: string, colorIndex: number): Uint8Array {
-  const archive = unzipSync(xlsxBytesForTargetValue(sheetName, address, value))
+  const archive = readXlsxZipEntries(xlsxBytesForTargetValue(sheetName, address, value))
   const stylesXml = strFromU8(archive['xl/styles.xml'] ?? new Uint8Array())
   const sheetXml = strFromU8(archive['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
   archive['xl/styles.xml'] = strToU8(addTargetIndexedFillStyle(stylesXml, colorIndex))
@@ -524,7 +530,7 @@ function xlsxBytesForTargetIndexedFill(sheetName: string, address: string, value
 }
 
 function xlsxBytesForTargetRowFill(sheetName: string, address: string, value: string, fillColor: string): Uint8Array {
-  const archive = unzipSync(xlsxBytesForTargetValue(sheetName, address, value))
+  const archive = readXlsxZipEntries(xlsxBytesForTargetValue(sheetName, address, value))
   const stylesXml = strFromU8(archive['xl/styles.xml'] ?? new Uint8Array())
   const sheetXml = strFromU8(archive['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
   archive['xl/styles.xml'] = strToU8(addTargetFillStyle(stylesXml, fillColor))
@@ -533,7 +539,7 @@ function xlsxBytesForTargetRowFill(sheetName: string, address: string, value: st
 }
 
 function xlsxBytesForTargetColumnFill(sheetName: string, address: string, value: string, fillColor: string): Uint8Array {
-  const archive = unzipSync(xlsxBytesForTargetValue(sheetName, address, value))
+  const archive = readXlsxZipEntries(xlsxBytesForTargetValue(sheetName, address, value))
   const stylesXml = strFromU8(archive['xl/styles.xml'] ?? new Uint8Array())
   const sheetXml = strFromU8(archive['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
   archive['xl/styles.xml'] = strToU8(addTargetFillStyle(stylesXml, fillColor))
