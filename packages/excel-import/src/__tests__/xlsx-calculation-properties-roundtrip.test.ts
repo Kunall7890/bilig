@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import { SpreadsheetEngine } from '@bilig/core'
 
 import { exportXlsx, importXlsx, precisionAsDisplayedCalculationWarning } from '../index.js'
+import { patchXlsxTestZipText, readXlsxTestZipText } from './xlsx-test-helpers.js'
 
 describe('XLSX calculation properties roundtrip', () => {
   it('preserves semantic workbook calcPr attributes through import, export, and engine snapshots', () => {
@@ -48,29 +48,32 @@ describe('XLSX calculation properties roundtrip', () => {
 })
 
 function buildCalculationPropertiesWorkbookBytes(options: { readonly formula?: boolean } = {}): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet(
-    options.formula
-      ? [
-          ['rate', 'gross'],
-          [0.08, { f: '1+A2', v: 1.08 }],
-        ]
-      : [['rate'], [0.08]],
+  const cells = options.formula
+    ? [
+        { address: 'A1', row: 0, col: 0, value: 'rate' },
+        { address: 'B1', row: 0, col: 1, value: 'gross' },
+        { address: 'A2', row: 1, col: 0, value: 0.08 },
+        { address: 'B2', row: 1, col: 1, formula: '1+A2', value: 1.08 },
+      ]
+    : [
+        { address: 'A1', row: 0, col: 0, value: 'rate' },
+        { address: 'A2', row: 1, col: 0, value: 0.08 },
+      ]
+  return patchXlsxTestZipText(
+    writeSimpleXlsxWorkbook({
+      sheets: [{ name: 'Model', cells }],
+    }),
+    'xl/workbook.xml',
+    (sourceWorkbookXml) =>
+      sourceWorkbookXml
+        .replace(/<calcPr\b[^>]*(?:\/>|>[\s\S]*?<\/calcPr>)/u, '')
+        .replace(
+          '</workbook>',
+          '<calcPr calcMode="manual" fullPrecision="0" iterate="1" iterateCount="10200" iterateDelta="9.9999999999999995E-7" fullCalcOnLoad="1" calcOnSave="1" calcCompleted="0" concurrentCalc="0"/></workbook>',
+        ),
   )
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Model')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
-  const sourceWorkbookXml = strFromU8(zip['xl/workbook.xml'] ?? new Uint8Array())
-  const workbookXmlWithoutCalcPr = sourceWorkbookXml.replace(/<calcPr\b[^>]*(?:\/>|>[\s\S]*?<\/calcPr>)/u, '')
-  zip['xl/workbook.xml'] = strToU8(
-    workbookXmlWithoutCalcPr.replace(
-      '</workbook>',
-      '<calcPr calcMode="manual" fullPrecision="0" iterate="1" iterateCount="10200" iterateDelta="9.9999999999999995E-7" fullCalcOnLoad="1" calcOnSave="1" calcCompleted="0" concurrentCalc="0"/></workbook>',
-    ),
-  )
-  return zipSync(zip)
 }
 
 function workbookXml(bytes: Uint8Array): string {
-  return strFromU8(unzipSync(bytes)['xl/workbook.xml'] ?? new Uint8Array())
+  return readXlsxTestZipText(bytes, 'xl/workbook.xml')
 }

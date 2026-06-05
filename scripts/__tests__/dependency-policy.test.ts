@@ -30,6 +30,16 @@ const nativeXlsxExampleScripts = [
   'examples/recalc-bridge-workflows/smoke.mjs',
   'examples/recalc-bridge-workflows/stackoverflow-sheetjs-63085785.mjs',
 ] as const
+const nativeXlsxExcelImportFixtureTests = [
+  'packages/excel-import/src/__tests__/xlsx-byte-source-import.test.ts',
+  'packages/excel-import/src/__tests__/xlsx-calculation-properties-roundtrip.test.ts',
+  'packages/excel-import/src/__tests__/xlsx-date1904-system.test.ts',
+  'packages/excel-import/src/__tests__/xlsx-error-cell-import.test.ts',
+  'packages/excel-import/src/__tests__/xlsx-formula-cache-text-normalization.test.ts',
+  'packages/excel-import/src/__tests__/xlsx-sheet-name-whitespace.test.ts',
+  'packages/excel-import/src/__tests__/xlsx-sheet-visibility-roundtrip.test.ts',
+  'packages/excel-import/src/__tests__/xlsx-workbook-sheet-paths.test.ts',
+] as const
 
 function packageManifestPaths(): string[] {
   return packageManifestDirs.flatMap((dir) => {
@@ -117,6 +127,12 @@ describe('repository dependency policy', () => {
 
   it('keeps recalculation bridge examples on @bilig/xlsx instead of SheetJS fixture edits', () => {
     const violations = nativeXlsxExampleScripts.filter((path) => hasRuntimeXlsxImport(readFileSync(join(repoRoot, path), 'utf8')))
+
+    expect(violations).toEqual([])
+  })
+
+  it('keeps simple excel-import fixture builders on @bilig/xlsx instead of SheetJS', () => {
+    const violations = nativeXlsxExcelImportFixtureTests.filter((path) => hasRuntimeXlsxImport(readFileSync(join(repoRoot, path), 'utf8')))
 
     expect(violations).toEqual([])
   })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import { addExportCalculationSettingsToXlsxBytes } from '../xlsx-calculation-settings.js'
 import { manualCalculationModeWarning, precisionAsDisplayedCalculationWarning } from '../index.js'
@@ -41,24 +41,33 @@ function buildCalculationWorkbookBytes(settings: {
   readonly compatibilityMode: 'excel-modern'
   readonly fullPrecision?: false
 }): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ['Input', 'Value'],
-    ['A', 1],
-    ['B', 2],
-    ['Total', null],
-  ])
-  sheet.B4 = { t: 'n', f: 'B2+B3', v: settings.mode === 'manual' ? 99 : 3 }
-  sheet['!ref'] = 'A1:B4'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Summary')
-  return addExportCalculationSettingsToXlsxBytes(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }), {
-    version: 1,
-    workbook: {
-      name: 'calculation-warning-byte-source',
-      metadata: { calculationSettings: settings },
+  return addExportCalculationSettingsToXlsxBytes(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Summary',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Input' },
+            { address: 'B1', row: 0, col: 1, value: 'Value' },
+            { address: 'A2', row: 1, col: 0, value: 'A' },
+            { address: 'B2', row: 1, col: 1, value: 1 },
+            { address: 'A3', row: 2, col: 0, value: 'B' },
+            { address: 'B3', row: 2, col: 1, value: 2 },
+            { address: 'A4', row: 3, col: 0, value: 'Total' },
+            { address: 'B4', row: 3, col: 1, formula: 'B2+B3', value: settings.mode === 'manual' ? 99 : 3 },
+          ],
+        },
+      ],
+    }),
+    {
+      version: 1,
+      workbook: {
+        name: 'calculation-warning-byte-source',
+        metadata: { calculationSettings: settings },
+      },
+      sheets: [],
     },
-    sheets: [],
-  })
+  )
 }
 
 class InstrumentedByteSource {

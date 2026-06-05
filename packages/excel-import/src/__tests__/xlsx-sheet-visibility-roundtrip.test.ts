@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import { exportXlsx, importXlsx } from '../index.js'
+import { patchXlsxTestZipText, readXlsxTestZipText } from './xlsx-test-helpers.js'
 
 describe('sheet visibility roundtrip', () => {
   it('preserves hidden and very hidden worksheet state', () => {
@@ -13,23 +14,24 @@ describe('sheet visibility roundtrip', () => {
       { name: 'Audit', visibility: 'veryHidden' },
     ])
 
-    const exported = XLSX.read(exportXlsx(imported.snapshot), { type: 'array' })
-    expect(exported.Workbook?.Sheets?.map((sheet) => sheet.Hidden ?? 0)).toEqual([0, 1, 2])
+    const exportedWorkbookXml = readXlsxTestZipText(exportXlsx(imported.snapshot), 'xl/workbook.xml')
+    expect(exportedWorkbookXml).toContain('<sheet name="Inputs"')
+    expect(exportedWorkbookXml).toMatch(/<sheet\b[^>]*name="Support"[^>]*state="hidden"/u)
+    expect(exportedWorkbookXml).toMatch(/<sheet\b[^>]*name="Audit"[^>]*state="veryHidden"/u)
   })
 })
 
 function buildSheetVisibilityWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['visible']]), 'Inputs')
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['hidden']]), 'Support')
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['very hidden']]), 'Audit')
-  workbook.Workbook = {
-    ...workbook.Workbook,
-    Sheets: [
-      { name: 'Inputs', Hidden: 0 },
-      { name: 'Support', Hidden: 1 },
-      { name: 'Audit', Hidden: 2 },
+  const bytes = writeSimpleXlsxWorkbook({
+    sheets: [
+      { name: 'Inputs', cells: [{ address: 'A1', row: 0, col: 0, value: 'visible' }] },
+      { name: 'Support', cells: [{ address: 'A1', row: 0, col: 0, value: 'hidden' }] },
+      { name: 'Audit', cells: [{ address: 'A1', row: 0, col: 0, value: 'very hidden' }] },
     ],
-  }
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  })
+  return patchXlsxTestZipText(bytes, 'xl/workbook.xml', (workbookXml) =>
+    workbookXml
+      .replace('<sheet name="Support" sheetId="2"', '<sheet name="Support" sheetId="2" state="hidden"')
+      .replace('<sheet name="Audit" sheetId="3"', '<sheet name="Audit" sheetId="3" state="veryHidden"'),
+  )
 }

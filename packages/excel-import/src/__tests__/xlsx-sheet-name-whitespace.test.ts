@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { strFromU8, unzipSync } from 'fflate'
-import * as XLSX from 'xlsx'
 
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import { exportXlsx, importXlsx } from '../index.js'
+import { readXlsxTestZipText } from './xlsx-test-helpers.js'
 
 describe('XLSX sheet-name whitespace export', () => {
   it('preserves trailing spaces in raw workbook sheet names and formulas', () => {
@@ -33,13 +32,11 @@ describe('XLSX sheet-name whitespace export', () => {
     }
 
     const exported = exportXlsx(snapshot)
-    const rawWorkbook = XLSX.read(exported, { type: 'array', cellFormula: true })
-    const workbookXml = strFromU8(unzipSync(exported)['xl/workbook.xml'] ?? new Uint8Array())
+    const workbookXml = readXlsxTestZipText(exported, 'xl/workbook.xml')
     const roundTripped = importXlsx(exported, 'country-erp-whitespace.xlsx')
 
-    expect(rawWorkbook.SheetNames).toContain('Country ERP ')
-    expect(rawWorkbook.SheetNames).not.toContain('Country ERP')
     expect(workbookXml).toContain('<sheet name="Country ERP "')
+    expect(workbookXml).not.toContain('<sheet name="Country ERP" ')
     expect(roundTripped.snapshot.sheets.map((sheet) => sheet.name)).toContain('Country ERP ')
     expect(roundTripped.snapshot.sheets.map((sheet) => sheet.name)).not.toContain('Country ERP')
 
@@ -75,13 +72,11 @@ describe('XLSX sheet-name whitespace export', () => {
     }
 
     const exported = exportXlsx(snapshot)
-    const rawWorkbook = XLSX.read(exported, { type: 'array', cellFormula: true })
-    const workbookXml = strFromU8(unzipSync(exported)['xl/workbook.xml'] ?? new Uint8Array())
+    const workbookXml = readXlsxTestZipText(exported, 'xl/workbook.xml')
     const roundTripped = importXlsx(exported, 'whitespace-only-sheet.xlsx')
 
-    expect(rawWorkbook.SheetNames).toEqual([' '])
-    expect(rawWorkbook.SheetNames).not.toContain('Sheet1')
     expect(workbookXml).toContain('<sheet name=" "')
+    expect(workbookXml).not.toContain('<sheet name="Sheet1"')
     expect(roundTripped.snapshot.sheets[0]?.name).toBe(' ')
     expect(roundTripped.snapshot.sheets[0]?.cells).toEqual([{ address: 'A1', row: 0, col: 0, value: 'Visible data' }])
     expect(roundTripped.snapshot.sheets[0]?.metadata?.merges).toEqual([{ sheetName: ' ', startAddress: 'A3', endAddress: 'B3' }])

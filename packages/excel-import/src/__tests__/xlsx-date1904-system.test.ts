@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import { SpreadsheetEngine } from '@bilig/core'
 import { ValueTag } from '@bilig/protocol'
 
 import { exportXlsx, importXlsx } from '../index.js'
+import { patchXlsxTestZipText, readXlsxTestZipText } from './xlsx-test-helpers.js'
 
 describe('1904 date system import', () => {
   it('preserves workbookPr date1904 and evaluates date formulas in the workbook date system', () => {
@@ -28,26 +28,28 @@ describe('1904 date system import', () => {
 })
 
 function buildDate1904WorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ['Serial', 'Year', 'Text'],
-    [1, null, null],
-  ])
-  sheet.B2 = { t: 'n', f: 'YEAR(A2)', v: 1904 }
-  sheet.C2 = { t: 's', f: 'TEXT(A2,"yyyy-mm-dd")', v: '1904-01-02' }
-  sheet['!ref'] = 'A1:C2'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Date1904')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
-  const sourceWorkbookXml = strFromU8(zip['xl/workbook.xml'] ?? new Uint8Array())
-  zip['xl/workbook.xml'] = strToU8(
+  const bytes = writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Date1904',
+        cells: [
+          { address: 'A1', row: 0, col: 0, value: 'Serial' },
+          { address: 'B1', row: 0, col: 1, value: 'Year' },
+          { address: 'C1', row: 0, col: 2, value: 'Text' },
+          { address: 'A2', row: 1, col: 0, value: 1 },
+          { address: 'B2', row: 1, col: 1, formula: 'YEAR(A2)', value: 1904 },
+          { address: 'C2', row: 1, col: 2, formula: 'TEXT(A2,"yyyy-mm-dd")', value: '1904-01-02' },
+        ],
+      },
+    ],
+  })
+  return patchXlsxTestZipText(bytes, 'xl/workbook.xml', (sourceWorkbookXml) =>
     /<workbookPr\b/u.test(sourceWorkbookXml)
       ? sourceWorkbookXml.replace(/<workbookPr\b([^>]*)\/>/u, '<workbookPr$1 date1904="1"/>')
       : sourceWorkbookXml.replace(/<sheets\b/u, '<workbookPr date1904="1"/><sheets'),
   )
-  return zipSync(zip)
 }
 
 function workbookXml(bytes: Uint8Array): string {
-  return strFromU8(unzipSync(bytes)['xl/workbook.xml'] ?? new Uint8Array())
+  return readXlsxTestZipText(bytes, 'xl/workbook.xml')
 }

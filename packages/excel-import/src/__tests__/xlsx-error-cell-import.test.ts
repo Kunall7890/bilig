@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import { describe, expect, it } from 'vitest'
 
 import { importXlsx } from '../index.js'
@@ -21,16 +21,25 @@ describe('github issue #42 xlsx literal error cell import', () => {
 })
 
 function buildLiteralErrorWorkbookBytes(): Uint8Array {
-  const sheet = XLSX.utils.aoa_to_sheet([['NA', 'DIV', 'REF', 'VALUE', 'NAME', 'NUM']])
-  sheet['A2'] = { t: 'e', v: 42 }
-  sheet['B2'] = { t: 'e', v: 7 }
-  sheet['C2'] = { t: 'e', v: 23 }
-  sheet['D2'] = { t: 'e', v: 15 }
-  sheet['E2'] = { t: 'e', v: 29 }
-  sheet['F2'] = { t: 'e', v: 36 }
-  sheet['!ref'] = 'A1:F2'
-
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Errors')
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Errors',
+        cells: [
+          { address: 'A1', row: 0, col: 0, value: 'NA' },
+          { address: 'B1', row: 0, col: 1, value: 'DIV' },
+          { address: 'C1', row: 0, col: 2, value: 'REF' },
+          { address: 'D1', row: 0, col: 3, value: 'VALUE' },
+          { address: 'E1', row: 0, col: 4, value: 'NAME' },
+          { address: 'F1', row: 0, col: 5, value: 'NUM' },
+          { address: 'A2', row: 1, col: 0, error: '#N/A' },
+          { address: 'B2', row: 1, col: 1, error: '#DIV/0!' },
+          { address: 'C2', row: 1, col: 2, error: '#REF!' },
+          { address: 'D2', row: 1, col: 3, error: '#VALUE!' },
+          { address: 'E2', row: 1, col: 4, error: '#NAME?' },
+          { address: 'F2', row: 1, col: 5, error: '#NUM!' },
+        ],
+      },
+    ],
+  })
 }

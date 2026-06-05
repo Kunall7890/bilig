@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { strToU8, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
 import { readImportedWorksheetTextValues } from '../xlsx-worksheet-text-values.js'
 import { workbookSheetPathEntries } from '../xlsx-workbook-sheet-paths.js'
+import type { SheetJsWorkBook } from '../xlsx-sheetjs-types.js'
 
 const worksheetRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet'
 const chartSheetRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/chartsheet'
@@ -10,8 +10,8 @@ const chartSheetRelationshipType = 'http://schemas.openxmlformats.org/officeDocu
 function createWorkbookWithPackageParts(parts: {
   readonly Directory: { readonly sheets: readonly string[] }
   readonly files: Record<string, { readonly content: string }>
-}): XLSX.WorkBook {
-  return Object.assign(XLSX.utils.book_new(), parts)
+}): SheetJsWorkBook {
+  return { SheetNames: [], Sheets: {}, ...parts }
 }
 
 describe('xlsx workbook sheet paths', () => {

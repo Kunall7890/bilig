@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import { ValueTag } from '@bilig/protocol'
 import { SpreadsheetEngine } from '@bilig/core'
 
@@ -45,13 +45,16 @@ describe('xlsx formula cache text normalization', () => {
 })
 
 function buildExternalFormulaCacheWorkbook(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([[]])
-  sheet['A1'] = { t: 'str', f: '[1]External!A1', v: 'Line 1\r\nLine 2\rLine 3' }
-  sheet['!ref'] = 'A1:A1'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Report')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Report',
+          cells: [{ address: 'A1', row: 0, col: 0, formula: '[1]External!A1', value: 'Line 1\r\nLine 2\rLine 3' }],
+        },
+      ],
+    }),
+  )
   zip['xl/workbook.xml'] = strToU8(
     strFromU8(zip['xl/workbook.xml'] ?? new Uint8Array())
       .replace(/<workbook\b([^>]*)>/u, (match) =>
