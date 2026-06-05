@@ -1,9 +1,12 @@
 import { encodeCellAddress } from '@bilig/xlsx'
-import type * as XLSX from 'xlsx'
+import type { SheetJsRange } from './xlsx-sheetjs-types.js'
 
 import type { WorkbookMergeRangeSnapshot } from '@bilig/protocol'
 
-export function buildMergeEntries(sheetName: string, merges: readonly XLSX.Range[] | undefined): WorkbookMergeRangeSnapshot[] | undefined {
+export function buildMergeEntries(
+  sheetName: string,
+  merges: readonly SheetJsRange[] | undefined,
+): WorkbookMergeRangeSnapshot[] | undefined {
   if (!Array.isArray(merges) || merges.length === 0) {
     return undefined
   }

@@ -1,7 +1,6 @@
 import { XMLParser } from 'fast-xml-parser'
 import { decodeCellAddress, decodeCellRange, encodeCellAddress } from '@bilig/xlsx'
-import type * as XLSX from 'xlsx'
-import type * as XLSXStyle from 'xlsx-js-style'
+import type { SheetJsWorkBook } from './xlsx-sheetjs-types.js'
 
 import type {
   CellBorderSideSnapshot,
@@ -36,6 +35,42 @@ import { getZipText as getZipEntryText, readXlsxZipEntries, type XlsxZipEntries,
 
 type ImportedCellStyle = Omit<CellStyleRecord, 'id'>
 type ExportCellAlignment = Record<string, boolean | number | string>
+type ExportCellStyleColor = { rgb: string }
+type ExportCellBorderType = string
+
+interface ExportCellBorderSide {
+  color: ExportCellStyleColor
+  style?: ExportCellBorderType
+}
+
+interface ExportCellStyle {
+  fill?: {
+    patternType: 'solid'
+    fgColor: ExportCellStyleColor
+  }
+  font?: {
+    name?: string
+    sz?: number
+    bold?: boolean
+    italic?: boolean
+    underline?: boolean
+    color?: ExportCellStyleColor
+  }
+  alignment?: ExportCellAlignment
+  border?: {
+    top?: ExportCellBorderSide
+    right?: ExportCellBorderSide
+    bottom?: ExportCellBorderSide
+    left?: ExportCellBorderSide
+  }
+}
+
+interface StyledWorksheetCell {
+  t: string
+  s?: ExportCellStyle
+}
+
+type StyledWorkSheet = Record<string, unknown>
 
 interface ImportedSheetDimensions {
   columns?: WorkbookAxisEntrySnapshot[]
@@ -99,16 +134,16 @@ function getPackageText(files: unknown, sourceZip: XlsxZipEntries | null, path: 
   return sourceZip ? getZipEntryText(sourceZip, path) : getFileText(files, path)
 }
 
-function workbookRecord(workbook: XLSX.WorkBook): Record<string, unknown> | null {
+function workbookRecord(workbook: SheetJsWorkBook): Record<string, unknown> | null {
   const value: unknown = workbook
   return isRecord(value) ? value : null
 }
 
-function workbookFiles(workbook: XLSX.WorkBook): unknown {
+function workbookFiles(workbook: SheetJsWorkBook): unknown {
   return workbookRecord(workbook)?.['files']
 }
 
-function workbookStylePath(workbook: XLSX.WorkBook): string | null {
+function workbookStylePath(workbook: SheetJsWorkBook): string | null {
   const directory = workbookRecord(workbook)?.['Directory']
   if (!isRecord(directory)) {
     return null
@@ -698,7 +733,7 @@ function parseSheetRowEntries(sheetXml: string): { entries?: WorkbookAxisEntrySn
 }
 
 export function readImportedWorkbookSheetDimensions(
-  workbook: XLSX.WorkBook,
+  workbook: SheetJsWorkBook,
   sheetNames: readonly string[],
   source?: XlsxZipSource,
 ): Map<string, ImportedSheetDimensions> {
@@ -736,7 +771,7 @@ export function readImportedWorkbookSheetDimensions(
 }
 
 export function readImportedWorkbookFileStyles(
-  workbook: XLSX.WorkBook,
+  workbook: SheetJsWorkBook,
   sheetNames: readonly string[],
   options: ImportedWorkbookFileStylesOptions = {},
   source?: XlsxZipSource,
@@ -780,7 +815,7 @@ export function readImportedWorkbookFileStyles(
 }
 
 export function readImportedWorkbookStyleArtifacts(
-  workbook: XLSX.WorkBook,
+  workbook: SheetJsWorkBook,
   sheetNames: readonly string[],
   source?: XlsxZipSource,
   options: ImportedWorkbookStyleArtifactsOptions = {},
@@ -815,7 +850,7 @@ export function readImportedWorkbookStyleArtifacts(
   }
 }
 
-function exportColor(value: string): XLSXStyle.CellStyleColor | undefined {
+function exportColor(value: string): ExportCellStyleColor | undefined {
   const rgb = toArgbColor(value)
   return rgb ? { rgb } : undefined
 }
@@ -833,7 +868,7 @@ function exportAlignment(alignment: CellStyleAlignmentSnapshot): ExportCellAlign
   }
 }
 
-function exportBorderSide(side: CellBorderSideSnapshot): { color: XLSXStyle.CellStyleColor; style?: XLSXStyle.BorderType } {
+function exportBorderSide(side: CellBorderSideSnapshot): ExportCellBorderSide {
   const color = exportColor(side.color) ?? { rgb: 'FF000000' }
   switch (side.style) {
     case 'solid':
@@ -847,15 +882,15 @@ function exportBorderSide(side: CellBorderSideSnapshot): { color: XLSXStyle.Cell
   }
 }
 
-function exportStyle(style: CellStyleRecord): XLSXStyle.CellStyle {
-  const output: XLSXStyle.CellStyle = {}
+function exportStyle(style: CellStyleRecord): ExportCellStyle {
+  const output: ExportCellStyle = {}
   const fillColor = style.fill?.backgroundColor ? exportColor(style.fill.backgroundColor) : undefined
   if (fillColor) {
     output.fill = { patternType: 'solid', fgColor: fillColor }
   }
 
   if (style.font) {
-    const font: NonNullable<XLSXStyle.CellStyle['font']> = {}
+    const font: NonNullable<ExportCellStyle['font']> = {}
     const fontColor = style.font.color ? exportColor(style.font.color) : undefined
     if (style.font.family) {
       font.name = style.font.family
@@ -883,12 +918,12 @@ function exportStyle(style: CellStyleRecord): XLSXStyle.CellStyle {
   if (style.alignment) {
     const alignment = exportAlignment(style.alignment)
     if (Object.keys(alignment).length > 0) {
-      output.alignment = alignment as NonNullable<XLSXStyle.CellStyle['alignment']>
+      output.alignment = alignment
     }
   }
 
   if (style.borders) {
-    const border: NonNullable<XLSXStyle.CellStyle['border']> = {}
+    const border: NonNullable<ExportCellStyle['border']> = {}
     if (style.borders.top) {
       border.top = exportBorderSide(style.borders.top)
     }
@@ -909,12 +944,12 @@ function exportStyle(style: CellStyleRecord): XLSXStyle.CellStyle {
   return output
 }
 
-function isStyledWorksheetCell(value: unknown): value is XLSXStyle.CellObject {
+function isStyledWorksheetCell(value: unknown): value is StyledWorksheetCell {
   return isRecord(value) && typeof value['t'] === 'string'
 }
 
 export function addExportStylesToWorksheet(
-  worksheet: XLSXStyle.WorkSheet,
+  worksheet: StyledWorkSheet,
   styleRanges: readonly SheetStyleRangeSnapshot[] | undefined,
   styles: readonly CellStyleRecord[] | undefined,
 ): void {
@@ -934,7 +969,7 @@ export function addExportStylesToWorksheet(
       for (let column = range.s.c; column <= range.e.c; column += 1) {
         const address = encodeCellAddress({ r: row, c: column })
         const existingCell = worksheet[address]
-        const cell = isStyledWorksheetCell(existingCell) ? existingCell : ({ t: 'z' } satisfies XLSXStyle.CellObject)
+        const cell = isStyledWorksheetCell(existingCell) ? existingCell : ({ t: 'z' } satisfies StyledWorksheetCell)
         cell.s = exportStyleValue
         worksheet[address] = cell
       }

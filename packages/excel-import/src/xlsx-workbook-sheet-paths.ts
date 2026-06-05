@@ -1,5 +1,5 @@
 import { XMLParser } from 'fast-xml-parser'
-import type * as XLSX from 'xlsx'
+import type { SheetJsWorkBook } from './xlsx-sheetjs-types.js'
 
 import { parseRelationships, resolveTargetPath } from './xlsx-pivot-artifacts.js'
 import { getZipText, normalizeZipPath, readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
@@ -46,12 +46,12 @@ function recordChild(value: unknown, key: string): Record<string, unknown> | nul
   return isRecord(child) ? child : null
 }
 
-function workbookRecord(workbook: XLSX.WorkBook): Record<string, unknown> | null {
+function workbookRecord(workbook: SheetJsWorkBook): Record<string, unknown> | null {
   const value: unknown = workbook
   return isRecord(value) ? value : null
 }
 
-function workbookFiles(workbook: XLSX.WorkBook): unknown {
+function workbookFiles(workbook: SheetJsWorkBook): unknown {
   return workbookRecord(workbook)?.['files']
 }
 
@@ -104,7 +104,7 @@ function sortedWorksheetPaths(zip: XlsxZipSource | undefined): string[] {
     })
 }
 
-export function workbookDirectorySheetPaths(workbook: XLSX.WorkBook, source?: XlsxZipSource): string[] {
+export function workbookDirectorySheetPaths(workbook: SheetJsWorkBook, source?: XlsxZipSource): string[] {
   const directory = workbookRecord(workbook)?.['Directory']
   if (isRecord(directory)) {
     const paths = asArray(directory['sheets']).flatMap((entry) => (typeof entry === 'string' ? [entry] : []))
@@ -115,7 +115,7 @@ export function workbookDirectorySheetPaths(workbook: XLSX.WorkBook, source?: Xl
   return sortedWorksheetPaths(source)
 }
 
-export function workbookSheetPathsByName(workbook: XLSX.WorkBook, source?: XlsxZipSource): Map<string, string> {
+export function workbookSheetPathsByName(workbook: SheetJsWorkBook, source?: XlsxZipSource): Map<string, string> {
   const sourceZip = source ? readXlsxZipEntries(source) : undefined
   const files = workbookFiles(workbook)
   const workbookRelationships = parseRelationships(
@@ -151,7 +151,7 @@ export function workbookSheetPath(
 }
 
 export function workbookSheetPathEntries(
-  workbook: XLSX.WorkBook,
+  workbook: SheetJsWorkBook,
   sheetNames: readonly string[],
   source?: XlsxZipSource,
 ): WorkbookSheetPathEntry[] {

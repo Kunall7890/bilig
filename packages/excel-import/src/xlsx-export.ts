@@ -1,5 +1,14 @@
-import * as XLSX from 'xlsx'
 import { unzipSync, zipSync } from 'fflate'
+import { decodeCellAddress, decodeCellRange, encodeCellAddress, encodeCellRange } from '@bilig/xlsx'
+import type {
+  SheetJsCellObject,
+  SheetJsColInfo,
+  SheetJsExcelDataType,
+  SheetJsRange,
+  SheetJsRowInfo,
+  SheetJsWorkBook,
+  SheetJsWorkSheet,
+} from './xlsx-sheetjs-types.js'
 
 import type {
   CellStyleRecord,
@@ -50,6 +59,7 @@ import { applyExportSheetVisibilitiesToWorkbook } from './xlsx-sheet-visibility.
 import { addExportSlicerConnectionArtifactsToXlsxBytes } from './xlsx-slicer-connection-artifacts.js'
 import { addExportSparklinesToXlsxBytes } from './xlsx-sparklines.js'
 import { addExportHyperlinkDisplaysToXlsxBytes, addExportHyperlinksToWorksheet, hasExportHyperlinks } from './xlsx-hyperlinks.js'
+import { loadOptionalSheetJs } from './xlsx-optional-sheetjs.js'
 import { preserveSnapshotNumberFormats } from './xlsx-export-number-formats.js'
 import { escapeXmlAttribute, getZipText, setXmlAttribute, setZipText } from './xlsx-export-xml.js'
 import {
@@ -81,7 +91,7 @@ export {
   type XlsxSourceLiteralPatchFileExportResult,
 }
 
-function buildExportColumns(columns: readonly WorkbookAxisEntrySnapshot[] | undefined): XLSX.ColInfo[] | undefined {
+function buildExportColumns(columns: readonly WorkbookAxisEntrySnapshot[] | undefined): SheetJsColInfo[] | undefined {
   if (!columns || columns.length === 0) {
     return undefined
   }
@@ -89,7 +99,7 @@ function buildExportColumns(columns: readonly WorkbookAxisEntrySnapshot[] | unde
   if (maxIndex < 0) {
     return undefined
   }
-  const output = Array.from({ length: maxIndex + 1 }, (): XLSX.ColInfo => ({}))
+  const output = Array.from({ length: maxIndex + 1 }, (): SheetJsColInfo => ({}))
   for (const column of columns) {
     const target = output[column.index]
     if (!target) {
@@ -105,7 +115,7 @@ function buildExportColumns(columns: readonly WorkbookAxisEntrySnapshot[] | unde
   return output.some((column) => Object.keys(column).length > 0) ? output : undefined
 }
 
-function buildExportRows(rows: readonly WorkbookAxisEntrySnapshot[] | undefined): XLSX.RowInfo[] | undefined {
+function buildExportRows(rows: readonly WorkbookAxisEntrySnapshot[] | undefined): SheetJsRowInfo[] | undefined {
   if (!rows || rows.length === 0) {
     return undefined
   }
@@ -113,7 +123,7 @@ function buildExportRows(rows: readonly WorkbookAxisEntrySnapshot[] | undefined)
   if (maxIndex < 0) {
     return undefined
   }
-  const output = Array.from({ length: maxIndex + 1 }, (): XLSX.RowInfo => ({}))
+  const output = Array.from({ length: maxIndex + 1 }, (): SheetJsRowInfo => ({}))
   for (const row of rows) {
     const target = output[row.index]
     if (!target) {
@@ -140,8 +150,8 @@ function sheetCellFormats(sheet: WorkbookSnapshot['sheets'][number]): Map<string
   return formats
 }
 
-function decodeExportRange(startAddress: string, endAddress: string): XLSX.Range {
-  const decoded = XLSX.utils.decode_range(`${startAddress}:${endAddress}`)
+function decodeExportRange(startAddress: string, endAddress: string): SheetJsRange {
+  const decoded = decodeCellRange(`${startAddress}:${endAddress}`)
   return {
     s: {
       r: Math.min(decoded.s.r, decoded.e.r),
@@ -170,7 +180,7 @@ function addRangeNumberFormats(
     const range = decodeExportRange(formatRange.range.startAddress, formatRange.range.endAddress)
     for (let row = range.s.r; row <= range.e.r; row += 1) {
       for (let col = range.s.c; col <= range.e.c; col += 1) {
-        formats.set(XLSX.utils.encode_cell({ r: row, c: col }), format)
+        formats.set(encodeCellAddress({ r: row, c: col }), format)
       }
     }
   }
@@ -413,7 +423,7 @@ function applyStyleIndexesToSheetXml(
     const range = decodeExportRange(styleRange.range.startAddress, styleRange.range.endAddress)
     for (let row = range.s.r; row <= range.e.r; row += 1) {
       for (let col = range.s.c; col <= range.e.c; col += 1) {
-        const address = XLSX.utils.encode_cell({ r: row, c: col })
+        const address = encodeCellAddress({ r: row, c: col })
         if (!rawStyleArtifactAddresses.has(address)) {
           stylesByAddress.set(address, styleIndex)
         }
@@ -531,15 +541,15 @@ function addExportStyleArtifactsToXlsxBytes(bytes: Uint8Array, snapshot: Workboo
   return zipSync(zip)
 }
 
-function buildExportMerges(merges: readonly WorkbookMergeRangeSnapshot[] | undefined): XLSX.Range[] | undefined {
+function buildExportMerges(merges: readonly WorkbookMergeRangeSnapshot[] | undefined): SheetJsRange[] | undefined {
   if (!merges || merges.length === 0) {
     return undefined
   }
-  return merges.map((merge) => XLSX.utils.decode_range(`${merge.startAddress}:${merge.endAddress}`))
+  return merges.map((merge) => decodeCellRange(`${merge.startAddress}:${merge.endAddress}`))
 }
 
-function updateWorksheetBounds(bounds: XLSX.Range | null, address: string): XLSX.Range {
-  const decoded = XLSX.utils.decode_cell(address)
+function updateWorksheetBounds(bounds: SheetJsRange | null, address: string): SheetJsRange {
+  const decoded = decodeCellAddress(address)
   if (!bounds) {
     return {
       s: { r: decoded.r, c: decoded.c },
@@ -559,7 +569,7 @@ function updateWorksheetBounds(bounds: XLSX.Range | null, address: string): XLSX
 }
 
 function inferExportWorksheetRange(sheet: WorkbookSnapshot['sheets'][number]): string | undefined {
-  let bounds: XLSX.Range | null = null
+  let bounds: SheetJsRange | null = null
   for (const cell of sheet.cells) {
     bounds = updateWorksheetBounds(bounds, cell.address)
   }
@@ -581,10 +591,10 @@ function inferExportWorksheetRange(sheet: WorkbookSnapshot['sheets'][number]): s
     bounds = updateWorksheetBounds(bounds, formatRange.range.startAddress)
     bounds = updateWorksheetBounds(bounds, formatRange.range.endAddress)
   }
-  return bounds ? XLSX.utils.encode_range(bounds) : undefined
+  return bounds ? encodeCellRange(bounds) : undefined
 }
 
-function cellTypeForLiteral(value: LiteralInput): XLSX.ExcelDataType | undefined {
+function cellTypeForLiteral(value: LiteralInput): SheetJsExcelDataType | undefined {
   if (typeof value === 'number') {
     return 'n'
   }
@@ -597,8 +607,8 @@ function cellTypeForLiteral(value: LiteralInput): XLSX.ExcelDataType | undefined
   return undefined
 }
 
-function buildExportCell(cell: WorkbookSnapshot['sheets'][number]['cells'][number]): XLSX.CellObject | null {
-  const output: XLSX.CellObject = { t: 'z' }
+function buildExportCell(cell: WorkbookSnapshot['sheets'][number]['cells'][number]): SheetJsCellObject | null {
+  const output: SheetJsCellObject = { t: 'z' }
   if (cell.value !== undefined && cell.value !== null) {
     const type = cellTypeForLiteral(cell.value)
     if (type) {
@@ -694,7 +704,7 @@ function addExportMacroPackageContentTypesToXlsxBytes(bytes: Uint8Array, hasPres
 }
 
 function applyMacroCodeNamesToWorkbook(
-  workbook: XLSX.WorkBook,
+  workbook: SheetJsWorkBook,
   macroPayload: WorkbookMacroPayloadSnapshot | undefined,
   exportSheetNamesByOriginalName: ReadonlyMap<string, string>,
 ): void {
@@ -745,7 +755,8 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
       return sourcePreservingBytes
     }
   }
-  const workbook = XLSX.utils.book_new()
+  const sheetJs = loadOptionalSheetJs()
+  const workbook = sheetJs.utils.book_new()
   const usedNames = new Set<string>()
   const exportSheetNamesByOriginalName = new Map<string, string>()
   const exportSheetIndexesByOriginalName = new Map<string, number>()
@@ -755,7 +766,7 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
     .map((sheet) => buildSheetCellFormats(sheet, formatCodesById))
 
   for (const sheet of snapshot.sheets.toSorted((left, right) => left.order - right.order)) {
-    const worksheet: XLSX.WorkSheet = {}
+    const worksheet: SheetJsWorkSheet = {}
     for (const cell of sheet.cells) {
       const exportCell = buildExportCell(cell)
       if (exportCell) {
@@ -787,7 +798,7 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
     const exportSheetName = normalizeExportSheetName(sheet.name, sheet.order, usedNames)
     exportSheetNamesByOriginalName.set(sheet.name, exportSheetName)
     exportSheetIndexesByOriginalName.set(sheet.name, exportSheetIndexesByOriginalName.size)
-    XLSX.utils.book_append_sheet(workbook, worksheet, exportSheetName)
+    sheetJs.utils.book_append_sheet(workbook, worksheet, exportSheetName)
   }
 
   const definedNames = buildExportDefinedNames(
@@ -805,18 +816,17 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   const macroPayload = snapshot.workbook.metadata?.macroPayloads?.[0]
   const preservedVbaProject = decodePreservedVbaProjectPayload(macroPayload)
   if (preservedVbaProject) {
-    const macroWorkbook = workbook as { vbaraw?: Uint8Array }
-    macroWorkbook.vbaraw = preservedVbaProject
+    workbook.vbaraw = preservedVbaProject
     applyMacroCodeNamesToWorkbook(workbook, macroPayload, exportSheetNamesByOriginalName)
   }
   applyExportSheetVisibilitiesToWorkbook(workbook, snapshot)
 
   const bytes = toUint8Array(
-    XLSX.write(workbook, {
+    sheetJs.write(workbook, {
       bookType: preservedVbaProject ? 'xlsm' : 'xlsx',
       type: 'buffer',
       bookVBA: Boolean(preservedVbaProject),
-    }) as unknown,
+    }),
   )
   const macroPackageBytes = addExportMacroPackageContentTypesToXlsxBytes(bytes, Boolean(preservedVbaProject))
   const pivotBytes = addExportPivotsToXlsxBytes(

@@ -1,4 +1,4 @@
-import type * as XLSX from 'xlsx'
+import type { SheetJsWorkBook } from './xlsx-sheetjs-types.js'
 
 import { formulaShouldUseCachedUnsupportedFunctionValue } from '@bilig/core/headless-runtime'
 import { FORMULA_VOLATILE_FUNCTION_NAMES } from '@bilig/formula'
@@ -20,7 +20,7 @@ export const externalWorkbookCompanionNoMatchWarning =
 export const externalWorkbookCompanionAmbiguousMatchWarning =
   'Some supplied external workbook companions matched ambiguously; existing external-link cache values were preserved.'
 
-export function addWorkbookWarnings(workbook: XLSX.WorkBook, warnings: string[], ignoredDefinedNameCount: number): void {
+export function addWorkbookWarnings(workbook: SheetJsWorkBook, warnings: string[], ignoredDefinedNameCount: number): void {
   if (workbook.vbaraw) {
     warnings.push(macroExecutionDeclinedWarning)
   }
@@ -110,7 +110,7 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
 }
 
-export function workbookDefinedNamesReferenceExternalWorkbook(workbook: XLSX.WorkBook): boolean {
+export function workbookDefinedNamesReferenceExternalWorkbook(workbook: SheetJsWorkBook): boolean {
   return (workbook.Workbook?.Names ?? []).some((entry) => {
     const ref = typeof entry.Ref === 'string' ? entry.Ref.trim() : ''
     return ref.length > 0 && formulaReferencesExternalWorkbook(ref)

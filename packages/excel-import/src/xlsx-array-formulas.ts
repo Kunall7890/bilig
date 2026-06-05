@@ -1,6 +1,6 @@
 import { unzipSync, zipSync } from 'fflate'
 import { decodeCellAddress, decodeCellRange, encodeCellAddress, encodeCellRange, type XlsxCellRange } from '@bilig/xlsx'
-import type * as XLSX from 'xlsx'
+import type { SheetJsWorkSheet } from './xlsx-sheetjs-types.js'
 
 import { readRuntimeImage } from '@bilig/core'
 import type {
@@ -79,7 +79,7 @@ function decodeArrayFormulaRange(value: string): XlsxCellRange | undefined {
   }
 }
 
-export function readImportedArrayFormulaSpills(sheetName: string, sheet: XLSX.WorkSheet): WorkbookSpillSnapshot[] | undefined {
+export function readImportedArrayFormulaSpills(sheetName: string, sheet: SheetJsWorkSheet): WorkbookSpillSnapshot[] | undefined {
   const spills: WorkbookSpillSnapshot[] = []
   for (const address in sheet) {
     const cell: unknown = sheet[address]

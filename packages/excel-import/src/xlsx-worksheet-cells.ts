@@ -1,5 +1,5 @@
 import { decodeCellAddress, encodeCellAddress } from '@bilig/xlsx'
-import type * as XLSX from 'xlsx'
+import type { SheetJsWorkSheet } from './xlsx-sheetjs-types.js'
 
 export interface WorksheetCellEntry {
   address: string
@@ -21,7 +21,7 @@ export function isWorksheetCellAddress(value: string): boolean {
   return /^[A-Z]{1,3}[1-9][0-9]*$/u.test(value)
 }
 
-function denseWorksheetRows(sheet: XLSX.WorkSheet): unknown[] | null {
+function denseWorksheetRows(sheet: SheetJsWorkSheet): unknown[] | null {
   const denseRows = (sheet as Record<string, unknown>)['!data']
   return Array.isArray(denseRows) ? denseRows : null
 }
@@ -40,11 +40,11 @@ function compareWorksheetCellAddresses(left: string, right: string): number {
   return leftCell.r - rightCell.r || leftCell.c - rightCell.c || left.localeCompare(right)
 }
 
-function sortedSparseWorksheetCellAddresses(sheet: XLSX.WorkSheet): string[] {
+function sortedSparseWorksheetCellAddresses(sheet: SheetJsWorkSheet): string[] {
   return Object.keys(sheet).filter(isWorksheetCellAddress).toSorted(compareWorksheetCellAddresses)
 }
 
-export function worksheetCellAt(sheet: XLSX.WorkSheet, row: number, column: number): Record<string, unknown> | null {
+export function worksheetCellAt(sheet: SheetJsWorkSheet, row: number, column: number): Record<string, unknown> | null {
   const denseRows = denseWorksheetRows(sheet)
   if (denseRows) {
     return denseWorksheetCell(denseRows[row], column)
@@ -53,7 +53,7 @@ export function worksheetCellAt(sheet: XLSX.WorkSheet, row: number, column: numb
   return isRecord(value) ? value : null
 }
 
-export function* worksheetCellRecords(sheet: XLSX.WorkSheet): Generator<WorksheetCellRecord> {
+export function* worksheetCellRecords(sheet: SheetJsWorkSheet): Generator<WorksheetCellRecord> {
   const denseRows = denseWorksheetRows(sheet)
   if (denseRows) {
     for (const [rowIndex, row] of denseRows.entries()) {
@@ -82,7 +82,7 @@ export function* worksheetCellRecords(sheet: XLSX.WorkSheet): Generator<Workshee
   }
 }
 
-export function* worksheetCellEntries(sheet: XLSX.WorkSheet): Generator<WorksheetCellEntry> {
+export function* worksheetCellEntries(sheet: SheetJsWorkSheet): Generator<WorksheetCellEntry> {
   const denseRows = denseWorksheetRows(sheet)
   if (denseRows) {
     for (const [rowIndex, row] of denseRows.entries()) {
@@ -119,7 +119,7 @@ export function* worksheetCellEntries(sheet: XLSX.WorkSheet): Generator<Workshee
   }
 }
 
-export function* worksheetCellEntriesAtAddresses(sheet: XLSX.WorkSheet, addresses: Iterable<string>): Generator<WorksheetCellEntry> {
+export function* worksheetCellEntriesAtAddresses(sheet: SheetJsWorkSheet, addresses: Iterable<string>): Generator<WorksheetCellEntry> {
   for (const address of addresses) {
     const decoded = decodeCellAddress(address)
     const cell = worksheetCellAt(sheet, decoded.r, decoded.c)

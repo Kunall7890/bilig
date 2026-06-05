@@ -1,4 +1,4 @@
-import type * as XLSX from 'xlsx'
+import type { SheetJsWorkBook } from './xlsx-sheetjs-types.js'
 
 import type {
   CellBorderSideSnapshot,
@@ -64,7 +64,7 @@ function hasImportableXlsxCellPayload(cell: Record<string, unknown>): boolean {
 }
 
 export function collectStyleCandidateAddresses(
-  workbook: XLSX.WorkBook,
+  workbook: SheetJsWorkBook,
   sheetNames: readonly string[],
   maxCandidateCount: number,
 ): {

@@ -1,5 +1,5 @@
 import { XMLParser } from 'fast-xml-parser'
-import type * as XLSX from 'xlsx'
+import type { SheetJsWorkBook } from './xlsx-sheetjs-types.js'
 
 import { workbookDirectorySheetPaths, workbookSheetPath, workbookSheetPathsByName } from './xlsx-workbook-sheet-paths.js'
 import { getZipText, normalizeZipPath, readXlsxZipEntries, type XlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
@@ -72,12 +72,12 @@ function recordChild(value: unknown, key: string): Record<string, unknown> | nul
   return isRecord(child) ? child : null
 }
 
-function workbookRecord(workbook: XLSX.WorkBook): Record<string, unknown> | null {
+function workbookRecord(workbook: SheetJsWorkBook): Record<string, unknown> | null {
   const value: unknown = workbook
   return isRecord(value) ? value : null
 }
 
-function workbookFiles(workbook: XLSX.WorkBook): unknown {
+function workbookFiles(workbook: SheetJsWorkBook): unknown {
   return workbookRecord(workbook)?.['files']
 }
 
@@ -102,7 +102,7 @@ function getFileText(files: unknown, path: string): string | null {
   return null
 }
 
-function workbookStylePath(workbook: XLSX.WorkBook): string | null {
+function workbookStylePath(workbook: SheetJsWorkBook): string | null {
   const directory = workbookRecord(workbook)?.['Directory']
   if (!isRecord(directory)) {
     return null
@@ -233,7 +233,7 @@ function parseSheetStyleIndexes(sheetXml: string, candidateAddresses?: ReadonlyS
 }
 
 export function readImportedWorkbookFileNumberFormats(
-  workbook: XLSX.WorkBook,
+  workbook: SheetJsWorkBook,
   sheetNames: readonly string[],
   options: ImportedWorkbookFileNumberFormatsOptions = {},
   source?: XlsxZipSource,

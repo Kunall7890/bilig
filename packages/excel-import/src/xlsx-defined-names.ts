@@ -1,5 +1,5 @@
 import { decodeCellAddress, decodeCellRange, decodeColumnAddress, encodeCellAddress, encodeColumnAddress } from '@bilig/xlsx'
-import type * as XLSX from 'xlsx'
+import type { SheetJsDefinedName, SheetJsWorkBook } from './xlsx-sheetjs-types.js'
 
 import { formatStructuredReferenceColumnSpecifier } from '@bilig/formula'
 import type { LiteralInput, WorkbookDefinedNameSnapshot, WorkbookDefinedNameValueSnapshot } from '@bilig/protocol'
@@ -87,7 +87,7 @@ function normalizeRowReference(value: string): number | null {
   return Number.isSafeInteger(row) && row > 0 ? row : null
 }
 
-function readImportedSheetBounds(workbook: XLSX.WorkBook): ReadonlyMap<string, ImportedSheetBounds> {
+function readImportedSheetBounds(workbook: SheetJsWorkBook): ReadonlyMap<string, ImportedSheetBounds> {
   const bounds = new Map<string, ImportedSheetBounds>()
   for (const sheetName of workbook.SheetNames) {
     const sheet = workbook.Sheets[sheetName]
@@ -242,7 +242,7 @@ function compareImportedDefinedNames(left: WorkbookDefinedNameSnapshot, right: W
 }
 
 export function readImportedDefinedNames(
-  workbook: XLSX.WorkBook,
+  workbook: SheetJsWorkBook,
   options: { readonly externalLinkCaches?: ImportedExternalLinkCaches } = {},
 ): {
   definedNames: WorkbookDefinedNameSnapshot[] | undefined
@@ -348,11 +348,11 @@ export function buildExportDefinedNames(
   definedNames: readonly WorkbookDefinedNameSnapshot[] | undefined,
   exportSheetNamesByOriginalName: ReadonlyMap<string, string>,
   exportSheetIndexesByOriginalName: ReadonlyMap<string, number>,
-): XLSX.DefinedName[] | undefined {
+): SheetJsDefinedName[] | undefined {
   if (!definedNames || definedNames.length === 0) {
     return undefined
   }
-  const output: XLSX.DefinedName[] = []
+  const output: SheetJsDefinedName[] = []
   for (const definedName of definedNames) {
     const name = definedName.name.trim()
     if (name.length === 0) {

@@ -1,6 +1,6 @@
 import { unzipSync, zipSync } from 'fflate'
 import { decodeCellAddress } from '@bilig/xlsx'
-import type * as XLSX from 'xlsx'
+import type { SheetJsWorkSheet } from './xlsx-sheetjs-types.js'
 
 import type { SheetMetadataSnapshot, WorkbookHyperlinkSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import { getZipText, setXmlAttribute, setZipText } from './xlsx-export-xml.js'
@@ -47,7 +47,7 @@ function readXmlAttribute(tag: string, attributeName: string): string | undefine
   return match?.[2]
 }
 
-export function readImportedSheetHyperlinks(sheetName: string, sheet: XLSX.WorkSheet): WorkbookHyperlinkSnapshot[] | undefined {
+export function readImportedSheetHyperlinks(sheetName: string, sheet: SheetJsWorkSheet): WorkbookHyperlinkSnapshot[] | undefined {
   const hyperlinks: WorkbookHyperlinkSnapshot[] = []
   for (const { address, cell } of worksheetCellRecords(sheet)) {
     const link = cell['l']
@@ -76,7 +76,7 @@ export function readImportedSheetHyperlinks(sheetName: string, sheet: XLSX.WorkS
     : undefined
 }
 
-export function addExportHyperlinksToWorksheet(worksheet: XLSX.WorkSheet, sheet: WorkbookSnapshot['sheets'][number]): void {
+export function addExportHyperlinksToWorksheet(worksheet: SheetJsWorkSheet, sheet: WorkbookSnapshot['sheets'][number]): void {
   for (const hyperlink of sheet.metadata?.hyperlinks ?? []) {
     if (hyperlink.sheetName !== sheet.name || hyperlink.target.trim().length === 0) {
       continue

@@ -1,4 +1,4 @@
-import type * as XLSX from 'xlsx'
+import type { SheetJsWorkBook } from './xlsx-sheetjs-types.js'
 
 import type { WorkbookSheetVisibilitySnapshot, WorkbookSnapshot } from '@bilig/protocol'
 
@@ -23,7 +23,7 @@ function exportedSheetHidden(value: WorkbookSheetVisibilitySnapshot | undefined)
 }
 
 export function readImportedWorkbookSheetVisibilities(
-  workbook: XLSX.WorkBook,
+  workbook: SheetJsWorkBook,
   sheetNames: readonly string[],
 ): Map<string, WorkbookSheetVisibilitySnapshot> {
   const sheetProps = workbook.Workbook?.Sheets ?? []
@@ -39,7 +39,7 @@ export function readImportedWorkbookSheetVisibilities(
   return visibilitiesBySheet
 }
 
-export function applyExportSheetVisibilitiesToWorkbook(workbook: XLSX.WorkBook, snapshot: WorkbookSnapshot): void {
+export function applyExportSheetVisibilitiesToWorkbook(workbook: SheetJsWorkBook, snapshot: WorkbookSnapshot): void {
   const orderedSheets = snapshot.sheets.toSorted((left, right) => left.order - right.order)
   if (!orderedSheets.some((sheet) => sheet.metadata?.visibility)) {
     return

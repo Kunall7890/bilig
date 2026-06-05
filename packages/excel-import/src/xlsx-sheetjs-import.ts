@@ -1,5 +1,6 @@
-import * as XLSX from 'xlsx'
 import type { Unzipped } from 'fflate'
+import { decodeCellAddress, decodeCellRange, encodeCellAddress } from '@bilig/xlsx'
+import type { SheetJsWorkBook } from './xlsx-sheetjs-types.js'
 import type {
   CellStyleRecord,
   WorkbookCommentThreadSnapshot,
@@ -71,6 +72,7 @@ import { denseSheetJsByteThreshold, type XlsxExternalWorkbookHydrationDiagnostic
 import { createPreservedVbaProjectPayload, type PreservedVbaProjectCodeNames } from './xlsx-macros.js'
 import { buildMergeEntries } from './xlsx-merge-entries.js'
 import { readImportedWorkbookFileNumberFormats } from './xlsx-number-formats.js'
+import { loadOptionalSheetJs } from './xlsx-optional-sheetjs.js'
 import { readImportedWorkbookPivots } from './xlsx-pivots.js'
 import { readImportedWorkbookPrintPageSetup } from './xlsx-print-page-setup.js'
 import { readImportedWorkbookPrinterSettings } from './xlsx-printer-settings.js'
@@ -135,7 +137,7 @@ function readNonEmptyString(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined
 }
 
-function readImportedMacroCodeNames(workbook: XLSX.WorkBook): PreservedVbaProjectCodeNames {
+function readImportedMacroCodeNames(workbook: SheetJsWorkBook): PreservedVbaProjectCodeNames {
   const workbookMetadata = isRecord(workbook.Workbook) ? workbook.Workbook : undefined
   const workbookProperties = isRecord(workbookMetadata?.['WBProps']) ? workbookMetadata['WBProps'] : undefined
   const workbookCodeName = readNonEmptyString(workbookProperties?.['CodeName'])
@@ -184,7 +186,7 @@ function createMaterializedExternalCacheRuntimeSheetCells(sheet: WorkbookSnapsho
   let width = 0
   let height = 0
   for (const cell of sheet.cells) {
-    const decoded = cell.row === undefined || cell.col === undefined ? XLSX.utils.decode_cell(cell.address) : undefined
+    const decoded = cell.row === undefined || cell.col === undefined ? decodeCellAddress(cell.address) : undefined
     const row = cell.row ?? decoded?.r ?? 0
     const col = cell.col ?? decoded?.c ?? 0
     coords.push({ row, col })
@@ -207,7 +209,7 @@ function addExternalLinkCacheFormulaUsage(usage: ImportedExternalLinkCacheUsage,
 }
 
 function collectWorkbookExternalLinkCacheUsage(
-  workbook: XLSX.WorkBook,
+  workbook: SheetJsWorkBook,
   worksheetFormulaManifestsBySheet: ReadonlyMap<string, ReadonlyMap<string, { readonly formula: string }>>,
 ): ImportedExternalLinkCacheUsage | undefined {
   const usage: ImportedExternalLinkCacheUsage = new Map()
@@ -295,8 +297,8 @@ export function importXlsxFromPreparedSheetJsParserData(
   })
 }
 
-function readSheetJsWorkbookFromParserData(parserData: Uint8Array, denseSheetJsParse: boolean): XLSX.WorkBook {
-  return XLSX.read(parserData, {
+function readSheetJsWorkbookFromParserData(parserData: Uint8Array, denseSheetJsParse: boolean): SheetJsWorkBook {
+  return loadOptionalSheetJs().read(parserData, {
     type: 'array',
     cellFormula: true,
     cellNF: true,
@@ -310,7 +312,7 @@ function readSheetJsWorkbookFromParserData(parserData: Uint8Array, denseSheetJsP
 }
 
 function importParsedSheetJsWorkbook(args: {
-  readonly workbook: XLSX.WorkBook
+  readonly workbook: SheetJsWorkBook
   readonly fileName: string
   readonly contentType: ExcelWorkbookImportContentType
   readonly workbookZip: Unzipped | null
@@ -502,7 +504,7 @@ function importParsedSheetJsWorkbook(args: {
     if (importedArrayFormulaSheetSpills) {
       importedArrayFormulaSpills.push(...importedArrayFormulaSheetSpills)
     }
-    const range = sheet['!ref'] ? XLSX.utils.decode_range(sheet['!ref']) : null
+    const range = sheet['!ref'] ? decodeCellRange(sheet['!ref']) : null
     const cells: WorkbookSnapshot['sheets'][number]['cells'] = []
     const runtimeCellCoords: ImportedRuntimeCellCoordinate[] = []
     const styleRuns: RectangularStyleRun[] = []
@@ -624,7 +626,7 @@ function importParsedSheetJsWorkbook(args: {
     for (const [address, formulaManifest] of [...(importedWorksheetFormulaManifests?.entries() ?? [])]
       .filter(([candidateAddress, candidate]) => !seenCellAddresses.has(candidateAddress) && candidate.formula.trim().length > 0)
       .toSorted((left, right) => compareCellAddresses(left[0], right[0]))) {
-      const decoded = XLSX.utils.decode_cell(address)
+      const decoded = decodeCellAddress(address)
       seenCellAddresses.add(address)
       const formulaResult = buildImportedFormulaSnapshotCell({
         sheetName,
@@ -658,7 +660,7 @@ function importParsedSheetJsWorkbook(args: {
     for (const [address, formula] of [...importedDataTableFormulaCells.formulaCells.entries()]
       .filter(([candidateAddress]) => !seenCellAddresses.has(candidateAddress))
       .toSorted((left, right) => compareCellAddresses(left[0], right[0]))) {
-      const decoded = XLSX.utils.decode_cell(address)
+      const decoded = decodeCellAddress(address)
       const cell = worksheetCellAt(sheet, decoded.r, decoded.c)
       seenCellAddresses.add(address)
       const formulaResult = buildImportedFormulaSnapshotCell({
@@ -694,7 +696,7 @@ function importParsedSheetJsWorkbook(args: {
     for (const missingAddress of [...missingStyledAddresses]
       .filter((candidateAddress) => !seenCellAddresses.has(candidateAddress))
       .toSorted(compareCellAddresses)) {
-      const decoded = XLSX.utils.decode_cell(missingAddress)
+      const decoded = decodeCellAddress(missingAddress)
       seenCellAddresses.add(missingAddress)
       const importedStyle = importedStylesByAddress?.get(missingAddress)
       if (importedStyle) {
@@ -709,7 +711,7 @@ function importParsedSheetJsWorkbook(args: {
     }
     for (const [address, value] of importedWorksheetTextValues ?? []) {
       if (!seenCellAddresses.has(address)) {
-        const decoded = XLSX.utils.decode_cell(address)
+        const decoded = decodeCellAddress(address)
         pushImportedSnapshotCell(cells, runtimeCellCoords, { address, value }, decoded.r, decoded.c)
       }
     }
@@ -732,7 +734,7 @@ function importParsedSheetJsWorkbook(args: {
         columnCount,
         nonEmptyCellCount: cells.length,
         readCellText: (row, col) => {
-          const address = XLSX.utils.encode_cell({ r: row, c: col })
+          const address = encodeCellAddress({ r: row, c: col })
           const cell = worksheetCellAt(sheet, row, col)
           const manifestFormula = importedWorksheetFormulaManifests?.get(address)?.formula
           const formula =

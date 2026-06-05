@@ -1,5 +1,5 @@
 import { decodeCellAddress, encodeCellAddress } from '@bilig/xlsx'
-import type * as XLSX from 'xlsx'
+import type { SheetJsCellObject, SheetJsComment, SheetJsWorkSheet } from './xlsx-sheetjs-types.js'
 
 import type { WorkbookCommentThreadSnapshot } from '@bilig/protocol'
 
@@ -7,7 +7,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
-function isWorksheetCellObject(value: unknown): value is XLSX.CellObject {
+function isWorksheetCellObject(value: unknown): value is SheetJsCellObject {
   return isRecord(value) && typeof value['t'] === 'string'
 }
 
@@ -19,7 +19,7 @@ function normalizeCommentAddress(value: string): string | null {
   }
 }
 
-function denseWorksheetRows(sheet: XLSX.WorkSheet): unknown[] | null {
+function denseWorksheetRows(sheet: SheetJsWorkSheet): unknown[] | null {
   const denseRows = (sheet as Record<string, unknown>)['!data']
   return Array.isArray(denseRows) ? denseRows : null
 }
@@ -64,7 +64,7 @@ function appendCommentThread(input: {
 
 export function readImportedSheetComments(
   sheetName: string,
-  sheet: XLSX.WorkSheet,
+  sheet: SheetJsWorkSheet,
 ): {
   commentThreads: WorkbookCommentThreadSnapshot[] | undefined
   ignoredCount: number
@@ -123,7 +123,7 @@ export function readImportedSheetComments(
 }
 
 export function addExportCommentsToWorksheet(
-  worksheet: XLSX.WorkSheet,
+  worksheet: SheetJsWorkSheet,
   commentThreads: readonly WorkbookCommentThreadSnapshot[] | undefined,
 ): void {
   if (!commentThreads || commentThreads.length === 0) {
@@ -136,10 +136,10 @@ export function addExportCommentsToWorksheet(
       continue
     }
     const existingCell = worksheet[address]
-    const cell = isWorksheetCellObject(existingCell) ? existingCell : ({ t: 'z' } satisfies XLSX.CellObject)
-    const comments: XLSX.Comment[] = []
+    const cell = isWorksheetCellObject(existingCell) ? existingCell : ({ t: 'z' } satisfies SheetJsCellObject)
+    const comments: SheetJsComment[] = []
     for (const comment of thread.comments) {
-      const xlsxComment: XLSX.Comment = { t: comment.body }
+      const xlsxComment: SheetJsComment = { t: comment.body }
       if (comment.authorDisplayName !== undefined) {
         xlsxComment.a = comment.authorDisplayName
       }
