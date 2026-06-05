@@ -14,7 +14,7 @@ import { encodeFormulaForXlsx } from './xlsx-formula-translation.js'
 
 const maxGeneratedRangeCells = 200_000
 
-const supportedWorkbookMetadataKeys = new Set(['definedNames', 'styles', 'styleArtifacts', 'formats'])
+const supportedWorkbookMetadataKeys = new Set(['definedNames', 'styles', 'styleArtifacts', 'formats', 'tables'])
 const supportedSheetMetadataKeys = new Set([
   'rows',
   'columns',
@@ -25,6 +25,13 @@ const supportedSheetMetadataKeys = new Set([
   'filters',
   'richTextArtifacts',
 ])
+const excelJsDefaultPageMarginsXml = '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>'
+const excelJsDefaultPageSetupXml =
+  '<pageSetup orientation="portrait" horizontalDpi="4294967295" verticalDpi="4294967295" scale="100" fitToWidth="1" fitToHeight="1"/>'
+const biligDefaultCorePropertiesXml =
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:creator>Bilig</dc:creator><cp:lastModifiedBy>Bilig</cp:lastModifiedBy></cp:coreProperties>'
+const biligDefaultAppPropertiesPattern =
+  /^<\?xml version="1\.0" encoding="UTF-8" standalone="yes"\?><Properties xmlns="http:\/\/schemas\.openxmlformats\.org\/officeDocument\/2006\/extended-properties" xmlns:vt="http:\/\/schemas\.openxmlformats\.org\/officeDocument\/2006\/docPropsVTypes"><Application>Bilig<\/Application><HeadingPairs><vt:vector size="2" baseType="variant"><vt:variant><vt:lpstr>Worksheets<\/vt:lpstr><\/vt:variant><vt:variant><vt:i4>[1-9][0-9]*<\/vt:i4><\/vt:variant><\/vt:vector><\/HeadingPairs><\/Properties>$/u
 
 interface SimpleRichTextPatch {
   readonly sharedStringIndex?: number
@@ -36,12 +43,104 @@ interface SimpleRichTextExportPlan {
   readonly sharedStringsXml?: string
 }
 
-function hasUnsupportedMetadata(metadata: object | undefined, supportedKeys: ReadonlySet<string>): boolean {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function hasDefaultExcelJsDocumentPropertyArtifacts(coreXml: string, appXml: string): boolean {
+  return (
+    coreXml.includes('<dc:creator>Unknown</dc:creator>') &&
+    coreXml.includes('<dc:title></dc:title>') &&
+    coreXml.includes('<dc:subject></dc:subject>') &&
+    coreXml.includes('<dc:description></dc:description>') &&
+    coreXml.includes('<cp:keywords></cp:keywords>') &&
+    coreXml.includes('<cp:category></cp:category>') &&
+    coreXml.includes('<cp:lastModifiedBy>Unknown</cp:lastModifiedBy>') &&
+    appXml.includes('<Application>Microsoft Excel</Application>')
+  )
+}
+
+function hasDefaultBiligDocumentPropertyArtifacts(coreXml: string, appXml: string): boolean {
+  return coreXml === biligDefaultCorePropertiesXml && biligDefaultAppPropertiesPattern.test(appXml)
+}
+
+function isIgnorableDefaultDocumentPropertyArtifacts(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false
+  }
+  if (!Object.keys(value).every((key) => key === 'core' || key === 'app')) {
+    return false
+  }
+  const core = value['core']
+  const app = value['app']
+  if (!isRecord(core) || !isRecord(app) || typeof core['xml'] !== 'string' || typeof app['xml'] !== 'string') {
+    return false
+  }
+  return (
+    hasDefaultExcelJsDocumentPropertyArtifacts(core['xml'], app['xml']) || hasDefaultBiligDocumentPropertyArtifacts(core['xml'], app['xml'])
+  )
+}
+
+function isIgnorableDefaultSheetFormat(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false
+  }
+  return Object.entries(value).every(([key, entry]) => {
+    if (key === 'defaultRowHeight') {
+      return entry === 15
+    }
+    if (key === 'outlineLevelRow' || key === 'outlineLevelCol') {
+      return entry === 0
+    }
+    return false
+  })
+}
+
+function isIgnorableExcelJsDefaultPrintPageSetup(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    Object.keys(value).every((key) => key === 'pageMarginsXml' || key === 'pageSetupXml') &&
+    value['pageMarginsXml'] === excelJsDefaultPageMarginsXml &&
+    value['pageSetupXml'] === excelJsDefaultPageSetupXml
+  )
+}
+
+function isIgnorableWorkbookMetadata(key: string, value: unknown): boolean {
+  if (key === 'formulaAudit') {
+    return value !== undefined
+  }
+  if (key === 'volatileContext') {
+    return value !== undefined
+  }
+  if (key === 'calculationSettings') {
+    return isRecord(value)
+  }
+  if (key === 'documentPropertyArtifacts') {
+    return isIgnorableDefaultDocumentPropertyArtifacts(value)
+  }
+  return false
+}
+
+function isIgnorableSheetMetadata(key: string, value: unknown): boolean {
+  if (key === 'sheetFormatPr') {
+    return isIgnorableDefaultSheetFormat(value)
+  }
+  if (key === 'printPageSetup') {
+    return isIgnorableExcelJsDefaultPrintPageSetup(value)
+  }
+  return false
+}
+
+function hasUnsupportedMetadata(
+  metadata: object | undefined,
+  supportedKeys: ReadonlySet<string>,
+  isIgnorableMetadata: (key: string, value: unknown) => boolean,
+): boolean {
   if (!metadata) {
     return false
   }
   return Object.entries(metadata).some(([key, value]) => {
-    if (supportedKeys.has(key)) {
+    if (supportedKeys.has(key) || isIgnorableMetadata(key, value)) {
       return false
     }
     if (value === undefined || value === null) {
@@ -183,7 +282,7 @@ function canUseBiligSimpleWriter(snapshot: WorkbookSnapshot): boolean {
   if (snapshot.sheets.length === 0) {
     return false
   }
-  if (hasUnsupportedMetadata(snapshot.workbook.metadata, supportedWorkbookMetadataKeys)) {
+  if (hasUnsupportedMetadata(snapshot.workbook.metadata, supportedWorkbookMetadataKeys, isIgnorableWorkbookMetadata)) {
     return false
   }
   if (!canMaterializeStyleArtifacts(snapshot)) {
@@ -194,7 +293,9 @@ function canUseBiligSimpleWriter(snapshot: WorkbookSnapshot): boolean {
   }
   return snapshot.sheets.every(
     (sheet) =>
-      !hasUnsupportedMetadata(sheet.metadata, supportedSheetMetadataKeys) && hasOnlySimpleFilters(sheet) && canMaterializeRanges(sheet),
+      !hasUnsupportedMetadata(sheet.metadata, supportedSheetMetadataKeys, isIgnorableSheetMetadata) &&
+      hasOnlySimpleFilters(sheet) &&
+      canMaterializeRanges(sheet),
   )
 }
 

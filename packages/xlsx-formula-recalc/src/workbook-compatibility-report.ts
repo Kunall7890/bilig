@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { basename } from 'node:path'
 
 import { WorkPaper } from '@bilig/headless'
-import type { ImportedWorkbookDiagnostics, XlsxExternalWorkbookInput } from '@bilig/headless/xlsx'
+import type { ImportedWorkbookDiagnostics, XlsxExternalWorkbookInput, XlsxImportOptions } from '@bilig/headless/xlsx'
 import { exportXlsx, importXlsx } from '@bilig/headless/xlsx'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { inspectXlsxCache, type XlsxCacheInspectionLimit, type XlsxFormulaRecalcEdit } from './index.js'
@@ -151,9 +151,7 @@ export function buildWorkbookCompatibilityReport(
   const bytes = toUint8Array(input)
   const fileName = options.fileName ?? 'workbook.xlsx'
   const externalWorkbooks = options.externalWorkbooks ?? []
-  const importOptions =
-    externalWorkbooks.length > 0 ? { externalWorkbooks, externalLinkCacheArtifactMode: 'replace-refreshed' as const } : {}
-  const imported = importXlsx(bytes, fileName, importOptions)
+  const imported = importXlsx(bytes, fileName, workbookCompatibilityImportOptions(externalWorkbooks))
   const metadata = imported.snapshot.workbook.metadata
   const cacheInspection = inspectXlsxCache(bytes, {
     fileName,
@@ -162,9 +160,12 @@ export function buildWorkbookCompatibilityReport(
     inspectLimit: options.inspectLimit ?? defaultInspectLimit,
   })
   const formulaAuditEntries = metadata?.formulaAudit?.formulas ?? []
-  const unsupportedFunctions = countNamedValues(
-    formulaAuditEntries.flatMap((entry) => unsupportedFunctionNamesFromFormula(entry.formula, entry.cacheStatus === 'unsupportedCached')),
-  )
+  const unsupportedFunctions = countNamedValues([
+    ...cacheInspection.formulas.flatMap((entry) => knownUnsupportedFunctionNamesFromFormula(entry.formula)),
+    ...formulaAuditEntries.flatMap((entry) =>
+      unsupportedAuditFunctionNamesFromFormula(entry.formula, entry.cacheStatus === 'unsupportedCached'),
+    ),
+  ])
   const volatileFunctions = countNamedValues(formulaAuditEntries.flatMap((entry) => volatileFunctionNamesFromFormula(entry.formula)))
   const macroModules = metadata?.macroPayloads ?? []
   const pivots = metadata?.pivots ?? []
@@ -246,6 +247,12 @@ export function buildWorkbookCompatibilityReport(
     ...report,
     risk: buildRisk(report),
   }
+}
+
+function workbookCompatibilityImportOptions(externalWorkbooks: readonly XlsxExternalWorkbookInput[]): XlsxImportOptions {
+  return externalWorkbooks.length > 0
+    ? { externalWorkbooks, externalLinkCacheArtifactMode: 'replace-refreshed' }
+    : { preferNativeSimpleImport: true }
 }
 
 export function runWorkbookCompatibilityReportCli(args: readonly string[], context: WorkbookCompatibilityReportCliContext = {}): number {
@@ -417,13 +424,17 @@ function readExternalWorkbookInputs(workbooks: readonly CliExternalWorkbook[]): 
   }))
 }
 
-function unsupportedFunctionNamesFromFormula(formula: string, fromUnsupportedAudit: boolean): readonly string[] {
-  const functionNames = extractFormulaFunctionNames(formula)
-  const knownUnsupported = functionNames.filter(isKnownUnsupportedRiskFunction)
-  if (knownUnsupported.length > 0) {
-    return knownUnsupported
+function knownUnsupportedFunctionNamesFromFormula(formula: string): readonly string[] {
+  return extractFormulaFunctionNames(formula).filter(isKnownUnsupportedRiskFunction)
+}
+
+function unsupportedAuditFunctionNamesFromFormula(formula: string, fromUnsupportedAudit: boolean): readonly string[] {
+  if (!fromUnsupportedAudit) {
+    return []
   }
-  return fromUnsupportedAudit ? functionNames.slice(0, 1) : []
+  return extractFormulaFunctionNames(formula)
+    .filter((name) => !isKnownUnsupportedRiskFunction(name))
+    .slice(0, 1)
 }
 
 function volatileFunctionNamesFromFormula(formula: string): readonly string[] {

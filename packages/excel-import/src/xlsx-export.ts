@@ -648,6 +648,15 @@ function normalizeExportSheetName(name: string, order: number, usedNames: Set<st
   return candidate
 }
 
+function buildExportSheetNamesByOriginalName(snapshot: WorkbookSnapshot): ReadonlyMap<string, string> {
+  const usedNames = new Set<string>()
+  const exportSheetNames = new Map<string, string>()
+  for (const sheet of snapshot.sheets.toSorted((left, right) => left.order - right.order)) {
+    exportSheetNames.set(sheet.name, normalizeExportSheetName(sheet.name, sheet.order, usedNames))
+  }
+  return exportSheetNames
+}
+
 function toUint8Array(value: unknown): Uint8Array {
   if (value instanceof Uint8Array) {
     return new Uint8Array(value)
@@ -758,7 +767,11 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   }
   const biligSimpleBytes = tryExportBiligSimpleXlsx(snapshot)
   if (biligSimpleBytes !== null) {
-    return biligSimpleBytes
+    return addExportTablesToXlsxBytes(
+      addExportCalculationSettingsToXlsxBytes(biligSimpleBytes, snapshot),
+      snapshot,
+      buildExportSheetNamesByOriginalName(snapshot),
+    )
   }
   const sheetJs = loadOptionalSheetJs()
   const workbook = sheetJs.utils.book_new()

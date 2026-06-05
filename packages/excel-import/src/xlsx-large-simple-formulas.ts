@@ -36,15 +36,7 @@ function normalizeLargeSimpleFormula(rawFormula: string | undefined): string | n
     return null
   }
   const formula = normalizeImportedFormulaSource(rawFormula)
-  return formulaReferencesExternalWorkbook(formula) ||
-    formulaReferencesVolatileFunction(formula) ||
-    formulaReferencesStructuredTable(formula)
-    ? null
-    : formula
-}
-
-function formulaReferencesStructuredTable(formula: string): boolean {
-  return /\[[#@\w]/u.test(formula)
+  return formulaReferencesExternalWorkbook(formula) || formulaReferencesVolatileFunction(formula) ? null : formula
 }
 
 function readXmlAttribute(xml: string, attributeName: string): string | null {

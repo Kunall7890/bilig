@@ -70,6 +70,7 @@ export interface XlsxImportOptions {
   readonly externalWorkbooks?: readonly XlsxExternalWorkbookInput[]
   readonly externalLinkCacheArtifactMode?: XlsxExternalLinkCacheArtifactMode
   readonly limits?: XlsxImportLimits | false
+  readonly preferNativeSimpleImport?: boolean
 }
 
 export interface XlsxImportRoutePlan {
@@ -156,6 +157,7 @@ export function planXlsxImportRoute(args: {
   const allowCachedUnsupportedFormulaText =
     hasCalcChain && (args.sourceByteLength >= largeCalcChainStreamingByteThreshold || hasLargeCalcChainFormulaSet)
   const hasExternalWorkbookCompanions = (args.options.externalWorkbooks?.length ?? 0) > 0
+  const preferNativeSimpleImport = args.options.preferNativeSimpleImport === true
   const shouldTryLargeSimpleImport =
     !hasExternalWorkbookCompanions &&
     (!hasCalcChain ||
@@ -166,7 +168,8 @@ export function planXlsxImportRoute(args: {
   return {
     bypassLargeSimpleByteThreshold,
     hasExternalWorkbookCompanions,
-    inspectionOptions: hasMaterializationLimits || bypassLargeSimpleByteThreshold ? { minByteLength: 0 } : undefined,
+    inspectionOptions:
+      hasMaterializationLimits || bypassLargeSimpleByteThreshold || preferNativeSimpleImport ? { minByteLength: 0 } : undefined,
     shouldInspectBeforeLargeSimpleRouting: hasMaterializationLimits || needsCalcChainFormulaCountInspection,
     shouldInspectBeforeSheetJsFallback: args.options.limits !== false && args.sourceByteLength >= denseSheetJsByteThreshold,
     shouldTryLargeSimpleImport,
@@ -176,7 +179,7 @@ export function planXlsxImportRoute(args: {
       allowCachedUnsupportedFormulaText,
     ),
     createLargeSimpleImportOptions: (overrides = {}) => ({
-      ...(hasMaterializationLimits || bypassLargeSimpleByteThreshold ? { minByteLength: 0 } : {}),
+      ...(hasMaterializationLimits || bypassLargeSimpleByteThreshold || preferNativeSimpleImport ? { minByteLength: 0 } : {}),
       allowUnsupportedFormulaText: allowCachedUnsupportedFormulaText,
       allowUnsupportedCellMetadata: allowCachedUnsupportedFormulaText,
       releaseArenaAfterMaterialization: true,

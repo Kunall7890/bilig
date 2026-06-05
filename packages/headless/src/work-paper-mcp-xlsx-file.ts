@@ -21,7 +21,7 @@ function createFileBackedWorkPaperMcpToolServerFromXlsxFile(input: FileBackedWor
   }
 
   const xlsxPath = resolve(input.fromXlsxPath)
-  const imported = importXlsx(new Uint8Array(readFileSync(xlsxPath)), basename(xlsxPath))
+  const imported = importXlsx(new Uint8Array(readFileSync(xlsxPath)), basename(xlsxPath), { preferNativeSimpleImport: true })
   const workbook = WorkPaper.buildFromSnapshot(imported.snapshot, { useColumnIndex: true })
   mkdirSync(dirname(workpaperPath), { recursive: true })
   writeFileAtomically(workpaperPath, serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true })))
@@ -34,7 +34,7 @@ function createFileBackedWorkPaperMcpToolServerFromXlsxFile(input: FileBackedWor
 
 function createWorkPaperMcpToolServerFromXlsxFile(input: { readonly fromXlsxPath: string }): WorkPaperMcpToolServer {
   const xlsxPath = resolve(input.fromXlsxPath)
-  const imported = importXlsx(new Uint8Array(readFileSync(xlsxPath)), basename(xlsxPath))
+  const imported = importXlsx(new Uint8Array(readFileSync(xlsxPath)), basename(xlsxPath), { preferNativeSimpleImport: true })
   const workbook = WorkPaper.buildFromSnapshot(imported.snapshot, { useColumnIndex: true })
 
   return createFileBackedWorkPaperMcpToolServer({

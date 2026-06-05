@@ -308,14 +308,9 @@ function normalizeLargeSimpleFormula(rawFormulaText: string | undefined, allowUn
     return null
   }
   const formula = normalizeImportedFormulaSource(decoded)
-  return !allowUnsupportedFormulaText &&
-    (formulaReferencesExternalWorkbook(formula) || formulaReferencesVolatileFunction(formula) || formulaReferencesStructuredTable(formula))
+  return !allowUnsupportedFormulaText && (formulaReferencesExternalWorkbook(formula) || formulaReferencesVolatileFunction(formula))
     ? null
     : formula
-}
-
-function formulaReferencesStructuredTable(formula: string): boolean {
-  return /\[[#@\w]/u.test(formula)
 }
 
 function decodeXmlText(value: string): string {

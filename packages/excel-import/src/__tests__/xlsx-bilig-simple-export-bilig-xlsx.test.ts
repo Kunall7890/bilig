@@ -169,6 +169,212 @@ Promise.all([
     expect(output.hasSharedStrings).toBe(false)
   }, 15_000)
 
+  it('exports table metadata with @bilig/xlsx without loading SheetJS xlsx', () => {
+    const script = `
+const { createRequire } = require('node:module')
+const requireForCache = createRequire(process.cwd() + '/package.json')
+Promise.all([
+  import('./packages/excel-import/src/index.ts'),
+  import('./packages/xlsx/src/index.ts'),
+])
+  .then(([{ exportXlsx }, { readXlsxZipEntries }]) => {
+    const snapshot = {
+      version: 1,
+      workbook: {
+        name: 'bilig-xlsx-table-export',
+        metadata: {
+          tables: [
+            {
+              name: 'SalesTable',
+              sheetName: 'Data',
+              startAddress: 'A1',
+              endAddress: 'B3',
+              columnNames: ['Name', 'Total'],
+              headerRow: true,
+              totalsRow: false,
+            },
+          ],
+        },
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'Data',
+          order: 0,
+          cells: [
+            { address: 'A1', value: 'Name' },
+            { address: 'B1', value: 'Total' },
+            { address: 'A2', value: 'One' },
+            { address: 'B2', value: 10 },
+          ],
+        },
+      ],
+    }
+    const exported = exportXlsx(snapshot)
+    const zip = readXlsxZipEntries(exported)
+    const sheetXml = new TextDecoder().decode(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+    const tableXml = new TextDecoder().decode(zip['xl/tables/table1.xml'] ?? new Uint8Array())
+    const loaded = Object.keys(requireForCache.cache).filter((path) =>
+      /[\\\\/]node_modules[\\\\/](?:\\.pnpm[\\\\/]xlsx@[^\\\\/]+[\\\\/]node_modules[\\\\/]xlsx|xlsx)(?:[\\\\/]|$)/u.test(path)
+    )
+    process.stdout.write(JSON.stringify({
+      loaded,
+      bytes: exported.byteLength,
+      hasTablePart: tableXml.includes('displayName="SalesTable"'),
+      hasSheetTableRef: sheetXml.includes('<tableParts count="1">'),
+      hasRelationship: zip['xl/worksheets/_rels/sheet1.xml.rels'] !== undefined,
+    }) + '\\n')
+  })
+  .catch((error) => {
+    console.error(error)
+    process.exit(1)
+  })
+`
+    const result = spawnSync('pnpm', ['exec', 'tsx', '--eval', script], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+
+    expect(result.status, result.stderr).toBe(0)
+    const output: unknown = JSON.parse(result.stdout)
+    expect(isTableExportOutput(output)).toBe(true)
+    if (!isTableExportOutput(output)) {
+      throw new Error(`Unexpected child output: ${result.stdout}`)
+    }
+    expect(output.loaded).toEqual([])
+    expect(output.bytes).toBeGreaterThan(0)
+    expect(output.hasTablePart).toBe(true)
+    expect(output.hasSheetTableRef).toBe(true)
+    expect(output.hasRelationship).toBe(true)
+  }, 15_000)
+
+  it('exports recalculated ExcelJS bridge workbooks without loading SheetJS xlsx', () => {
+    const script = `
+const { createRequire } = require('node:module')
+const requireForCache = createRequire(process.cwd() + '/package.json')
+Promise.all([
+  import('./packages/exceljs-formula-recalc/node_modules/exceljs'),
+  import('./packages/exceljs-formula-recalc/src/index.ts'),
+])
+  .then(async ([exceljsModule, { recalculateExceljsWorkbook }]) => {
+    const ExcelJS = exceljsModule.default.default ?? exceljsModule.default
+    const workbook = new ExcelJS.Workbook()
+    const inputs = workbook.addWorksheet('Inputs')
+    inputs.getCell('A1').value = 'Metric'
+    inputs.getCell('B1').value = 'Value'
+    inputs.getCell('A2').value = 'Units'
+    inputs.getCell('B2').value = 40
+    inputs.getCell('A3').value = 'Price'
+    inputs.getCell('B3').value = 1200
+    const summary = workbook.addWorksheet('Summary')
+    summary.getCell('A1').value = 'Metric'
+    summary.getCell('B1').value = 'Value'
+    summary.getCell('A2').value = 'Revenue'
+    summary.getCell('B2').value = { formula: 'Inputs!B2*Inputs!B3', result: 48000 }
+
+    const result = await recalculateExceljsWorkbook(workbook, {
+      edits: [
+        { target: 'Inputs!B2', value: 48 },
+        { target: 'Inputs!B3', value: 1500 },
+      ],
+      reads: ['Summary!B2'],
+    })
+    const readbackCell = result.reads['Summary!B2']
+    const readback = typeof readbackCell === 'object' && readbackCell !== null && 'value' in readbackCell ? readbackCell.value : null
+    const cachedCell = workbook.getWorksheet('Summary')?.getCell('B2').value
+    const cachedResult = typeof cachedCell === 'object' && cachedCell !== null && 'result' in cachedCell ? cachedCell.result : null
+    const loaded = Object.keys(requireForCache.cache).filter((path) =>
+      /[\\\\/]node_modules[\\\\/](?:\\.pnpm[\\\\/]xlsx@[^\\\\/]+[\\\\/]node_modules[\\\\/]xlsx|xlsx)(?:[\\\\/]|$)/u.test(path)
+    )
+    process.stdout.write(JSON.stringify({
+      loaded,
+      bytes: result.xlsx.byteLength,
+      cachedResult,
+      readback,
+      workbookMutated: result.workbookMutated,
+    }) + '\\n')
+  })
+  .catch((error) => {
+    console.error(error)
+    process.exit(1)
+  })
+`
+    const result = spawnSync('pnpm', ['exec', 'tsx', '--eval', script], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+
+    expect(result.status, result.stderr).toBe(0)
+    const output: unknown = JSON.parse(result.stdout)
+    expect(isExceljsBridgeExportOutput(output)).toBe(true)
+    if (!isExceljsBridgeExportOutput(output)) {
+      throw new Error(`Unexpected child output: ${result.stdout}`)
+    }
+    expect(output.loaded).toEqual([])
+    expect(output.bytes).toBeGreaterThan(0)
+    expect(output.cachedResult).toBe(72_000)
+    expect(output.readback).toBe(72_000)
+    expect(output.workbookMutated).toBe(true)
+  }, 15_000)
+
+  it('exports recalculated Bilig-generated workbook reports without loading SheetJS xlsx', () => {
+    const script = `
+const { createRequire } = require('node:module')
+const requireForCache = createRequire(process.cwd() + '/package.json')
+Promise.all([
+  import('./packages/headless/src/index.ts'),
+  import('./packages/headless/src/xlsx.ts'),
+  import('./packages/xlsx-formula-recalc/src/workbook-compatibility-report.ts'),
+])
+  .then(([{ WorkPaper }, { exportXlsx }, { buildWorkbookCompatibilityReport }]) => {
+    const workbook = WorkPaper.buildFromSheets({
+      Inputs: [['Metric', 'Value'], ['Units', 40], ['Price', 1200]],
+      Summary: [['Metric', 'Value'], ['Revenue', '=Inputs!B2*Inputs!B3']],
+    })
+    const bytes = exportXlsx(workbook.exportSnapshot())
+    workbook.dispose()
+
+    const report = buildWorkbookCompatibilityReport(bytes, {
+      fileName: 'pricing-risk.xlsx',
+      inspectLimit: 'all',
+    })
+    const loaded = Object.keys(requireForCache.cache).filter((path) =>
+      /[\\\\/]node_modules[\\\\/](?:\\.pnpm[\\\\/]xlsx@[^\\\\/]+[\\\\/]node_modules[\\\\/]xlsx|xlsx)(?:[\\\\/]|$)/u.test(path)
+    )
+    process.stdout.write(JSON.stringify({
+      loaded,
+      sheetCount: report.workbook.sheetCount,
+      formulaCellCount: report.workbook.formulaCellCount,
+      missingCachedFormulas: report.findings.missingCachedFormulaValues.count,
+      verified: report.verified,
+    }) + '\\n')
+  })
+  .catch((error) => {
+    console.error(error)
+    process.exit(1)
+  })
+`
+    const result = spawnSync('pnpm', ['exec', 'tsx', '--eval', script], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+
+    expect(result.status, result.stderr).toBe(0)
+    const output: unknown = JSON.parse(result.stdout)
+    expect(isBiligGeneratedReportOutput(output)).toBe(true)
+    if (!isBiligGeneratedReportOutput(output)) {
+      throw new Error(`Unexpected child output: ${result.stdout}`)
+    }
+    expect(output.loaded).toEqual([])
+    expect(output.sheetCount).toBe(2)
+    expect(output.formulaCellCount).toBe(1)
+    expect(output.missingCachedFormulas).toBe(1)
+    expect(output.verified).toBe(true)
+  }, 15_000)
+
   it('exports rich text artifacts with @bilig/xlsx without loading SheetJS xlsx', () => {
     const script = `
 const { createRequire } = require('node:module')
@@ -323,6 +529,69 @@ function isRichTextArtifactOutput(value: unknown): value is {
     typeof value['hasSharedStringPart'] === 'boolean' &&
     typeof value['hasSharedStringCell'] === 'boolean' &&
     typeof value['hasInlineStringCell'] === 'boolean'
+  )
+}
+
+function isTableExportOutput(value: unknown): value is {
+  readonly loaded: readonly string[]
+  readonly bytes: number
+  readonly hasTablePart: boolean
+  readonly hasSheetTableRef: boolean
+  readonly hasRelationship: boolean
+} {
+  if (!isRecord(value)) {
+    return false
+  }
+  const loaded = value['loaded']
+  return (
+    Array.isArray(loaded) &&
+    loaded.every((entry) => typeof entry === 'string') &&
+    typeof value['bytes'] === 'number' &&
+    typeof value['hasTablePart'] === 'boolean' &&
+    typeof value['hasSheetTableRef'] === 'boolean' &&
+    typeof value['hasRelationship'] === 'boolean'
+  )
+}
+
+function isExceljsBridgeExportOutput(value: unknown): value is {
+  readonly loaded: readonly string[]
+  readonly bytes: number
+  readonly cachedResult: number
+  readonly readback: number
+  readonly workbookMutated: boolean
+} {
+  if (!isRecord(value)) {
+    return false
+  }
+  const loaded = value['loaded']
+  return (
+    Array.isArray(loaded) &&
+    loaded.every((entry) => typeof entry === 'string') &&
+    typeof value['bytes'] === 'number' &&
+    typeof value['cachedResult'] === 'number' &&
+    typeof value['readback'] === 'number' &&
+    typeof value['workbookMutated'] === 'boolean'
+  )
+}
+
+function isBiligGeneratedReportOutput(value: unknown): value is {
+  readonly loaded: readonly string[]
+  readonly sheetCount: number
+  readonly formulaCellCount: number
+  readonly missingCachedFormulas: number
+  readonly verified: boolean
+} {
+  if (!isRecord(value)) {
+    return false
+  }
+  const loaded = value['loaded']
+  return (
+    Array.isArray(loaded) &&
+    loaded.every((entry) => typeof entry === 'string') &&
+    typeof value['sheetCount'] === 'number' &&
+    typeof value['formulaCellCount'] === 'number' &&
+    typeof value['missingCachedFormulas'] === 'number' &&
+    typeof value['verified'] === 'boolean'
   )
 }
 

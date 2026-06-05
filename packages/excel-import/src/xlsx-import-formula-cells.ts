@@ -113,7 +113,7 @@ export function buildImportedFormulaSnapshotCell(
   }
 }
 
-function canPreserveStructuredReferencesNatively(
+export function canPreserveStructuredReferencesNatively(
   formula: string,
   tables: readonly WorkbookTableSnapshot[] | undefined,
   ownerSheetName: string,

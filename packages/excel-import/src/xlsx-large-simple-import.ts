@@ -1,9 +1,5 @@
 import type { CellStyleRecord, WorkbookRichTextCellSnapshot, WorkbookSnapshot, WorkbookTableSnapshot } from '@bilig/protocol'
-import { attachImportedRuntimeImage } from './import-runtime-image.js'
 import { normalizeWorkbookName } from './workbook-import-helpers.js'
-import { XLSX_CONTENT_TYPE } from './workbook-import-content-types.js'
-import { createWorkbookPreview } from './workbook-import-preview.js'
-import { applyImportedAutoFilterRowVisibility } from './xlsx-autofilter-row-visibility.js'
 import {
   readImportedSheetConditionalFormatArtifactsFromElementXml,
   readImportedSheetConditionalFormatArtifactsFromWorksheetXml,
@@ -19,10 +15,19 @@ import { readImportedWorkbookDrawingArtifactsFromWorksheetRelationships } from '
 import { readImportedWorkbookExternalLinkArtifacts } from './xlsx-external-link-artifacts.js'
 import { readImportedSheetAutoFilters } from './xlsx-filters.js'
 import { readImportedWorkbookChartDrawingArtifacts } from './xlsx-import-chart-drawing-artifacts.js'
-import { externalPivotCachesWarning, externalWorkbookReferencesWarning, unsupportedCellStylesWarning } from './xlsx-import-warnings.js'
+import {
+  externalPivotCachesWarning,
+  externalWorkbookReferencesWarning,
+  readImportedFormulaAuditWarnings,
+  unsupportedCellStylesWarning,
+} from './xlsx-import-warnings.js'
+import { readImportedWorkbookCalculationSettings } from './xlsx-calculation-settings.js'
+import { readImportedWorkbookFormulaAudit } from './xlsx-formula-audit.js'
+import { readImportedWorksheetFormulaManifests } from './xlsx-formulas.js'
 import { readWorkbookDefinedNames } from './xlsx-large-simple-defined-names.js'
 import { readLargeSimpleSheetHyperlinks, resolveLargeSimpleSheetHyperlinks } from './xlsx-large-simple-hyperlinks.js'
 import { LargeSimpleXlsxImportPhaseRecorder } from './xlsx-large-simple-import-telemetry.js'
+import { buildLargeSimpleImportResult } from './xlsx-large-simple-import-result.js'
 import { appendLargeSimpleConditionalFormats } from './xlsx-large-simple-conditional-format-helpers.js'
 import { internLargeSimpleWorksheetMetadata } from './xlsx-large-simple-metadata-interning.js'
 import { prepareLargeSimplePackageArtifactsForZipRelease } from './xlsx-large-simple-package-artifact-release.js'
@@ -62,7 +67,6 @@ import {
   lazySheetCellMaterializationThreshold,
 } from './xlsx-large-simple-build-parsed-worksheet.js'
 import { mergeWorkbookRichTextCells } from './xlsx-large-simple-lazy-rich-text-cells.js'
-import { buildLargeSimpleRuntimeSheetCells } from './xlsx-large-simple-runtime-sheet-cells.js'
 import { hasExternalLargeSimplePivotCaches } from './xlsx-large-simple-pivot-warnings.js'
 import { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
 import { readWorkbookSheets, readWorksheetPathsByRelationshipId } from './xlsx-large-simple-workbook-metadata.js'
@@ -104,7 +108,6 @@ import type {
   LargeSimpleXlsxImportOptions,
   LargeSimpleXlsxImportResult,
   LargeSimpleXlsxImportSource,
-  LargeSimpleXlsxImportStats,
   ParsedWorksheet,
   ScannedWorksheet,
 } from './xlsx-large-simple-import-types.js'
@@ -158,6 +161,27 @@ export function tryImportLargeSimpleXlsx(
   if (worksheetEntries.length !== workbookSheets.length) {
     return null
   }
+  const sheetNames = workbookSheets.map((entry) => entry.name)
+  const sheetPathsByName = new Map(worksheetEntries.map((entry) => [entry.name, entry.path] as const))
+  const fallbackSheetPaths = worksheetEntries.map((entry) => entry.path)
+  const importedCalculationSettings = readImportedWorkbookCalculationSettings(zip)
+  const shouldReadEagerFormulaManifests =
+    source.byteLength < importConstants.defaultLargeSimpleXlsxByteThreshold &&
+    worksheetEntries.every((entry) => Object.getOwnPropertyDescriptor(zip, entry.path)?.value instanceof Uint8Array)
+  const importedWorksheetFormulaManifestsBySheet = shouldReadEagerFormulaManifests
+    ? readImportedWorksheetFormulaManifests(zip, sheetNames, sheetPathsByName, fallbackSheetPaths)
+    : new Map()
+  const importedFormulaAudit = shouldReadEagerFormulaManifests
+    ? readImportedWorkbookFormulaAudit({
+        source: zip,
+        sheetNames,
+        sheetPathsByName,
+        fallbackSheetPaths,
+        worksheetFormulasBySheet: importedWorksheetFormulaManifestsBySheet,
+        definedNames: workbookDefinedNames.definedNames ?? [],
+        ...(importedCalculationSettings ? { calculationSettings: importedCalculationSettings } : {}),
+      })
+    : undefined
   const materializeCells = options.materializeCells !== false
   const materializeMetadata = options.materializeMetadata !== false
   const hasSharedStrings = packagePaths.includes(importConstants.sharedStringsPath)
@@ -240,6 +264,7 @@ export function tryImportLargeSimpleXlsx(
   delete zip[importConstants.workbookRelationshipsPath]
   const workbookName = stringPool.intern(normalizeWorkbookName(fileName))
   const warnings = workbookDefinedNames.ignoredCount > 0 ? ['Some defined names were ignored during XLSX import.'] : []
+  warnings.push(...readImportedFormulaAuditWarnings(importedFormulaAudit))
   if (workbookDefinedNames.externalWorkbookReferenceSeen) {
     warnings.push(externalWorkbookReferencesWarning)
   }
@@ -884,112 +909,33 @@ export function tryImportLargeSimpleXlsx(
   }
   sharedStrings = []
   stringPool.release()
-  const sortedImportedTables =
-    importedTables.length > 0 ? importedTables.toSorted((left, right) => left.name.localeCompare(right.name)) : undefined
-  const importedSheets = sheets.map((sheet) => applyImportedAutoFilterRowVisibility(sheet, sortedImportedTables))
-  const hasFormulaCells = sheetStats.some((entry) => entry.formulaCellCount > 0)
-  const workbookMetadata =
-    workbookDefinedNames.definedNames ||
-    importedWorkbookProperties ||
-    importedWorkbookDocumentProperties ||
-    importedChartDrawingArtifacts?.drawingArtifacts.artifacts ||
-    importedDrawingArtifacts?.artifacts ||
-    importedChartDrawingArtifacts?.chartArtifacts.artifacts ||
-    importedChartDrawingArtifacts?.chartArtifacts.chartSheetArtifacts ||
-    importedChartDrawingArtifacts?.charts ||
-    importedPivotArtifacts?.artifacts ||
-    importedControlArtifacts?.artifacts ||
-    sortedImportedTables ||
-    styleCatalog.size > 0 ||
-    importedExternalConnections ||
-    importedDataModelArtifacts ||
-    importedExternalLinkArtifacts ||
-    importedSlicerConnectionArtifacts ||
-    importedWorkbookCellMetadata ||
-    hasFormulaCells
-      ? {
-          ...(importedWorkbookProperties ? { properties: importedWorkbookProperties } : {}),
-          ...(importedWorkbookDocumentProperties ? { documentPropertyArtifacts: importedWorkbookDocumentProperties } : {}),
-          ...(workbookDefinedNames.definedNames ? { definedNames: workbookDefinedNames.definedNames } : {}),
-          ...(importedChartDrawingArtifacts?.drawingArtifacts.artifacts
-            ? { drawingArtifacts: importedChartDrawingArtifacts.drawingArtifacts.artifacts }
-            : importedDrawingArtifacts?.artifacts
-              ? { drawingArtifacts: importedDrawingArtifacts.artifacts }
-              : {}),
-          ...(importedChartDrawingArtifacts?.chartArtifacts.artifacts
-            ? { chartArtifacts: importedChartDrawingArtifacts.chartArtifacts.artifacts }
-            : {}),
-          ...(importedChartDrawingArtifacts?.chartArtifacts.chartSheetArtifacts
-            ? { chartSheetArtifacts: importedChartDrawingArtifacts.chartArtifacts.chartSheetArtifacts }
-            : {}),
-          ...(importedChartDrawingArtifacts?.charts ? { charts: importedChartDrawingArtifacts.charts } : {}),
-          ...(importedPivotArtifacts?.artifacts ? { pivotArtifacts: importedPivotArtifacts.artifacts } : {}),
-          ...(importedControlArtifacts?.artifacts ? { controlArtifacts: importedControlArtifacts.artifacts } : {}),
-          ...(sortedImportedTables ? { tables: sortedImportedTables } : {}),
-          ...(styleCatalog.size > 0 ? { styles: [...styleCatalog.values()] } : {}),
-          ...(importedExternalConnections ? { externalConnections: importedExternalConnections } : {}),
-          ...(importedDataModelArtifacts ? { dataModelArtifacts: importedDataModelArtifacts } : {}),
-          ...(importedExternalLinkArtifacts ? { externalLinkArtifacts: importedExternalLinkArtifacts } : {}),
-          ...(importedSlicerConnectionArtifacts ? { slicerConnectionArtifacts: importedSlicerConnectionArtifacts } : {}),
-          ...(importedWorkbookCellMetadata ? { cellMetadata: importedWorkbookCellMetadata } : {}),
-          ...(hasFormulaCells
-            ? {
-                calculationSettings: {
-                  mode: 'automatic' as const,
-                  compatibilityMode: 'excel-modern' as const,
-                  fullCalcOnLoad: false,
-                  forceFullCalc: false,
-                },
-              }
-            : {}),
-        }
-      : undefined
-  const runtimeSheetCells = buildLargeSimpleRuntimeSheetCells(sheetStats, importedSheets)
-  const snapshot: WorkbookSnapshot = {
-    version: 1,
-    workbook: {
-      name: workbookName,
-      ...(workbookMetadata ? { metadata: workbookMetadata } : {}),
-    },
-    sheets: importedSheets,
-  }
-  const stats: LargeSimpleXlsxImportStats = {
-    sheetCount: sheets.length,
-    cellCount: sheetStats.reduce((sum, entry) => sum + entry.cellCount, 0),
-    formulaCellCount: sheetStats.reduce((sum, entry) => sum + entry.formulaCellCount, 0),
-    valueCellCount: sheetStats.reduce((sum, entry) => sum + entry.valueCellCount, 0),
-    definedNameCount: workbookDefinedNames.definedNames?.length ?? 0,
-    tableCount: sortedImportedTables?.length ?? sheetStats.reduce((sum, entry) => sum + entry.tableCount, 0),
-    mergeCount: sheetStats.reduce((sum, entry) => sum + entry.mergeCount, 0),
-    conditionalFormatCount: sheetStats.reduce((sum, entry) => sum + entry.conditionalFormatCount, 0),
-    dataValidationCount: sheetStats.reduce((sum, entry) => sum + entry.dataValidationCount, 0),
-    warningCount: warnings.length,
-    dimensions: sheetStats.map((entry) => entry.dimension),
-    phaseTelemetry: phaseRecorder.entries(),
-  }
-
-  return {
-    snapshot:
-      runtimeSheetCells.length > 0
-        ? attachImportedRuntimeImage(snapshot, {
-            version: 1,
-            templateBank: [],
-            formulaInstances: [],
-            formulaValues: [],
-            sheetCells: runtimeSheetCells,
-          })
-        : snapshot,
+  return buildLargeSimpleImportResult({
+    fileName,
+    sourceByteLength: source.byteLength,
     workbookName,
     sheetNames: workbookSheets.map((entry) => entry.name),
+    sheets,
+    previewSheets,
+    sheetStats,
     warnings,
-    preview: createWorkbookPreview({
-      contentType: XLSX_CONTENT_TYPE,
-      fileName,
-      fileSizeBytes: source.byteLength,
-      workbookName,
-      sheets: previewSheets,
-      warnings,
-    }),
-    stats,
-  }
+    definedNames: workbookDefinedNames.definedNames,
+    importedTables,
+    importedCalculationSettings,
+    importedFormulaAudit,
+    importedWorkbookProperties,
+    importedWorkbookDocumentProperties,
+    importedDrawingArtifacts: importedChartDrawingArtifacts?.drawingArtifacts.artifacts ?? importedDrawingArtifacts?.artifacts,
+    importedChartArtifacts: importedChartDrawingArtifacts?.chartArtifacts.artifacts,
+    importedChartSheetArtifacts: importedChartDrawingArtifacts?.chartArtifacts.chartSheetArtifacts,
+    importedCharts: importedChartDrawingArtifacts?.charts,
+    importedPivotArtifacts: importedPivotArtifacts?.artifacts,
+    importedControlArtifacts: importedControlArtifacts?.artifacts,
+    importedExternalConnections,
+    importedDataModelArtifacts,
+    importedExternalLinkArtifacts,
+    importedSlicerConnectionArtifacts,
+    importedWorkbookCellMetadata,
+    styleRecords: [...styleCatalog.values()],
+    phaseTelemetry: phaseRecorder.entries(),
+  })
 }

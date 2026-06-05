@@ -1,5 +1,5 @@
 import { WorkPaper, type RawCellContent, type WorkPaperCellAddress, type WorkPaperChange, type WorkPaperConfig } from '@bilig/headless'
-import type { ImportedWorkbookDiagnostics, XlsxExternalWorkbookInput } from '@bilig/headless/xlsx'
+import type { ImportedWorkbookDiagnostics, XlsxExternalWorkbookInput, XlsxImportOptions } from '@bilig/headless/xlsx'
 import { exportXlsx, importXlsx } from '@bilig/headless/xlsx'
 import { ErrorCode, formatErrorCode, ValueTag } from '@bilig/protocol'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
@@ -41,10 +41,11 @@ export interface XlsxFormulaRecalcResult {
 }
 
 export function recalculateXlsx(input: Uint8Array | ArrayBuffer | Buffer, options: XlsxFormulaRecalcOptions = {}): XlsxFormulaRecalcResult {
-  const importOptions = options.externalWorkbooks
-    ? { externalWorkbooks: options.externalWorkbooks, externalLinkCacheArtifactMode: 'replace-refreshed' as const }
-    : {}
-  const imported = importXlsx(toUint8Array(input), options.fileName ?? 'workbook.xlsx', importOptions)
+  const imported = importXlsx(
+    toUint8Array(input),
+    options.fileName ?? 'workbook.xlsx',
+    xlsxFormulaRecalcImportOptions(options.externalWorkbooks),
+  )
   const originalCalculationSettings = imported.snapshot.workbook.metadata?.calculationSettings
   const workbook = WorkPaper.buildFromSnapshot(snapshotForFreshFormulaRecalculation(imported.snapshot), {
     evaluationTimeoutMs: 30_000,
@@ -148,10 +149,11 @@ export function inspectXlsxCache(
   input: Uint8Array | ArrayBuffer | Buffer,
   options: XlsxCacheInspectionOptions = {},
 ): XlsxCacheInspectionResult {
-  const importOptions = options.externalWorkbooks
-    ? { externalWorkbooks: options.externalWorkbooks, externalLinkCacheArtifactMode: 'replace-refreshed' as const }
-    : {}
-  const imported = importXlsx(toUint8Array(input), options.fileName ?? 'workbook.xlsx', importOptions)
+  const imported = importXlsx(
+    toUint8Array(input),
+    options.fileName ?? 'workbook.xlsx',
+    xlsxFormulaRecalcImportOptions(options.externalWorkbooks),
+  )
   const formulaCells = collectXlsxCacheFormulaCells(imported.snapshot)
   const inspectionLimit = normalizeXlsxCacheInspectionLimit(options.inspectLimit ?? 'all')
   const inspectedFormulaCells = inspectionLimit === 'all' ? formulaCells : formulaCells.slice(0, inspectionLimit)
@@ -196,6 +198,12 @@ export function inspectXlsxCache(
     recalculationCompleted: true,
     excelParity: 'not_proven',
   }
+}
+
+function xlsxFormulaRecalcImportOptions(externalWorkbooks: readonly XlsxExternalWorkbookInput[] | undefined): XlsxImportOptions {
+  return externalWorkbooks && externalWorkbooks.length > 0
+    ? { externalWorkbooks, externalLinkCacheArtifactMode: 'replace-refreshed' }
+    : { preferNativeSimpleImport: true }
 }
 
 function collectXlsxCacheFormulaCells(snapshot: WorkbookSnapshot): XlsxCacheFormulaCell[] {

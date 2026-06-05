@@ -159,6 +159,33 @@ describe('large simple XLSX import fast path', () => {
     ).toThrow(XlsxImportSizeLimitExceededError)
   })
 
+  it('imports small simple generated XLSX files through the native path when requested', () => {
+    const bytes = buildLargeSimpleWorkbook({
+      includeSharedStrings: false,
+      worksheetXml: [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+        '<dimension ref="A1:B2"/>',
+        '<sheetData>',
+        '<row r="1"><c r="A1" t="inlineStr"><is><t>Metric</t></is></c><c r="B1" t="inlineStr"><is><t>Value</t></is></c></row>',
+        '<row r="2"><c r="A2" t="inlineStr"><is><t>Revenue</t></is></c><c r="B2"><f>40*1200</f><v>48000</v></c></row>',
+        '</sheetData>',
+        '</worksheet>',
+      ].join(''),
+    })
+
+    const imported = importXlsx(bytes, 'small-native.xlsx', { preferNativeSimpleImport: true })
+
+    expect(imported.stats?.cellCount).toBe(4)
+    expect(imported.stats?.formulaCellCount).toBe(1)
+    expect(imported.snapshot.sheets[0]?.cells).toEqual([
+      { address: 'A1', value: 'Metric' },
+      { address: 'B1', value: 'Value' },
+      { address: 'A2', value: 'Revenue' },
+      { address: 'B2', value: 48000, formula: '40*1200' },
+    ])
+  })
+
   it('preflights formula-heavy sheets even when workbook features require SheetJS fallback', () => {
     const bytes = buildLargeSimpleWorkbook({
       includeSharedStrings: false,
@@ -1342,7 +1369,7 @@ describe('large simple XLSX import fast path', () => {
     expect(tryImportLargeSimpleXlsx(bytes, 'array-formula.xlsx', unzipSync(bytes), { minByteLength: 0 })).toBeNull()
   })
 
-  it('falls back when structured table references require formula translation', () => {
+  it('imports cached structured table references when table metadata is unavailable', () => {
     const bytes = buildLargeSimpleWorkbook({
       worksheetXml: [
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
@@ -1353,7 +1380,9 @@ describe('large simple XLSX import fast path', () => {
       ].join(''),
     })
 
-    expect(tryImportLargeSimpleXlsx(bytes, 'structured-formula.xlsx', unzipSync(bytes), { minByteLength: 0 })).toBeNull()
+    expect(
+      tryImportLargeSimpleXlsx(bytes, 'structured-formula.xlsx', unzipSync(bytes), { minByteLength: 0 })?.snapshot.sheets[0]?.cells,
+    ).toEqual([{ address: 'A1', value: 10, formula: 'SUM(SalesTable[Total])' }])
   })
 
   it('does not fall back solely because preserved chart package parts are present', () => {
