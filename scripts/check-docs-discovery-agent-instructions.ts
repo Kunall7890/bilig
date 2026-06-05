@@ -183,11 +183,6 @@ export async function requireAgentInstructionDiscovery(input: {
   )
   requireIncludes(
     docsAgentStart,
-    'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules aider',
-    'docs/agent-start.txt',
-  )
-  requireIncludes(
-    docsAgentStart,
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules cursor',
     'docs/agent-start.txt',
   )
@@ -213,21 +208,6 @@ export async function requireAgentInstructionDiscovery(input: {
   )
   requireIncludes(
     docsAgentStart,
-    'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules goose',
-    'docs/agent-start.txt',
-  )
-  requireIncludes(
-    docsAgentStart,
-    'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules openhands',
-    'docs/agent-start.txt',
-  )
-  requireIncludes(
-    docsAgentStart,
-    'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules trae',
-    'docs/agent-start.txt',
-  )
-  requireIncludes(
-    docsAgentStart,
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules vscode-mcp',
     'docs/agent-start.txt',
   )
@@ -236,6 +216,19 @@ export async function requireAgentInstructionDiscovery(input: {
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules opencode',
     'docs/agent-start.txt',
   )
+  for (const releasePendingTarget of ['aider', 'goose', 'junie', 'openhands', 'qodo', 'trae', 'zed']) {
+    requireNotIncludes(
+      docsAgentStart,
+      `npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules ${releasePendingTarget}`,
+      'docs/agent-start.txt',
+    )
+  }
+  requireIncludes(
+    docsAgentStart,
+    'Current source also has rule packs for `aider`, `goose`, `junie`, `openhands`, `qodo`, `trae`, `zed`.',
+    'docs/agent-start.txt',
+  )
+  requireIncludes(docsAgentStart, 'not listed as `@latest` commands here until npm publishing catches up', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, '.github/copilot-instructions.md', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, '.github/instructions/bilig-workpaper.instructions.md', 'docs/agent-start.txt')
   requireIncludes(docsAgentStart, '.github/prompts/bilig-workpaper-proof.prompt.md', 'docs/agent-start.txt')

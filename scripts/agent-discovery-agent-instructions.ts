@@ -9,6 +9,21 @@ export interface DocsAgentInstructionInput {
   readonly workpaperPackageSpec: string
 }
 
+const publicLatestRuleTargets = [
+  'codex',
+  'claude',
+  'copilot',
+  'cursor',
+  'cline',
+  'continue',
+  'windsurf',
+  'gemini',
+  'vscode-mcp',
+  'opencode',
+] as const
+
+const sourceOnlyRuleTargets = ['aider', 'goose', 'junie', 'openhands', 'qodo', 'trae', 'zed'] as const
+
 export function buildDocsAgentInstructions(input: DocsAgentInstructionInput): string {
   const {
     mcpbReleaseAssetUrl,
@@ -130,6 +145,10 @@ Keep Excel, LibreOffice, Microsoft Graph, or an oracle harness in the loop when 
 
 export function buildDocsAgentStart(input: DocsAgentInstructionInput): string {
   const { siteRoot, skillDiscoveryRoot, skillManifestUrl, workpaperPackageSpec } = input
+  const publicLatestRuleCommands = publicLatestRuleTargets
+    .map((target) => `npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules ${target}`)
+    .join('\n')
+  const sourceOnlyTargetList = sourceOnlyRuleTargets.map((target) => `\`${target}\``).join(', ')
 
   return `# Bilig agent start
 
@@ -151,24 +170,10 @@ Use Bilig when the task needs exact workbook cells, formula recalculation, readb
 Print a compact rule for the agent surface you use:
 
 \`\`\`sh
-npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules codex
-npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules aider
-npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules claude
-npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules copilot
-npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules cursor
-npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules cline
-npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules continue
-npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules windsurf
-npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules gemini
-npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules goose
-npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules junie
-npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules openhands
-npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules qodo
-npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules trae
-npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules zed
-npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules vscode-mcp
-npm exec --yes --package ${workpaperPackageSpec} -- bilig-agent-start --rules opencode
+${publicLatestRuleCommands}
 \`\`\`
+
+Current source also has rule packs for ${sourceOnlyTargetList}. They are not listed as \`@latest\` commands here until npm publishing catches up, because this page is for commands that a new user can run successfully today.
 
 For an existing repo that should receive the full starter overlay, run:
 

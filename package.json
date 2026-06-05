@@ -148,7 +148,7 @@
     "agent:public-rules:check": "tsx scripts/check-public-agent-start-rules.ts",
     "agent:public-rules:check:pending": "tsx scripts/check-public-agent-start-rules.ts --allow-release-pending",
     "xlsx-cache-doctor:action:check": "tsx scripts/check-xlsx-cache-doctor-action.ts",
-    "docs:discovery:check": "pnpm xlsx-cache-doctor:action:check && pnpm agent:discovery:check && pnpm agent:public-rules:check:pending && tsx scripts/check-docs-discovery.ts && tsx scripts/check-docs-discovery-airbyte.ts && tsx scripts/check-docs-discovery-meltano.ts",
+    "docs:discovery:check": "pnpm xlsx-cache-doctor:action:check && pnpm agent:discovery:check && pnpm agent:public-rules:check && tsx scripts/check-docs-discovery.ts && tsx scripts/check-docs-discovery-airbyte.ts && tsx scripts/check-docs-discovery-meltano.ts",
     "mcpb:workpaper:build": "tsx scripts/build-workpaper-mcpb.ts",
     "community:growth:snapshot": "tsx scripts/community-growth-snapshot.ts",
     "community:growth:snapshot:markdown": "tsx scripts/community-growth-snapshot.ts --format markdown --output internal/growth/community-growth-snapshot.md",

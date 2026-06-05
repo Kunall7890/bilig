@@ -19,7 +19,6 @@ Print a compact rule for the agent surface you use:
 
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules codex
-npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules aider
 npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules claude
 npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules copilot
 npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules cursor
@@ -27,15 +26,11 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules cl
 npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules continue
 npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules windsurf
 npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules gemini
-npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules goose
-npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules junie
-npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules openhands
-npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules qodo
-npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules trae
-npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules zed
 npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules vscode-mcp
 npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --rules opencode
 ```
+
+Current source also has rule packs for `aider`, `goose`, `junie`, `openhands`, `qodo`, `trae`, `zed`. They are not listed as `@latest` commands here until npm publishing catches up, because this page is for commands that a new user can run successfully today.
 
 For an existing repo that should receive the full starter overlay, run:
 

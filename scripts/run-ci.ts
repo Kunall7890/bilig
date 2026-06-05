@@ -408,7 +408,7 @@ const generatedSourceChecks: readonly CiTask[] = [
   bunScript('headless package footprint check', 'scripts/sync-headless-package-footprint.ts', '--check'),
   bunScript('create WorkPaper package check', 'scripts/check-create-workpaper-package.ts'),
   bunScript('agent discovery docs check', 'scripts/sync-agent-discovery-docs.ts', '--check'),
-  tsxScript('public agent start rules published-package check', 'scripts/check-public-agent-start-rules.ts', '--allow-release-pending'),
+  tsxScript('public agent start rules published-package check', 'scripts/check-public-agent-start-rules.ts'),
   tsxScript('docs discovery check', 'scripts/check-docs-discovery.ts'),
 ]
 const semanticFastGate = pnpm('semantic correctness fast gate', 'test:semantic:fast')
