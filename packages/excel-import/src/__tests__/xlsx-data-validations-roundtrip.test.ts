@@ -1,7 +1,7 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
 import { SpreadsheetEngine } from '@bilig/core'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import { exportXlsx, importXlsx } from '../index.js'
 
@@ -296,18 +296,26 @@ describe('data validation roundtrip', () => {
 })
 
 function buildDataValidationWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(
-    workbook,
-    XLSX.utils.aoa_to_sheet([
-      ['Input', 'Value', '', 'Choices'],
-      ['Scenario', '', '', 'Base'],
-      ['Guidance', '', '', 'Downside'],
-      ['Debt ratio', '', '', 'Upside'],
-    ]),
-    'Model',
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Model',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Input' },
+            { address: 'B1', row: 0, col: 1, value: 'Value' },
+            { address: 'D1', row: 0, col: 3, value: 'Choices' },
+            { address: 'A2', row: 1, col: 0, value: 'Scenario' },
+            { address: 'D2', row: 1, col: 3, value: 'Base' },
+            { address: 'A3', row: 2, col: 0, value: 'Guidance' },
+            { address: 'D3', row: 2, col: 3, value: 'Downside' },
+            { address: 'A4', row: 3, col: 0, value: 'Debt ratio' },
+            { address: 'D4', row: 3, col: 3, value: 'Upside' },
+          ],
+        },
+      ],
+    }),
   )
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
   const sheetPath = 'xl/worksheets/sheet1.xml'
   const sheetXml = strFromU8(zip[sheetPath] ?? new Uint8Array())
   zip[sheetPath] = strToU8(
@@ -324,9 +332,16 @@ function buildDataValidationWorkbookBytes(): Uint8Array {
 }
 
 function buildBrokenListValidationWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['Choice']]), 'Model')
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Model',
+          cells: [{ address: 'A1', row: 0, col: 0, value: 'Choice' }],
+        },
+      ],
+    }),
+  )
   const sheetPath = 'xl/worksheets/sheet1.xml'
   const sheetXml = strFromU8(zip[sheetPath] ?? new Uint8Array())
   zip[sheetPath] = strToU8(

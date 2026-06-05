@@ -32,17 +32,26 @@
       "workpaper",
       "xlsx"
     ],
-    "dependencyNames": ["@bilig/core", "@bilig/formula", "@bilig/protocol", "@bilig/wasm-kernel", "@bilig/xlsx"],
+    "dependencyNames": [
+      "@bilig/core",
+      "@bilig/formula",
+      "@bilig/protocol",
+      "@bilig/wasm-kernel",
+      "@bilig/xlsx",
+      "fast-xml-parser",
+      "fflate",
+      "fflate-stream"
+    ],
     "hasFormulaClinicBinary": true,
     "hasXlsxSubpath": true,
     "hasMcpBinary": true
   },
   "npmPackDryRun": {
-    "tarballBytes": 845474,
-    "unpackedBytes": 5175877,
-    "entryCount": 814,
+    "tarballBytes": 862930,
+    "unpackedBytes": 5277247,
+    "entryCount": 835,
     "readmeBytes": 50809,
-    "packageJsonBytes": 3308
+    "packageJsonBytes": 3405
   },
   "coldStartProbe": {
     "runtime": "node",

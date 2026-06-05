@@ -1,4 +1,10 @@
 import type { WorkbookRichTextCellSnapshot } from '@bilig/protocol'
+import type { ImportedWorksheetCellScan } from './xlsx-large-simple-arena.js'
+import type { LargeSimpleSharedStrings } from './xlsx-large-simple-shared-strings.js'
+import type {
+  LargeSimpleWorksheetStreamScannerOptions,
+  ResolvedLargeSimpleWorksheetStreamScannerOptions,
+} from './xlsx-large-simple-worksheet-stream-scanner-options.js'
 import {
   readLargeSimpleAutoFilterRootFromBytes,
   readLargeSimpleAutoFiltersFromBytes,
@@ -9,14 +15,7 @@ import {
   readLargeSimpleSharedStringIndexFromTextRange,
 } from './xlsx-large-simple-cell-value-scan.js'
 import { LargeSimpleFormulaRecords, readLargeSimpleFormulaTypeCode } from './xlsx-large-simple-formula-records.js'
-import {
-  ImportedWorkbookArena,
-  ImportedWorksheetStyleIndexArena,
-  type ImportedWorkbookArenaDedupeMode,
-  type ImportedWorksheetCellScan,
-} from './xlsx-large-simple-arena.js'
-import type { LargeSimpleSharedStrings } from './xlsx-large-simple-shared-strings.js'
-import type { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
+import { ImportedWorkbookArena, ImportedWorksheetStyleIndexArena } from './xlsx-large-simple-arena.js'
 import { decodeBytes, decodeCellAddress, packedAddressColumn, packedAddressRow } from './xlsx-large-simple-xml-byte-utils.js'
 import {
   cellTypeInlineStringCode,
@@ -66,26 +65,7 @@ export interface LargeSimpleWorksheetStreamScan {
 export function parseLargeSimpleWorksheetCellsFromChunks(
   readChunks: (onChunk: (chunk: Uint8Array) => void) => boolean,
   sheetIndex: number,
-  options: {
-    readonly hasSharedStrings: boolean
-    readonly retainCells?: boolean
-    readonly sharedStrings?: LargeSimpleSharedStrings
-    readonly deferSharedStrings?: boolean
-    readonly retainMetadataXml?: boolean
-    readonly sheetName?: string
-    readonly stringPool?: ImportedWorkbookStringPool
-    readonly deduplicateStrings?: ImportedWorkbookArenaDedupeMode
-    readonly deduplicateFormulas?: ImportedWorkbookArenaDedupeMode
-    readonly dedupeMaxEntries?: number
-    readonly allowUnsupportedFormulaText?: boolean
-    readonly allowUnsupportedCellMetadata?: boolean
-    readonly preserveBlankStyleCells?: boolean
-    readonly retainStyleIndexes?: boolean
-    readonly retainStyleCoordinates?: boolean
-    readonly useWasmScanStorage?: boolean
-    readonly maxDimensionCellPreallocation?: number
-    readonly onRetainedBufferLength?: (length: number) => void
-  },
+  options: LargeSimpleWorksheetStreamScannerOptions,
 ): LargeSimpleWorksheetStreamScan | null {
   const retainCells = options.retainCells !== false
   const retainStyleIndexes = options.retainStyleIndexes ?? retainCells
@@ -159,26 +139,7 @@ class LargeSimpleWorksheetChunkScanner {
 
   constructor(
     private readonly sheetIndex: number,
-    options: {
-      readonly hasSharedStrings: boolean
-      readonly retainCells: boolean
-      readonly sharedStrings: LargeSimpleSharedStrings
-      readonly deferSharedStrings: boolean
-      readonly retainMetadataXml: boolean
-      readonly sheetName: string | undefined
-      readonly stringPool: ImportedWorkbookStringPool | undefined
-      readonly deduplicateStrings: ImportedWorkbookArenaDedupeMode | undefined
-      readonly deduplicateFormulas: ImportedWorkbookArenaDedupeMode | undefined
-      readonly dedupeMaxEntries: number | undefined
-      readonly allowUnsupportedFormulaText: boolean | undefined
-      readonly allowUnsupportedCellMetadata: boolean | undefined
-      readonly preserveBlankStyleCells: boolean
-      readonly retainStyleIndexes: boolean
-      readonly retainStyleCoordinates: boolean
-      readonly useWasmScanStorage: boolean | undefined
-      readonly maxDimensionCellPreallocation: number | undefined
-      readonly onRetainedBufferLength: ((length: number) => void) | undefined
-    },
+    options: ResolvedLargeSimpleWorksheetStreamScannerOptions,
   ) {
     this.allowUnsupportedFormulaText = options.allowUnsupportedFormulaText === true
     this.preserveBlankStyleCells = options.preserveBlankStyleCells
@@ -462,6 +423,16 @@ class LargeSimpleWorksheetChunkScanner {
       return false
     }
     const styleIndex = readCellStyleIndexFromTag(this.buffer, nameEnd, tagEnd)
+    if (selfClosing) {
+      if (styleIndex !== null) {
+        this.blankStyleCellCount += 1
+        if (this.preserveBlankStyleCells) {
+          this.recordStyleIndex(row, column, styleIndex)
+        }
+      }
+      this.index = tagEnd + 1
+      return true
+    }
     const shouldReadSharedStringIndex = cellType === cellTypeSharedStringCode && (this.retainCells || this.deferSharedStrings)
     const rawValueRange =
       this.retainCells || shouldReadSharedStringIndex ? readElementTextRange(this.buffer, contentStart, closing.start, 'v') : null

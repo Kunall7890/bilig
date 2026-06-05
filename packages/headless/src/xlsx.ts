@@ -19,6 +19,7 @@ export interface XlsxSourceLiteralPatch {
   readonly sheetName: string
   readonly address: string
   readonly value: string | number | boolean | null
+  readonly preserveFormula?: boolean
 }
 
 export interface XlsxSourceLiteralPatchExportInput {
@@ -94,11 +95,21 @@ function sourcePreservingPatchInputFromSnapshot(snapshot: WorkbookSnapshot): Xls
   if (!isXlsxSourceReference(source) || patches === undefined || patches.length === 0) {
     return null
   }
-  const literalPatches = patches.filter(isXlsxSourceLiteralPatch).map((patch) => ({
-    sheetName: patch.sheetName,
-    address: patch.address,
-    value: patch.value,
-  }))
+  const literalPatches = patches.filter(isXlsxSourceLiteralPatch).map((patch): XlsxSourceLiteralPatch => {
+    if (patch.preserveFormula === true) {
+      return {
+        sheetName: patch.sheetName,
+        address: patch.address,
+        value: patch.value,
+        preserveFormula: true,
+      }
+    }
+    return {
+      sheetName: patch.sheetName,
+      address: patch.address,
+      value: patch.value,
+    }
+  })
   return literalPatches.length > 0
     ? {
         source,

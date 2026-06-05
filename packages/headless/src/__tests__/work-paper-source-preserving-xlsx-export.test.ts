@@ -99,7 +99,12 @@ function attachSourceReaderForTest(snapshot: object, bytes: Uint8Array): void {
 
 function attachSourcePatchesForTest(
   snapshot: object,
-  patches: readonly { readonly sheetName: string; readonly address: string; readonly value: string | number | boolean | null }[],
+  patches: readonly {
+    readonly sheetName: string
+    readonly address: string
+    readonly value: string | number | boolean | null
+    readonly preserveFormula?: boolean
+  }[],
 ): void {
   Object.defineProperty(snapshot, Symbol.for('bilig.importedXlsxSourceCellPatches'), {
     configurable: true,
@@ -431,6 +436,37 @@ describe('WorkPaper source-preserving XLSX export', () => {
       const exportedZip = unzipSync(readFileSync(outputPath))
       const sheetXml = strFromU8(exportedZip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
       expect(cellXml(sheetXml, 'A1')).toContain('<v>23</v>')
+    } finally {
+      rmSync(directory, { recursive: true, force: true })
+    }
+  })
+
+  it('keeps formula XML when source metadata patches cached formula values', async () => {
+    const sourceBytes = sourceWorkbookBytes()
+    const imported = importXlsx(sourceBytes, 'source-preserving-formula-cache.xlsx')
+    attachSourceReaderForTest(imported.snapshot, sourceBytes)
+    attachSourcePatchesForTest(imported.snapshot, [
+      { sheetName: 'Data', address: 'A1', value: 8 },
+      { sheetName: 'Data', address: 'B1', value: 9, preserveFormula: true },
+    ])
+    const directory = mkdtempSync(join(tmpdir(), 'bilig-source-formula-cache-'))
+    try {
+      const outputPath = join(directory, 'patched.xlsx')
+
+      await exportWorkPaperXlsxToFileAsync(
+        {
+          exportSourcePreservingXlsxSnapshot: () => imported.snapshot,
+          exportSnapshot: () => {
+            throw new Error('Full WorkPaper snapshot should not be exported for source-preserving formula cache patches')
+          },
+        },
+        outputPath,
+      )
+
+      const exportedZip = unzipSync(readFileSync(outputPath))
+      const sheetXml = strFromU8(exportedZip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+      expect(cellXml(sheetXml, 'A1')).toContain('<v>8</v>')
+      expect(cellXml(sheetXml, 'B1')).toContain('<f>A1+1</f><v>9</v>')
     } finally {
       rmSync(directory, { recursive: true, force: true })
     }

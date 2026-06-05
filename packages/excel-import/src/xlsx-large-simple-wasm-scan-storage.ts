@@ -64,10 +64,6 @@ export class LargeSimpleWorksheetScanStorageBridge {
   }
 
   addStyle(row: number, column: number, styleIndex: number): void {
-    if (this.wasmStorage) {
-      this.wasmStorage.addStyle(row, column, styleIndex)
-      return
-    }
     this.styleIndexes.add(row, column, styleIndex)
   }
 

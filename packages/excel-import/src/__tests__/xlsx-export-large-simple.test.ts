@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
 import { strFromU8, unzipSync } from 'fflate'
 
 import type { WorkbookSnapshot } from '@bilig/protocol'
+import { encodeCellAddress } from '@bilig/xlsx'
 import { readBenchToleranceMultiplier } from '../../../../scripts/bench-tolerance.js'
 import { exportXlsx, importXlsx } from '../index.js'
 
@@ -59,10 +59,9 @@ describe('large simple XLSX export', () => {
     const start = performance.now()
     const exported = exportXlsx(buildBroadColumnMetadataSnapshot())
     const durationMs = performance.now() - start
-    const workbook = XLSX.read(exported, { type: 'array', cellFormula: true, cellText: false, cellDates: false })
 
     expect(durationMs).toBeLessThan(1_500 * readBenchmarkTolerance())
-    expect(workbook.Sheets['Wide']?.['!ref']).toBe('A3040')
+    expect(worksheetXml(exported)).toContain('<dimension ref="A3040"/>')
   }, 15_000)
 
   it('exports sparse raw style artifacts through the @bilig/xlsx writer', () => {
@@ -85,7 +84,6 @@ describe('large simple XLSX export', () => {
     const exported = exportXlsx(buildFormulaHeavyMetadataSnapshot())
     const durationMs = performance.now() - start
     const zip = unzipSync(exported)
-    const workbook = XLSX.read(exported, { type: 'array', cellFormula: true, cellText: false, cellDates: false })
     const imported = importXlsx(exported, 'issue-90-formula-heavy-export.xlsx')
     const sheet = imported.snapshot.sheets[0]
 
@@ -96,8 +94,8 @@ describe('large simple XLSX export', () => {
       value: 1189,
       formula: 'A100+1',
     })
-    expect(workbook.Workbook?.Names).toHaveLength(40)
-    expect(workbook.Sheets['Export']?.['!ref']).toBe('A1:L5000')
+    expect(definedNameCount(exported)).toBe(40)
+    expect(worksheetXml(exported)).toContain('<dimension ref="A1:L5000"/>')
   }, 20_000)
 })
 
@@ -109,7 +107,7 @@ function buildLargeSimpleSnapshot(): WorkbookSnapshot {
   const cells: WorkbookSnapshot['sheets'][number]['cells'] = []
   for (let row = 0; row < 2_000; row += 1) {
     for (let column = 0; column < 50; column += 1) {
-      const address = XLSX.utils.encode_cell({ r: row, c: column })
+      const address = encodeCellAddress({ r: row, c: column })
       cells.push({
         address,
         value: row * 50 + column,
@@ -204,7 +202,7 @@ function buildFormulaHeavyMetadataSnapshot(): WorkbookSnapshot {
   const cells: WorkbookSnapshot['sheets'][number]['cells'] = []
   for (let row = 0; row < 5_000; row += 1) {
     for (let column = 0; column < 12; column += 1) {
-      const address = XLSX.utils.encode_cell({ r: row, c: column })
+      const address = encodeCellAddress({ r: row, c: column })
       const formula = row < 1_260 ? `A${String(row + 1)}+${String(column)}` : undefined
       cells.push({
         address,
@@ -255,6 +253,15 @@ function buildFormulaHeavyMetadataSnapshot(): WorkbookSnapshot {
       },
     ],
   }
+}
+
+function worksheetXml(bytes: Uint8Array): string {
+  return strFromU8(unzipSync(bytes)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+}
+
+function definedNameCount(bytes: Uint8Array): number {
+  const workbookXml = strFromU8(unzipSync(bytes)['xl/workbook.xml'] ?? new Uint8Array())
+  return workbookXml.match(/<definedName\b/gu)?.length ?? 0
 }
 
 const minimalStylesXml = [

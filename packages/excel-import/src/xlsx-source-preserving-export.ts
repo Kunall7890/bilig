@@ -45,6 +45,7 @@ export interface XlsxSourceLiteralPatch {
   readonly sheetName: string
   readonly address: string
   readonly value: LiteralInput
+  readonly preserveFormula?: boolean
 }
 
 export interface XlsxSourceLiteralPatchExportInput {

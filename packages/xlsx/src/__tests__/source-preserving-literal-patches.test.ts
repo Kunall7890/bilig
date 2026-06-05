@@ -55,6 +55,22 @@ function minimalWorkbookBytes(extraEntries: Record<string, Uint8Array> = {}): Ui
   })
 }
 
+function formulaCacheWorkbookBytes(): Uint8Array {
+  return minimalWorkbookBytes({
+    'xl/worksheets/sheet1.xml': new TextEncoder().encode(`<?xml version="1.0" encoding="UTF-8"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <dimension ref="A1:C1"/>
+  <sheetData>
+    <row r="1">
+      <c r="A1"><v>4</v></c>
+      <c r="B1"><f>A1*2</f><v>8</v></c>
+      <c r="C1" t="str"><f>A1&amp;" units"</f><v>old units</v></c>
+    </row>
+  </sheetData>
+</worksheet>`),
+  })
+}
+
 function guardedUntouchedEntrySource(): {
   readonly source: XlsxSourceReader
   readonly untouchedBytes: Uint8Array
@@ -183,6 +199,25 @@ describe('@bilig/xlsx source-preserving literal patches', () => {
     expect(zip['xl/calcChain.xml']).toBeUndefined()
     expect(workbookRelationshipsXml).not.toContain('calcChain')
     expect(contentTypesXml).not.toContain('calcChain.xml')
+  })
+
+  it('patches cached formula results without replacing formula XML', () => {
+    const exported = exportXlsxSourceLiteralPatches({
+      source: formulaCacheWorkbookBytes(),
+      sheetNames: ['Revenue & Ops'],
+      patches: [
+        { sheetName: 'Revenue & Ops', address: 'A1', value: 10 },
+        { sheetName: 'Revenue & Ops', address: 'B1', value: 20, preserveFormula: true },
+        { sheetName: 'Revenue & Ops', address: 'C1', value: '10 & checked', preserveFormula: true },
+      ],
+    })
+
+    const sheetXml = getZipText(readXlsxZipEntries(exported), 'xl/worksheets/sheet1.xml')
+
+    expect(sheetXml).toContain('<c r="A1"><v>10</v></c>')
+    expect(sheetXml).toContain('<c r="B1"><f>A1*2</f><v>20</v></c>')
+    expect(sheetXml).toContain('<c r="C1" t="str"><f>A1&amp;" units"</f><v>10 &amp; checked</v></c>')
+    expect(sheetXml).not.toContain('inlineStr"><f>')
   })
 
   it('writes file-backed patches without reading the whole source through readBytes', async () => {

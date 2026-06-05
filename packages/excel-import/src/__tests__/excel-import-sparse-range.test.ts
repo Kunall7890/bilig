@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { strToU8, unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import { readBenchToleranceMultiplier } from '../../../../scripts/bench-tolerance.js'
 import { importXlsx } from '../index.js'
@@ -22,10 +22,13 @@ describe('XLSX sparse ranges', () => {
     const sparseBytes = buildStyledBlankWorkbookBytes({ includeBlankCells: false })
     const denseBytes = buildStyledBlankWorkbookBytes({ includeBlankCells: true })
     const sparseMs = measureImport(sparseBytes, 'styled-sparse-control.xlsx').durationMs
+    collectGarbage()
+    const beforeDenseRss = process.memoryUsage().rss
     const denseMeasurements = [
       measureImport(denseBytes, 'styled-blank-template.xlsx'),
       measureImport(denseBytes, 'styled-blank-template.xlsx'),
     ]
+    const denseRssDelta = process.memoryUsage().rss - beforeDenseRss
     const { imported, durationMs: denseMs } = denseMeasurements.reduce((best, current) =>
       current.durationMs < best.durationMs ? current : best,
     )
@@ -49,6 +52,7 @@ describe('XLSX sparse ranges', () => {
     const tolerance = readBenchmarkTolerance()
     const coverageMultiplier = process.env.BILIG_CI_PROFILE === undefined ? 1 : 2
     expect(denseMs).toBeLessThan(Math.max(1_500 * tolerance * coverageMultiplier, sparseMs * 12 * tolerance * coverageMultiplier))
+    expect(denseRssDelta).toBeLessThan(96 * 1024 * 1024)
   }, 15_000)
 
   it('imports style-metadata-heavy workbooks without retaining inert style collections', () => {
@@ -116,46 +120,41 @@ function measureImport(bytes: Uint8Array, fileName: string): { imported: ReturnT
 }
 
 function buildBroadSparseWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet: XLSX.WorkSheet = {
-    XFD512: { t: 'n', f: '40+2', v: 42 },
-    '!ref': 'A1:XFD512',
-  }
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Sparse')
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Sparse',
+          cells: [{ address: 'XFD512', row: 511, col: 16_383, formula: '40+2', value: 42 }],
+        },
+      ],
+    }),
+  )
+  zip['xl/worksheets/sheet1.xml'] = strToU8(
+    textFromZipEntry(zip, 'xl/worksheets/sheet1.xml').replace('<dimension ref="XFD512"/>', '<dimension ref="A1:XFD512"/>'),
+  )
+  return zipSync(zip)
 }
 
 const styledBlankRowCount = 20_000
 const styledBlankColumnCount = 26
 
 function buildStyledBlankWorkbookBytes(options: { includeBlankCells: boolean }): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([[123]])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'StyledBlanks')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(buildSingleCellWorkbookBytes('StyledBlanks'))
   zip['xl/worksheets/sheet1.xml'] = strToU8(buildStyledBlankWorksheetXml(options.includeBlankCells))
   zip['xl/styles.xml'] = strToU8(styledBlankWorkbookStylesXml)
   return zipSync(zip)
 }
 
 function buildMetadataHeavyStyleWorkbookBytes(styleCollectionCount: number): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([[123]])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'HeavyStyles')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(buildSingleCellWorkbookBytes('HeavyStyles'))
   zip['xl/worksheets/sheet1.xml'] = strToU8(buildMetadataHeavyStyleWorksheetXml())
   zip['xl/styles.xml'] = strToU8(buildMetadataHeavyStylesXml(styleCollectionCount))
   return zipSync(zip)
 }
 
 function buildWholeWorksheetColumnMetadataWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([[1]])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'WideColumnMetadata')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(buildSingleCellWorkbookBytes('WideColumnMetadata'))
   zip['xl/worksheets/sheet1.xml'] = strToU8(
     [
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
@@ -167,6 +166,21 @@ function buildWholeWorksheetColumnMetadataWorkbookBytes(): Uint8Array {
     ].join(''),
   )
   return zipSync(zip)
+}
+
+function buildSingleCellWorkbookBytes(sheetName: string): Uint8Array {
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: sheetName,
+        cells: [{ address: 'A1', row: 0, col: 0, value: 123 }],
+      },
+    ],
+  })
+}
+
+function textFromZipEntry(zip: Record<string, Uint8Array>, path: string): string {
+  return new TextDecoder().decode(zip[path] ?? new Uint8Array())
 }
 
 function buildMetadataHeavyStyleWorksheetXml(): string {

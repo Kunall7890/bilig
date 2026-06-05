@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import { exportXlsx, importXlsx } from '../index.js'
 
@@ -67,22 +67,32 @@ function readSingleImportedStyle(styles: readonly ImportedStyleWithAlignment[]):
 }
 
 function buildAlignmentWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([[123]])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Aligned')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Aligned',
+          cells: [{ address: 'A1', row: 0, col: 0, value: 123 }],
+        },
+      ],
+    }),
+  )
   zip['xl/worksheets/sheet1.xml'] = strToU8(alignmentWorksheetXml)
   zip['xl/styles.xml'] = strToU8(alignmentStylesXml)
   return zipSync(zip)
 }
 
 function buildGeneralAlignmentWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([['general']])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'General')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'General',
+          cells: [{ address: 'A1', row: 0, col: 0, value: 'general' }],
+        },
+      ],
+    }),
+  )
   zip['xl/worksheets/sheet1.xml'] = strToU8(alignmentWorksheetXml)
   zip['xl/styles.xml'] = strToU8(generalAlignmentStylesXml)
   return zipSync(zip)

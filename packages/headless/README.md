@@ -152,7 +152,7 @@ mcp:server`.
 
 Current checked npm footprint for `@bilig/headless@0.163.0`:
 
-- Pack dry run: `845 kB` tarball, `5.18 MB` unpacked, `814` package entries.
+- Pack dry run: `863 kB` tarball, `5.28 MB` unpacked, `835` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper; reduced workbook reports use the

@@ -54,11 +54,21 @@ function sourcePreservingPatchInputFromSnapshot(snapshot) {
         (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
       )
     })
-    .map((patch) => ({
-      sheetName: patch.sheetName,
-      address: patch.address,
-      value: patch.value,
-    }))
+    .map((patch) => {
+      if (patch.preserveFormula === true) {
+        return {
+          sheetName: patch.sheetName,
+          address: patch.address,
+          value: patch.value,
+          preserveFormula: true,
+        }
+      }
+      return {
+        sheetName: patch.sheetName,
+        address: patch.address,
+        value: patch.value,
+      }
+    })
   return literalPatches.length > 0
     ? {
         source,

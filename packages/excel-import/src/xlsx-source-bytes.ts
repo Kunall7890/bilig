@@ -23,6 +23,7 @@ export interface ImportedXlsxSourceCellPatch {
   readonly sheetName: string
   readonly address: string
   readonly value: LiteralInput
+  readonly preserveFormula?: boolean
 }
 
 type SnapshotWithImportedXlsxSource = WorkbookSnapshot & {

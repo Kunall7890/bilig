@@ -5,7 +5,7 @@ import { parseLargeSimpleWorksheetCellsFromChunks } from '../xlsx-large-simple-w
 const encoder = new TextEncoder()
 
 describe('large simple worksheet WASM scan storage', () => {
-  it('stores numeric streamed cells, styles, and formula refs in WASM before arena projection', () => {
+  it('stores numeric streamed cells and formula refs in WASM while preserving styles', () => {
     const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(wasmNumericWorksheetXml()), 0, {
       hasSharedStrings: false,
       useWasmScanStorage: true,

@@ -488,6 +488,15 @@ importers:
       '@bilig/xlsx':
         specifier: workspace:*
         version: link:../xlsx
+      fast-xml-parser:
+        specifier: 5.7.3
+        version: 5.7.3
+      fflate:
+        specifier: 0.3.11
+        version: 0.3.11
+      fflate-stream:
+        specifier: npm:fflate@0.8.3
+        version: fflate@0.8.3
 
   packages/protocol: {}
 
