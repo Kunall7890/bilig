@@ -16,10 +16,13 @@ The starter package is `@bilig/create-workpaper`, exposed by
 `npm create @bilig/workpaper@latest`. Use it when you want the quote approval
 WorkPaper API shape without cloning the full monorepo.
 
-The starter creates a quote approval API with `@bilig/workpaper`. It writes
-quote inputs through an API-style handler, recalculates workbook formulas,
-persists the WorkPaper as JSON, restores it, and verifies that the restored
-formula output still matches the live result.
+The starter creates a quote approval API with `@bilig/workpaper`. It uses the
+A1 facade, writes quote inputs through one atomic `editManyAndReadback` proof,
+recalculates workbook formulas, persists the WorkPaper as JSON, restores it,
+and verifies that the restored formula output still matches the live result.
+Generated projects pin `@bilig/workpaper` to the generator package version and
+use exact dev-tool versions instead of `latest`, so the smoke proof is
+reproducible.
 
 ## Run It
 
@@ -89,7 +92,7 @@ curl -X POST http://localhost:8788/api/quote/approval \
 ## What It Proves
 
 - a real service shape, not only a formula evaluator snippet;
-- input writes into named workbook cells;
+- atomic input writes into named workbook cells through A1 addresses;
 - formula readback after mutation;
 - JSON persistence and restore;
 - a narrow API surface that an agent tool or backend route can own.

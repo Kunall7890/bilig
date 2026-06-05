@@ -47,7 +47,7 @@ The useful output is not a write-call status. It is readback proof:
   "door": "agent-mcp",
   "verified": true,
   "packageVersions": {
-    "@bilig/workpaper": "0.153.0"
+    "@bilig/workpaper": "0.163.0"
   },
   "evidence": {
     "scenario": "revenue-plan",
@@ -158,7 +158,10 @@ book.dispose()
 
 Use `book.set('Inputs!B2', 48)`, `book.setMany({ 'Inputs!B3': 1500 })`,
 `book.readMany(['Inputs!B2', 'Summary!B2'])`, `book.display('Summary!B2')`,
-and `book.saveJson()` when you do not need the full proof object.
+and `book.saveJson()` when you do not need the full proof object. Use
+`book.editManyAndReadback()` when several inputs should commit as one atomic
+proof with typed readback comparison, formula diagnostics, persistence, and
+restore checks.
 
 ## Use WorkPaper Tools With The Vercel AI SDK
 

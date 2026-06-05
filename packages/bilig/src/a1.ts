@@ -12,6 +12,7 @@ import type {
   WorkPaperCellRange,
   WorkPaperChange,
   WorkPaperConfig,
+  WorkPaperFormulaDiagnostic,
   WorkPaperSheets,
 } from '@bilig/headless'
 
@@ -32,6 +33,7 @@ export interface A1CellRead {
   readonly serialized: RawCellContent
   readonly formula: string | null
   readonly displayValue: string
+  readonly formulaDiagnostics: readonly WorkPaperFormulaDiagnostic[]
 }
 
 export interface A1RangeRead {
@@ -39,6 +41,8 @@ export interface A1RangeRead {
   readonly values: A1CellValue[][]
   readonly serialized: RawCellContent[][]
   readonly displayValues: string[][]
+  readonly formulaDiagnostics: readonly WorkPaperFormulaDiagnostic[]
+  readonly cells: readonly (readonly A1CellRead[])[]
 }
 
 export interface A1SetCellAndReadbackOptions {
@@ -60,9 +64,42 @@ export interface A1SetCellAndReadbackProof {
   readonly persistedDocumentBytes: number
   readonly checks: {
     readonly readbackChanged: boolean
+    readonly computedReadbackChanged: boolean
+    readonly editedFormulaReadbackChanged: boolean
+    readonly readbackIncludesEditedCell: boolean
+    readonly readbackContainsOnlyEditedCell: boolean
     readonly restoredReadbackMatchesAfter: boolean
+    readonly blockingFormulaDiagnosticCount: number
+    readonly formulaDiagnostics: readonly WorkPaperFormulaDiagnostic[]
     readonly previousSerialized: RawCellContent
     readonly newSerialized: RawCellContent
+  }
+  readonly verified: boolean
+  readonly limitations: readonly string[]
+  readonly changes: readonly WorkPaperChange[]
+  readonly serializedDocument?: string
+}
+
+export interface A1EditManyAndReadbackProof {
+  readonly editedCells: readonly string[]
+  readonly readbackRange: string
+  readonly before: Readonly<Record<string, A1CellRead>>
+  readonly after: Readonly<Record<string, A1CellRead>>
+  readonly beforeReadback: A1RangeRead
+  readonly afterReadback: A1RangeRead
+  readonly restoredReadback: A1RangeRead
+  readonly persistedDocumentBytes: number
+  readonly checks: {
+    readonly readbackChanged: boolean
+    readonly computedReadbackChanged: boolean
+    readonly editedFormulaReadbackChanged: boolean
+    readonly readbackIncludesEditedCells: boolean
+    readonly readbackContainsOnlyEditedCells: boolean
+    readonly restoredReadbackMatchesAfter: boolean
+    readonly blockingFormulaDiagnosticCount: number
+    readonly formulaDiagnostics: readonly WorkPaperFormulaDiagnostic[]
+    readonly previousSerialized: Readonly<Record<string, RawCellContent>>
+    readonly newSerialized: Readonly<Record<string, RawCellContent>>
   }
   readonly verified: boolean
   readonly limitations: readonly string[]
@@ -83,8 +120,10 @@ export interface A1WorkPaper {
   readMany(addresses: readonly string[]): Readonly<Record<string, A1CellRead>>
   setCells(edits: Readonly<Record<string, A1CellInput>>): WorkPaperChange[]
   setMany(edits: Readonly<Record<string, A1CellInput>>): WorkPaperChange[]
+  validateFormula(formula: string): boolean
   setCellAndReadback(address: string, value: A1CellInput, options: A1SetCellAndReadbackOptions): A1SetCellAndReadbackProof
   editAndReadback(address: string, value: A1CellInput, options: A1SetCellAndReadbackOptions): A1SetCellAndReadbackProof
+  editManyAndReadback(edits: Readonly<Record<string, A1CellInput>>, options: A1SetCellAndReadbackOptions): A1EditManyAndReadbackProof
   exportDocument(options?: { readonly includeConfig?: boolean }): PersistedWorkPaperDocument
   serialize(options?: { readonly includeConfig?: boolean }): string
   saveJson(options?: { readonly includeConfig?: boolean }): string
@@ -137,11 +176,14 @@ class A1WorkPaperFacade implements A1WorkPaper {
 
   readRange(range: string): A1RangeRead {
     const parsed = this.requireRange(range)
+    const cells = this.readRangeCells(parsed)
     return {
       range: this.formatRange(parsed),
-      values: this.workpaper.getRangeValues(parsed),
-      serialized: this.workpaper.getRangeSerialized(parsed),
-      displayValues: this.readRangeDisplayValues(parsed),
+      values: cells.map((row) => row.map((cell) => cell.value)),
+      serialized: cells.map((row) => row.map((cell) => cell.serialized)),
+      displayValues: cells.map((row) => row.map((cell) => cell.displayValue)),
+      formulaDiagnostics: cells.flatMap((row) => row.flatMap((cell) => cell.formulaDiagnostics)),
+      cells,
     }
   }
 
@@ -170,24 +212,74 @@ class A1WorkPaperFacade implements A1WorkPaper {
   }
 
   setCells(edits: Readonly<Record<string, A1CellInput>>): WorkPaperChange[] {
-    const changes: WorkPaperChange[] = []
-    for (const [address, value] of Object.entries(edits)) {
-      changes.push(...this.setCell(address, value))
-    }
-    return changes
+    const prepared = this.prepareEdits(edits)
+    return this.applyPreparedEdits(prepared)
   }
 
   setMany(edits: Readonly<Record<string, A1CellInput>>): WorkPaperChange[] {
     return this.setCells(edits)
   }
 
+  validateFormula(formula: string): boolean {
+    return this.workpaper.validateFormula(formula)
+  }
+
   setCellAndReadback(address: string, value: A1CellInput, options: A1SetCellAndReadbackOptions): A1SetCellAndReadbackProof {
+    const proof = this.editManyAndReadback({ [address]: value }, options)
+    const editedCell = proof.editedCells[0]
+    if (editedCell === undefined) {
+      throw new Error('Expected one edited WorkPaper cell')
+    }
+    const before = proof.before[editedCell]
+    const after = proof.after[editedCell]
+    if (before === undefined || after === undefined) {
+      throw new Error(`Expected proof reads for ${editedCell}`)
+    }
+
+    return {
+      editedCell,
+      readbackRange: proof.readbackRange,
+      before,
+      after,
+      beforeReadback: proof.beforeReadback,
+      afterReadback: proof.afterReadback,
+      restoredReadback: proof.restoredReadback,
+      persistedDocumentBytes: proof.persistedDocumentBytes,
+      checks: {
+        readbackChanged: proof.checks.readbackChanged,
+        computedReadbackChanged: proof.checks.computedReadbackChanged,
+        editedFormulaReadbackChanged: proof.checks.editedFormulaReadbackChanged,
+        readbackIncludesEditedCell: proof.checks.readbackIncludesEditedCells,
+        readbackContainsOnlyEditedCell: proof.checks.readbackContainsOnlyEditedCells,
+        restoredReadbackMatchesAfter: proof.checks.restoredReadbackMatchesAfter,
+        blockingFormulaDiagnosticCount: proof.checks.blockingFormulaDiagnosticCount,
+        formulaDiagnostics: proof.checks.formulaDiagnostics,
+        previousSerialized: before.serialized,
+        newSerialized: after.serialized,
+      },
+      verified: proof.verified,
+      limitations: proof.limitations,
+      changes: proof.changes,
+      ...(options.includeSerializedDocument && proof.serializedDocument !== undefined
+        ? { serializedDocument: proof.serializedDocument }
+        : {}),
+    }
+  }
+
+  editAndReadback(address: string, value: A1CellInput, options: A1SetCellAndReadbackOptions): A1SetCellAndReadbackProof {
+    return this.setCellAndReadback(address, value, options)
+  }
+
+  editManyAndReadback(edits: Readonly<Record<string, A1CellInput>>, options: A1SetCellAndReadbackOptions): A1EditManyAndReadbackProof {
     const requireReadbackChange = options.requireReadbackChange ?? true
     const includeConfig = options.includeConfig ?? true
-    const before = this.readCell(address)
+    const prepared = this.prepareEdits(edits)
+    const editedCells = prepared.map((edit) => edit.address)
+    const editedCellSet = new Set(editedCells)
+    const before = this.readPreparedCells(prepared)
     const beforeReadback = this.readRange(options.readbackRange)
-    const changes = this.setCell(address, value)
-    const after = this.readCell(address)
+    const changes = this.applyPreparedEdits(prepared)
+    const after = this.readPreparedCells(prepared)
     const afterReadback = this.readRange(options.readbackRange)
     const serializedDocument = this.serialize({ includeConfig })
     const restored = restoreA1WorkPaper(serializedDocument, this.facadeOptions())
@@ -196,10 +288,22 @@ class A1WorkPaperFacade implements A1WorkPaper {
       const restoredReadback = restored.readRange(options.readbackRange)
       const persistedDocumentBytes = new TextEncoder().encode(serializedDocument).byteLength
       const readbackChanged = !sameJson(rangeComparison(beforeReadback), rangeComparison(afterReadback))
+      const computedReadbackChanged = !sameJson(
+        rangeComparisonExcludingEditedCells(beforeReadback, editedCellSet),
+        rangeComparisonExcludingEditedCells(afterReadback, editedCellSet),
+      )
+      const editedFormulaReadbackChanged = readbackChanged && readbackEditedFormulaCells(afterReadback, editedCellSet).length > 0
+      const readbackAddresses = rangeCellAddresses(afterReadback)
+      const readbackIncludesEditedCells = readbackAddresses.some((readbackAddress) => editedCellSet.has(readbackAddress))
+      const readbackContainsOnlyEditedCells =
+        readbackAddresses.length > 0 && readbackAddresses.every((readbackAddress) => editedCellSet.has(readbackAddress))
       const restoredReadbackMatchesAfter = sameJson(rangeComparison(afterReadback), rangeComparison(restoredReadback))
+      const formulaDiagnostics = afterReadback.formulaDiagnostics
+      const blockingFormulaDiagnosticCount = formulaDiagnostics.filter((diagnostic) => diagnostic.severity === 'error').length
+      const meaningfulReadbackChanged = computedReadbackChanged || editedFormulaReadbackChanged
 
       return {
-        editedCell: after.address,
+        editedCells,
         readbackRange: afterReadback.range,
         before,
         after,
@@ -209,11 +313,21 @@ class A1WorkPaperFacade implements A1WorkPaper {
         persistedDocumentBytes,
         checks: {
           readbackChanged,
+          computedReadbackChanged,
+          editedFormulaReadbackChanged,
+          readbackIncludesEditedCells,
+          readbackContainsOnlyEditedCells,
           restoredReadbackMatchesAfter,
-          previousSerialized: before.serialized,
-          newSerialized: after.serialized,
+          blockingFormulaDiagnosticCount,
+          formulaDiagnostics,
+          previousSerialized: serializedByAddress(before),
+          newSerialized: serializedByAddress(after),
         },
-        verified: persistedDocumentBytes > 0 && restoredReadbackMatchesAfter && (!requireReadbackChange || readbackChanged),
+        verified:
+          persistedDocumentBytes > 0 &&
+          restoredReadbackMatchesAfter &&
+          blockingFormulaDiagnosticCount === 0 &&
+          (!requireReadbackChange || meaningfulReadbackChanged),
         limitations: [...this.limitations, ...(options.limitations ?? [])],
         changes,
         ...(options.includeSerializedDocument ? { serializedDocument } : {}),
@@ -221,10 +335,6 @@ class A1WorkPaperFacade implements A1WorkPaper {
     } finally {
       restored.dispose()
     }
-  }
-
-  editAndReadback(address: string, value: A1CellInput, options: A1SetCellAndReadbackOptions): A1SetCellAndReadbackProof {
-    return this.setCellAndReadback(address, value, options)
   }
 
   exportDocument(options: { readonly includeConfig?: boolean } = {}): PersistedWorkPaperDocument {
@@ -263,25 +373,56 @@ class A1WorkPaperFacade implements A1WorkPaper {
       serialized: this.workpaper.getCellSerialized(address),
       formula: formula ?? null,
       displayValue: this.workpaper.getCellDisplayValue(address),
+      formulaDiagnostics: this.workpaper.getCellFormulaDiagnostics(address),
     }
   }
 
-  private readRangeDisplayValues(range: WorkPaperCellRange): string[][] {
-    const displayValues: string[][] = []
+  private readRangeCells(range: WorkPaperCellRange): A1CellRead[][] {
+    const rows: A1CellRead[][] = []
     for (let row = range.start.row; row <= range.end.row; row += 1) {
-      const rowValues: string[] = []
+      const cells: A1CellRead[] = []
       for (let col = range.start.col; col <= range.end.col; col += 1) {
-        rowValues.push(
-          this.workpaper.getCellDisplayValue({
-            sheet: range.start.sheet,
-            row,
-            col,
-          }),
-        )
+        cells.push(this.readParsedCell({ sheet: range.start.sheet, row, col }))
       }
-      displayValues.push(rowValues)
+      rows.push(cells)
     }
-    return displayValues
+    return rows
+  }
+
+  private prepareEdits(edits: Readonly<Record<string, A1CellInput>>): readonly PreparedA1Edit[] {
+    const prepared: PreparedA1Edit[] = []
+    const seen = new Set<string>()
+    for (const [address, value] of Object.entries(edits)) {
+      const parsed = this.requireCellAddress(address)
+      const formatted = this.formatCell(parsed)
+      if (seen.has(formatted)) {
+        throw new Error(`Duplicate WorkPaper edit target: ${formatted}`)
+      }
+      this.assertWritable(parsed)
+      this.assertFormulaCanParse(value, parsed)
+      seen.add(formatted)
+      prepared.push({ address: formatted, parsed, value })
+    }
+    if (prepared.length === 0) {
+      throw new Error('At least one WorkPaper edit is required')
+    }
+    return prepared
+  }
+
+  private applyPreparedEdits(edits: readonly PreparedA1Edit[]): WorkPaperChange[] {
+    return this.workpaper.transaction(() => {
+      for (const edit of edits) {
+        this.workpaper.setCellContents(edit.parsed, edit.value)
+      }
+    })
+  }
+
+  private readPreparedCells(edits: readonly PreparedA1Edit[]): Readonly<Record<string, A1CellRead>> {
+    const reads: Record<string, A1CellRead> = {}
+    for (const edit of edits) {
+      reads[edit.address] = this.readParsedCell(edit.parsed)
+    }
+    return reads
   }
 
   private requireCellAddress(address: string): WorkPaperCellAddress {
@@ -361,11 +502,44 @@ class A1WorkPaperFacade implements A1WorkPaper {
   }
 }
 
+interface PreparedA1Edit {
+  readonly address: string
+  readonly parsed: WorkPaperCellAddress
+  readonly value: A1CellInput
+}
+
 function rangeComparison(read: A1RangeRead): unknown {
+  return read.cells.map((row) => row.map(cellComparison))
+}
+
+function rangeComparisonExcludingEditedCells(read: A1RangeRead, editedCells: ReadonlySet<string>): unknown {
+  return read.cells.map((row) => row.filter((cell) => !editedCells.has(cell.address)).map(cellComparison)).filter((row) => row.length > 0)
+}
+
+function readbackEditedFormulaCells(read: A1RangeRead, editedCells: ReadonlySet<string>): A1CellRead[] {
+  return read.cells.flatMap((row) => row.filter((cell) => editedCells.has(cell.address) && cell.formula !== null))
+}
+
+function rangeCellAddresses(read: A1RangeRead): string[] {
+  return read.cells.flatMap((row) => row.map((cell) => cell.address))
+}
+
+function cellComparison(read: A1CellRead): unknown {
   return {
-    displayValues: read.displayValues,
+    address: read.address,
+    displayValue: read.displayValue,
+    formula: read.formula,
     serialized: read.serialized,
+    value: read.value,
   }
+}
+
+function serializedByAddress(reads: Readonly<Record<string, A1CellRead>>): Readonly<Record<string, RawCellContent>> {
+  const serialized: Record<string, RawCellContent> = {}
+  for (const [address, read] of Object.entries(reads)) {
+    serialized[address] = read.serialized
+  }
+  return serialized
 }
 
 function sameJson(left: unknown, right: unknown): boolean {

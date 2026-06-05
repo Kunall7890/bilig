@@ -611,7 +611,10 @@ writeback, or benchmark coverage.
 ## TypeScript API Shape
 
 Most integrations are just this: build a workbook, write an input, read the
-calculated value, and save the workbook state.
+calculated value, and save the workbook state. When a workflow writes more than
+one input, use `editManyAndReadback()` so the edits are applied atomically and
+the proof compares typed readback values, persisted restore output, and formula
+diagnostics.
 
 ```ts
 import { buildA1WorkPaper } from '@bilig/workpaper'
@@ -645,7 +648,9 @@ book.dispose()
 The lower-level `WorkPaper` runtime is still exported for engine integrations,
 but the A1 facade is the default service and agent path. Use
 `book.set()`, `book.setMany()`, `book.readMany()`, `book.display()`, and
-`book.saveJson()` when a full readback proof is not needed.
+`book.saveJson()` when a full readback proof is not needed. Use
+`book.editManyAndReadback()` when several inputs should be committed and proven
+as one atomic workbook edit.
 
 ## When To Reach For It
 
@@ -1041,8 +1046,8 @@ pnpm workpaper:xlsx-oracle -- summarize "$OUT"
 For XLSX import/export from TypeScript:
 
 ```ts
-import { WorkPaper } from '@bilig/headless'
-import { exportXlsx, importXlsx } from '@bilig/excel-import'
+import { WorkPaper } from '@bilig/workpaper'
+import { exportXlsx, importXlsx } from '@bilig/workpaper/xlsx'
 ```
 
 Use `WorkPaper.buildFromSnapshot(imported.snapshot)` after import and

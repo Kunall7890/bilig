@@ -122,6 +122,11 @@ function assertDocs(): void {
       templateSource.indexOf('assertSmokeOutput(output)') < templateSource.indexOf('console.log(JSON.stringify(output, null, 2))'),
     'starter smoke output must be verified before it is printed',
   )
+  assert(templateSource.includes('buildA1WorkPaper'), 'starter template must use the A1 WorkPaper facade')
+  assert(templateSource.includes('editManyAndReadback'), 'starter template must use atomic editManyAndReadback proof')
+  assert(templateSource.includes('validateFormula'), 'starter template must validate formulas through the A1 facade')
+  assert(!templateSource.includes('getSheetId'), 'starter template must not teach sheet-id lookup')
+  assert(!templateSource.includes('setCellContents({ sheet'), 'starter template must not teach zero-based cell writes')
   assert(!templateSource.includes('nextStep'), 'starter smoke output must not include CTA metadata in the JSON proof')
   assert(!templateSource.includes('https://github.com/proompteng/bilig/stargazers'), 'starter smoke output must not include the star link')
   assert(
@@ -282,9 +287,11 @@ function assertGeneratedStarters(): void {
   assert(isRecord(serviceManifest.scripts), 'generated service package scripts must be an object')
   assert(serviceManifest.scripts['smoke'] === 'tsx src/index.ts', 'generated service starter must keep the smoke script')
   assert(serviceManifest.scripts['agent:verify'] === undefined, 'generated service starter must not include agent-only scripts')
+  assertGeneratedDependencyVersions(serviceManifest, version, 'service')
 
   const agentManifest = readJson(join(agentDir, 'package.json'))
   assert(isRecord(agentManifest.scripts), 'generated agent package scripts must be an object')
+  assertGeneratedDependencyVersions(agentManifest, version, 'agent')
   assert(
     agentManifest.scripts['agent:verify'] === 'npm run smoke && npm run agent:evaluate:basic && npm run agent:evaluate',
     'generated agent starter must verify the service smoke, basic evaluator, and revenue-plan evaluator paths',
@@ -498,6 +505,19 @@ function assertGeneratedStarters(): void {
     !existsSync(join(dotExistingDir, '.bilig')),
     'existing-repo dot overlay must not create WorkPaper state before the MCP server runs',
   )
+}
+
+function assertGeneratedDependencyVersions(manifest: PackageManifest, version: string, label: string): void {
+  assert(isRecord(manifest.dependencies), `generated ${label} package dependencies must be an object`)
+  assert(manifest.dependencies['@bilig/workpaper'] === version, `generated ${label} package must pin @bilig/workpaper to ${version}`)
+  assert(isRecord(manifest.devDependencies), `generated ${label} package devDependencies must be an object`)
+  for (const dependencyName of ['@types/node', 'tsx', 'typescript']) {
+    const dependencyVersion = manifest.devDependencies[dependencyName]
+    assert(
+      typeof dependencyVersion === 'string' && dependencyVersion !== 'latest' && /^\d+\.\d+\.\d+$/u.test(dependencyVersion),
+      `generated ${label} package must pin ${dependencyName} instead of using latest`,
+    )
+  }
 }
 
 function assertPublishedVersion(version: string): void {

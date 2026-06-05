@@ -13,11 +13,11 @@
     "mcp:server": "bilig-workpaper-mcp --workpaper __WORKPAPER_PATH__ --init-demo-workpaper --writable"
   },
   "dependencies": {
-    "@bilig/workpaper": "latest"
+    "@bilig/workpaper": "__BILIG_WORKPAPER_VERSION__"
   },
   "devDependencies": {
-    "@types/node": "latest",
-    "tsx": "latest",
-    "typescript": "latest"
+    "@types/node": "25.5.0",
+    "tsx": "4.21.0",
+    "typescript": "6.0.2"
   }
 }

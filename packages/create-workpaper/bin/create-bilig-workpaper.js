@@ -28,13 +28,21 @@ if (options.help) {
 
 const defaultTargetDirectory = options.addAgent ? '.' : 'bilig-workpaper-starter'
 const targetDirectory = resolve(process.cwd(), options.targetDirectory ?? defaultTargetDirectory)
+const generatedWorkpaperPackageVersion = await readPackageVersion()
 const projectName = options.addAgent
   ? await resolveExistingProjectName(targetDirectory, options.targetDirectory ?? defaultTargetDirectory)
   : normalizePackageName(options.targetDirectory ?? defaultTargetDirectory)
 
 if (options.addAgent) {
   await ensureDirectory(targetDirectory)
-  const overlayResult = await copyAgentOverlay(agentOverlayRoot, targetDirectory, projectName, existingRepoWorkpaperPath, options.force)
+  const overlayResult = await copyAgentOverlay(
+    agentOverlayRoot,
+    targetDirectory,
+    projectName,
+    existingRepoWorkpaperPath,
+    generatedWorkpaperPackageVersion,
+    options.force,
+  )
 
   const targetLabel = relative(process.cwd(), targetDirectory) || '.'
   console.log(`Added Bilig agent files to ${targetLabel}`)
@@ -57,10 +65,10 @@ if (options.addAgent) {
   console.log('  "verified": true')
 } else {
   await ensureWritableTarget(targetDirectory, options.force)
-  await copyTemplate(templateRoot, targetDirectory, projectName, starterWorkpaperPath)
+  await copyTemplate(templateRoot, targetDirectory, projectName, starterWorkpaperPath, generatedWorkpaperPackageVersion)
 
   if (options.template === 'agent') {
-    await copyTemplate(agentOverlayRoot, targetDirectory, projectName, starterWorkpaperPath)
+    await copyTemplate(agentOverlayRoot, targetDirectory, projectName, starterWorkpaperPath, generatedWorkpaperPackageVersion)
   }
 
   console.log(`Created ${relative(process.cwd(), targetDirectory) || '.'}`)
@@ -193,7 +201,7 @@ async function ensureWritableTarget(directory, allowExisting) {
   }
 }
 
-async function copyTemplate(sourceRoot, outputDirectory, packageName, workpaperPath) {
+async function copyTemplate(sourceRoot, outputDirectory, packageName, workpaperPath, workpaperPackageVersion) {
   await cp(sourceRoot, outputDirectory, {
     recursive: true,
     filter: async (source) => {
@@ -205,13 +213,13 @@ async function copyTemplate(sourceRoot, outputDirectory, packageName, workpaperP
       const targetPath = join(outputDirectory, relativePath)
       const text = await readFile(source, 'utf8')
       await mkdir(dirname(targetPath), { recursive: true })
-      await writeFile(targetPath, renderTemplate(text, packageName, workpaperPath))
+      await writeFile(targetPath, renderTemplate(text, packageName, workpaperPath, workpaperPackageVersion))
       return false
     },
   })
 }
 
-async function copyAgentOverlay(sourceRoot, outputDirectory, packageName, workpaperPath, force) {
+async function copyAgentOverlay(sourceRoot, outputDirectory, packageName, workpaperPath, workpaperPackageVersion, force) {
   const files = await listFiles(sourceRoot)
   const results = await Promise.all(
     files.map(async (sourcePath) => {
@@ -229,7 +237,7 @@ async function copyAgentOverlay(sourceRoot, outputDirectory, packageName, workpa
 
       const text = await readFile(sourcePath, 'utf8')
       await mkdir(dirname(targetPath), { recursive: true })
-      await writeFile(targetPath, renderTemplate(text, packageName, workpaperPath))
+      await writeFile(targetPath, renderTemplate(text, packageName, workpaperPath, workpaperPackageVersion))
       return { path: targetRelativePath, status: 'written' }
     }),
   )
@@ -252,8 +260,11 @@ async function copyAgentOverlay(sourceRoot, outputDirectory, packageName, workpa
   }
 }
 
-function renderTemplate(text, packageName, workpaperPath) {
-  return text.replaceAll('__PROJECT_NAME__', packageName).replaceAll('__WORKPAPER_PATH__', workpaperPath)
+function renderTemplate(text, packageName, workpaperPath, workpaperPackageVersion) {
+  return text
+    .replaceAll('__PROJECT_NAME__', packageName)
+    .replaceAll('__WORKPAPER_PATH__', workpaperPath)
+    .replaceAll('__BILIG_WORKPAPER_VERSION__', workpaperPackageVersion)
 }
 
 function renderInstallSummary(packageName, workpaperPath, skipped) {
@@ -335,6 +346,15 @@ async function resolveExistingProjectName(directory, fallbackName) {
     return normalizePackageName(directory)
   }
   return normalizePackageName(fallbackName)
+}
+
+async function readPackageVersion() {
+  const manifestPath = join(packageRoot, 'package.json')
+  const parsed = JSON.parse(await readFile(manifestPath, 'utf8'))
+  if (typeof parsed?.version !== 'string' || !/^\d+\.\d+\.\d+$/u.test(parsed.version)) {
+    throw new Error(`Expected ${manifestPath} to contain a stable package version`)
+  }
+  return parsed.version
 }
 
 function printChangeList(label, values) {

@@ -1,15 +1,7 @@
 import { createServer, type IncomingMessage } from 'node:http'
 import { pathToFileURL } from 'node:url'
 
-import {
-  WorkPaper,
-  createWorkPaperFromDocument,
-  exportWorkPaperDocument,
-  parseWorkPaperDocument,
-  serializeWorkPaperDocument,
-} from '@bilig/workpaper'
-
-type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>
+import { buildA1WorkPaper, restoreA1WorkPaper, type A1EditManyAndReadbackProof, type A1WorkPaper } from '@bilig/workpaper'
 
 type QuoteInput = {
   units: number
@@ -41,41 +33,79 @@ const inputCells = {
   minimumMargin: 'Inputs!B6',
 } as const
 
+const outputCells = {
+  listRevenue: 'Summary!B2',
+  discountAmount: 'Summary!B3',
+  netRevenue: 'Summary!B4',
+  totalCost: 'Summary!B5',
+  grossMargin: 'Summary!B6',
+  decision: 'Summary!B7',
+} as const
+
+const decisionFormula = '=IF(B6>=Inputs!B6,"approved","review")'
+
 export function createQuoteApprovalRequestHandler(storage: WorkbookStorage) {
   return async function handleQuoteApprovalRequest(request: Request): Promise<Response> {
     const url = new URL(request.url)
 
     if (request.method === 'GET' && url.pathname === '/api/quote/approval') {
       const workbook = await loadWorkbook(storage)
-      return json({ summary: readQuoteSummary(workbook), inputCells })
+      try {
+        return json({ summary: readQuoteSummary(workbook), inputCells, outputCells })
+      } finally {
+        workbook.dispose()
+      }
     }
 
     if (request.method === 'POST' && url.pathname === '/api/quote/approval') {
       try {
         const input = parseQuoteInput(await request.json())
         const workbook = await loadWorkbook(storage)
-        const before = readQuoteSummary(workbook)
-        writeQuoteInputs(workbook, input)
-        const after = readQuoteSummary(workbook)
-        const workbookJson = serializeWorkbook(workbook)
-        await storage.saveWorkbookJson(workbookJson)
+        try {
+          const before = readQuoteSummary(workbook)
+          const proof = workbook.editManyAndReadback(
+            {
+              [inputCells.units]: input.units,
+              [inputCells.listPrice]: input.listPrice,
+              [inputCells.discount]: input.discount,
+              [inputCells.unitCost]: input.unitCost,
+              [inputCells.minimumMargin]: input.minimumMargin,
+            },
+            {
+              includeConfig: true,
+              includeSerializedDocument: true,
+              readbackRange: 'Summary!B2:B7',
+            },
+          )
+          const after = readQuoteSummary(workbook)
+          const workbookJson = proof.serializedDocument ?? workbook.saveJson({ includeConfig: true })
+          await storage.saveWorkbookJson(workbookJson)
 
-        const restored = createWorkPaperFromDocument(parseWorkPaperDocument(workbookJson))
-        const restoredSummary = readQuoteSummary(restored)
+          const restored = workbook.restoreJson(workbookJson)
+          try {
+            const restoredSummary = readQuoteSummary(restored)
 
-        return json({
-          input,
-          inputCells,
-          before,
-          after,
-          restored: restoredSummary,
-          checks: {
-            decisionChanged: before.decision !== after.decision,
-            formulasPersisted: workbookJson.includes('=IF(B6>=Inputs!B6'),
-            restoredMatchesAfter: JSON.stringify(restoredSummary) === JSON.stringify(after),
-            serializedBytes: Buffer.byteLength(workbookJson, 'utf8'),
-          },
-        })
+            return json({
+              input,
+              inputCells,
+              outputCells,
+              before,
+              after,
+              restored: restoredSummary,
+              proof: summarizeProof(proof),
+              checks: {
+                decisionChanged: before.decision !== after.decision,
+                formulasPersisted: workbookJson.includes(decisionFormula),
+                restoredMatchesAfter: JSON.stringify(restoredSummary) === JSON.stringify(after),
+                serializedBytes: Buffer.byteLength(workbookJson, 'utf8'),
+              },
+            })
+          } finally {
+            restored.dispose()
+          }
+        } finally {
+          workbook.dispose()
+        }
       } catch (error) {
         return json({ error: error instanceof Error ? error.message : String(error) }, 400)
       }
@@ -85,30 +115,45 @@ export function createQuoteApprovalRequestHandler(storage: WorkbookStorage) {
   }
 }
 
-function createQuoteApprovalWorkbook(): WorkPaperInstance {
-  return WorkPaper.buildFromSheets({
-    Inputs: [
-      ['Metric', 'Value'],
-      ['Units', 40],
-      ['List price', 1200],
-      ['Discount', 0.1],
-      ['Unit cost', 760],
-      ['Minimum margin', 0.3],
-    ],
-    Summary: [
-      ['Metric', 'Value'],
-      ['List revenue', '=Inputs!B2*Inputs!B3'],
-      ['Discount amount', '=B2*Inputs!B4'],
-      ['Net revenue', '=B2-B3'],
-      ['Total cost', '=Inputs!B2*Inputs!B5'],
-      ['Gross margin', '=(B4-B5)/B4'],
-      ['Decision', '=IF(B6>=Inputs!B6,"approved","review")'],
-    ],
-  })
+function createQuoteApprovalWorkbook(): A1WorkPaper {
+  const workbook = buildA1WorkPaper(
+    {
+      Inputs: [
+        ['Metric', 'Value'],
+        ['Units', 40],
+        ['List price', 1200],
+        ['Discount', 0.1],
+        ['Unit cost', 760],
+        ['Minimum margin', 0.3],
+      ],
+      Summary: [
+        ['Metric', 'Value'],
+        ['List revenue', '=Inputs!B2*Inputs!B3'],
+        ['Discount amount', '=B2*Inputs!B4'],
+        ['Net revenue', '=B2-B3'],
+        ['Total cost', '=Inputs!B2*Inputs!B5'],
+        ['Gross margin', '=(B4-B5)/B4'],
+        ['Decision', decisionFormula],
+      ],
+    },
+    undefined,
+    { writableSheets: ['Inputs'] },
+  )
+  if (!workbook.validateFormula(decisionFormula)) {
+    workbook.dispose()
+    throw new Error(`invalid decision formula: ${decisionFormula}`)
+  }
+  return workbook
 }
 
 function createMemoryStorage(): WorkbookStorage {
-  let workbookJson = serializeWorkbook(createQuoteApprovalWorkbook())
+  const initialWorkbook = createQuoteApprovalWorkbook()
+  let workbookJson: string
+  try {
+    workbookJson = initialWorkbook.saveJson({ includeConfig: true })
+  } finally {
+    initialWorkbook.dispose()
+  }
   return {
     loadWorkbookJson() {
       return workbookJson
@@ -119,32 +164,34 @@ function createMemoryStorage(): WorkbookStorage {
   }
 }
 
-function writeQuoteInputs(workbook: WorkPaperInstance, input: QuoteInput): void {
-  const sheet = requireSheet(workbook, 'Inputs')
-  workbook.setCellContents({ sheet, row: 1, col: 1 }, input.units)
-  workbook.setCellContents({ sheet, row: 2, col: 1 }, input.listPrice)
-  workbook.setCellContents({ sheet, row: 3, col: 1 }, input.discount)
-  workbook.setCellContents({ sheet, row: 4, col: 1 }, input.unitCost)
-  workbook.setCellContents({ sheet, row: 5, col: 1 }, input.minimumMargin)
+async function loadWorkbook(storage: WorkbookStorage): Promise<A1WorkPaper> {
+  return restoreA1WorkPaper(await storage.loadWorkbookJson(), { writableSheets: ['Inputs'] })
 }
 
-async function loadWorkbook(storage: WorkbookStorage): Promise<WorkPaperInstance> {
-  return createWorkPaperFromDocument(parseWorkPaperDocument(await storage.loadWorkbookJson()))
-}
-
-function serializeWorkbook(workbook: WorkPaperInstance): string {
-  return serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))
-}
-
-function readQuoteSummary(workbook: WorkPaperInstance): QuoteSummary {
-  const sheet = requireSheet(workbook, 'Summary')
+function readQuoteSummary(workbook: A1WorkPaper): QuoteSummary {
   return {
-    listRevenue: readNumber(workbook, sheet, 1, 1, 'List revenue'),
-    discountAmount: readNumber(workbook, sheet, 2, 1, 'Discount amount'),
-    netRevenue: readNumber(workbook, sheet, 3, 1, 'Net revenue'),
-    totalCost: readNumber(workbook, sheet, 4, 1, 'Total cost'),
-    grossMargin: readRoundedNumber(workbook, sheet, 5, 1, 'Gross margin'),
-    decision: readString(workbook, sheet, 6, 1, 'Decision'),
+    listRevenue: readNumber(workbook, outputCells.listRevenue, 'List revenue'),
+    discountAmount: readNumber(workbook, outputCells.discountAmount, 'Discount amount'),
+    netRevenue: readNumber(workbook, outputCells.netRevenue, 'Net revenue'),
+    totalCost: readNumber(workbook, outputCells.totalCost, 'Total cost'),
+    grossMargin: readRoundedNumber(workbook, outputCells.grossMargin, 'Gross margin'),
+    decision: readString(workbook, outputCells.decision, 'Decision'),
+  }
+}
+
+function summarizeProof(proof: A1EditManyAndReadbackProof) {
+  return {
+    editedCells: proof.editedCells,
+    readbackRange: proof.readbackRange,
+    afterReadback: proof.afterReadback.displayValues,
+    restoredReadback: proof.restoredReadback.displayValues,
+    persistedDocumentBytes: proof.persistedDocumentBytes,
+    checks: {
+      computedReadbackChanged: proof.checks.computedReadbackChanged,
+      blockingFormulaDiagnosticCount: proof.checks.blockingFormulaDiagnosticCount,
+      restoredReadbackMatchesAfter: proof.checks.restoredReadbackMatchesAfter,
+    },
+    verified: proof.verified,
   }
 }
 
@@ -159,32 +206,24 @@ function parseQuoteInput(value: unknown): QuoteInput {
   }
 }
 
-function requireSheet(workbook: WorkPaperInstance, name: string): number {
-  const sheet = workbook.getSheetId(name)
-  if (sheet === undefined) {
-    throw new Error(`missing sheet: ${name}`)
-  }
-  return sheet
+function readNumber(workbook: A1WorkPaper, address: string, label: string): number {
+  return Math.round(readCellNumber(workbook, address, label) * 100) / 100
 }
 
-function readNumber(workbook: WorkPaperInstance, sheet: number, row: number, col: number, label: string): number {
-  return Math.round(readCellNumber(workbook, sheet, row, col, label) * 100) / 100
+function readRoundedNumber(workbook: A1WorkPaper, address: string, label: string): number {
+  return Math.round(readCellNumber(workbook, address, label) * 10_000) / 10_000
 }
 
-function readRoundedNumber(workbook: WorkPaperInstance, sheet: number, row: number, col: number, label: string): number {
-  return Math.round(readCellNumber(workbook, sheet, row, col, label) * 10_000) / 10_000
-}
-
-function readCellNumber(workbook: WorkPaperInstance, sheet: number, row: number, col: number, label: string): number {
-  const cell: unknown = workbook.getCellValue({ sheet, row, col })
+function readCellNumber(workbook: A1WorkPaper, address: string, label: string): number {
+  const cell: unknown = workbook.get(address)
   if (!isRecord(cell) || typeof cell.value !== 'number') {
     throw new Error(`expected ${label} to be numeric, received ${JSON.stringify(cell)}`)
   }
   return cell.value
 }
 
-function readString(workbook: WorkPaperInstance, sheet: number, row: number, col: number, label: string): string {
-  const cell: unknown = workbook.getCellValue({ sheet, row, col })
+function readString(workbook: A1WorkPaper, address: string, label: string): string {
+  const cell: unknown = workbook.get(address)
   if (!isRecord(cell) || typeof cell.value !== 'string') {
     throw new Error(`expected ${label} to be text, received ${JSON.stringify(cell)}`)
   }
@@ -251,6 +290,7 @@ function assertSmokeOutput(value: unknown): void {
   const output = readRecord(value, 'smoke output')
   const edit = readRecord(output.edit, 'smoke edit')
   const checks = readRecord(edit.checks, 'smoke checks')
+  const proof = readRecord(edit.proof, 'smoke proof')
   const after = readRecord(edit.after, 'smoke after')
   const restored = readRecord(edit.restored, 'smoke restored')
 
@@ -261,6 +301,10 @@ function assertSmokeOutput(value: unknown): void {
     checks.decisionChanged !== true ||
     checks.formulasPersisted !== true ||
     checks.restoredMatchesAfter !== true ||
+    !Array.isArray(proof.editedCells) ||
+    proof.editedCells.length !== Object.keys(inputCells).length ||
+    !proof.editedCells.includes(inputCells.minimumMargin) ||
+    proof.verified !== true ||
     Number(checks.serializedBytes) <= 0
   ) {
     throw new Error(`unexpected smoke output: ${JSON.stringify(value)}`)
