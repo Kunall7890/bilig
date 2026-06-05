@@ -21,6 +21,7 @@ OpenHands WorkPaper MCP setup: https://proompteng.github.io/bilig/openhands-work
 Trae WorkPaper MCP setup: https://proompteng.github.io/bilig/trae-workpaper-mcp.html
 Qodo WorkPaper MCP setup: https://proompteng.github.io/bilig/qodo-workpaper-mcp.html
 OpenCode WorkPaper MCP setup: https://proompteng.github.io/bilig/opencode-workpaper-mcp.html
+Aider WorkPaper conventions: https://proompteng.github.io/bilig/aider-workpaper-conventions.html
 Goose WorkPaper MCP recipe: https://proompteng.github.io/bilig/goose-workpaper-mcp.html
 Trae WorkPaper MCP source: https://github.com/proompteng/bilig/blob/main/docs/trae-workpaper-mcp.md
 Trae WorkPaper MCP config: https://github.com/proompteng/bilig/blob/main/.trae/mcp.json
@@ -29,6 +30,9 @@ Qodo WorkPaper MCP source: https://github.com/proompteng/bilig/blob/main/docs/qo
 OpenCode WorkPaper MCP source: https://github.com/proompteng/bilig/blob/main/docs/opencode-workpaper-mcp.md
 OpenCode WorkPaper MCP config: https://github.com/proompteng/bilig/blob/main/opencode.jsonc
 OpenCode WorkPaper agent: https://github.com/proompteng/bilig/blob/main/.opencode/agents/bilig-workpaper.md
+Aider WorkPaper conventions source: https://github.com/proompteng/bilig/blob/main/docs/aider-workpaper-conventions.md
+Aider conventions: https://github.com/proompteng/bilig/blob/main/CONVENTIONS.md
+Aider config: https://github.com/proompteng/bilig/blob/main/.aider.conf.yml
 Kiro WorkPaper steering: https://github.com/proompteng/bilig/blob/main/.kiro/steering/bilig-workpaper.md
 Kiro WorkPaper MCP config: https://github.com/proompteng/bilig/blob/main/.kiro/settings/mcp.json
 Roo Code WorkPaper rule: https://github.com/proompteng/bilig/blob/main/.roo/rules/bilig-workpaper.md
@@ -172,6 +176,8 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   https://github.com/proompteng/bilig/blob/main/docs/agent-adoption-kit.md
   https://proompteng.github.io/bilig/agent-rule-chooser.html
   https://github.com/proompteng/bilig/blob/main/docs/agent-rule-chooser.md
+  https://proompteng.github.io/bilig/aider-workpaper-conventions.html
+  https://github.com/proompteng/bilig/blob/main/docs/aider-workpaper-conventions.md
   https://proompteng.github.io/bilig/goose-workpaper-mcp.html
   https://github.com/proompteng/bilig/blob/main/docs/goose-workpaper-mcp.md
   https://github.com/proompteng/bilig/tree/main/examples/goose-workpaper-mcp

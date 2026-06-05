@@ -217,6 +217,7 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
           codex: `${repositoryUrl}/blob/main/AGENTS.md`,
           aider_conventions: `${repositoryUrl}/blob/main/CONVENTIONS.md`,
           aider_config: `${repositoryUrl}/blob/main/.aider.conf.yml`,
+          aider_docs: `${siteRoot}/aider-workpaper-conventions.html`,
           claude_code_skill: `${repositoryUrl}/blob/main/.claude/skills/bilig-workpaper/SKILL.md`,
           claude_code_command: `${repositoryUrl}/blob/main/.claude/commands/bilig-workpaper-proof.md`,
           openhands_skill: `${repositoryUrl}/blob/main/.agents/skills/bilig-workpaper/SKILL.md`,

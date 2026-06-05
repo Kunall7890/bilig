@@ -69,6 +69,7 @@ const llmsFullSourceSpecs = [
   ['Trae WorkPaper MCP Setup', 'docs/trae-workpaper-mcp.md'],
   ['Qodo WorkPaper MCP Setup', 'docs/qodo-workpaper-mcp.md'],
   ['OpenCode WorkPaper MCP Setup', 'docs/opencode-workpaper-mcp.md'],
+  ['Aider WorkPaper Conventions', 'docs/aider-workpaper-conventions.md'],
   ['Goose WorkPaper MCP Recipe', 'docs/goose-workpaper-mcp.md'],
   ['smolagents WorkPaper Tool', 'docs/smolagents-workpaper-tool.md'],
   ['Hugging Face WorkPaper MCP Space', 'docs/huggingface-workpaper-space.md'],

@@ -3423,7 +3423,7 @@ call alone is not success.
 | JetBrains Junie | `AGENTS.md` in the repo root; `.junie/AGENTS.md` can add narrower project memory when needed. | `.junie/mcp/mcp.json` defines the file-backed WorkPaper MCP server. | Use Junie MCP tools for workbook readback and require persisted WorkPaper evidence before reporting success. |
 | OpenHands | `AGENTS.md`, then `.agents/skills/bilig-workpaper/SKILL.md`. | `openhands mcp add bilig-workpaper --transport stdio npm -- exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable`. | Use `/mcp` in the conversation and restart after MCP config changes. |
 | OpenCode | `opencode.jsonc`, then `.opencode/agents/bilig-workpaper.md`. | `opencode.jsonc` defines the local `bilig-workpaper` MCP server and a disabled hosted demo server. | Invoke the `@bilig-workpaper` subagent for workbook-shaped tasks and require readback fields. |
-| Aider | `CONVENTIONS.md`, loaded by `.aider.conf.yml`. | Run the local `bilig-workpaper-mcp` command from the conventions when state must persist. | Keep Aider's answer tied to WorkPaper readback, export or restore evidence, and explicit limitations. |
+| Aider | `CONVENTIONS.md`, loaded by `.aider.conf.yml`; public page: [Aider WorkPaper conventions](aider-workpaper-conventions.md). | Run the local `bilig-workpaper-mcp` command from the conventions when state must persist. | Keep Aider's answer tied to WorkPaper readback, export or restore evidence, and explicit limitations. |
 | Goose | `examples/goose-workpaper-mcp/recipe.yaml`. | The recipe launches the local file-backed WorkPaper MCP server; use hosted Streamable HTTP only for stateless smoke. | Validate the recipe, run `bilig-evaluate --door agent-mcp --json`, and require `set_cell_contents_and_readback`, `Summary!B3` `60000 -> 96000`, export, restore, and `verified: true`. |
 | Windsurf/Cascade | `.devin/rules/bilig-workpaper.md`, with `.windsurf/rules/bilig-workpaper.md` kept as a fallback. | Start with the same `bilig-evaluate --door agent-mcp --json` command, then file-backed MCP if state must persist. | The rule uses `trigger: model_decision`; require computed readback before reporting success. |
 | Cline | `.clinerules/bilig-workpaper.md`. | Add MCP through Cline's current MCP settings when direct tool calls are needed. | Cline should use the workspace rule when workbook formulas, cells, or MCP spreadsheet tools appear. |
@@ -3525,6 +3525,7 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 - [OpenHands WorkPaper MCP setup](openhands-workpaper-mcp.md)
 - [Trae WorkPaper MCP setup](trae-workpaper-mcp.md)
 - [OpenCode WorkPaper MCP setup](opencode-workpaper-mcp.md)
+- [Aider WorkPaper conventions](aider-workpaper-conventions.md)
 - [Goose WorkPaper MCP recipe](goose-workpaper-mcp.md)
 - [Agent WorkPaper proof matrix](agent-proof-matrix.md)
 - [Agent proof transcripts](agent-proof-transcripts.md)
@@ -6716,7 +6717,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | VS Code and Cline                  | Project-local MCP config with a writable WorkPaper file.                                                                              | [MCP client setup](mcp-client-setup.md)                                                      |
 | OpenHands                          | `AGENTS.md`, `.agents/skills/bilig-workpaper/SKILL.md`, and `openhands mcp add` for a file-backed stdio WorkPaper server.             | [OpenHands WorkPaper MCP setup](openhands-workpaper-mcp.md)                                  |
 | OpenCode                           | `opencode.jsonc` for local MCP plus `.opencode/agents/bilig-workpaper.md` for a readback-first workbook subagent.                    | [OpenCode WorkPaper MCP setup](opencode-workpaper-mcp.md)                                    |
-| Aider                              | `CONVENTIONS.md` loaded by `.aider.conf.yml`, with WorkPaper readback and persistence proof before workbook success claims.           | [Coding agent rule chooser](agent-rule-chooser.md)                                           |
+| Aider                              | `CONVENTIONS.md` loaded by `.aider.conf.yml`, with WorkPaper readback and persistence proof before workbook success claims.           | [Aider WorkPaper conventions](aider-workpaper-conventions.md)                                |
 | Goose                              | `examples/goose-workpaper-mcp/recipe.yaml` launching a local file-backed stdio WorkPaper MCP server, with hosted Streamable HTTP only for stateless smoke. | [Goose WorkPaper MCP recipe](goose-workpaper-mcp.md)                                         |
 | Open WebUI                         | Hosted OpenAPI for no-bridge smoke tests, native Streamable HTTP MCP, or `mcpo` around the npm stdio server for local writable files. | [Open WebUI WorkPaper setup](open-webui-workpaper-mcp.md)                                    |
 | LobeHub                            | Custom MCP import JSON for hosted Streamable HTTP, or desktop STDIO for a writable WorkPaper file.                                    | [LobeHub WorkPaper MCP setup](lobehub-workpaper-mcp.md)                                      |
@@ -11720,6 +11721,121 @@ npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- \
 No upstream OpenCode PR or issue was opened for this guide. It is an owned
 Bilig integration surface backed by public OpenCode config, MCP, and agent docs
 plus a no-key WorkPaper readback proof.
+
+---
+
+## Aider WorkPaper Conventions
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/aider-workpaper-conventions.md
+
+# Aider WorkPaper Conventions
+
+Use this when Aider is editing a repo that contains workbook-shaped business
+logic: pricing, approvals, payouts, budgets, forecasts, import validation, stale
+XLSX formula caches, or spreadsheet formula readback after changing cells.
+
+Aider's official convention flow is a good fit for this: load a small
+`CONVENTIONS.md` file as read-only context with `/read CONVENTIONS.md` or
+`aider --read CONVENTIONS.md`, or configure `.aider.conf.yml` so Aider loads the
+file automatically from the repo. Bilig keeps that path boring and explicit:
+
+- `.aider.conf.yml` reads `CONVENTIONS.md`.
+- `CONVENTIONS.md` tells Aider to prefer WorkPaper state before Excel,
+  LibreOffice, Google Sheets, browser grids, screenshots, or cached XLSX values
+  when the workflow can run through code.
+- The conventions require before/after formula readback, serialized or exported
+  WorkPaper evidence, and explicit limitations before Aider reports success.
+
+## First Check
+
+Run the package-owned proof before trusting an agent workflow:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
+
+The result must include `verified: true`, the edited cell, before value, after
+formula readback, exported or persisted WorkPaper state, and restore or restart
+readback. A write call alone is not proof.
+
+If the workbook contains provider-backed formulas such as `IMPORTRANGE`, run the
+boundary case too:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
+```
+
+## Load Aider
+
+In this repo, Aider loads the conventions automatically because
+`.aider.conf.yml` contains:
+
+```yaml
+read:
+  - CONVENTIONS.md
+```
+
+In another repo, either copy the same two files or explicitly start Aider with
+the conventions:
+
+```sh
+aider --read CONVENTIONS.md
+```
+
+Keep `CONVENTIONS.md` focused on Aider's workbook proof policy. Broad repo
+policy belongs in `AGENTS.md`; project MCP wiring belongs in an MCP config that
+the host actually reads.
+
+## WorkPaper Path
+
+When state must persist, run the local file-backed MCP server from the
+conventions:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
+```
+
+When the source is an `.xlsx`, start with the risk tool instead:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx
+```
+
+That XLSX mode reports workbook risk indicators before an agent trusts the
+imported WorkPaper. It does not certify Excel compatibility.
+
+## Required Aider Response
+
+Before saying a workbook is updated, Aider should return:
+
+- edited sheet and A1 cell;
+- before values for edited inputs and dependent outputs;
+- after values read from the recalculated workbook;
+- serialized or exported WorkPaper persistence evidence;
+- restore or restart readback when files matter;
+- unsupported formula or Excel-only limitations.
+
+If any readback step fails, report the blocker. Do not treat a write call,
+terminal exit code, screenshot, or cached XLSX value as the final result.
+
+## Current Source Boundary
+
+The checked-in Bilig source contains the Aider convention path through
+`CONVENTIONS.md` and `.aider.conf.yml`. Public `@latest` command surfaces should
+still be checked with `bilig-evaluate --door agent-mcp --json` before use,
+because npm publishing can lag the repository.
+
+## Official Aider Docs Checked
+
+- [Specifying coding conventions](https://aider.chat/docs/usage/conventions.html)
+- [YAML config file](https://aider.chat/docs/config/aider_conf.html)
+
+## Related
+
+- [Coding agent rule chooser](agent-rule-chooser.md)
+- [Agent adoption kit](agent-adoption-kit.md)
+- [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
+- [MCP spreadsheet tool server](mcp-workpaper-tool-server.md)
 
 ---
 

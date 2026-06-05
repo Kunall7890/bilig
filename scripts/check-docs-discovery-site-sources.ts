@@ -79,6 +79,7 @@ export const docsSiteSources = [
   ['trae-workpaper-mcp.html', 'trae-workpaper-mcp.md'],
   ['qodo-workpaper-mcp.html', 'qodo-workpaper-mcp.md'],
   ['opencode-workpaper-mcp.html', 'opencode-workpaper-mcp.md'],
+  ['aider-workpaper-conventions.html', 'aider-workpaper-conventions.md'],
   ['goose-workpaper-mcp.html', 'goose-workpaper-mcp.md'],
   ['smolagents-workpaper-tool.html', 'smolagents-workpaper-tool.md'],
   ['huggingface-workpaper-space.html', 'huggingface-workpaper-space.md'],

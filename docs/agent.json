@@ -240,6 +240,7 @@
       "codex": "https://github.com/proompteng/bilig/blob/main/AGENTS.md",
       "aider_conventions": "https://github.com/proompteng/bilig/blob/main/CONVENTIONS.md",
       "aider_config": "https://github.com/proompteng/bilig/blob/main/.aider.conf.yml",
+      "aider_docs": "https://proompteng.github.io/bilig/aider-workpaper-conventions.html",
       "claude_code_skill": "https://github.com/proompteng/bilig/blob/main/.claude/skills/bilig-workpaper/SKILL.md",
       "claude_code_command": "https://github.com/proompteng/bilig/blob/main/.claude/commands/bilig-workpaper-proof.md",
       "openhands_skill": "https://github.com/proompteng/bilig/blob/main/.agents/skills/bilig-workpaper/SKILL.md",
