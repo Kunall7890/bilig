@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { closeSync, openSync, renameSync, unlinkSync } from 'node:fs'
 import { deflateRawSync } from 'node:zlib'
+import { Deflate } from 'fflate-stream'
 
 import {
   crc32Finalize,
@@ -16,6 +17,7 @@ import {
   readXlsxZipEntries,
   readXlsxZipEntriesLazy,
   readXlsxZipEntriesLazyFromByteSource,
+  forEachInflatedXlsxZipEntryChunk,
   forEachInflatedXlsxZipEntryChunkAsync,
   getZipText,
   setZipText,
@@ -282,6 +284,127 @@ function deflatedPreparedEntry(bytes: Uint8Array): PreparedZipEntry {
   }
 }
 
+function tryPrepareStreamingPatchedWorksheetEntry(
+  zip: SourcePreservingZip,
+  sheetPath: string,
+  patch: WorksheetPatch,
+): PreparedZipEntry | null {
+  const compressedChunks: Uint8Array[] = []
+  const sizes = tryWriteStreamingPatchedWorksheetEntry(zip, sheetPath, patch, (chunk) => {
+    compressedChunks.push(chunk)
+  })
+  return sizes
+    ? {
+        compressedChunks,
+        compressedSize: sizes.compressedSize,
+        uncompressedSize: sizes.uncompressedSize,
+        crc: sizes.crc,
+      }
+    : null
+}
+
+function tryWriteStreamingPatchedWorksheetEntry(
+  zip: SourcePreservingZip,
+  sheetPath: string,
+  patch: WorksheetPatch,
+  writeCompressedChunk: (chunk: Uint8Array) => void,
+): PreparedZipEntrySizes | null {
+  if (patch.literals.size === 0) {
+    return null
+  }
+  const textDecoder = new TextDecoder()
+  const textEncoder = new TextEncoder()
+  const patchedLiterals = new Set<string>()
+  let compressedSize = 0
+  let uncompressedSize = 0
+  let crcState = 0xffffffff
+  let failed = false
+  let buffer = ''
+  let pendingDeflateChunk: Uint8Array | null = null
+  const deflate = new Deflate((chunk) => {
+    if (chunk.byteLength === 0) {
+      return
+    }
+    writeCompressedChunk(chunk)
+    compressedSize += chunk.byteLength
+  })
+  const emitText = (text: string): void => {
+    if (text.length === 0) {
+      return
+    }
+    const bytes = textEncoder.encode(text)
+    uncompressedSize += bytes.byteLength
+    crcState = crc32Update(crcState, bytes)
+    if (pendingDeflateChunk) {
+      deflate.push(pendingDeflateChunk)
+    }
+    pendingDeflateChunk = bytes
+  }
+  const processBuffer = (final: boolean): void => {
+    if (buffer.length === 0 || failed) {
+      return
+    }
+    const safeEnd = final ? buffer.length : Math.max(0, buffer.lastIndexOf('<'))
+    if (safeEnd === 0 && !final) {
+      return
+    }
+    const cellPattern = new RegExp(worksheetCellElementPattern.source, 'gu')
+    let emitOffset = 0
+    for (const match of buffer.matchAll(cellPattern)) {
+      const cellXml = match[0]
+      const matchStart = match.index
+      const matchEnd = matchStart + cellXml.length
+      if (matchEnd > safeEnd) {
+        break
+      }
+      emitText(buffer.slice(emitOffset, matchStart))
+      const openingTag = worksheetCellOpeningTagPattern.exec(cellXml)?.[0]
+      const address = openingTag ? readXmlAttribute(openingTag, 'r') : null
+      if (address && patch.literals.has(address)) {
+        const patched = patchLiteralCellXml(cellXml, patch.literals.get(address) ?? null)
+        if (!patched) {
+          failed = true
+          return
+        }
+        patchedLiterals.add(address)
+        emitText(patched)
+      } else {
+        emitText(cellXml)
+      }
+      emitOffset = matchEnd
+    }
+    emitText(buffer.slice(emitOffset, safeEnd))
+    buffer = buffer.slice(safeEnd)
+  }
+  try {
+    const streamed = forEachInflatedXlsxZipEntryChunk(
+      zip,
+      sheetPath,
+      (chunk) => {
+        buffer += textDecoder.decode(chunk, { stream: true })
+        processBuffer(false)
+      },
+      { chunkSize: 64 * 1024, forceStreamingInflate: true },
+    )
+    if (!streamed || failed) {
+      return null
+    }
+    buffer += textDecoder.decode()
+    processBuffer(true)
+    if (failed || patchedLiterals.size !== patch.literals.size) {
+      return null
+    }
+    deflate.push(pendingDeflateChunk ?? new Uint8Array(), true)
+    return {
+      compressedSize,
+      uncompressedSize,
+      crc: crc32Finalize(crcState),
+    }
+  } catch {
+    return null
+  }
+}
+
 async function tryPrepareStreamingPatchedWorksheetEntryFileAsync(
   zip: SourcePreservingZip,
   sheetPath: string,
@@ -514,6 +637,11 @@ export function exportXlsxSourceLiteralPatches(input: XlsxSourceLiteralPatchExpo
     const sheetPath = sheetPathsByName.get(sheetName)
     if (!sheetPath) {
       throw new Error(`Unable to resolve XLSX worksheet path for sheet: ${sheetName}`)
+    }
+    const streamingPatch = tryPrepareStreamingPatchedWorksheetEntry(zip, sheetPath, { literals })
+    if (streamingPatch) {
+      preparedEntries.set(sheetPath, streamingPatch)
+      continue
     }
     const sheetXml = getZipText(zip, sheetPath)
     if (!sheetXml) {

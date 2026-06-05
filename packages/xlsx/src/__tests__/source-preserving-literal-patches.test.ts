@@ -103,6 +103,58 @@ function guardedUntouchedEntrySource(): {
   }
 }
 
+function guardedPatchedWorksheetSource(): {
+  readonly source: XlsxSourceReader
+  readonly fullWorksheetInflateCount: () => number
+} {
+  const rowCount = 5_000
+  const worksheetXml = new TextEncoder().encode(`<?xml version="1.0" encoding="UTF-8"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <dimension ref="A1:A${String(rowCount)}"/>
+  <sheetData>
+    ${Array.from({ length: rowCount }, (_entry, index) => {
+      const row = index + 1
+      return `<row r="${String(row)}"><c r="A${String(row)}"><v>${String(row)}</v></c></row>`
+    }).join('')}
+  </sheetData>
+</worksheet>`)
+  const sheetPath = 'xl/worksheets/sheet1.xml'
+  const sourceBytes = minimalWorkbookBytes({ [sheetPath]: worksheetXml })
+  const sheetSourceEntry = readLazyXlsxZipEntryCompressedSource(readXlsxZipEntriesLazy(sourceBytes), sheetPath)
+  if (!sheetSourceEntry) {
+    throw new Error('Expected worksheet entry to have lazy compressed source metadata')
+  }
+
+  let fullWorksheetInflateCount = 0
+  const assertNotFullWorksheetInflate = (start: number, end: number): void => {
+    if (start === sheetSourceEntry.dataStart && end === sheetSourceEntry.dataEnd) {
+      fullWorksheetInflateCount += 1
+      throw new Error('patched worksheet should be streamed instead of fully inflated')
+    }
+  }
+  return {
+    source: {
+      byteLength: sourceBytes.byteLength,
+      readBytes() {
+        throw new Error('readBytes should not be called')
+      },
+      readRange(start, end) {
+        return sourceBytes.subarray(start, end)
+      },
+      readRangeInto(start, end, target) {
+        const chunk = sourceBytes.subarray(start, end)
+        target.set(chunk)
+        return target.subarray(0, chunk.byteLength)
+      },
+      inflateRawRange(start, end) {
+        assertNotFullWorksheetInflate(start, end)
+        return inflateRawSync(sourceBytes.subarray(start, end))
+      },
+    },
+    fullWorksheetInflateCount: () => fullWorksheetInflateCount,
+  }
+}
+
 describe('@bilig/xlsx source-preserving literal patches', () => {
   it('patches scalar cells, inserts missing cells, and invalidates calcChain without SheetJS', () => {
     const exported = exportXlsxSourceLiteralPatches({
@@ -178,6 +230,20 @@ describe('@bilig/xlsx source-preserving literal patches', () => {
     const zip = readXlsxZipEntries(exported)
     expect(Buffer.from(zip[untouchedPath] ?? new Uint8Array()).equals(Buffer.from(untouchedBytes))).toBe(true)
     expect(getZipText(zip, 'xl/worksheets/sheet1.xml')).toContain('compressed-copy')
+  })
+
+  it('streams sync patched worksheet entries without fully inflating the worksheet', () => {
+    const { source, fullWorksheetInflateCount } = guardedPatchedWorksheetSource()
+
+    const exported = exportXlsxSourceLiteralPatches({
+      source,
+      sheetNames: ['Revenue & Ops'],
+      patches: [{ sheetName: 'Revenue & Ops', address: 'A2500', value: 99_001 }],
+    })
+
+    expect(fullWorksheetInflateCount()).toBe(0)
+    const zip = readXlsxZipEntries(exported)
+    expect(getZipText(zip, 'xl/worksheets/sheet1.xml')).toContain('<c r="A2500"><v>99001</v></c>')
   })
 
   it('file-backed export copies untouched lazy entries from compressed source without inflating them', async () => {

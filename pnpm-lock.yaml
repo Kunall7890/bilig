@@ -588,7 +588,11 @@ importers:
         specifier: 4.3.6
         version: 4.3.6
 
-  packages/xlsx: {}
+  packages/xlsx:
+    dependencies:
+      fflate-stream:
+        specifier: npm:fflate@0.8.3
+        version: fflate@0.8.3
 
   packages/xlsx-formula-recalc:
     dependencies:
