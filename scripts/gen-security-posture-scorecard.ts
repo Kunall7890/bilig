@@ -4,8 +4,8 @@ import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import * as ts from 'typescript'
-import * as XLSX from 'xlsx'
 
 import { exportXlsx, importXlsx } from '../packages/excel-import/src/index.js'
 import {
@@ -208,11 +208,20 @@ function buildFormulaRuntimeSandboxControl(): SecurityPostureControl {
 }
 
 function buildXlsxImportSafetyControl(): SecurityPostureControl {
-  const macroWorkbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(macroWorkbook, XLSX.utils.aoa_to_sheet([['safe value']]), 'Sheet1')
-  macroWorkbook.vbaraw = new Uint8Array([1, 2, 3, 4])
-  const macroBytes = XLSX.write(macroWorkbook, { bookType: 'xlsm', type: 'buffer', bookVBA: true }) as unknown
-  const importedMacroWorkbook = importXlsx(toUint8Array(macroBytes), 'macro.xlsm')
+  const macroBytes = writeSimpleXlsxWorkbook({
+    macro: {
+      vbaProject: new Uint8Array([1, 2, 3, 4]),
+      workbookCodeName: 'ThisWorkbook',
+      sheetCodeNames: [{ sheetName: 'Sheet1', codeName: 'Sheet1' }],
+    },
+    sheets: [
+      {
+        name: 'Sheet1',
+        cells: [{ address: 'A1', row: 0, col: 0, value: 'safe value' }],
+      },
+    ],
+  })
+  const importedMacroWorkbook = importXlsx(macroBytes, 'macro.xlsm')
   const exportedBytes = exportXlsx(createSafeExportSnapshot())
   const importedExportedWorkbook = importXlsx(exportedBytes, 'safe.xlsx')
   const macroWarningPassed = importedMacroWorkbook.warnings.includes('Macros were preserved but not executed during XLSX import.')
@@ -540,16 +549,6 @@ function createSafeExportSnapshot(): WorkbookSnapshot {
       },
     ],
   }
-}
-
-function toUint8Array(value: unknown): Uint8Array {
-  if (value instanceof Uint8Array) {
-    return new Uint8Array(value)
-  }
-  if (value instanceof ArrayBuffer) {
-    return new Uint8Array(value)
-  }
-  throw new Error('Expected workbook writer to return bytes')
 }
 
 function requiredControl(controls: readonly SecurityPostureControl[], id: string): SecurityPostureControl {

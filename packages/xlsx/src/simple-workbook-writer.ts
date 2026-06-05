@@ -93,6 +93,17 @@ export interface SimpleXlsxDefinedName {
   readonly localSheetIndex?: number
 }
 
+export interface SimpleXlsxMacroSheetCodeName {
+  readonly sheetName: string
+  readonly codeName: string
+}
+
+export interface SimpleXlsxMacroPayload {
+  readonly vbaProject: Uint8Array
+  readonly workbookCodeName?: string
+  readonly sheetCodeNames?: readonly SimpleXlsxMacroSheetCodeName[]
+}
+
 export interface SimpleXlsxSheet {
   readonly name: string
   readonly cells: readonly SimpleXlsxCell[]
@@ -109,6 +120,7 @@ export interface SimpleXlsxWorkbook {
   readonly stylesXml?: string
   readonly sharedStringsXml?: string
   readonly definedNames?: readonly SimpleXlsxDefinedName[]
+  readonly macro?: SimpleXlsxMacroPayload
 }
 
 interface RegisteredStyle {
@@ -545,10 +557,33 @@ function autoFilterXml(autoFilters: readonly SimpleXlsxAutoFilter[] | undefined)
   return filter ? `<autoFilter ref="${escapeXmlAttribute(`${filter.startAddress}:${filter.endAddress}`)}"/>` : ''
 }
 
-function worksheetXml(sheet: SimpleXlsxSheet, registry: StyleRegistry): string {
+function normalizedMacroCodeName(value: string | undefined): string | null {
+  const trimmed = value?.trim()
+  return trimmed && trimmed.length > 0 ? trimmed : null
+}
+
+function macroSheetCodeNameByName(macro: SimpleXlsxMacroPayload | undefined): ReadonlyMap<string, string> {
+  const output = new Map<string, string>()
+  for (const entry of macro?.sheetCodeNames ?? []) {
+    const sheetName = entry.sheetName.trim()
+    const codeName = normalizedMacroCodeName(entry.codeName)
+    if (sheetName.length > 0 && codeName) {
+      output.set(sheetName, codeName)
+    }
+  }
+  return output
+}
+
+function sheetPropertiesXml(sheetCodeName: string | undefined): string {
+  const codeName = normalizedMacroCodeName(sheetCodeName)
+  return codeName ? `<sheetPr codeName="${escapeXmlAttribute(codeName)}"/>` : ''
+}
+
+function worksheetXml(sheet: SimpleXlsxSheet, registry: StyleRegistry, sheetCodeName: string | undefined): string {
   return [
     xmlDeclaration(),
     `<worksheet xmlns="${spreadsheetNs}" xmlns:r="${relationshipNs}">`,
+    sheetPropertiesXml(sheetCodeName),
     `<dimension ref="${escapeXmlAttribute(worksheetDimension(sheet))}"/>`,
     '<sheetViews><sheetView workbookViewId="0"/></sheetViews>',
     '<sheetFormatPr defaultRowHeight="15"/>',
@@ -570,11 +605,16 @@ function workbookXml(workbook: SimpleXlsxWorkbook): string {
   return [
     xmlDeclaration(),
     `<workbook xmlns="${spreadsheetNs}" xmlns:r="${relationshipNs}">`,
-    '<workbookPr/>',
+    workbookPropertiesXml(workbook.macro),
     `<sheets>${sheetsXml}</sheets>`,
     definedNamesXml,
     '</workbook>',
   ].join('')
+}
+
+function workbookPropertiesXml(macro: SimpleXlsxMacroPayload | undefined): string {
+  const codeName = normalizedMacroCodeName(macro?.workbookCodeName)
+  return codeName ? `<workbookPr codeName="${escapeXmlAttribute(codeName)}"/>` : '<workbookPr/>'
 }
 
 function definedNamesXmlForWorkbook(definedNames: readonly SimpleXlsxDefinedName[] | undefined): string {
@@ -592,7 +632,7 @@ function definedNamesXmlForWorkbook(definedNames: readonly SimpleXlsxDefinedName
     .join('')}</definedNames>`
 }
 
-function workbookRelationshipsXml(sheetCount: number, hasSharedStrings: boolean): string {
+function workbookRelationshipsXml(sheetCount: number, hasSharedStrings: boolean, hasMacro: boolean): string {
   const sheetRelationships = Array.from(
     { length: sheetCount },
     (_entry, index) =>
@@ -609,6 +649,9 @@ function workbookRelationshipsXml(sheetCount: number, hasSharedStrings: boolean)
     hasSharedStrings
       ? `<Relationship Id="rId${String(sheetCount + 3)}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>`
       : '',
+    hasMacro
+      ? `<Relationship Id="rId${String(sheetCount + (hasSharedStrings ? 4 : 3))}" Type="http://schemas.microsoft.com/office/2006/relationships/vbaProject" Target="vbaProject.bin"/>`
+      : '',
     '</Relationships>',
   ].join('')
 }
@@ -624,7 +667,7 @@ function rootRelationshipsXml(): string {
   ].join('')
 }
 
-function contentTypesXml(sheetCount: number, hasSharedStrings: boolean): string {
+function contentTypesXml(sheetCount: number, hasSharedStrings: boolean, hasMacro: boolean): string {
   const worksheets = Array.from(
     { length: sheetCount },
     (_entry, index) =>
@@ -638,7 +681,12 @@ function contentTypesXml(sheetCount: number, hasSharedStrings: boolean): string 
     `<Types xmlns="${contentTypesNs}">`,
     '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>',
     '<Default Extension="xml" ContentType="application/xml"/>',
-    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>',
+    hasMacro ? '<Default Extension="bin" ContentType="application/vnd.ms-office.vbaProject"/>' : '',
+    `<Override PartName="/xl/workbook.xml" ContentType="${
+      hasMacro
+        ? 'application/vnd.ms-excel.sheet.macroEnabled.main+xml'
+        : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml'
+    }"/>`,
     '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>',
     `<Override PartName="/xl/theme/theme1.xml" ContentType="${themeContentType}"/>`,
     sharedStrings,
@@ -706,21 +754,28 @@ export function writeSimpleXlsxWorkbook(workbook: SimpleXlsxWorkbook): Uint8Arra
   }
   const registry = buildStyleRegistry(workbook)
   const hasSharedStrings = workbook.sharedStringsXml !== undefined
+  const hasMacro = workbook.macro !== undefined
+  const sheetCodeNameByName = macroSheetCodeNameByName(workbook.macro)
   const zip: Record<string, Uint8Array> = {
-    '[Content_Types].xml': new TextEncoder().encode(contentTypesXml(workbook.sheets.length, hasSharedStrings)),
+    '[Content_Types].xml': new TextEncoder().encode(contentTypesXml(workbook.sheets.length, hasSharedStrings, hasMacro)),
     '_rels/.rels': new TextEncoder().encode(rootRelationshipsXml()),
     'docProps/app.xml': new TextEncoder().encode(appPropertiesXml(workbook.sheets.length)),
     'docProps/core.xml': new TextEncoder().encode(corePropertiesXml()),
     'xl/workbook.xml': new TextEncoder().encode(workbookXml(workbook)),
-    'xl/_rels/workbook.xml.rels': new TextEncoder().encode(workbookRelationshipsXml(workbook.sheets.length, hasSharedStrings)),
+    'xl/_rels/workbook.xml.rels': new TextEncoder().encode(workbookRelationshipsXml(workbook.sheets.length, hasSharedStrings, hasMacro)),
     'xl/styles.xml': new TextEncoder().encode(registry.stylesXml),
     'xl/theme/theme1.xml': new TextEncoder().encode(themeXml()),
+  }
+  if (workbook.macro !== undefined) {
+    zip['xl/vbaProject.bin'] = new Uint8Array(workbook.macro.vbaProject)
   }
   if (workbook.sharedStringsXml !== undefined) {
     zip['xl/sharedStrings.xml'] = new TextEncoder().encode(workbook.sharedStringsXml)
   }
   workbook.sheets.forEach((sheet, index) => {
-    zip[`xl/worksheets/sheet${String(index + 1)}.xml`] = new TextEncoder().encode(worksheetXml(sheet, registry))
+    zip[`xl/worksheets/sheet${String(index + 1)}.xml`] = new TextEncoder().encode(
+      worksheetXml(sheet, registry, sheetCodeNameByName.get(sheet.name)),
+    )
   })
   return zipSourcePreservingEntries(zip, new Map(), { dosTime: simpleWorkbookZipDosTimeParts })
 }

@@ -18,6 +18,7 @@ const liveScorecardFixtureScripts = [
   'scripts/gen-microsoft-excel-live-recalculation-scorecard.ts',
   'scripts/gen-microsoft-excel-live-structural-scorecard.ts',
 ] as const
+const nativeXlsxFixtureScripts = [...liveScorecardFixtureScripts, 'scripts/gen-security-posture-scorecard.ts'] as const
 
 function packageManifestPaths(): string[] {
   return packageManifestDirs.flatMap((dir) => {
@@ -91,8 +92,8 @@ describe('repository dependency policy', () => {
     expect(violations).toEqual([])
   })
 
-  it('keeps live scorecard fixture generation on @bilig/xlsx instead of SheetJS', () => {
-    const violations = liveScorecardFixtureScripts.filter((path) => hasRuntimeXlsxImport(readFileSync(join(repoRoot, path), 'utf8')))
+  it('keeps native XLSX fixture generation on @bilig/xlsx instead of SheetJS', () => {
+    const violations = nativeXlsxFixtureScripts.filter((path) => hasRuntimeXlsxImport(readFileSync(join(repoRoot, path), 'utf8')))
 
     expect(violations).toEqual([])
   })

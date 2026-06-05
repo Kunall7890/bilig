@@ -200,6 +200,37 @@ describe('@bilig/xlsx package boundary', () => {
     expect(sheetXml).toContain(`<c r="B1" t="inlineStr">${inlineStringXml}</c>`)
   })
 
+  it('writes simple macro-enabled workbooks with VBA payloads and code names', () => {
+    const zip = readXlsxZipEntries(
+      writeSimpleXlsxWorkbook({
+        macro: {
+          vbaProject: new Uint8Array([1, 2, 3, 4]),
+          workbookCodeName: 'ThisWorkbook',
+          sheetCodeNames: [{ sheetName: 'Sheet1', codeName: 'Sheet1' }],
+        },
+        sheets: [
+          {
+            name: 'Sheet1',
+            cells: [{ address: 'A1', row: 0, col: 0, value: 'safe value' }],
+          },
+        ],
+      }),
+    )
+    const contentTypesXml = textDecoder.decode(zip['[Content_Types].xml'])
+    const workbookRelsXml = textDecoder.decode(zip['xl/_rels/workbook.xml.rels'])
+    const workbookXml = textDecoder.decode(zip['xl/workbook.xml'])
+    const sheetXml = textDecoder.decode(zip['xl/worksheets/sheet1.xml'])
+
+    expect(Array.from(zip['xl/vbaProject.bin'] ?? [])).toEqual([1, 2, 3, 4])
+    expect(contentTypesXml).toContain('<Default Extension="bin" ContentType="application/vnd.ms-office.vbaProject"/>')
+    expect(contentTypesXml).toContain(
+      '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.ms-excel.sheet.macroEnabled.main+xml"/>',
+    )
+    expect(workbookRelsXml).toContain('relationships/vbaProject')
+    expect(workbookXml).toContain('<workbookPr codeName="ThisWorkbook"/>')
+    expect(sheetXml).toContain('<sheetPr codeName="Sheet1"/>')
+  })
+
   it('only applies direct style indexes when raw styles XML is supplied', () => {
     const workbook = {
       sheets: [
