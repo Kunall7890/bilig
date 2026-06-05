@@ -2,7 +2,7 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it, vi } from 'vitest'
 import type * as BiligXlsx from '@bilig/xlsx'
 
-import { exportWorkPaperXlsx } from '../xlsx.js'
+import { exportWorkPaperXlsx, exportXlsx } from '../xlsx.js'
 
 vi.mock('@bilig/excel-import', async () => {
   const biligXlsx = await vi.importActual<typeof BiligXlsx>('@bilig/xlsx')
@@ -32,22 +32,24 @@ const importedXlsxSourceBytes = Symbol.for('bilig.importedXlsxSourceBytes')
 const importedXlsxSourceCellPatches = Symbol.for('bilig.importedXlsxSourceCellPatches')
 
 describe('WorkPaper @bilig/xlsx helper boundary', () => {
+  it('exports WorkPaper inputs through source-preserving scalar patches without loading the generic writer', () => {
+    const snapshot = sourcePreservingSnapshot(9)
+
+    const exported = exportXlsx({
+      exportSourcePreservingXlsxSnapshot: () => snapshot,
+      exportSnapshot: () => {
+        throw new Error('Full WorkPaper snapshot should not be exported for direct source-preserving XLSX export')
+      },
+    })
+
+    const exportedZip = unzipSync(exported)
+    const sheetXml = strFromU8(exportedZip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+    expect(cellXml(sheetXml, 'A1')).toContain('<v>9</v>')
+    expect(strFromU8(exportedZip['customXml/item1.xml'] ?? new Uint8Array())).toBe('<keep source="true"/>')
+  })
+
   it('exports source-preserving scalar patches without loading the SheetJS writer', () => {
-    const snapshot = {
-      version: 1 as const,
-      workbook: { name: 'bilig-xlsx-helper-boundary' },
-      sheets: [{ id: 1, name: 'Data', order: 0, cells: [] }],
-    }
-    Object.defineProperty(snapshot, importedXlsxSourceBytes, {
-      configurable: true,
-      enumerable: false,
-      value: sourceWorkbookBytes(),
-    })
-    Object.defineProperty(snapshot, importedXlsxSourceCellPatches, {
-      configurable: true,
-      enumerable: false,
-      value: [{ kind: 'literal', sheetName: 'Data', address: 'A1', value: 9 }],
-    })
+    const snapshot = sourcePreservingSnapshot(9)
 
     const exported = exportWorkPaperXlsx({
       exportSourcePreservingXlsxSnapshot: () => snapshot,
@@ -62,6 +64,29 @@ describe('WorkPaper @bilig/xlsx helper boundary', () => {
     expect(strFromU8(exportedZip['customXml/item1.xml'] ?? new Uint8Array())).toBe('<keep source="true"/>')
   })
 })
+
+function sourcePreservingSnapshot(value: number): {
+  readonly version: 1
+  readonly workbook: { readonly name: string }
+  readonly sheets: readonly [{ readonly id: 1; readonly name: 'Data'; readonly order: 0; readonly cells: readonly [] }]
+} {
+  const snapshot = {
+    version: 1 as const,
+    workbook: { name: 'bilig-xlsx-helper-boundary' },
+    sheets: [{ id: 1 as const, name: 'Data' as const, order: 0 as const, cells: [] as const }],
+  }
+  Object.defineProperty(snapshot, importedXlsxSourceBytes, {
+    configurable: true,
+    enumerable: false,
+    value: sourceWorkbookBytes(),
+  })
+  Object.defineProperty(snapshot, importedXlsxSourceCellPatches, {
+    configurable: true,
+    enumerable: false,
+    value: [{ kind: 'literal', sheetName: 'Data', address: 'A1', value }],
+  })
+  return snapshot
+}
 
 function sourceWorkbookBytes(): Uint8Array {
   return zipSync({

@@ -1,6 +1,7 @@
 import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { inflateRawSync } from 'node:zlib'
 
 import { describe, expect, it } from 'vitest'
 
@@ -8,12 +9,14 @@ import {
   exportXlsxSourceLiteralPatches,
   exportXlsxSourceLiteralPatchesToFileAsync,
   getZipText,
+  readLazyXlsxZipEntryCompressedSource,
   readXlsxZipEntries,
+  readXlsxZipEntriesLazy,
   zipSourcePreservingEntries,
   type XlsxSourceReader,
 } from '../index.js'
 
-function minimalWorkbookBytes(): Uint8Array {
+function minimalWorkbookBytes(extraEntries: Record<string, Uint8Array> = {}): Uint8Array {
   return zipSourcePreservingEntries({
     '[Content_Types].xml': new TextEncoder().encode(`<?xml version="1.0" encoding="UTF-8"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -48,7 +51,56 @@ function minimalWorkbookBytes(): Uint8Array {
 </worksheet>`),
     'xl/calcChain.xml': new TextEncoder().encode(`<?xml version="1.0" encoding="UTF-8"?>
 <calcChain xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><c r="A1" i="1"/></calcChain>`),
+    ...extraEntries,
   })
+}
+
+function guardedUntouchedEntrySource(): {
+  readonly source: XlsxSourceReader
+  readonly untouchedBytes: Uint8Array
+  readonly untouchedPath: string
+  readonly untouchedInflateCount: () => number
+} {
+  const untouchedBytes = new Uint8Array(256 * 1024)
+  for (let index = 0; index < untouchedBytes.byteLength; index += 1) {
+    untouchedBytes[index] = index & 0xff
+  }
+  const untouchedPath = 'xl/media/untouched.bin'
+  const sourceBytes = minimalWorkbookBytes({ [untouchedPath]: untouchedBytes })
+  const untouchedSourceEntry = readLazyXlsxZipEntryCompressedSource(readXlsxZipEntriesLazy(sourceBytes), untouchedPath)
+  if (!untouchedSourceEntry) {
+    throw new Error('Expected untouched entry to have lazy compressed source metadata')
+  }
+
+  let untouchedInflateCount = 0
+  const assertNotUntouchedInflate = (start: number, end: number): void => {
+    if (start === untouchedSourceEntry.dataStart && end === untouchedSourceEntry.dataEnd) {
+      untouchedInflateCount += 1
+      throw new Error('untouched entry should be copied from compressed source')
+    }
+  }
+  return {
+    source: {
+      byteLength: sourceBytes.byteLength,
+      readBytes() {
+        throw new Error('readBytes should not be called')
+      },
+      readRange(start, end) {
+        return sourceBytes.subarray(start, end)
+      },
+      inflateRawRange(start, end) {
+        assertNotUntouchedInflate(start, end)
+        return inflateRawSync(sourceBytes.subarray(start, end))
+      },
+      async inflateRawRangeChunksAsync(start, end) {
+        assertNotUntouchedInflate(start, end)
+        return false
+      },
+    },
+    untouchedBytes,
+    untouchedPath,
+    untouchedInflateCount: () => untouchedInflateCount,
+  }
 }
 
 describe('@bilig/xlsx source-preserving literal patches', () => {
@@ -108,6 +160,42 @@ describe('@bilig/xlsx source-preserving literal patches', () => {
       expect(result.bytesWritten).toBe(statSync(outputPath).size)
       const zip = readXlsxZipEntries(new Uint8Array(readFileSync(outputPath)))
       expect(getZipText(zip, 'xl/worksheets/sheet1.xml')).toContain('file-backed')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  it('copies untouched lazy entries from their compressed source without inflating them', () => {
+    const { source, untouchedBytes, untouchedPath, untouchedInflateCount } = guardedUntouchedEntrySource()
+
+    const exported = exportXlsxSourceLiteralPatches({
+      source,
+      sheetNames: ['Revenue & Ops'],
+      patches: [{ sheetName: 'Revenue & Ops', address: 'B1', value: 'compressed-copy' }],
+    })
+
+    expect(untouchedInflateCount()).toBe(0)
+    const zip = readXlsxZipEntries(exported)
+    expect(Buffer.from(zip[untouchedPath] ?? new Uint8Array()).equals(Buffer.from(untouchedBytes))).toBe(true)
+    expect(getZipText(zip, 'xl/worksheets/sheet1.xml')).toContain('compressed-copy')
+  })
+
+  it('file-backed export copies untouched lazy entries from compressed source without inflating them', async () => {
+    const { source, untouchedBytes, untouchedPath, untouchedInflateCount } = guardedUntouchedEntrySource()
+    const tempDir = mkdtempSync(join(tmpdir(), 'bilig-xlsx-patch-'))
+    const outputPath = join(tempDir, 'patched.xlsx')
+    try {
+      await exportXlsxSourceLiteralPatchesToFileAsync({
+        source,
+        outputPath,
+        sheetNames: ['Revenue & Ops'],
+        patches: [{ sheetName: 'Revenue & Ops', address: 'B1', value: 'file-compressed-copy' }],
+      })
+
+      expect(untouchedInflateCount()).toBe(0)
+      const zip = readXlsxZipEntries(new Uint8Array(readFileSync(outputPath)))
+      expect(Buffer.from(zip[untouchedPath] ?? new Uint8Array()).equals(Buffer.from(untouchedBytes))).toBe(true)
+      expect(getZipText(zip, 'xl/worksheets/sheet1.xml')).toContain('file-compressed-copy')
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
     }

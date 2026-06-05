@@ -22,7 +22,7 @@ writeFileSync(
 import { basename } from 'node:path'
 import {
   createFileImportedXlsxSourceReader,
-  exportXlsx,
+  exportXlsx as exportWorkbookSnapshotXlsx,
   exportXlsxSourceLiteralPatches,
   exportXlsxSourceLiteralPatchesToFileAsync,
   importXlsxFromZipByteSource,
@@ -69,13 +69,23 @@ function sourcePreservingPatchInputFromSnapshot(snapshot) {
     : null
 }
 
+function isWorkbookSnapshot(value) {
+  return value && value.version === 1 && typeof value.workbook === 'object' && Array.isArray(value.sheets)
+}
+
+export function exportXlsx(input) {
+  return isWorkbookSnapshot(input) ? exportWorkbookSnapshotXlsx(input) : exportWorkPaperXlsx(input)
+}
+
 export function exportWorkPaperXlsx(workbook) {
   const snapshot =
     typeof workbook.exportSourcePreservingXlsxSnapshot === 'function'
       ? workbook.exportSourcePreservingXlsxSnapshot()
       : null
   const sourcePreservingInput = snapshot ? sourcePreservingPatchInputFromSnapshot(snapshot) : null
-  return sourcePreservingInput ? exportXlsxSourceLiteralPatches(sourcePreservingInput) : exportXlsx(snapshot ?? workbook.exportSnapshot())
+  return sourcePreservingInput
+    ? exportXlsxSourceLiteralPatches(sourcePreservingInput)
+    : exportWorkbookSnapshotXlsx(snapshot ?? workbook.exportSnapshot())
 }
 
 export async function exportWorkPaperXlsxToFileAsync(workbook, outputPath) {
@@ -91,7 +101,7 @@ export async function exportWorkPaperXlsxToFileAsync(workbook, outputPath) {
     })
   }
 
-  const exported = exportXlsx(workbook.exportSnapshot())
+  const exported = exportWorkbookSnapshotXlsx(workbook.exportSnapshot())
   await writeFile(outputPath, exported)
   return { bytesWritten: exported.byteLength }
 }
@@ -119,6 +129,8 @@ export interface WorkPaperXlsxExportSource {
   exportSourcePreservingXlsxSnapshot?(): WorkbookSnapshot | null
 }
 
+export declare function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array
+export declare function exportXlsx(workbook: WorkPaperXlsxExportSource): Uint8Array
 export declare function exportWorkPaperXlsx(workbook: WorkPaperXlsxExportSource): Uint8Array
 export declare function exportWorkPaperXlsxToFileAsync(
   workbook: WorkPaperXlsxExportSource,

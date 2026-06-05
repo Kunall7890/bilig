@@ -109,7 +109,20 @@ function sourcePreservingPatchInputFromSnapshot(snapshot: WorkbookSnapshot): Xls
     : null
 }
 
-export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
+function isWorkbookSnapshot(value: unknown): value is WorkbookSnapshot {
+  return isRecord(value) && value['version'] === 1 && isRecord(value['workbook']) && Array.isArray(value['sheets'])
+}
+
+export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array
+export function exportXlsx(workbook: WorkPaperXlsxExportSource): Uint8Array
+export function exportXlsx(input: WorkbookSnapshot | WorkPaperXlsxExportSource): Uint8Array {
+  if (!isWorkbookSnapshot(input)) {
+    return exportWorkPaperXlsx(input)
+  }
+  return exportWorkbookSnapshotXlsx(input)
+}
+
+function exportWorkbookSnapshotXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   return exportXlsxImpl(snapshot)
 }
 
@@ -141,7 +154,7 @@ export function exportWorkPaperXlsx(workbook: WorkPaperXlsxExportSource): Uint8A
   if (sourcePreservingInput) {
     return exportXlsxSourceLiteralPatches(sourcePreservingInput)
   }
-  return exportXlsx(sourcePreservingSnapshot ?? workbook.exportSnapshot())
+  return exportWorkbookSnapshotXlsx(sourcePreservingSnapshot ?? workbook.exportSnapshot())
 }
 
 export async function exportWorkPaperXlsxToFileAsync(
@@ -157,7 +170,7 @@ export async function exportWorkPaperXlsxToFileAsync(
     })
   }
 
-  const exported = exportXlsx(workbook.exportSnapshot())
+  const exported = exportWorkbookSnapshotXlsx(workbook.exportSnapshot())
   await writeFile(outputPath, exported)
   return { bytesWritten: exported.byteLength }
 }
