@@ -69,18 +69,11 @@ function hasOnlySimpleFilters(sheet: WorkbookSnapshot['sheets'][number]): boolea
   return (sheet.metadata?.filters ?? []).every((filter) => !filter.criteria || filter.criteria.length === 0)
 }
 
-function hasOnlySimpleStyles(snapshot: WorkbookSnapshot): boolean {
-  return (snapshot.workbook.metadata?.styles ?? []).every((style) => !('borders' in style) || style.borders === undefined)
-}
-
 function canUseBiligSimpleWriter(snapshot: WorkbookSnapshot): boolean {
   if (snapshot.sheets.length === 0) {
     return false
   }
   if (hasUnsupportedMetadata(snapshot.workbook.metadata, supportedWorkbookMetadataKeys)) {
-    return false
-  }
-  if (!hasOnlySimpleStyles(snapshot)) {
     return false
   }
   return snapshot.sheets.every(

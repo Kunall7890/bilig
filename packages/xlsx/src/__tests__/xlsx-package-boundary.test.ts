@@ -46,7 +46,11 @@ describe('@bilig/xlsx package boundary', () => {
   it('does not depend on SheetJS or the xlsx CDN tarball', () => {
     const packageJson = readPackageJson()
     expect(packageJson.name).toBe('@bilig/xlsx')
-    expect(packageJson.dependencies).toBeUndefined()
+    expect(isObjectRecord(packageJson.dependencies)).toBe(true)
+    if (isObjectRecord(packageJson.dependencies)) {
+      expect(packageJson.dependencies).not.toHaveProperty('xlsx')
+      expect(packageJson.dependencies).not.toHaveProperty('xlsx-js-style')
+    }
 
     const manifestSource = readFileSync(join(packageDir, 'package.json'), 'utf8')
     expect(manifestSource).not.toContain('cdn.sheetjs.com')
@@ -110,5 +114,35 @@ describe('@bilig/xlsx package boundary', () => {
     expect(zip['xl/theme/theme1.xml']).toBeDefined()
     expect(textDecoder.decode(zip['xl/_rels/workbook.xml.rels'])).toContain('relationships/theme')
     expect(textDecoder.decode(zip['xl/worksheets/sheet1.xml'])).toContain('<f>TEXTJOIN(&quot;-&quot;,TRUE,B1:B2)</f>')
+  })
+
+  it('writes border styles with @bilig/xlsx simple workbooks', () => {
+    const workbook = {
+      styles: [
+        {
+          id: 'bordered-total',
+          borders: {
+            top: { style: 'double' as const, weight: 'medium' as const, color: '#AA0000' },
+            bottom: { style: 'solid' as const, weight: 'thin' as const, color: '#000000' },
+          },
+        },
+      ],
+      sheets: [
+        {
+          name: 'Report',
+          cells: [{ address: 'B7', row: 6, col: 1, value: 42, styleId: 'bordered-total' }],
+        },
+      ],
+    }
+    const zip = readXlsxZipEntries(writeSimpleXlsxWorkbook(workbook))
+    const stylesXml = textDecoder.decode(zip['xl/styles.xml'])
+    const sheetXml = textDecoder.decode(zip['xl/worksheets/sheet1.xml'])
+
+    expect(stylesXml).toContain('<borders count="2">')
+    expect(stylesXml).toContain('<top style="double"><color rgb="FFAA0000"/></top>')
+    expect(stylesXml).toContain('<bottom style="thin"><color rgb="FF000000"/></bottom>')
+    expect(stylesXml).toContain('borderId="1"')
+    expect(stylesXml).toContain('applyBorder="1"')
+    expect(sheetXml).toContain('<c r="B7" s="1"><v>42</v></c>')
   })
 })

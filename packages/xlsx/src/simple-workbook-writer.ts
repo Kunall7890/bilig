@@ -59,11 +59,28 @@ export interface SimpleXlsxProtection {
   readonly hidden?: boolean
 }
 
+export type SimpleXlsxBorderStyle = 'solid' | 'dashed' | 'dotted' | 'double'
+export type SimpleXlsxBorderWeight = 'thin' | 'medium' | 'thick'
+
+export interface SimpleXlsxBorderSide {
+  readonly style: SimpleXlsxBorderStyle
+  readonly weight: SimpleXlsxBorderWeight
+  readonly color: string
+}
+
+export interface SimpleXlsxBorders {
+  readonly top?: SimpleXlsxBorderSide
+  readonly right?: SimpleXlsxBorderSide
+  readonly bottom?: SimpleXlsxBorderSide
+  readonly left?: SimpleXlsxBorderSide
+}
+
 export interface SimpleXlsxStyle {
   readonly id: string
   readonly fill?: SimpleXlsxFill
   readonly font?: SimpleXlsxFont
   readonly alignment?: SimpleXlsxAlignment
+  readonly borders?: SimpleXlsxBorders
   readonly protection?: SimpleXlsxProtection
 }
 
@@ -199,6 +216,44 @@ function protectionXml(protection: SimpleXlsxProtection | undefined): string {
   return attributes.length > 0 ? `<protection ${attributes.join(' ')}/>` : '<protection/>'
 }
 
+function borderStyle(side: SimpleXlsxBorderSide | undefined): string | null {
+  if (!side) {
+    return null
+  }
+  if (side.style === 'dashed') {
+    return side.weight === 'thin' ? 'dashed' : 'mediumDashed'
+  }
+  if (side.style === 'dotted') {
+    return 'dotted'
+  }
+  if (side.style === 'double') {
+    return 'double'
+  }
+  return side.weight
+}
+
+function borderSideXml(name: 'left' | 'right' | 'top' | 'bottom', side: SimpleXlsxBorderSide | undefined): string {
+  const style = borderStyle(side)
+  if (!style) {
+    return `<${name}/>`
+  }
+  const color = normalizeRgbColor(side?.color) ?? 'FF000000'
+  return `<${name} style="${style}"><color rgb="${color}"/></${name}>`
+}
+
+function borderXml(borders: SimpleXlsxBorders | undefined): string | null {
+  if (!borders) {
+    return null
+  }
+  const hasBorder = Boolean(borders.top || borders.right || borders.bottom || borders.left)
+  return hasBorder
+    ? `<border>${borderSideXml('left', borders.left)}${borderSideXml('right', borders.right)}${borderSideXml(
+        'top',
+        borders.top,
+      )}${borderSideXml('bottom', borders.bottom)}<diagonal/></border>`
+    : null
+}
+
 function styleKey(style: RegisteredStyle): string {
   return `${style.styleId ?? ''}\u0000${style.numberFormat ?? ''}`
 }
@@ -241,6 +296,7 @@ function buildStyleRegistry(workbook: SimpleXlsxWorkbook): StyleRegistry {
   const numberFormatIdByCode = new Map(customFormats.map((format, index) => [format, customNumberFormatStartId + index]))
   const fontXmls = [defaultFontXml]
   const fillXmls = ['<fill><patternFill patternType="none"/></fill>', '<fill><patternFill patternType="gray125"/></fill>']
+  const borderXmls = ['<border><left/><right/><top/><bottom/><diagonal/></border>']
   const styleIndexByKey = new Map<string, number>()
   const xfs = registeredStyles.map((registeredStyle, index) => {
     styleIndexByKey.set(styleKey(registeredStyle), index)
@@ -249,6 +305,8 @@ function buildStyleRegistry(workbook: SimpleXlsxWorkbook): StyleRegistry {
     const fontId = style?.font ? fontXmls.push(styleFontXml) - 1 : 0
     const styleFillXml = fillXml(style?.fill)
     const fillId = styleFillXml ? fillXmls.push(styleFillXml) - 1 : 0
+    const styleBorderXml = borderXml(style?.borders)
+    const borderId = styleBorderXml ? borderXmls.push(styleBorderXml) - 1 : 0
     const numberFormatId = registeredStyle.numberFormat ? (numberFormatIdByCode.get(registeredStyle.numberFormat) ?? 0) : 0
     const alignment = alignmentXml(style?.alignment)
     const protection = protectionXml(style?.protection)
@@ -257,10 +315,11 @@ function buildStyleRegistry(workbook: SimpleXlsxWorkbook): StyleRegistry {
       `numFmtId="${String(numberFormatId)}"`,
       `fontId="${String(fontId)}"`,
       `fillId="${String(fillId)}"`,
-      'borderId="0"',
+      `borderId="${String(borderId)}"`,
       'xfId="0"',
       fontId > 0 ? 'applyFont="1"' : null,
       fillId > 0 ? 'applyFill="1"' : null,
+      borderId > 0 ? 'applyBorder="1"' : null,
       numberFormatId > 0 ? 'applyNumberFormat="1"' : null,
       alignment ? 'applyAlignment="1"' : null,
       protection ? 'applyProtection="1"' : null,
@@ -281,7 +340,7 @@ function buildStyleRegistry(workbook: SimpleXlsxWorkbook): StyleRegistry {
     numFmtsXml,
     `<fonts count="${String(fontXmls.length)}">${fontXmls.join('')}</fonts>`,
     `<fills count="${String(fillXmls.length)}">${fillXmls.join('')}</fills>`,
-    '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>',
+    `<borders count="${String(borderXmls.length)}">${borderXmls.join('')}</borders>`,
     '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>',
     `<cellXfs count="${String(xfs.length)}">${xfs.join('')}</cellXfs>`,
     '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>',
