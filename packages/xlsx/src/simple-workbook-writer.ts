@@ -3,12 +3,14 @@ import { zipSourcePreservingEntries } from './source-preserving-zip.js'
 import { escapeXmlAttribute, escapeXmlText } from './xml.js'
 
 export type SimpleXlsxCellValue = string | number | boolean
+export type SimpleXlsxCellErrorValue = '#NULL!' | '#DIV/0!' | '#VALUE!' | '#REF!' | '#NAME?' | '#NUM!' | '#N/A' | '#GETTING_DATA'
 
 export interface SimpleXlsxCell {
   readonly address: string
   readonly row: number
   readonly col: number
   readonly value?: SimpleXlsxCellValue | null
+  readonly error?: SimpleXlsxCellErrorValue
   readonly formula?: string
   readonly styleId?: string
   readonly styleIndex?: number
@@ -393,6 +395,9 @@ function cellValueXml(cell: SimpleXlsxCell, formula: string | undefined): { read
   }
   if (!formula && cell.inlineStringXml !== undefined) {
     return { type: 'inlineStr', valueXml: cell.inlineStringXml }
+  }
+  if (cell.error !== undefined) {
+    return { type: 'e', valueXml: `<v>${escapeXmlText(cell.error)}</v>` }
   }
   const value = cell.value
   if (value === undefined || value === null) {

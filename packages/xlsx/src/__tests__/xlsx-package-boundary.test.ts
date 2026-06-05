@@ -116,6 +116,22 @@ describe('@bilig/xlsx package boundary', () => {
     expect(textDecoder.decode(zip['xl/worksheets/sheet1.xml'])).toContain('<f>TEXTJOIN(&quot;-&quot;,TRUE,B1:B2)</f>')
   })
 
+  it('writes cached formula error cells in simple workbooks', () => {
+    const zip = readXlsxZipEntries(
+      writeSimpleXlsxWorkbook({
+        sheets: [
+          {
+            name: 'Errors',
+            cells: [{ address: 'C3', row: 2, col: 2, formula: '1/0', error: '#DIV/0!' }],
+          },
+        ],
+      }),
+    )
+    const sheetXml = textDecoder.decode(zip['xl/worksheets/sheet1.xml'])
+
+    expect(sheetXml).toContain('<c r="C3" t="e"><f>1/0</f><v>#DIV/0!</v></c>')
+  })
+
   it('writes border styles with @bilig/xlsx simple workbooks', () => {
     const workbook = {
       styles: [

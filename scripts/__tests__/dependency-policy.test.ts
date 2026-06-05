@@ -18,7 +18,11 @@ const liveScorecardFixtureScripts = [
   'scripts/gen-microsoft-excel-live-recalculation-scorecard.ts',
   'scripts/gen-microsoft-excel-live-structural-scorecard.ts',
 ] as const
-const nativeXlsxFixtureScripts = [...liveScorecardFixtureScripts, 'scripts/gen-security-posture-scorecard.ts'] as const
+const nativeXlsxFixtureScripts = [
+  ...liveScorecardFixtureScripts,
+  'scripts/gen-security-posture-scorecard.ts',
+  'scripts/gen-workpaper-xlsx-corpus-fixtures.ts',
+] as const
 
 function packageManifestPaths(): string[] {
   return packageManifestDirs.flatMap((dir) => {
