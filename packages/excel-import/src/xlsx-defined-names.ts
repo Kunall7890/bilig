@@ -1,4 +1,5 @@
-import * as XLSX from 'xlsx'
+import { decodeCellAddress, decodeCellRange, decodeColumnAddress, encodeCellAddress, encodeColumnAddress } from '@bilig/xlsx'
+import type * as XLSX from 'xlsx'
 
 import { formatStructuredReferenceColumnSpecifier } from '@bilig/formula'
 import type { LiteralInput, WorkbookDefinedNameSnapshot, WorkbookDefinedNameValueSnapshot } from '@bilig/protocol'
@@ -15,7 +16,7 @@ function normalizeA1Address(value: string): string | null {
     return null
   }
   try {
-    return XLSX.utils.encode_cell(XLSX.utils.decode_cell(normalized))
+    return encodeCellAddress(decodeCellAddress(normalized))
   } catch {
     return null
   }
@@ -71,7 +72,7 @@ function normalizeColumnReference(value: string): string | null {
     return null
   }
   try {
-    return XLSX.utils.encode_col(XLSX.utils.decode_col(normalized))
+    return encodeColumnAddress(decodeColumnAddress(normalized))
   } catch {
     return null
   }
@@ -94,7 +95,7 @@ function readImportedSheetBounds(workbook: XLSX.WorkBook): ReadonlyMap<string, I
       continue
     }
     try {
-      const decoded = XLSX.utils.decode_range(sheet['!ref'])
+      const decoded = decodeCellRange(sheet['!ref'])
       bounds.set(sheetName, {
         endRow: Math.max(decoded.e.r, 0),
         endCol: Math.max(decoded.e.c, 0),
@@ -122,7 +123,7 @@ function parseBoundedWholeColumnReference(
     kind: 'range-ref',
     sheetName,
     startAddress: `${startColumn}1`,
-    endAddress: XLSX.utils.encode_cell({ r: sheetBounds.endRow, c: XLSX.utils.decode_col(endColumn) }),
+    endAddress: encodeCellAddress({ r: sheetBounds.endRow, c: decodeColumnAddress(endColumn) }),
   }
 }
 
@@ -141,8 +142,8 @@ function parseBoundedWholeRowReference(
   return {
     kind: 'range-ref',
     sheetName,
-    startAddress: XLSX.utils.encode_cell({ r: startRow - 1, c: 0 }),
-    endAddress: XLSX.utils.encode_cell({ r: endRow - 1, c: sheetBounds.endCol }),
+    startAddress: encodeCellAddress({ r: startRow - 1, c: 0 }),
+    endAddress: encodeCellAddress({ r: endRow - 1, c: sheetBounds.endCol }),
   }
 }
 

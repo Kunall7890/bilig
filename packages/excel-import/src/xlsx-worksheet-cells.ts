@@ -1,4 +1,5 @@
-import * as XLSX from 'xlsx'
+import { decodeCellAddress, encodeCellAddress } from '@bilig/xlsx'
+import type * as XLSX from 'xlsx'
 
 export interface WorksheetCellEntry {
   address: string
@@ -34,8 +35,8 @@ function denseWorksheetCell(row: unknown, column: number): Record<string, unknow
 }
 
 function compareWorksheetCellAddresses(left: string, right: string): number {
-  const leftCell = XLSX.utils.decode_cell(left)
-  const rightCell = XLSX.utils.decode_cell(right)
+  const leftCell = decodeCellAddress(left)
+  const rightCell = decodeCellAddress(right)
   return leftCell.r - rightCell.r || leftCell.c - rightCell.c || left.localeCompare(right)
 }
 
@@ -48,7 +49,7 @@ export function worksheetCellAt(sheet: XLSX.WorkSheet, row: number, column: numb
   if (denseRows) {
     return denseWorksheetCell(denseRows[row], column)
   }
-  const value = sheet[XLSX.utils.encode_cell({ r: row, c: column })]
+  const value = sheet[encodeCellAddress({ r: row, c: column })]
   return isRecord(value) ? value : null
 }
 
@@ -64,7 +65,7 @@ export function* worksheetCellRecords(sheet: XLSX.WorkSheet): Generator<Workshee
           continue
         }
         yield {
-          address: XLSX.utils.encode_cell({ r: rowIndex, c: columnIndex }),
+          address: encodeCellAddress({ r: rowIndex, c: columnIndex }),
           cell,
         }
       }
@@ -93,7 +94,7 @@ export function* worksheetCellEntries(sheet: XLSX.WorkSheet): Generator<Workshee
           continue
         }
         yield {
-          address: XLSX.utils.encode_cell({ r: rowIndex, c: columnIndex }),
+          address: encodeCellAddress({ r: rowIndex, c: columnIndex }),
           cell,
           row: rowIndex,
           column: columnIndex,
@@ -108,7 +109,7 @@ export function* worksheetCellEntries(sheet: XLSX.WorkSheet): Generator<Workshee
     if (!isRecord(value)) {
       continue
     }
-    const decoded = XLSX.utils.decode_cell(address)
+    const decoded = decodeCellAddress(address)
     yield {
       address,
       cell: value,
@@ -120,7 +121,7 @@ export function* worksheetCellEntries(sheet: XLSX.WorkSheet): Generator<Workshee
 
 export function* worksheetCellEntriesAtAddresses(sheet: XLSX.WorkSheet, addresses: Iterable<string>): Generator<WorksheetCellEntry> {
   for (const address of addresses) {
-    const decoded = XLSX.utils.decode_cell(address)
+    const decoded = decodeCellAddress(address)
     const cell = worksheetCellAt(sheet, decoded.r, decoded.c)
     if (!cell) {
       continue

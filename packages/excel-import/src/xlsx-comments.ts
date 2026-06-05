@@ -1,4 +1,5 @@
-import * as XLSX from 'xlsx'
+import { decodeCellAddress, encodeCellAddress } from '@bilig/xlsx'
+import type * as XLSX from 'xlsx'
 
 import type { WorkbookCommentThreadSnapshot } from '@bilig/protocol'
 
@@ -12,7 +13,7 @@ function isWorksheetCellObject(value: unknown): value is XLSX.CellObject {
 
 function normalizeCommentAddress(value: string): string | null {
   try {
-    return XLSX.utils.encode_cell(XLSX.utils.decode_cell(value))
+    return encodeCellAddress(decodeCellAddress(value))
   } catch {
     return null
   }
@@ -85,7 +86,7 @@ export function readImportedSheetComments(
         ignoredCount = appendCommentThread({
           commentThreads,
           sheetName,
-          address: XLSX.utils.encode_cell({ r: rowIndex, c: columnIndex }),
+          address: encodeCellAddress({ r: rowIndex, c: columnIndex }),
           commentsValue,
           ignoredCount,
         })

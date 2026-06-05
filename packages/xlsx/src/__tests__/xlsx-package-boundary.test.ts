@@ -4,7 +4,14 @@ import { fileURLToPath } from 'node:url'
 
 import { describe, expect, it } from 'vitest'
 
-import { decodeCellAddress, decodeCellRange, encodeCellAddress, encodeCellRange, normalizeCellAddress } from '../index.js'
+import {
+  decodeCellAddress,
+  decodeCellRange,
+  decodeColumnAddress,
+  encodeCellAddress,
+  encodeCellRange,
+  normalizeCellAddress,
+} from '../index.js'
 
 const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -52,6 +59,7 @@ describe('@bilig/xlsx package boundary', () => {
 
   it('normalizes XLSX addresses and ranges without SheetJS', () => {
     expect(decodeCellAddress('$AA$42')).toEqual({ r: 41, c: 26 })
+    expect(decodeColumnAddress('$XFD')).toBe(16383)
     expect(encodeCellAddress({ r: 0, c: 701 })).toBe('ZZ1')
     expect(normalizeCellAddress('$b$7')).toBe('B7')
     expect(decodeCellRange('C3:A1')).toEqual({ s: { r: 0, c: 0 }, e: { r: 2, c: 2 } })

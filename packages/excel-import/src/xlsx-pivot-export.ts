@@ -1,5 +1,12 @@
 import { unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
+import {
+  decodeCellAddress,
+  decodeCellRange,
+  encodeCellAddress,
+  encodeCellRange,
+  encodeColumnAddress,
+  type XlsxCellRange,
+} from '@bilig/xlsx'
 
 import type { CellRangeRef, LiteralInput, WorkbookPivotSnapshot, WorkbookPivotValueSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import {
@@ -50,8 +57,8 @@ function nextPartIndex(zip: ZipEntries, prefix: string, suffix: string): number 
 }
 
 function absoluteAddress(address: string): string {
-  const decoded = XLSX.utils.decode_cell(address)
-  return `$${XLSX.utils.encode_col(decoded.c)}$${decoded.r + 1}`
+  const decoded = decodeCellAddress(address)
+  return `$${encodeColumnAddress(decoded.c)}$${decoded.r + 1}`
 }
 
 function rangeRefA1(range: CellRangeRef): string {
@@ -61,12 +68,12 @@ function rangeRefA1(range: CellRangeRef): string {
 }
 
 function pivotOutputRange(pivot: WorkbookPivotSnapshot): string {
-  const start = XLSX.utils.decode_cell(pivot.address)
+  const start = decodeCellAddress(pivot.address)
   const end = {
     r: start.r + Math.max(1, pivot.rows) - 1,
     c: start.c + Math.max(1, pivot.cols) - 1,
   }
-  return XLSX.utils.encode_range({ s: start, e: end })
+  return encodeCellRange({ s: start, e: end })
 }
 
 function expandWorksheetDimension(sheetXml: string, pivot: WorkbookPivotSnapshot): string {
@@ -75,9 +82,9 @@ function expandWorksheetDimension(sheetXml: string, pivot: WorkbookPivotSnapshot
     return sheetXml
   }
   try {
-    const existing = XLSX.utils.decode_range(match[1] ?? 'A1')
-    const next = XLSX.utils.decode_range(pivotOutputRange(pivot))
-    const expanded = XLSX.utils.encode_range({
+    const existing = decodeCellRange(match[1] ?? 'A1')
+    const next = decodeCellRange(pivotOutputRange(pivot))
+    const expanded = encodeCellRange({
       s: { r: Math.min(existing.s.r, next.s.r), c: Math.min(existing.s.c, next.s.c) },
       e: { r: Math.max(existing.e.r, next.e.r), c: Math.max(existing.e.c, next.e.c) },
     })
@@ -133,21 +140,21 @@ function buildPivotCacheTable(snapshot: WorkbookSnapshot, pivot: WorkbookPivotSn
   if (!sourceSheet) {
     return null
   }
-  let source: XLSX.Range
+  let source: XlsxCellRange
   try {
-    source = XLSX.utils.decode_range(`${sourceRange.startAddress}:${sourceRange.endAddress}`)
+    source = decodeCellRange(`${sourceRange.startAddress}:${sourceRange.endAddress}`)
   } catch {
     return null
   }
   const cellsByAddress = buildCellValueMap(sourceSheet)
   const fields: PivotCacheField[] = []
   for (let column = source.s.c; column <= source.e.c; column += 1) {
-    const headerAddress = XLSX.utils.encode_cell({ r: source.s.r, c: column })
+    const headerAddress = encodeCellAddress({ r: source.s.r, c: column })
     const rawHeader = readCellValue(cellsByAddress, headerAddress)
     const name = typeof rawHeader === 'string' && rawHeader.trim().length > 0 ? rawHeader.trim() : fallbackColumnName(column - source.s.c)
     const values: LiteralInput[] = []
     for (let row = source.s.r + 1; row <= source.e.r; row += 1) {
-      values.push(readCellValue(cellsByAddress, XLSX.utils.encode_cell({ r: row, c: column })))
+      values.push(readCellValue(cellsByAddress, encodeCellAddress({ r: row, c: column })))
     }
     fields.push({ name, values })
   }
@@ -155,7 +162,7 @@ function buildPivotCacheTable(snapshot: WorkbookSnapshot, pivot: WorkbookPivotSn
   for (let row = source.s.r + 1; row <= source.e.r; row += 1) {
     const values: LiteralInput[] = []
     for (let column = source.s.c; column <= source.e.c; column += 1) {
-      values.push(readCellValue(cellsByAddress, XLSX.utils.encode_cell({ r: row, c: column })))
+      values.push(readCellValue(cellsByAddress, encodeCellAddress({ r: row, c: column })))
     }
     rows.push(values)
   }

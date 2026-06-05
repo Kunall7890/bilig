@@ -1,6 +1,6 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { XMLParser } from 'fast-xml-parser'
-import * as XLSX from 'xlsx'
+import { decodeCellAddress, encodeCellAddress } from '@bilig/xlsx'
 
 import type { WorkbookFreezePaneActivePane, WorkbookFreezePaneSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
@@ -65,8 +65,8 @@ function normalizeCellReference(value: unknown): string | undefined {
     return undefined
   }
   try {
-    const decoded = XLSX.utils.decode_cell(normalized)
-    return decoded.r >= 0 && decoded.c >= 0 ? XLSX.utils.encode_cell(decoded) : undefined
+    const decoded = decodeCellAddress(normalized)
+    return decoded.r >= 0 && decoded.c >= 0 ? encodeCellAddress(decoded) : undefined
   } catch {
     return undefined
   }
@@ -120,7 +120,7 @@ function buildFreezePaneXml(freezePane: WorkbookFreezePaneSnapshot): string {
   if (freezePane.rows > 0) {
     attributes.push(`ySplit="${String(freezePane.rows)}"`)
   }
-  const topLeftCell = freezePane.topLeftCell ?? XLSX.utils.encode_cell({ r: freezePane.rows, c: freezePane.cols })
+  const topLeftCell = freezePane.topLeftCell ?? encodeCellAddress({ r: freezePane.rows, c: freezePane.cols })
   const activePane = freezePane.activePane ?? activePaneForFreeze(freezePane)
   attributes.push(`topLeftCell="${escapeXml(topLeftCell)}"`)
   attributes.push(`activePane="${activePane}"`)

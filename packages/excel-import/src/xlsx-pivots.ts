@@ -1,5 +1,5 @@
 import { XMLParser } from 'fast-xml-parser'
-import * as XLSX from 'xlsx'
+import { decodeCellAddress, decodeCellRange, encodeCellAddress } from '@bilig/xlsx'
 
 import type {
   CellRangeRef,
@@ -88,11 +88,11 @@ function stringAttribute(value: unknown): string | null {
 
 function parseRangeRef(sheetName: string, ref: string): CellRangeRef | null {
   try {
-    const decoded = XLSX.utils.decode_range(ref.replaceAll('$', ''))
+    const decoded = decodeCellRange(ref.replaceAll('$', ''))
     return {
       sheetName,
-      startAddress: XLSX.utils.encode_cell(decoded.s),
-      endAddress: XLSX.utils.encode_cell(decoded.e),
+      startAddress: encodeCellAddress(decoded.s),
+      endAddress: encodeCellAddress(decoded.e),
     }
   } catch {
     return null
@@ -438,8 +438,8 @@ function parsePivotTableXml(sheetName: string, xml: string, caches: ReadonlyMap<
     typeof definition['name'] === 'string' && definition['name'].trim().length > 0
       ? definition['name'].trim()
       : `Pivot ${location.startAddress}`
-  const start = XLSX.utils.decode_cell(location.startAddress)
-  const end = XLSX.utils.decode_cell(location.endAddress)
+  const start = decodeCellAddress(location.startAddress)
+  const end = decodeCellAddress(location.endAddress)
   return {
     name,
     sheetName,

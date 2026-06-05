@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx'
+import { decodeCellAddress, encodeCellAddress } from '@bilig/xlsx'
 
 import { translateFormulaReferences } from '@bilig/formula'
 import { toLiteralInput } from './workbook-import-helpers.js'
@@ -104,7 +104,7 @@ function normalizeAddress(address: string): string | null {
     return null
   }
   try {
-    return XLSX.utils.encode_cell(XLSX.utils.decode_cell(address.replaceAll('$', '')))
+    return encodeCellAddress(decodeCellAddress(address.replaceAll('$', '')))
   } catch {
     return null
   }
@@ -175,7 +175,7 @@ export function readWorksheetFormulaCells(sheetXml: string | null): WorksheetFor
     if (!formulaXml || !formulaOpeningTag) {
       continue
     }
-    const decodedAddress = XLSX.utils.decode_cell(address)
+    const decodedAddress = decodeCellAddress(address)
     const formulaType = readXmlAttribute(formulaOpeningTag, 't')
     const sharedIndex = readXmlAttribute(formulaOpeningTag, 'si')
     const cellValueType = cellOpeningTag ? readXmlAttribute(cellOpeningTag, 't') : null

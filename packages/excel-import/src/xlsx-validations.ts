@@ -1,6 +1,6 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { XMLParser } from 'fast-xml-parser'
-import * as XLSX from 'xlsx'
+import { decodeCellAddress, decodeCellRange, encodeCellAddress, encodeCellRange, encodeColumnAddress } from '@bilig/xlsx'
 
 import {
   formatStructuredReferenceColumnSpecifier,
@@ -127,7 +127,7 @@ function normalizeAddress(address: string): string | null {
   ) {
     return null
   }
-  return XLSX.utils.encode_cell({ r: row - 1, c: columnIndex })
+  return encodeCellAddress({ r: row - 1, c: columnIndex })
 }
 
 function absoluteAddress(address: string): string | null {
@@ -135,14 +135,14 @@ function absoluteAddress(address: string): string | null {
   if (!normalized) {
     return null
   }
-  const decoded = XLSX.utils.decode_cell(normalized)
-  return `$${XLSX.utils.encode_col(decoded.c)}$${decoded.r + 1}`
+  const decoded = decodeCellAddress(normalized)
+  return `$${encodeColumnAddress(decoded.c)}$${decoded.r + 1}`
 }
 
 function rangeRefA1(range: CellRangeRef): string | null {
   try {
-    const decoded = XLSX.utils.decode_range(`${range.startAddress}:${range.endAddress}`.replaceAll('$', ''))
-    return XLSX.utils.encode_range(decoded)
+    const decoded = decodeCellRange(`${range.startAddress}:${range.endAddress}`.replaceAll('$', ''))
+    return encodeCellRange(decoded)
   } catch {
     return null
   }
@@ -416,11 +416,11 @@ function parseErrorStyle(value: unknown): WorkbookValidationErrorStyle | undefin
 
 function parseSqrefRange(sheetName: string, value: string): CellRangeRef | null {
   try {
-    const decoded = XLSX.utils.decode_range(value.replaceAll('$', ''))
+    const decoded = decodeCellRange(value.replaceAll('$', ''))
     return {
       sheetName,
-      startAddress: XLSX.utils.encode_cell(decoded.s),
-      endAddress: XLSX.utils.encode_cell(decoded.e),
+      startAddress: encodeCellAddress(decoded.s),
+      endAddress: encodeCellAddress(decoded.e),
     }
   } catch {
     return null

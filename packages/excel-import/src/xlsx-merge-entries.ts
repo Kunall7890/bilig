@@ -1,4 +1,5 @@
-import * as XLSX from 'xlsx'
+import { encodeCellAddress } from '@bilig/xlsx'
+import type * as XLSX from 'xlsx'
 
 import type { WorkbookMergeRangeSnapshot } from '@bilig/protocol'
 
@@ -12,8 +13,8 @@ export function buildMergeEntries(sheetName: string, merges: readonly XLSX.Range
       : [
           {
             sheetName,
-            startAddress: XLSX.utils.encode_cell(range.s),
-            endAddress: XLSX.utils.encode_cell(range.e),
+            startAddress: encodeCellAddress(range.s),
+            endAddress: encodeCellAddress(range.e),
           },
         ],
   )

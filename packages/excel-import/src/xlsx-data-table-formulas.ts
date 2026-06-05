@@ -1,5 +1,5 @@
 import { unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
+import { decodeCellAddress, decodeCellRange, encodeCellAddress, type XlsxCellRange } from '@bilig/xlsx'
 
 import type { WorkbookSheetDataTableFormulasSnapshot, WorkbookSheetDataTableFormulaSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import { getZipText, normalizeZipPath, readXlsxZipEntries, type XlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
@@ -35,7 +35,7 @@ function escapeRegExp(value: string): string {
 
 function cellColumnIndex(address: string): number {
   try {
-    return XLSX.utils.decode_cell(address).c
+    return decodeCellAddress(address).c
   } catch {
     return Number.MAX_SAFE_INTEGER
   }
@@ -79,13 +79,13 @@ function isEnabledXmlFlag(value: string | null): boolean {
   return value === '1' || value?.toLowerCase() === 'true'
 }
 
-function decodeFormulaRefRange(formula: WorkbookSheetDataTableFormulaSnapshot): XLSX.Range | null {
+function decodeFormulaRefRange(formula: WorkbookSheetDataTableFormulaSnapshot): XlsxCellRange | null {
   const ref = readFormulaAttribute(formula.formulaXml, 'ref')
   if (!ref) {
     return null
   }
   try {
-    return XLSX.utils.decode_range(ref)
+    return decodeCellRange(ref)
   } catch {
     return null
   }
@@ -101,17 +101,17 @@ function buildTwoVariableDataTableFormulaCells(formula: WorkbookSheetDataTableFo
   if (!rowInput || !columnInput || !range || range.s.r < 1 || range.s.c < 1) {
     return null
   }
-  if (formula.address !== XLSX.utils.encode_cell(range.s)) {
+  if (formula.address !== encodeCellAddress(range.s)) {
     return null
   }
 
-  const sourceFormulaAddress = XLSX.utils.encode_cell({ r: range.s.r - 1, c: range.s.c - 1 })
+  const sourceFormulaAddress = encodeCellAddress({ r: range.s.r - 1, c: range.s.c - 1 })
   const formulaCells = new Map<string, string>()
   for (let row = range.s.r; row <= range.e.r; row += 1) {
-    const columnReplacement = XLSX.utils.encode_cell({ r: row, c: range.s.c - 1 })
+    const columnReplacement = encodeCellAddress({ r: row, c: range.s.c - 1 })
     for (let column = range.s.c; column <= range.e.c; column += 1) {
-      const address = XLSX.utils.encode_cell({ r: row, c: column })
-      const rowReplacement = XLSX.utils.encode_cell({ r: range.s.r - 1, c: column })
+      const address = encodeCellAddress({ r: row, c: column })
+      const rowReplacement = encodeCellAddress({ r: range.s.r - 1, c: column })
       formulaCells.set(
         address,
         `MULTIPLE.OPERATIONS(${sourceFormulaAddress},${rowInput},${rowReplacement},${columnInput},${columnReplacement})`,
@@ -130,21 +130,21 @@ function buildOneVariableDataTableFormulaCells(formula: WorkbookSheetDataTableFo
   if (!input || !range || range.s.r < 1 || range.s.c < 1) {
     return null
   }
-  if (formula.address !== XLSX.utils.encode_cell(range.s)) {
+  if (formula.address !== encodeCellAddress(range.s)) {
     return null
   }
 
   const rowInputTable = isEnabledXmlFlag(readFormulaAttribute(formula.formulaXml, 'dtr'))
   const sourceFormulaAddress = rowInputTable
-    ? XLSX.utils.encode_cell({ r: range.s.r, c: range.s.c - 1 })
-    : XLSX.utils.encode_cell({ r: range.s.r - 1, c: range.s.c })
+    ? encodeCellAddress({ r: range.s.r, c: range.s.c - 1 })
+    : encodeCellAddress({ r: range.s.r - 1, c: range.s.c })
   const formulaCells = new Map<string, string>()
   for (let row = range.s.r; row <= range.e.r; row += 1) {
     for (let column = range.s.c; column <= range.e.c; column += 1) {
-      const address = XLSX.utils.encode_cell({ r: row, c: column })
+      const address = encodeCellAddress({ r: row, c: column })
       const replacementAddress = rowInputTable
-        ? XLSX.utils.encode_cell({ r: range.s.r - 1, c: column })
-        : XLSX.utils.encode_cell({ r: row, c: range.s.c - 1 })
+        ? encodeCellAddress({ r: range.s.r - 1, c: column })
+        : encodeCellAddress({ r: row, c: range.s.c - 1 })
       formulaCells.set(address, `MULTIPLE.OPERATIONS(${sourceFormulaAddress},${input},${replacementAddress})`)
     }
   }
@@ -238,7 +238,7 @@ function dataTableFormulaOutputAddresses(formula: WorkbookSheetDataTableFormulaS
   const addresses: string[] = []
   for (let row = range.s.r; row <= range.e.r; row += 1) {
     for (let column = range.s.c; column <= range.e.c; column += 1) {
-      addresses.push(XLSX.utils.encode_cell({ r: row, c: column }))
+      addresses.push(encodeCellAddress({ r: row, c: column }))
     }
   }
   return addresses

@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx'
+import { encodeCellAddress } from '@bilig/xlsx'
 import { parseCsv, parseCsvCellInput, resolveCsvParseOptions, type CsvParseOptions } from '@bilig/core'
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import { CSV_CONTENT_TYPE } from './workbook-import-content-types.js'
@@ -37,7 +37,7 @@ export function importCsv(text: string, fileName: string, options: CsvImportOpti
         return
       }
       nonEmptyCellCount += 1
-      const address = XLSX.utils.encode_cell({ r: rowIndex, c: colIndex })
+      const address = encodeCellAddress({ r: rowIndex, c: colIndex })
       if (parsed.formula !== undefined) {
         pushImportedSnapshotCell(cells, runtimeCellCoords, { address, formula: parsed.formula }, rowIndex, colIndex)
         return

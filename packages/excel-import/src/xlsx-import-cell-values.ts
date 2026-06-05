@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx'
+import { decodeCellAddress } from '@bilig/xlsx'
 
 import type { LiteralInput } from '@bilig/protocol'
 import { toLiteralInput } from './workbook-import-helpers.js'
@@ -52,7 +52,7 @@ export function readImportedLiteralCellValue(cell: Record<string, unknown>): Lit
 }
 
 export function compareCellAddresses(left: string, right: string): number {
-  const leftCell = XLSX.utils.decode_cell(left)
-  const rightCell = XLSX.utils.decode_cell(right)
+  const leftCell = decodeCellAddress(left)
+  const rightCell = decodeCellAddress(right)
   return leftCell.r - rightCell.r || leftCell.c - rightCell.c
 }

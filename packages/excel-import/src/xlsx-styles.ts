@@ -1,5 +1,6 @@
 import { XMLParser } from 'fast-xml-parser'
-import * as XLSX from 'xlsx'
+import { decodeCellAddress, decodeCellRange, encodeCellAddress } from '@bilig/xlsx'
+import type * as XLSX from 'xlsx'
 import type * as XLSXStyle from 'xlsx-js-style'
 
 import type {
@@ -480,7 +481,7 @@ function parseSheetCellStyleIndexArtifacts(
       if (!isBlankCellXml(cellXml, cellTag)) {
         continue
       }
-      const columnIndex = XLSX.utils.decode_cell(address).c
+      const columnIndex = decodeCellAddress(address).c
       if (rowHasStyle || columnHasStyle(columnStyleRanges, columnIndex)) {
         blankCellAddresses.push(address)
         if (shouldSkipArtifact()) {
@@ -928,10 +929,10 @@ export function addExportStylesToWorksheet(
       continue
     }
     const exportStyleValue = exportStyle(style)
-    const range = XLSX.utils.decode_range(`${styleRange.range.startAddress}:${styleRange.range.endAddress}`)
+    const range = decodeCellRange(`${styleRange.range.startAddress}:${styleRange.range.endAddress}`)
     for (let row = range.s.r; row <= range.e.r; row += 1) {
       for (let column = range.s.c; column <= range.e.c; column += 1) {
-        const address = XLSX.utils.encode_cell({ r: row, c: column })
+        const address = encodeCellAddress({ r: row, c: column })
         const existingCell = worksheet[address]
         const cell = isStyledWorksheetCell(existingCell) ? existingCell : ({ t: 'z' } satisfies XLSXStyle.CellObject)
         cell.s = exportStyleValue

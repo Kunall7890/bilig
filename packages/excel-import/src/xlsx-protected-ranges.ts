@@ -1,6 +1,6 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { XMLParser } from 'fast-xml-parser'
-import * as XLSX from 'xlsx'
+import { decodeCellRange, encodeCellAddress, encodeCellRange } from '@bilig/xlsx'
 
 import type { CellRangeRef, WorkbookRangeProtectionSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import { escapeXmlAttribute } from './xlsx-export-xml.js'
@@ -94,8 +94,8 @@ function setZipText(zip: ZipEntries, path: string, text: string): void {
 
 function rangeRefA1(range: CellRangeRef): string | null {
   try {
-    const decoded = XLSX.utils.decode_range(`${range.startAddress}:${range.endAddress}`.replaceAll('$', ''))
-    return XLSX.utils.encode_range(decoded)
+    const decoded = decodeCellRange(`${range.startAddress}:${range.endAddress}`.replaceAll('$', ''))
+    return encodeCellRange(decoded)
   } catch {
     return null
   }
@@ -103,11 +103,11 @@ function rangeRefA1(range: CellRangeRef): string | null {
 
 function parseRangeRef(sheetName: string, ref: string): CellRangeRef | null {
   try {
-    const decoded = XLSX.utils.decode_range(ref.replaceAll('$', ''))
+    const decoded = decodeCellRange(ref.replaceAll('$', ''))
     return {
       sheetName,
-      startAddress: XLSX.utils.encode_cell(decoded.s),
-      endAddress: XLSX.utils.encode_cell(decoded.e),
+      startAddress: encodeCellAddress(decoded.s),
+      endAddress: encodeCellAddress(decoded.e),
     }
   } catch {
     return null

@@ -1,5 +1,6 @@
-import * as XLSX from 'xlsx'
 import { unzipSync, zipSync } from 'fflate'
+import { decodeCellAddress } from '@bilig/xlsx'
+import type * as XLSX from 'xlsx'
 
 import type { SheetMetadataSnapshot, WorkbookHyperlinkSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import { getZipText, setXmlAttribute, setZipText } from './xlsx-export-xml.js'
@@ -70,7 +71,7 @@ export function readImportedSheetHyperlinks(sheetName: string, sheet: XLSX.WorkS
   return hyperlinks.length > 0
     ? hyperlinks.toSorted(
         (left, right) =>
-          XLSX.utils.decode_cell(left.address).r - XLSX.utils.decode_cell(right.address).r || left.address.localeCompare(right.address),
+          decodeCellAddress(left.address).r - decodeCellAddress(right.address).r || left.address.localeCompare(right.address),
       )
     : undefined
 }

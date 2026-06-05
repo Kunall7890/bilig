@@ -44,6 +44,22 @@ export function encodeColumnAddress(columnIndex: number): string {
   return output
 }
 
+export function decodeColumnAddress(columnAddress: string): number {
+  const normalized = columnAddress.trim().replaceAll('$', '').toUpperCase()
+  if (!/^[A-Z]{1,4}$/u.test(normalized)) {
+    throw new Error(`Invalid XLSX column address: ${columnAddress}`)
+  }
+  let column = 0
+  for (const character of normalized) {
+    const code = character.charCodeAt(0)
+    if (code < 65 || code > 90) {
+      throw new Error(`Invalid XLSX column address: ${columnAddress}`)
+    }
+    column = column * 26 + code - 64
+  }
+  return column - 1
+}
+
 export function encodeCellAddress(address: XlsxCellAddress): string {
   if (!Number.isSafeInteger(address.r) || !Number.isSafeInteger(address.c) || address.r < 0 || address.c < 0) {
     throw new Error(`Invalid XLSX cell coordinates: ${JSON.stringify(address)}`)

@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx'
+import { encodeCellAddress } from '@bilig/xlsx'
 
 import type { SheetStyleRangeSnapshot } from '@bilig/protocol'
 
@@ -47,8 +47,8 @@ export function styleRunsToRanges(sheetName: string, styleRuns: readonly Rectang
   return styleRuns.map((run) => ({
     range: {
       sheetName,
-      startAddress: XLSX.utils.encode_cell({ r: run.startRow, c: run.startColumn }),
-      endAddress: XLSX.utils.encode_cell({ r: run.endRow, c: run.endColumn }),
+      startAddress: encodeCellAddress({ r: run.startRow, c: run.startColumn }),
+      endAddress: encodeCellAddress({ r: run.endRow, c: run.endColumn }),
     },
     styleId: run.styleId,
   }))

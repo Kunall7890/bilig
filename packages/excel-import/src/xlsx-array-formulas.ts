@@ -1,5 +1,6 @@
 import { unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
+import { decodeCellAddress, decodeCellRange, encodeCellAddress, encodeCellRange, type XlsxCellRange } from '@bilig/xlsx'
+import type * as XLSX from 'xlsx'
 
 import { readRuntimeImage } from '@bilig/core'
 import type {
@@ -59,7 +60,7 @@ function isWorksheetCellAddress(value: string): boolean {
 
 function cellColumnIndex(address: string): number {
   try {
-    return XLSX.utils.decode_cell(address).c
+    return decodeCellAddress(address).c
   } catch {
     return Number.MAX_SAFE_INTEGER
   }
@@ -70,9 +71,9 @@ function cellRowNumber(address: string): number | null {
   return match ? Number(match[1]) : null
 }
 
-function decodeArrayFormulaRange(value: string): XLSX.Range | undefined {
+function decodeArrayFormulaRange(value: string): XlsxCellRange | undefined {
   try {
-    return XLSX.utils.decode_range(value)
+    return decodeCellRange(value)
   } catch {
     return undefined
   }
@@ -94,7 +95,7 @@ export function readImportedArrayFormulaSpills(sheetName: string, sheet: XLSX.Wo
     if (!range) {
       continue
     }
-    const owner = XLSX.utils.decode_cell(address)
+    const owner = decodeCellAddress(address)
     if (range.s.r !== owner.r || range.s.c !== owner.c) {
       continue
     }
@@ -102,7 +103,7 @@ export function readImportedArrayFormulaSpills(sheetName: string, sheet: XLSX.Wo
     const cols = range.e.c - range.s.c + 1
     spills.push({
       sheetName,
-      address: XLSX.utils.encode_cell(range.s),
+      address: encodeCellAddress(range.s),
       rows,
       cols,
     })
@@ -377,9 +378,9 @@ function upsertCachedCell(sheetXml: string, address: string, cachedValue: CellVa
   })
 }
 
-function expandRangeForAddress(range: XLSX.Range | null, address: string): XLSX.Range | null {
+function expandRangeForAddress(range: XlsxCellRange | null, address: string): XlsxCellRange | null {
   try {
-    const decoded = XLSX.utils.decode_cell(address)
+    const decoded = decodeCellAddress(address)
     return range
       ? {
           s: { r: Math.min(range.s.r, decoded.r), c: Math.min(range.s.c, decoded.c) },
@@ -391,13 +392,13 @@ function expandRangeForAddress(range: XLSX.Range | null, address: string): XLSX.
   }
 }
 
-function worksheetDimensionRange(sheetXml: string): XLSX.Range | null {
+function worksheetDimensionRange(sheetXml: string): XlsxCellRange | null {
   const match = /<dimension\b[^>]*\bref=(["'])([\s\S]*?)\1[^>]*\/?>/u.exec(sheetXml)
   if (!match?.[2]) {
     return null
   }
   try {
-    return XLSX.utils.decode_range(match[2])
+    return decodeCellRange(match[2])
   } catch {
     return null
   }
@@ -405,14 +406,14 @@ function worksheetDimensionRange(sheetXml: string): XLSX.Range | null {
 
 function updateWorksheetDimension(sheetXml: string, addresses: readonly string[]): string {
   let range = worksheetDimensionRange(sheetXml)
-  const before = range ? XLSX.utils.encode_range(range) : undefined
+  const before = range ? encodeCellRange(range) : undefined
   for (const address of addresses) {
     range = expandRangeForAddress(range, address)
   }
   if (!range) {
     return sheetXml
   }
-  const ref = escapeXml(XLSX.utils.encode_range(range))
+  const ref = escapeXml(encodeCellRange(range))
   if (before === ref) {
     return sheetXml
   }
@@ -429,16 +430,16 @@ function spillRange(spill: WorkbookSpillSnapshot): { readonly range: string; rea
     return undefined
   }
   try {
-    const owner = XLSX.utils.decode_cell(spill.address)
+    const owner = decodeCellAddress(spill.address)
     const end = { r: owner.r + spill.rows - 1, c: owner.c + spill.cols - 1 }
     const addresses: string[] = []
     for (let row = owner.r; row <= end.r; row += 1) {
       for (let col = owner.c; col <= end.c; col += 1) {
-        addresses.push(XLSX.utils.encode_cell({ r: row, c: col }))
+        addresses.push(encodeCellAddress({ r: row, c: col }))
       }
     }
     return {
-      range: XLSX.utils.encode_range({ s: owner, e: end }),
+      range: encodeCellRange({ s: owner, e: end }),
       addresses,
     }
   } catch {
@@ -507,7 +508,7 @@ export function addExportNativeSpillsToXlsxBytes(bytes: Uint8Array, snapshot: Wo
         if (!ownerCell?.formula || !decodedSpill) {
           continue
         }
-        const owner = XLSX.utils.decode_cell(spill.address)
+        const owner = decodeCellAddress(spill.address)
         const formulaXml = `<f t="array" ref="${escapeXml(decodedSpill.range)}">${escapeXml(
           encodeFormulaForXlsx(ownerCell.formula.replace(/^=/u, '')),
         )}</f>`
@@ -519,7 +520,7 @@ export function addExportNativeSpillsToXlsxBytes(bytes: Uint8Array, snapshot: Wo
           cellMetadataIndex,
         )
         for (const address of decodedSpill.addresses) {
-          const decoded = XLSX.utils.decode_cell(address)
+          const decoded = decodeCellAddress(address)
           if (address !== spill.address) {
             nextSheetXml = upsertCachedCell(nextSheetXml, address, values.get(runtimeCellValueKey(decoded.r, decoded.c)))
           }
