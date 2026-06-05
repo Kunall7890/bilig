@@ -2,17 +2,19 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import {
   decodeCellAddress,
   decodeCellRange,
   encodeCellAddress,
+  readXlsxZipEntries,
   writeSimpleXlsxWorkbook,
   type SimpleXlsxCell,
   type SimpleXlsxSheet,
   type SimpleXlsxWorkbook,
 } from '@bilig/xlsx'
 
-const fixtureDirectory = resolve('packages/headless/fixtures/xlsx-corpus')
+const fixtureDirectory = resolve(process.env.BILIG_XLSX_CORPUS_FIXTURE_DIR ?? 'packages/headless/fixtures/xlsx-corpus')
 
 interface XlsxCorpusFixture {
   readonly fileName: string
@@ -143,6 +145,42 @@ function fixtureBytes(workbook: SimpleXlsxWorkbook): Buffer {
   return Buffer.from(writeSimpleXlsxWorkbook(workbook))
 }
 
+function bytesEqual(left: Uint8Array, right: Uint8Array): boolean {
+  return Buffer.from(left).equals(Buffer.from(right))
+}
+
+export function xlsxZipEntryContentsEqual(leftBytes: Uint8Array, rightBytes: Uint8Array): boolean {
+  let left: Record<string, Uint8Array>
+  let right: Record<string, Uint8Array>
+  try {
+    left = readXlsxZipEntries(leftBytes)
+    right = readXlsxZipEntries(rightBytes)
+  } catch {
+    return false
+  }
+
+  const leftPaths = Object.keys(left).toSorted()
+  const rightPaths = Object.keys(right).toSorted()
+  if (leftPaths.length !== rightPaths.length) {
+    return false
+  }
+
+  for (let index = 0; index < leftPaths.length; index += 1) {
+    const path = leftPaths[index]
+    if (path !== rightPaths[index]) {
+      return false
+    }
+    if (!bytesEqual(left[path], right[path])) {
+      return false
+    }
+  }
+  return true
+}
+
+function fixtureMatches(fixture: XlsxCorpusFixture, actual: Buffer, expected: Buffer): boolean {
+  return fixture.workbook ? xlsxZipEntryContentsEqual(actual, expected) : bytesEqual(actual, expected)
+}
+
 function run(check: boolean): void {
   if (!check) {
     mkdirSync(fixtureDirectory, { recursive: true })
@@ -156,7 +194,7 @@ function run(check: boolean): void {
         throw new Error(`Missing XLSX corpus fixture: ${path}`)
       }
       const actual = readFileSync(path)
-      if (!actual.equals(expected)) {
+      if (!fixtureMatches(fixture, actual, expected)) {
         throw new Error(`XLSX corpus fixture is stale: ${path}`)
       }
       continue
@@ -165,4 +203,11 @@ function run(check: boolean): void {
   }
 }
 
-run(process.argv.includes('--check'))
+function isCliEntrypoint(): boolean {
+  const entrypoint = process.argv[1]
+  return entrypoint !== undefined && import.meta.url === pathToFileURL(resolve(entrypoint)).href
+}
+
+if (isCliEntrypoint()) {
+  run(process.argv.includes('--check'))
+}
