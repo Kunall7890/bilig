@@ -1,54 +1,63 @@
 import { randomUUID } from 'node:crypto'
 import { closeSync, openSync, renameSync, unlinkSync } from 'node:fs'
-import { unzipSync } from 'fflate'
-import { Deflate } from 'fflate-stream'
+import { deflateRawSync } from 'node:zlib'
 
 import {
   crc32Finalize,
   crc32Update,
-  decodeCellAddress,
-  decodeCellRange,
-  encodeCellRange,
-  exportXlsxSourceLiteralPatches as exportNativeXlsxSourceLiteralPatches,
-  exportXlsxSourceLiteralPatchesToFile as exportNativeXlsxSourceLiteralPatchesToFile,
-  exportXlsxSourceLiteralPatchesToFileAsync as exportNativeXlsxSourceLiteralPatchesToFileAsync,
   type FilePreparedZipEntry,
   type PreparedZipEntry,
   type PreparedZipEntrySizes,
-  type XlsxCellRange,
   writeAllSync,
   zipSourcePreservingEntries,
   zipSourcePreservingEntriesToFile,
-} from '@bilig/xlsx'
-import type { LiteralInput, WorkbookSnapshot } from '@bilig/protocol'
-import { escapeXmlAttribute, getZipText, setXmlAttribute, setZipText } from './xlsx-export-xml.js'
-import { readImportedXlsxSourceCellPatches, type ImportedXlsxSourceCellPatch, type ImportedXlsxSourceReader } from './xlsx-source-bytes.js'
-import { readXmlAttribute, worksheetCellElementPattern, worksheetCellOpeningTagPattern } from './xlsx-style-xml.js'
-import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
+} from './source-preserving-zip.js'
 import {
-  forEachInflatedXlsxZipEntryChunk,
-  forEachInflatedXlsxZipEntryChunkAsync,
+  readXlsxZipEntries,
   readXlsxZipEntriesLazy,
   readXlsxZipEntriesLazyFromByteSource,
+  forEachInflatedXlsxZipEntryChunkAsync,
+  getZipText,
+  setZipText,
   type XlsxZipByteSource,
-} from './xlsx-zip.js'
+  type XlsxZipEntries,
+} from './zip-reader.js'
+import { workbookSheetPathEntriesFromSource } from './workbook-sheet-paths.js'
+import { decodeCellAddress, decodeCellRange, encodeCellRange, type XlsxCellRange } from './address.js'
+import {
+  escapeXmlAttribute,
+  escapeXmlText,
+  readXmlAttribute,
+  setXmlAttribute,
+  worksheetCellElementPattern,
+  worksheetCellOpeningTagPattern,
+} from './xml.js'
 
-interface WorksheetPatch {
-  readonly literals: ReadonlyMap<string, LiteralInput>
+export type XlsxScalarPatchValue = string | number | boolean | null
+
+export interface XlsxSourceReader {
+  readonly byteLength: number
+  readBytes(): Uint8Array
+  readRange?(start: number, end: number): Uint8Array
+  readRangeInto?(start: number, end: number, target: Uint8Array): Uint8Array
+  inflateRawRange?(start: number, end: number): Uint8Array
+  inflateRawRangeChunksAsync?(
+    start: number,
+    end: number,
+    onChunk: (chunk: Uint8Array) => boolean | void | Promise<boolean | void>,
+    options: { readonly chunkSize: number },
+  ): Promise<boolean>
+  release?(): void
 }
-
-type ImportedXlsxSourceReference = Uint8Array | ImportedXlsxSourceReader
-
-type SourcePreservingZip = Record<string, Uint8Array>
 
 export interface XlsxSourceLiteralPatch {
   readonly sheetName: string
   readonly address: string
-  readonly value: LiteralInput
+  readonly value: XlsxScalarPatchValue
 }
 
 export interface XlsxSourceLiteralPatchExportInput {
-  readonly source: ImportedXlsxSourceReference
+  readonly source: Uint8Array | XlsxSourceReader
   readonly patches: readonly XlsxSourceLiteralPatch[]
   readonly sheetNames?: readonly string[]
   readonly workbookName?: string
@@ -62,11 +71,17 @@ export interface XlsxSourceLiteralPatchFileExportResult {
   readonly bytesWritten: number
 }
 
-function isXlsxZipByteSource(source: ImportedXlsxSourceReference): source is ImportedXlsxSourceReader & XlsxZipByteSource {
-  return typeof (source as Partial<XlsxZipByteSource>).readRange === 'function'
+interface WorksheetPatch {
+  readonly literals: ReadonlyMap<string, XlsxScalarPatchValue>
 }
 
-function readSourcePreservingZip(source: ImportedXlsxSourceReference): SourcePreservingZip {
+type SourcePreservingZip = XlsxZipEntries
+
+function isXlsxZipByteSource(source: Uint8Array | XlsxSourceReader): source is XlsxSourceReader & XlsxZipByteSource {
+  return !(source instanceof Uint8Array) && typeof source.readRange === 'function'
+}
+
+function readSourcePreservingZip(source: Uint8Array | XlsxSourceReader): SourcePreservingZip {
   if (source instanceof Uint8Array) {
     return readXlsxZipEntriesLazy(source)
   }
@@ -76,15 +91,12 @@ function readSourcePreservingZip(source: ImportedXlsxSourceReference): SourcePre
       return lazyZip
     }
   }
-  return unzipSync(source.readBytes())
-}
-
-function escapeXmlText(value: string): string {
-  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return readXlsxZipEntries(source.readBytes())
 }
 
 function removeXmlAttribute(tag: string, name: string): string {
-  return tag.replace(new RegExp(`\\s${name}=(["'])[\\s\\S]*?\\1`, 'u'), '')
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+  return tag.replace(new RegExp(`\\s${escapedName}=(["'])[\\s\\S]*?\\1`, 'u'), '')
 }
 
 function setCellType(openingTag: string, type: string | null): string {
@@ -113,7 +125,7 @@ function inlineStringBody(value: string): string {
   return `<is><t${preserveSpace}>${escapeXmlText(value)}</t></is>`
 }
 
-function literalCellBody(value: LiteralInput): { readonly type: string | null; readonly body: string } | null {
+function literalCellBody(value: XlsxScalarPatchValue): { readonly type: string | null; readonly body: string } | null {
   if (value === null) {
     return { type: null, body: '' }
   }
@@ -132,15 +144,15 @@ function rewriteCellXml(cellXml: string, type: string | null, body: string): str
     return null
   }
   const nextOpeningTag = setCellType(parts.openingTag, type)
-  return `${nextOpeningTag.endsWith('/>') ? nextOpeningTag.slice(0, -2) + '>' : nextOpeningTag}${body}</${parts.tagName}>`
+  return `${nextOpeningTag.endsWith('/>') ? `${nextOpeningTag.slice(0, -2)}>` : nextOpeningTag}${body}</${parts.tagName}>`
 }
 
-function patchLiteralCellXml(cellXml: string, value: LiteralInput): string | null {
+function patchLiteralCellXml(cellXml: string, value: XlsxScalarPatchValue): string | null {
   const valueBody = literalCellBody(value)
   return valueBody ? rewriteCellXml(cellXml, valueBody.type, valueBody.body) : null
 }
 
-function literalCellXml(address: string, value: LiteralInput): string | null {
+function literalCellXml(address: string, value: XlsxScalarPatchValue): string | null {
   const valueBody = literalCellBody(value)
   return valueBody
     ? `<c r="${escapeXmlAttribute(address)}"${valueBody.type === null ? '' : ` t="${valueBody.type}"`}>${valueBody.body}</c>`
@@ -189,7 +201,7 @@ function insertRowIntoSheetData(sheetXml: string, address: string, cellXml: stri
   return sheetXml.replace(/<\/((?:[A-Za-z_][\w.-]*:)?sheetData)>/u, `${rowXml}</$1>`)
 }
 
-function insertLiteralCell(sheetXml: string, address: string, value: LiteralInput): string | null {
+function insertLiteralCell(sheetXml: string, address: string, value: XlsxScalarPatchValue): string | null {
   const cellXml = literalCellXml(address, value)
   return cellXml ? (insertCellIntoExistingRow(sheetXml, address, cellXml) ?? insertRowIntoSheetData(sheetXml, address, cellXml)) : null
 }
@@ -260,59 +272,13 @@ function patchWorksheetXml(sheetXml: string, patch: WorksheetPatch): string | nu
   return updateWorksheetDimension(nextXml, patch.literals.keys())
 }
 
-function tryPrepareStreamingPatchedWorksheetEntry(
-  zip: SourcePreservingZip,
-  sheetPath: string,
-  patch: WorksheetPatch,
-): PreparedZipEntry | null {
-  const compressedChunks: Uint8Array[] = []
-  const sizes = tryWriteStreamingPatchedWorksheetEntry(zip, sheetPath, patch, (chunk) => {
-    compressedChunks.push(chunk)
-  })
-  return sizes
-    ? {
-        compressedChunks,
-        compressedSize: sizes.compressedSize,
-        uncompressedSize: sizes.uncompressedSize,
-        crc: sizes.crc,
-      }
-    : null
-}
-
-function tryPrepareStreamingPatchedWorksheetEntryFile(
-  zip: SourcePreservingZip,
-  sheetPath: string,
-  patch: WorksheetPatch,
-  compressedPath: string,
-): FilePreparedZipEntry | null {
-  const fd = openSync(compressedPath, 'w')
-  let closed = false
-  const close = (): void => {
-    if (!closed) {
-      closeSync(fd)
-      closed = true
-    }
-  }
-  try {
-    const sizes = tryWriteStreamingPatchedWorksheetEntry(zip, sheetPath, patch, (chunk) => {
-      writeAllSync(fd, chunk)
-    })
-    close()
-    if (!sizes) {
-      unlinkSync(compressedPath)
-      return null
-    }
-    return { ...sizes, compressedPath }
-  } catch {
-    close()
-    try {
-      unlinkSync(compressedPath)
-    } catch {
-      // Best-effort cleanup only; the caller receives the export failure below.
-    }
-    return null
-  } finally {
-    close()
+function deflatedPreparedEntry(bytes: Uint8Array): PreparedZipEntry {
+  const compressed = deflateRawSync(bytes)
+  return {
+    compressedChunks: [compressed],
+    compressedSize: compressed.byteLength,
+    uncompressedSize: bytes.byteLength,
+    crc: crc32Finalize(crc32Update(0xffffffff, bytes)),
   }
 }
 
@@ -350,104 +316,6 @@ async function tryPrepareStreamingPatchedWorksheetEntryFileAsync(
     return null
   } finally {
     close()
-  }
-}
-
-function tryWriteStreamingPatchedWorksheetEntry(
-  zip: SourcePreservingZip,
-  sheetPath: string,
-  patch: WorksheetPatch,
-  writeCompressedChunk: (chunk: Uint8Array) => void,
-): PreparedZipEntrySizes | null {
-  if (patch.literals.size === 0) {
-    return null
-  }
-  const textDecoder = new TextDecoder()
-  const textEncoder = new TextEncoder()
-  const patchedLiterals = new Set<string>()
-  let compressedSize = 0
-  let uncompressedSize = 0
-  let crcState = 0xffffffff
-  let failed = false
-  let buffer = ''
-  let pendingDeflateChunk: Uint8Array | null = null
-  const deflate = new Deflate((chunk) => {
-    if (chunk.byteLength === 0) {
-      return
-    }
-    writeCompressedChunk(chunk)
-    compressedSize += chunk.byteLength
-  })
-  const emitText = (text: string): void => {
-    if (text.length === 0) {
-      return
-    }
-    const bytes = textEncoder.encode(text)
-    uncompressedSize += bytes.byteLength
-    crcState = crc32Update(crcState, bytes)
-    if (pendingDeflateChunk) {
-      deflate.push(pendingDeflateChunk)
-    }
-    pendingDeflateChunk = bytes
-  }
-  const processBuffer = (final: boolean): void => {
-    if (buffer.length === 0 || failed) {
-      return
-    }
-    const safeEnd = final ? buffer.length : Math.max(0, buffer.lastIndexOf('<'))
-    if (safeEnd === 0 && !final) {
-      return
-    }
-    const cellPattern = new RegExp(worksheetCellElementPattern.source, 'gu')
-    let emitOffset = 0
-    for (const match of buffer.matchAll(cellPattern)) {
-      const cellXml = match[0]
-      const matchStart = match.index
-      const matchEnd = matchStart + cellXml.length
-      if (matchEnd > safeEnd) {
-        break
-      }
-      emitText(buffer.slice(emitOffset, matchStart))
-      const openingTag = worksheetCellOpeningTagPattern.exec(cellXml)?.[0]
-      const address = openingTag ? readXmlAttribute(openingTag, 'r') : null
-      if (address && patch.literals.has(address)) {
-        const patched = patchLiteralCellXml(cellXml, patch.literals.get(address) ?? null)
-        if (!patched) {
-          failed = true
-          return
-        }
-        patchedLiterals.add(address)
-        emitText(patched)
-      } else {
-        emitText(cellXml)
-      }
-      emitOffset = matchEnd
-    }
-    emitText(buffer.slice(emitOffset, safeEnd))
-    buffer = buffer.slice(safeEnd)
-  }
-  const streamed = forEachInflatedXlsxZipEntryChunk(
-    zip,
-    sheetPath,
-    (chunk) => {
-      buffer += textDecoder.decode(chunk, { stream: true })
-      processBuffer(false)
-    },
-    { chunkSize: 64 * 1024, forceStreamingInflate: true },
-  )
-  if (!streamed || failed) {
-    return null
-  }
-  buffer += textDecoder.decode()
-  processBuffer(true)
-  if (failed || patchedLiterals.size !== patch.literals.size) {
-    return null
-  }
-  deflate.push(pendingDeflateChunk ?? new Uint8Array(), true)
-  return {
-    compressedSize,
-    uncompressedSize,
-    crc: crc32Finalize(crcState),
   }
 }
 
@@ -510,7 +378,7 @@ async function tryWriteNativeStreamingPatchedWorksheetEntry(
       if (matchEnd > safeEnd) {
         break
       }
-      // oxlint-disable-next-line eslint(no-await-in-loop) -- XML chunks must be emitted in worksheet order to preserve zlib backpressure.
+      // oxlint-disable-next-line eslint(no-await-in-loop) -- XML chunks must be emitted in worksheet order.
       await emitText(buffer.slice(emitOffset, matchStart))
       const openingTag = worksheetCellOpeningTagPattern.exec(cellXml)?.[0]
       const address = openingTag ? readXmlAttribute(openingTag, 'r') : null
@@ -521,10 +389,10 @@ async function tryWriteNativeStreamingPatchedWorksheetEntry(
           return
         }
         patchedLiterals.add(address)
-        // oxlint-disable-next-line eslint(no-await-in-loop) -- Patched cell XML must remain ordered in the native deflate stream.
+        // oxlint-disable-next-line eslint(no-await-in-loop) -- Patched cells must remain ordered in the deflate stream.
         await emitText(patched)
       } else {
-        // oxlint-disable-next-line eslint(no-await-in-loop) -- Unpatched cell XML must remain ordered in the native deflate stream.
+        // oxlint-disable-next-line eslint(no-await-in-loop) -- Unpatched cell XML must remain ordered in the deflate stream.
         await emitText(cellXml)
       }
       emitOffset = matchEnd
@@ -540,7 +408,7 @@ async function tryWriteNativeStreamingPatchedWorksheetEntry(
         buffer += textDecoder.decode(chunk, { stream: true })
         await processBuffer(false)
       },
-      { chunkSize: 64 * 1024, forceStreamingInflate: true },
+      { chunkSize: 64 * 1024 },
     )
     if (!streamed || failed) {
       deflate.destroy()
@@ -565,14 +433,18 @@ async function tryWriteNativeStreamingPatchedWorksheetEntry(
   }
 }
 
-function literalPatchesBySheet(patches: readonly ImportedXlsxSourceCellPatch[]): Map<string, Map<string, LiteralInput>> {
-  const output = new Map<string, Map<string, LiteralInput>>()
+function literalPatchesBySheet(patches: readonly XlsxSourceLiteralPatch[]): Map<string, Map<string, XlsxScalarPatchValue>> {
+  const output = new Map<string, Map<string, XlsxScalarPatchValue>>()
   for (const patch of patches) {
-    const sheetPatches = output.get(patch.sheetName) ?? new Map<string, LiteralInput>()
+    const sheetPatches = output.get(patch.sheetName) ?? new Map<string, XlsxScalarPatchValue>()
     sheetPatches.set(patch.address, patch.value)
     output.set(patch.sheetName, sheetPatches)
   }
   return output
+}
+
+function uniquePatchedSheetNames(patches: readonly XlsxSourceLiteralPatch[]): string[] {
+  return [...new Set(patches.map((patch) => patch.sheetName))]
 }
 
 function removeCalcChain(zip: Record<string, Uint8Array>): void {
@@ -616,152 +488,97 @@ function ensureWorkbookRecalculation(zip: Record<string, Uint8Array>): boolean {
   return true
 }
 
-export function tryExportSourcePreservingXlsx(snapshot: WorkbookSnapshot, source: ImportedXlsxSourceReference): Uint8Array | null {
-  const literalPatches = readImportedXlsxSourceCellPatches(snapshot)
-  if (literalPatches.length === 0) {
-    return null
+function normalizedPatchInput(input: XlsxSourceLiteralPatchExportInput): {
+  readonly source: Uint8Array | XlsxSourceReader
+  readonly patches: readonly XlsxSourceLiteralPatch[]
+  readonly sheetNames: readonly string[]
+} {
+  return {
+    source: input.source,
+    patches: input.patches,
+    sheetNames: input.sheetNames ?? uniquePatchedSheetNames(input.patches),
   }
+}
+
+export function exportXlsxSourceLiteralPatches(input: XlsxSourceLiteralPatchExportInput): Uint8Array {
+  const { source, patches, sheetNames } = normalizedPatchInput(input)
   const zip = readSourcePreservingZip(source)
   const preparedEntries = new Map<string, PreparedZipEntry>()
-  const orderedSheets = snapshot.sheets.toSorted((left, right) => left.order - right.order)
-  const sheetPathsByName = new Map(
-    workbookSheetPathEntriesFromSource(
-      zip,
-      orderedSheets.map((sheet) => sheet.name),
-    ).map((entry) => [entry.name, entry.path]),
-  )
-  const literalsBySheet = literalPatchesBySheet(literalPatches)
-  for (const sheet of orderedSheets) {
-    const literals = literalsBySheet.get(sheet.name) ?? new Map<string, LiteralInput>()
+  const sheetPathsByName = new Map(workbookSheetPathEntriesFromSource(zip, sheetNames).map((entry) => [entry.name, entry.path]))
+  const literalsBySheet = literalPatchesBySheet(patches)
+  for (const sheetName of sheetNames) {
+    const literals = literalsBySheet.get(sheetName) ?? new Map<string, XlsxScalarPatchValue>()
     if (literals.size === 0) {
       continue
     }
-    const sheetPath = sheetPathsByName.get(sheet.name)
+    const sheetPath = sheetPathsByName.get(sheetName)
     if (!sheetPath) {
-      return null
-    }
-    const patch = { literals }
-    const streamingPatch = tryPrepareStreamingPatchedWorksheetEntry(zip, sheetPath, patch)
-    if (streamingPatch) {
-      preparedEntries.set(sheetPath, streamingPatch)
-      continue
+      throw new Error(`Unable to resolve XLSX worksheet path for sheet: ${sheetName}`)
     }
     const sheetXml = getZipText(zip, sheetPath)
     if (!sheetXml) {
-      return null
+      throw new Error(`Unable to read XLSX worksheet XML for sheet: ${sheetName}`)
     }
-    const patchedXml = patchWorksheetXml(sheetXml, patch)
+    const patchedXml = patchWorksheetXml(sheetXml, { literals })
     if (patchedXml === null) {
-      return null
+      throw new Error(`Unable to apply XLSX literal patches for sheet: ${sheetName}`)
     }
-    setZipText(zip, sheetPath, patchedXml)
+    preparedEntries.set(sheetPath, deflatedPreparedEntry(new TextEncoder().encode(patchedXml)))
   }
   removeCalcChain(zip)
   if (!ensureWorkbookRecalculation(zip)) {
-    return null
+    throw new Error('Unable to update XLSX workbook recalculation settings')
   }
   return zipSourcePreservingEntries(zip, preparedEntries)
 }
 
-export function tryExportSourcePreservingXlsxToFile(
-  snapshot: WorkbookSnapshot,
-  source: ImportedXlsxSourceReference,
-  outputPath: string,
-): XlsxSourceLiteralPatchFileExportResult | null {
-  const literalPatches = readImportedXlsxSourceCellPatches(snapshot)
-  if (literalPatches.length === 0) {
-    return null
-  }
-  const zip = readSourcePreservingZip(source)
-  const preparedEntries = new Map<string, FilePreparedZipEntry>()
-  const preparedEntryPaths: string[] = []
-  const orderedSheets = snapshot.sheets.toSorted((left, right) => left.order - right.order)
-  const sheetPathsByName = new Map(
-    workbookSheetPathEntriesFromSource(
-      zip,
-      orderedSheets.map((sheet) => sheet.name),
-    ).map((entry) => [entry.name, entry.path]),
-  )
-  const literalsBySheet = literalPatchesBySheet(literalPatches)
-  for (const sheet of orderedSheets) {
-    const literals = literalsBySheet.get(sheet.name) ?? new Map<string, LiteralInput>()
-    if (literals.size === 0) {
-      continue
-    }
-    const sheetPath = sheetPathsByName.get(sheet.name)
-    if (!sheetPath) {
-      cleanupTemporaryFiles(preparedEntryPaths)
-      return null
-    }
-    const patch = { literals }
-    const preparedEntryPath = `${outputPath}.${randomUUID()}.entry.tmp`
-    const preparedEntry = tryPrepareStreamingPatchedWorksheetEntryFile(zip, sheetPath, patch, preparedEntryPath)
-    if (!preparedEntry) {
-      cleanupTemporaryFiles(preparedEntryPaths)
-      return null
-    }
-    preparedEntryPaths.push(preparedEntryPath)
-    preparedEntries.set(sheetPath, preparedEntry)
-  }
-  removeCalcChain(zip)
-  if (!ensureWorkbookRecalculation(zip)) {
-    cleanupTemporaryFiles(preparedEntryPaths)
-    return null
-  }
-  const temporaryOutputPath = `${outputPath}.${randomUUID()}.tmp`
+export function exportXlsxSourceLiteralPatchesToFile(input: XlsxSourceLiteralPatchFileExportInput): XlsxSourceLiteralPatchFileExportResult {
+  const exported = exportXlsxSourceLiteralPatches(input)
+  const temporaryOutputPath = `${input.outputPath}.${randomUUID()}.tmp`
   try {
-    const bytesWritten = zipSourcePreservingEntriesToFile(zip, preparedEntries, temporaryOutputPath)
-    renameSync(temporaryOutputPath, outputPath)
-    return { bytesWritten }
-  } catch {
+    const fd = openSync(temporaryOutputPath, 'w')
+    try {
+      writeAllSync(fd, exported)
+    } finally {
+      closeSync(fd)
+    }
+    renameSync(temporaryOutputPath, input.outputPath)
+    return { bytesWritten: exported.byteLength }
+  } catch (error) {
     try {
       unlinkSync(temporaryOutputPath)
     } catch {
       // Best-effort cleanup only; the caller receives the export failure below.
     }
-    return null
-  } finally {
-    cleanupTemporaryFiles(preparedEntryPaths)
+    throw error
   }
 }
 
-export async function tryExportSourcePreservingXlsxToFileAsync(
-  snapshot: WorkbookSnapshot,
-  source: ImportedXlsxSourceReference,
-  outputPath: string,
-): Promise<XlsxSourceLiteralPatchFileExportResult | null> {
-  const literalPatches = readImportedXlsxSourceCellPatches(snapshot)
-  if (literalPatches.length === 0) {
-    return null
-  }
+export async function exportXlsxSourceLiteralPatchesToFileAsync(
+  input: XlsxSourceLiteralPatchFileExportInput,
+): Promise<XlsxSourceLiteralPatchFileExportResult> {
+  const { source, patches, sheetNames } = normalizedPatchInput(input)
   const zip = readSourcePreservingZip(source)
   const preparedEntries = new Map<string, FilePreparedZipEntry>()
   const preparedEntryPaths: string[] = []
-  const orderedSheets = snapshot.sheets.toSorted((left, right) => left.order - right.order)
-  const sheetPathsByName = new Map(
-    workbookSheetPathEntriesFromSource(
-      zip,
-      orderedSheets.map((sheet) => sheet.name),
-    ).map((entry) => [entry.name, entry.path]),
-  )
-  const literalsBySheet = literalPatchesBySheet(literalPatches)
-  for (const sheet of orderedSheets) {
-    const literals = literalsBySheet.get(sheet.name) ?? new Map<string, LiteralInput>()
+  const sheetPathsByName = new Map(workbookSheetPathEntriesFromSource(zip, sheetNames).map((entry) => [entry.name, entry.path]))
+  const literalsBySheet = literalPatchesBySheet(patches)
+  for (const sheetName of sheetNames) {
+    const literals = literalsBySheet.get(sheetName) ?? new Map<string, XlsxScalarPatchValue>()
     if (literals.size === 0) {
       continue
     }
-    const sheetPath = sheetPathsByName.get(sheet.name)
+    const sheetPath = sheetPathsByName.get(sheetName)
     if (!sheetPath) {
       cleanupTemporaryFiles(preparedEntryPaths)
-      return null
+      throw new Error(`Unable to resolve XLSX worksheet path for sheet: ${sheetName}`)
     }
-    const patch = { literals }
-    const preparedEntryPath = `${outputPath}.${randomUUID()}.entry.tmp`
-    // oxlint-disable-next-line eslint(no-await-in-loop) -- Worksheets are prepared sequentially so each native stream and temp file is closed before the next.
-    const preparedEntry = await tryPrepareStreamingPatchedWorksheetEntryFileAsync(zip, sheetPath, patch, preparedEntryPath)
+    const preparedEntryPath = `${input.outputPath}.${randomUUID()}.entry.tmp`
+    // oxlint-disable-next-line eslint(no-await-in-loop) -- Worksheets are prepared sequentially so each stream closes before the next.
+    const preparedEntry = await tryPrepareStreamingPatchedWorksheetEntryFileAsync(zip, sheetPath, { literals }, preparedEntryPath)
     if (!preparedEntry) {
       cleanupTemporaryFiles(preparedEntryPaths)
-      return null
+      throw new Error(`Unable to apply XLSX literal patches for sheet: ${sheetName}`)
     }
     preparedEntryPaths.push(preparedEntryPath)
     preparedEntries.set(sheetPath, preparedEntry)
@@ -769,20 +586,20 @@ export async function tryExportSourcePreservingXlsxToFileAsync(
   removeCalcChain(zip)
   if (!ensureWorkbookRecalculation(zip)) {
     cleanupTemporaryFiles(preparedEntryPaths)
-    return null
+    throw new Error('Unable to update XLSX workbook recalculation settings')
   }
-  const temporaryOutputPath = `${outputPath}.${randomUUID()}.tmp`
+  const temporaryOutputPath = `${input.outputPath}.${randomUUID()}.tmp`
   try {
     const bytesWritten = zipSourcePreservingEntriesToFile(zip, preparedEntries, temporaryOutputPath)
-    renameSync(temporaryOutputPath, outputPath)
+    renameSync(temporaryOutputPath, input.outputPath)
     return { bytesWritten }
-  } catch {
+  } catch (error) {
     try {
       unlinkSync(temporaryOutputPath)
     } catch {
       // Best-effort cleanup only; the caller receives the export failure below.
     }
-    return null
+    throw error
   } finally {
     cleanupTemporaryFiles(preparedEntryPaths)
   }
@@ -796,18 +613,4 @@ function cleanupTemporaryFiles(paths: readonly string[]): void {
       // Temporary file cleanup is best-effort only.
     }
   }
-}
-
-export function exportXlsxSourceLiteralPatches(input: XlsxSourceLiteralPatchExportInput): Uint8Array {
-  return exportNativeXlsxSourceLiteralPatches(input)
-}
-
-export function exportXlsxSourceLiteralPatchesToFile(input: XlsxSourceLiteralPatchFileExportInput): XlsxSourceLiteralPatchFileExportResult {
-  return exportNativeXlsxSourceLiteralPatchesToFile(input)
-}
-
-export async function exportXlsxSourceLiteralPatchesToFileAsync(
-  input: XlsxSourceLiteralPatchFileExportInput,
-): Promise<XlsxSourceLiteralPatchFileExportResult> {
-  return exportNativeXlsxSourceLiteralPatchesToFileAsync(input)
 }

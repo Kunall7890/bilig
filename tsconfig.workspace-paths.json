@@ -54,7 +54,9 @@
         "./packages/bilig-xlsx-formula-recalc/src/workbook-compatibility-report.ts"
       ],
       "@bilig/xlsx/address": ["./packages/xlsx/src/address.ts"],
+      "@bilig/xlsx/source-preserving-literal-patches": ["./packages/xlsx/src/source-preserving-literal-patches.ts"],
       "@bilig/xlsx/source-preserving-zip": ["./packages/xlsx/src/source-preserving-zip.ts"],
+      "@bilig/xlsx/zip-reader": ["./packages/xlsx/src/zip-reader.ts"],
       "@bilig/zero-sync": ["./packages/zero-sync/src/index.ts"],
       "bilig-workpaper": ["./packages/bilig/src/index.ts"],
       "bilig-workpaper/mcp": ["./packages/bilig/src/mcp.ts"],

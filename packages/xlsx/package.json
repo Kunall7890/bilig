@@ -43,6 +43,16 @@
       "types": "./dist/source-preserving-zip.d.ts",
       "import": "./dist/source-preserving-zip.js",
       "default": "./dist/source-preserving-zip.js"
+    },
+    "./source-preserving-literal-patches": {
+      "types": "./dist/source-preserving-literal-patches.d.ts",
+      "import": "./dist/source-preserving-literal-patches.js",
+      "default": "./dist/source-preserving-literal-patches.js"
+    },
+    "./zip-reader": {
+      "types": "./dist/zip-reader.d.ts",
+      "import": "./dist/zip-reader.js",
+      "default": "./dist/zip-reader.js"
     }
   },
   "publishConfig": {

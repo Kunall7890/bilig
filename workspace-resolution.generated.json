@@ -199,9 +199,17 @@
     "packageDir": "packages/xlsx",
     "sourceEntry": "packages/xlsx/src/address.ts"
   },
+  "@bilig/xlsx/source-preserving-literal-patches": {
+    "packageDir": "packages/xlsx",
+    "sourceEntry": "packages/xlsx/src/source-preserving-literal-patches.ts"
+  },
   "@bilig/xlsx/source-preserving-zip": {
     "packageDir": "packages/xlsx",
     "sourceEntry": "packages/xlsx/src/source-preserving-zip.ts"
+  },
+  "@bilig/xlsx/zip-reader": {
+    "packageDir": "packages/xlsx",
+    "sourceEntry": "packages/xlsx/src/zip-reader.ts"
   },
   "@bilig/zero-sync": {
     "packageDir": "packages/zero-sync",

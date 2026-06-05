@@ -1,2 +1,5 @@
 export * from './address.js'
+export * from './source-preserving-literal-patches.js'
 export * from './source-preserving-zip.js'
+export * from './workbook-sheet-paths.js'
+export * from './zip-reader.js'

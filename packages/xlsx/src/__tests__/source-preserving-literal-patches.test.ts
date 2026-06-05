@@ -1,0 +1,115 @@
+import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import { describe, expect, it } from 'vitest'
+
+import {
+  exportXlsxSourceLiteralPatches,
+  exportXlsxSourceLiteralPatchesToFileAsync,
+  getZipText,
+  readXlsxZipEntries,
+  zipSourcePreservingEntries,
+  type XlsxSourceReader,
+} from '../index.js'
+
+function minimalWorkbookBytes(): Uint8Array {
+  return zipSourcePreservingEntries({
+    '[Content_Types].xml': new TextEncoder().encode(`<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/calcChain.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.calcChain+xml"/>
+</Types>`),
+    '_rels/.rels': new TextEncoder().encode(`<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`),
+    'xl/workbook.xml': new TextEncoder().encode(`<?xml version="1.0" encoding="UTF-8"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>
+    <sheet name="Revenue &amp; Ops" sheetId="1" r:id="rId1"/>
+  </sheets>
+  <calcPr calcMode="manual"/>
+</workbook>`),
+    'xl/_rels/workbook.xml.rels': new TextEncoder().encode(`<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/calcChain" Target="calcChain.xml"/>
+</Relationships>`),
+    'xl/worksheets/sheet1.xml': new TextEncoder().encode(`<?xml version="1.0" encoding="UTF-8"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <dimension ref="A1:B2"/>
+  <sheetData>
+    <row r="1"><c r="A1"><v>1</v></c><c r="B1" t="inlineStr"><is><t>old</t></is></c></row>
+  </sheetData>
+</worksheet>`),
+    'xl/calcChain.xml': new TextEncoder().encode(`<?xml version="1.0" encoding="UTF-8"?>
+<calcChain xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><c r="A1" i="1"/></calcChain>`),
+  })
+}
+
+describe('@bilig/xlsx source-preserving literal patches', () => {
+  it('patches scalar cells, inserts missing cells, and invalidates calcChain without SheetJS', () => {
+    const exported = exportXlsxSourceLiteralPatches({
+      source: minimalWorkbookBytes(),
+      sheetNames: ['Revenue & Ops'],
+      patches: [
+        { sheetName: 'Revenue & Ops', address: 'A1', value: 42 },
+        { sheetName: 'Revenue & Ops', address: 'B1', value: 'new & checked' },
+        { sheetName: 'Revenue & Ops', address: 'C3', value: true },
+      ],
+    })
+
+    const zip = readXlsxZipEntries(exported)
+    const sheetXml = getZipText(zip, 'xl/worksheets/sheet1.xml')
+    const workbookXml = getZipText(zip, 'xl/workbook.xml')
+    const workbookRelationshipsXml = getZipText(zip, 'xl/_rels/workbook.xml.rels')
+    const contentTypesXml = getZipText(zip, '[Content_Types].xml')
+
+    expect(sheetXml).toContain('<dimension ref="A1:C3"/>')
+    expect(sheetXml).toContain('<c r="A1"><v>42</v></c>')
+    expect(sheetXml).toContain('<c r="B1" t="inlineStr"><is><t>new &amp; checked</t></is></c>')
+    expect(sheetXml).toContain('<c r="C3" t="b"><v>1</v></c>')
+    expect(workbookXml).toContain('calcMode="auto"')
+    expect(workbookXml).toContain('fullCalcOnLoad="1"')
+    expect(workbookXml).toContain('forceFullCalc="1"')
+    expect(zip['xl/calcChain.xml']).toBeUndefined()
+    expect(workbookRelationshipsXml).not.toContain('calcChain')
+    expect(contentTypesXml).not.toContain('calcChain.xml')
+  })
+
+  it('writes file-backed patches without reading the whole source through readBytes', async () => {
+    const sourceBytes = minimalWorkbookBytes()
+    let readBytesCalled = false
+    const source: XlsxSourceReader = {
+      byteLength: sourceBytes.byteLength,
+      readBytes() {
+        readBytesCalled = true
+        throw new Error('readBytes should not be called')
+      },
+      readRange(start, end) {
+        return sourceBytes.subarray(start, end)
+      },
+    }
+    const tempDir = mkdtempSync(join(tmpdir(), 'bilig-xlsx-patch-'))
+    const outputPath = join(tempDir, 'patched.xlsx')
+    try {
+      const result = await exportXlsxSourceLiteralPatchesToFileAsync({
+        source,
+        outputPath,
+        sheetNames: ['Revenue & Ops'],
+        patches: [{ sheetName: 'Revenue & Ops', address: 'B1', value: 'file-backed' }],
+      })
+
+      expect(readBytesCalled).toBe(false)
+      expect(result.bytesWritten).toBe(statSync(outputPath).size)
+      const zip = readXlsxZipEntries(new Uint8Array(readFileSync(outputPath)))
+      expect(getZipText(zip, 'xl/worksheets/sheet1.xml')).toContain('file-backed')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+})
