@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import { ValueTag } from '@bilig/protocol'
 import { SpreadsheetEngine } from '@bilig/core'
@@ -30,20 +30,25 @@ describe('xlsx external defined names', () => {
 })
 
 function buildExternalDefinedNameCacheWorkbook(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([[]])
-  sheet.A1 = {
-    t: 's',
-    f: '="Includes forecasts finalized on or before "&ReportDate&"."',
-    v: 'Includes forecasts finalized on or before January 30, 2024.',
-  }
-  sheet['!ref'] = 'A1:A1'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Report')
-  workbook.Workbook = {
-    Names: [{ Name: 'ReportDate', Ref: "'[1]Contacts, Cutoffs, and Data'!$B$1" }],
-  }
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Report',
+          cells: [
+            {
+              address: 'A1',
+              row: 0,
+              col: 0,
+              formula: '="Includes forecasts finalized on or before "&ReportDate&"."',
+              value: 'Includes forecasts finalized on or before January 30, 2024.',
+            },
+          ],
+        },
+      ],
+      definedNames: [{ name: 'ReportDate', formula: "'[1]Contacts, Cutoffs, and Data'!$B$1" }],
+    }),
+  )
   zip['xl/workbook.xml'] = strToU8(
     strFromU8(zip['xl/workbook.xml'])
       .replace(/<workbook\b([^>]*)>/u, (match) =>

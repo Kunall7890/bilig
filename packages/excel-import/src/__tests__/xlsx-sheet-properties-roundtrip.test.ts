@@ -1,6 +1,6 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import { exportXlsx, importXlsx } from '../index.js'
 
@@ -28,11 +28,20 @@ describe('worksheet sheetPr properties roundtrip', () => {
 })
 
 function buildWorksheetPropertiesWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['summary']]), 'Summary')
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['detail']]), 'Detail')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Summary',
+          cells: [{ address: 'A1', row: 0, col: 0, value: 'summary' }],
+        },
+        {
+          name: 'Detail',
+          cells: [{ address: 'A1', row: 0, col: 0, value: 'detail' }],
+        },
+      ],
+    }),
+  )
   replaceSheetPr(
     zip,
     1,

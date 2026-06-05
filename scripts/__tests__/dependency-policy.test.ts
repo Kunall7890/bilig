@@ -34,11 +34,19 @@ const nativeXlsxExcelImportFixtureTests = [
   'packages/excel-import/src/__tests__/xlsx-byte-source-import.test.ts',
   'packages/excel-import/src/__tests__/xlsx-calculation-properties-roundtrip.test.ts',
   'packages/excel-import/src/__tests__/xlsx-date1904-system.test.ts',
+  'packages/excel-import/src/__tests__/xlsx-defined-names-import.test.ts',
   'packages/excel-import/src/__tests__/xlsx-error-cell-import.test.ts',
+  'packages/excel-import/src/__tests__/xlsx-external-defined-names.test.ts',
+  'packages/excel-import/src/__tests__/xlsx-formula-cache-roundtrip.test.ts',
   'packages/excel-import/src/__tests__/xlsx-formula-cache-text-normalization.test.ts',
+  'packages/excel-import/src/__tests__/xlsx-hyperlink-roundtrip.test.ts',
+  'packages/excel-import/src/__tests__/xlsx-axis-visibility-roundtrip.test.ts',
+  'packages/excel-import/src/__tests__/xlsx-sheet-properties-roundtrip.test.ts',
   'packages/excel-import/src/__tests__/xlsx-sheet-name-whitespace.test.ts',
   'packages/excel-import/src/__tests__/xlsx-sheet-visibility-roundtrip.test.ts',
+  'packages/excel-import/src/__tests__/xlsx-view-state-roundtrip.test.ts',
   'packages/excel-import/src/__tests__/xlsx-workbook-sheet-paths.test.ts',
+  'packages/excel-import/src/__tests__/xlsx-worksheet-dimensions-roundtrip.test.ts',
 ] as const
 
 function packageManifestPaths(): string[] {

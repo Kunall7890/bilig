@@ -1,17 +1,23 @@
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
 
 import { exportXlsx, importXlsx } from '../index.js'
+import { readXlsxTestZipText } from './xlsx-test-helpers.js'
 
 describe('XLSX defined name import', () => {
   it('preserves sheet-scoped table-of-contents names without warning', () => {
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['Heading']]), 'Sheet1')
-    workbook.Workbook = {
-      Names: [{ Name: '_Toc387132125', Sheet: 0, Ref: 'Sheet1!$A$1' }],
-    }
-
-    const imported = importXlsx(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }), 'toc-defined-name.xlsx')
+    const imported = importXlsx(
+      writeSimpleXlsxWorkbook({
+        sheets: [
+          {
+            name: 'Sheet1',
+            cells: [{ address: 'A1', row: 0, col: 0, value: 'Heading' }],
+          },
+        ],
+        definedNames: [{ name: '_Toc387132125', localSheetIndex: 0, formula: 'Sheet1!$A$1' }],
+      }),
+      'toc-defined-name.xlsx',
+    )
 
     expect(imported.warnings).toEqual([])
     expect(imported.snapshot.workbook.metadata?.definedNames).toEqual([
@@ -24,21 +30,28 @@ describe('XLSX defined name import', () => {
   })
 
   it('preserves print titles and broken-reference names without treating them as ignored', () => {
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(
-      workbook,
-      XLSX.utils.aoa_to_sheet([['Header', '', '', '', '', 'Extent'], [], [], ['Title 1'], ['Title 2', '', '', '', '', 'Last']]),
-      'Summary Info',
+    const imported = importXlsx(
+      writeSimpleXlsxWorkbook({
+        sheets: [
+          {
+            name: 'Summary Info',
+            cells: [
+              { address: 'A1', row: 0, col: 0, value: 'Header' },
+              { address: 'F1', row: 0, col: 5, value: 'Extent' },
+              { address: 'A4', row: 3, col: 0, value: 'Title 1' },
+              { address: 'A5', row: 4, col: 0, value: 'Title 2' },
+              { address: 'F5', row: 4, col: 5, value: 'Last' },
+            ],
+          },
+        ],
+        definedNames: [
+          { name: 'AgenLength', formula: '#REF!' },
+          { name: '_xlnm.Print_Area', localSheetIndex: 0, formula: "'Summary Info'!$A$1:$F$5" },
+          { name: '_xlnm.Print_Titles', localSheetIndex: 0, formula: "'Summary Info'!$4:$5" },
+        ],
+      }),
+      'print-defined-names.xlsx',
     )
-    workbook.Workbook = {
-      Names: [
-        { Name: 'AgenLength', Ref: '#REF!' },
-        { Name: '_xlnm.Print_Area', Sheet: 0, Ref: "'Summary Info'!$A$1:$F$5" },
-        { Name: '_xlnm.Print_Titles', Sheet: 0, Ref: "'Summary Info'!$4:$5" },
-      ],
-    }
-
-    const imported = importXlsx(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }), 'print-defined-names.xlsx')
 
     expect(imported.warnings).toEqual([])
     expect(imported.snapshot.workbook.metadata?.definedNames).toEqual([
@@ -76,15 +89,13 @@ describe('XLSX defined name import', () => {
         },
       ],
     })
-    const workbook = XLSX.read(exported, { type: 'buffer' })
+    const workbookXml = readXlsxTestZipText(exported, 'xl/workbook.xml')
 
-    expect(workbook.Workbook?.Names).toEqual([
-      { Name: '_xlnm.Print_Area', Sheet: 0, Ref: 'Report!$A$1:$A$3' },
-      { Name: 'FormulaRate', Ref: '#REF!' },
-      { Name: 'FormulaSum', Ref: 'SUM(#REF!)' },
-      { Name: 'RateCell', Ref: '#REF!' },
-      { Name: 'SalesRange', Ref: '#REF!' },
-    ])
+    expect(workbookXml).toContain('<definedName name="_xlnm.Print_Area" localSheetId="0">Report!$A$1:$A$3</definedName>')
+    expect(workbookXml).toContain('<definedName name="FormulaRate">#REF!</definedName>')
+    expect(workbookXml).toContain('<definedName name="FormulaSum">SUM(#REF!)</definedName>')
+    expect(workbookXml).toContain('<definedName name="RateCell">#REF!</definedName>')
+    expect(workbookXml).toContain('<definedName name="SalesRange">#REF!</definedName>')
     expect(importXlsx(exported, 'sheet-delete-defined-names.xlsx').snapshot.workbook.metadata?.definedNames).toEqual([
       { name: '_xlnm.Print_Area', scopeSheetName: 'Report', value: { kind: 'formula', formula: '=Report!$A$1:$A$3' } },
       { name: 'FormulaRate', value: { kind: 'formula', formula: '=#REF!' } },
@@ -127,8 +138,8 @@ describe('XLSX defined name import', () => {
         },
       ],
     })
-    const workbook = XLSX.read(exported, { type: 'buffer' })
+    const workbookXml = readXlsxTestZipText(exported, 'xl/workbook.xml')
 
-    expect(workbook.Workbook?.Names).toEqual([{ Name: 'SalesUnits', Ref: "Sales['# Units]" }])
+    expect(workbookXml).toContain('<definedName name="SalesUnits">Sales[\'# Units]</definedName>')
   })
 })

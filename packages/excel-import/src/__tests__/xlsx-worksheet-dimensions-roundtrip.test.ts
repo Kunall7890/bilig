@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import { SpreadsheetEngine } from '@bilig/core'
 
 import { exportXlsx, importXlsx } from '../index.js'
@@ -54,11 +54,16 @@ describe('XLSX worksheet dimension roundtrip', () => {
 })
 
 function buildDimensionWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([[123]])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Dimensions')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Dimensions',
+          cells: [{ address: 'A1', row: 0, col: 0, value: 123 }],
+        },
+      ],
+    }),
+  )
   zip['xl/worksheets/sheet1.xml'] = strToU8(dimensionWorksheetXml)
   return zipSync(zip)
 }

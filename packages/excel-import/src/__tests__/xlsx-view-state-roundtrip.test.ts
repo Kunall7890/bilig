@@ -1,6 +1,6 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
 
 import { exportXlsx, importXlsx } from '../index.js'
 
@@ -48,24 +48,30 @@ interface ViewStateSummary {
 }
 
 function buildWorkbookWithViewState(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(
-    workbook,
-    XLSX.utils.aoa_to_sheet([
-      ['Metric', 'Value'],
-      ['Revenue', 1250],
-    ]),
-    'Summary',
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Summary',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Metric' },
+            { address: 'B1', row: 0, col: 1, value: 'Value' },
+            { address: 'A2', row: 1, col: 0, value: 'Revenue' },
+            { address: 'B2', row: 1, col: 1, value: 1250 },
+          ],
+        },
+        {
+          name: 'Inputs',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Input' },
+            { address: 'B1', row: 0, col: 1, value: 'Value' },
+            { address: 'A2', row: 1, col: 0, value: 'Growth' },
+            { address: 'B2', row: 1, col: 1, value: 0.08 },
+          ],
+        },
+      ],
+    }),
   )
-  XLSX.utils.book_append_sheet(
-    workbook,
-    XLSX.utils.aoa_to_sheet([
-      ['Input', 'Value'],
-      ['Growth', 0.08],
-    ]),
-    'Inputs',
-  )
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
 
   upsertXmlSection(
     zip,
@@ -89,9 +95,19 @@ function buildWorkbookWithViewState(): Uint8Array {
 }
 
 function buildWorkbookWithPrefixedViewState(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['Metric'], ['Revenue']]), 'Summary')
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Summary',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Metric' },
+            { address: 'A2', row: 1, col: 0, value: 'Revenue' },
+          ],
+        },
+      ],
+    }),
+  )
   zip['xl/workbook.xml'] = strToU8(
     strFromU8(zip['xl/workbook.xml'] ?? new Uint8Array()).replace(
       '<workbook ',

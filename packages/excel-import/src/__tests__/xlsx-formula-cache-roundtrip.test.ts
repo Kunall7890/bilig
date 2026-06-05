@@ -1,5 +1,5 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import { describe, expect, it } from 'vitest'
 
 import { attachRuntimeImage } from '@bilig/core'
@@ -415,61 +415,80 @@ describe('formula cache roundtrip', () => {
 })
 
 function buildFormulaCacheWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    [1200, null, null],
-    [350, null, null],
-  ])
-  sheet.B1 = { t: 'n', f: 'A1+A2', v: 1550 }
-  sheet.B2 = { t: 'n', f: 'SUM(A1:A2)', v: 1550 }
-  sheet.C2 = { t: 'n', f: 'B1/A1', v: 1.2916666666666667 }
-  sheet['!ref'] = 'A1:C2'
-
-  XLSX.utils.book_append_sheet(workbook, sheet, 'FormulaCache')
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'FormulaCache',
+        cells: [
+          { address: 'A1', row: 0, col: 0, value: 1200 },
+          { address: 'A2', row: 1, col: 0, value: 350 },
+          { address: 'B1', row: 0, col: 1, formula: 'A1+A2', value: 1550 },
+          { address: 'B2', row: 1, col: 1, formula: 'SUM(A1:A2)', value: 1550 },
+          { address: 'C2', row: 1, col: 2, formula: 'B1/A1', value: 1.2916666666666667 },
+        ],
+      },
+    ],
+  })
 }
 
 function buildFormulaWithoutCachedValueWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(
-    workbook,
-    XLSX.utils.aoa_to_sheet([
-      ['Metric', 'Value'],
-      ['Units', 40],
-      ['Price', 1200],
-    ]),
-    'Inputs',
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Inputs',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Metric' },
+            { address: 'B1', row: 0, col: 1, value: 'Value' },
+            { address: 'A2', row: 1, col: 0, value: 'Units' },
+            { address: 'B2', row: 1, col: 1, value: 40 },
+            { address: 'A3', row: 2, col: 0, value: 'Price' },
+            { address: 'B3', row: 2, col: 1, value: 1200 },
+          ],
+        },
+        {
+          name: 'Summary',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Metric' },
+            { address: 'B1', row: 0, col: 1, value: 'Value' },
+            { address: 'A2', row: 1, col: 0, value: 'Revenue' },
+            { address: 'B2', row: 1, col: 1, formula: 'Inputs!B2*Inputs!B3', value: 48_000 },
+          ],
+        },
+      ],
+    }),
   )
-  const summary = XLSX.utils.aoa_to_sheet([
-    ['Metric', 'Value'],
-    ['Revenue', null],
-  ])
-  summary.B2 = { t: 'n', f: 'Inputs!B2*Inputs!B3', v: 48_000 }
-  summary['!ref'] = 'A1:B2'
-  XLSX.utils.book_append_sheet(workbook, summary, 'Summary')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
   const sheetXml = strFromU8(zip['xl/worksheets/sheet2.xml'] ?? new Uint8Array())
   zip['xl/worksheets/sheet2.xml'] = strToU8(replaceCellXml(sheetXml, 'B2', '<c r="B2"><f>Inputs!B2*Inputs!B3</f></c>'))
   return zipSync(zip)
 }
 
 function buildSharedIndirectFormulaWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const contents = XLSX.utils.aoa_to_sheet([
-    ['Sheet', 'Title'],
-    ['Data 1', null],
-    ['Data 2', null],
-  ])
-  contents.B2 = { t: 'str', f: `INDIRECT("'"&A2&"'!A2")`, v: 'First title' }
-  contents.B3 = { t: 'str', f: `INDIRECT("'"&A3&"'!A2")`, v: 'Second title' }
-  contents['!ref'] = 'A1:B3'
-
-  XLSX.utils.book_append_sheet(workbook, contents, 'Contents')
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([[], ['First title']]), 'Data 1')
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([[], ['Second title']]), 'Data 2')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Contents',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Sheet' },
+            { address: 'B1', row: 0, col: 1, value: 'Title' },
+            { address: 'A2', row: 1, col: 0, value: 'Data 1' },
+            { address: 'B2', row: 1, col: 1, formula: `INDIRECT("'"&A2&"'!A2")`, value: 'First title' },
+            { address: 'A3', row: 2, col: 0, value: 'Data 2' },
+            { address: 'B3', row: 2, col: 1, formula: `INDIRECT("'"&A3&"'!A2")`, value: 'Second title' },
+          ],
+        },
+        {
+          name: 'Data 1',
+          cells: [{ address: 'A2', row: 1, col: 0, value: 'First title' }],
+        },
+        {
+          name: 'Data 2',
+          cells: [{ address: 'A2', row: 1, col: 0, value: 'Second title' }],
+        },
+      ],
+    }),
+  )
   const sheetXml = strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
   zip['xl/worksheets/sheet1.xml'] = strToU8(
     replaceCellXml(

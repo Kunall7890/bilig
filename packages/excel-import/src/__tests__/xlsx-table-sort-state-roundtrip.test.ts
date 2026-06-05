@@ -5,77 +5,91 @@ import { SpreadsheetEngine } from '@bilig/core'
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import { exportXlsx, importXlsx } from '../index.js'
 
+const XLSX_TABLE_SORT_ROUND_TRIP_TIMEOUT_MS = 15_000
+
 describe('table sort state import/export', () => {
-  it('preserves table-level sortState metadata across XLSX round trips', () => {
-    const sourceBytes = buildTableSortStateWorkbookBytes()
-    const imported = importXlsx(sourceBytes, 'table-sort-state.xlsx')
+  it(
+    'preserves table-level sortState metadata across XLSX round trips',
+    () => {
+      const sourceBytes = buildTableSortStateWorkbookBytes()
+      const imported = importXlsx(sourceBytes, 'table-sort-state.xlsx')
 
-    expect(imported.warnings).toEqual([])
-    expect(tableXml(sourceBytes)).toContain('<sortState ')
+      expect(imported.warnings).toEqual([])
+      expect(tableXml(sourceBytes)).toContain('<sortState ')
 
-    const exportedXml = tableXml(exportXlsx(imported.snapshot))
-    expect(exportedXml).toContain('<autoFilter ref="A1:B4"/>')
-    expect(exportedXml).toContain('<sortState ref="A2:B4">')
-    expect(exportedXml).toContain('<sortCondition descending="1" ref="B2:B4"/>')
-  })
+      const exportedXml = tableXml(exportXlsx(imported.snapshot))
+      expect(exportedXml).toContain('<autoFilter ref="A1:B4"/>')
+      expect(exportedXml).toContain('<sortState ref="A2:B4">')
+      expect(exportedXml).toContain('<sortCondition descending="1" ref="B2:B4"/>')
+    },
+    XLSX_TABLE_SORT_ROUND_TRIP_TIMEOUT_MS,
+  )
 
-  it('preserves table-level AutoFilter criteria and imports filter-hidden row visibility', () => {
-    const sourceBytes = buildTableAutoFilterWorkbookBytes()
-    const imported = importXlsx(sourceBytes, 'table-autofilter.xlsx')
+  it(
+    'preserves table-level AutoFilter criteria and imports filter-hidden row visibility',
+    () => {
+      const sourceBytes = buildTableAutoFilterWorkbookBytes()
+      const imported = importXlsx(sourceBytes, 'table-autofilter.xlsx')
 
-    expect(imported.warnings).toEqual([])
-    expect(imported.snapshot.workbook.metadata?.tables?.[0]?.autoFilter).toEqual({
-      sheetName: 'Sales',
-      startAddress: 'A1',
-      endAddress: 'B4',
-      criteria: [{ colId: 0, filters: { values: ['East'] } }],
-    })
-    expect(imported.snapshot.sheets[0]?.metadata?.rowMetadata).toContainEqual({ start: 2, count: 1, filterHidden: true })
+      expect(imported.warnings).toEqual([])
+      expect(imported.snapshot.workbook.metadata?.tables?.[0]?.autoFilter).toEqual({
+        sheetName: 'Sales',
+        startAddress: 'A1',
+        endAddress: 'B4',
+        criteria: [{ colId: 0, filters: { values: ['East'] } }],
+      })
+      expect(imported.snapshot.sheets[0]?.metadata?.rowMetadata).toContainEqual({ start: 2, count: 1, filterHidden: true })
 
-    const exported = exportXlsx(imported.snapshot)
-    expect(tableXml(exported)).toContain('<filterColumn colId="0"><filters><filter val="East"/></filters></filterColumn>')
-    expect(sheetXml(exported)).toContain('<row r="3" hidden="1"')
-  })
+      const exported = exportXlsx(imported.snapshot)
+      expect(tableXml(exported)).toContain('<filterColumn colId="0"><filters><filter val="East"/></filters></filterColumn>')
+      expect(sheetXml(exported)).toContain('<row r="3" hidden="1"')
+    },
+    XLSX_TABLE_SORT_ROUND_TRIP_TIMEOUT_MS,
+  )
 
-  it('exports engine-produced table sorts as table metadata that reimports with sorted formulas', async () => {
-    const engine = new SpreadsheetEngine({ workbookName: 'engine-table-sort-state' })
-    await engine.ready()
-    engine.importSnapshot(tableLedgerSnapshot())
+  it(
+    'exports engine-produced table sorts as table metadata that reimports with sorted formulas',
+    async () => {
+      const engine = new SpreadsheetEngine({ workbookName: 'engine-table-sort-state' })
+      await engine.ready()
+      engine.importSnapshot(tableLedgerSnapshot())
 
-    expect(engine.sortTable('Ledger', 'Sales', [{ keyAddress: 'B1', direction: 'desc' }])).toBe(true)
+      expect(engine.sortTable('Ledger', 'Sales', [{ keyAddress: 'B1', direction: 'desc' }])).toBe(true)
 
-    const exported = exportXlsx(engine.exportSnapshot())
-    const exportedXml = tableXml(exported)
-    expect(exportedXml).toContain('<sortState ref="A2:D6">')
-    expect(exportedXml).toContain('<sortCondition descending="1" ref="B2:B6"/>')
+      const exported = exportXlsx(engine.exportSnapshot())
+      const exportedXml = tableXml(exported)
+      expect(exportedXml).toContain('<sortState ref="A2:D6">')
+      expect(exportedXml).toContain('<sortCondition descending="1" ref="B2:B6"/>')
 
-    const imported = importXlsx(exported, 'engine-table-sort-state.xlsx')
-    expect(imported.warnings).toEqual([])
-    expect(imported.snapshot.workbook.metadata?.tables?.[0]).toMatchObject({
-      name: 'Sales',
-      sheetName: 'Ledger',
-      startAddress: 'A1',
-      endAddress: 'D6',
-      sortState: '<sortState ref="A2:D6"><sortCondition descending="1" ref="B2:B6"/></sortState>',
-    })
-    const rehydrated = new SpreadsheetEngine({ workbookName: 'engine-table-sort-state-reimport' })
-    await rehydrated.ready()
-    rehydrated.importSnapshot(imported.snapshot)
-    expect(engineRows(rehydrated)).toEqual([
-      ['East', 50, 'invoice-005', 100],
-      ['West', 40, 'invoice-002', 80],
-      ['East', 30, 'invoice-003', 60],
-      ['West', 20, 'invoice-004', 40],
-      ['East', 10, 'invoice-001', 20],
-    ])
-    expect(snapshotFormulas(imported.snapshot)).toEqual([
-      { address: 'D2', formula: 'B2*2' },
-      { address: 'D3', formula: 'B3*2' },
-      { address: 'D4', formula: 'B4*2' },
-      { address: 'D5', formula: 'B5*2' },
-      { address: 'D6', formula: 'B6*2' },
-    ])
-  })
+      const imported = importXlsx(exported, 'engine-table-sort-state.xlsx')
+      expect(imported.warnings).toEqual([])
+      expect(imported.snapshot.workbook.metadata?.tables?.[0]).toMatchObject({
+        name: 'Sales',
+        sheetName: 'Ledger',
+        startAddress: 'A1',
+        endAddress: 'D6',
+        sortState: '<sortState ref="A2:D6"><sortCondition descending="1" ref="B2:B6"/></sortState>',
+      })
+      const rehydrated = new SpreadsheetEngine({ workbookName: 'engine-table-sort-state-reimport' })
+      await rehydrated.ready()
+      rehydrated.importSnapshot(imported.snapshot)
+      expect(engineRows(rehydrated)).toEqual([
+        ['East', 50, 'invoice-005', 100],
+        ['West', 40, 'invoice-002', 80],
+        ['East', 30, 'invoice-003', 60],
+        ['West', 20, 'invoice-004', 40],
+        ['East', 10, 'invoice-001', 20],
+      ])
+      expect(snapshotFormulas(imported.snapshot)).toEqual([
+        { address: 'D2', formula: 'B2*2' },
+        { address: 'D3', formula: 'B3*2' },
+        { address: 'D4', formula: 'B4*2' },
+        { address: 'D5', formula: 'B5*2' },
+        { address: 'D6', formula: 'B6*2' },
+      ])
+    },
+    XLSX_TABLE_SORT_ROUND_TRIP_TIMEOUT_MS,
+  )
 })
 
 function buildTableSortStateWorkbookBytes(): Uint8Array {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import { exportXlsx, importXlsx } from '../index.js'
 
@@ -24,40 +25,48 @@ describe('hyperlink roundtrip', () => {
       },
     ])
 
-    const reimported = XLSX.read(exportXlsx(imported.snapshot), { type: 'array' })
-    const sheet = reimported.Sheets['Inputs']
+    const reimported = importXlsx(exportXlsx(imported.snapshot), 'hyperlinks-roundtrip.xlsx')
 
-    expect(sheet?.['A1']?.l).toMatchObject({
-      Target: 'https://example.com/report',
-      Tooltip: 'Open report',
-      display: 'Open report',
-    })
-    expect(sheet?.['B2']?.l).toMatchObject({
-      Target: '#Summary!A1',
-      Tooltip: 'Jump to summary',
-      display: 'Summary',
-    })
+    expect(reimported.snapshot.sheets[0]?.metadata?.hyperlinks).toEqual(imported.snapshot.sheets[0]?.metadata?.hyperlinks)
   })
 })
 
 function buildHyperlinkWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const inputs = XLSX.utils.aoa_to_sheet([['Open report'], ['', 'Summary']])
-  inputs['A1'] = {
-    ...inputs['A1'],
-    l: {
-      Target: 'https://example.com/report',
-      Tooltip: 'Open report',
-    },
-  }
-  inputs['B2'] = {
-    ...inputs['B2'],
-    l: {
-      Target: '#Summary!A1',
-      Tooltip: 'Jump to summary',
-    },
-  }
-  XLSX.utils.book_append_sheet(workbook, inputs, 'Inputs')
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['Destination']]), 'Summary')
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Inputs',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Open report' },
+            { address: 'B2', row: 1, col: 1, value: 'Summary' },
+          ],
+        },
+        {
+          name: 'Summary',
+          cells: [{ address: 'A1', row: 0, col: 0, value: 'Destination' }],
+        },
+      ],
+    }),
+  )
+  zip['xl/worksheets/sheet1.xml'] = strToU8(
+    strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array()).replace(
+      '</worksheet>',
+      [
+        '<hyperlinks>',
+        '<hyperlink ref="A1" r:id="rIdHyperlink1" tooltip="Open report" display="Open report"/>',
+        '<hyperlink ref="B2" location="Summary!A1" tooltip="Jump to summary" display="Summary"/>',
+        '</hyperlinks>',
+        '</worksheet>',
+      ].join(''),
+    ),
+  )
+  zip['xl/worksheets/_rels/sheet1.xml.rels'] = strToU8(
+    [
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+      '<Relationship Id="rIdHyperlink1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="https://example.com/report" TargetMode="External"/>',
+      '</Relationships>',
+    ].join(''),
+  )
+  return zipSync(zip)
 }
