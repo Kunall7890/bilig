@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto'
-
-import * as XLSX from 'xlsx'
+import { createRequire } from 'node:module'
 
 import { importXlsx, type ImportedWorkbook } from '../packages/excel-import/src/index.js'
 import { readImportedExternalWorkbookReferences } from '../packages/excel-import/src/xlsx-external-references.js'
@@ -47,10 +46,27 @@ interface WorksheetCellEntry {
   readonly column: number
 }
 
+interface SheetJsWorkbook {
+  readonly SheetNames: readonly string[]
+  readonly Sheets: Readonly<Record<string, SheetJsWorksheet | undefined>>
+  readonly Workbook?: {
+    readonly Names?: readonly unknown[]
+  }
+}
+
+type SheetJsWorksheet = Record<string, unknown>
+
+interface SheetJsModule {
+  readonly read: (bytes: Uint8Array, options: Record<string, unknown>) => SheetJsWorkbook
+}
+
 const largeSimpleHeadlessFingerprintCellThreshold = 100_000
 const formulaOracleWorksheetChunkSize = 16 * 1024
 const maxFormulaOracleCellXmlBufferLength = 8 * 1024 * 1024
 const xmlCellStartPattern = /<(?:[A-Za-z_][\w.-]*:)?c\b/u
+const requireModule = createRequire(import.meta.url)
+
+let loadedSheetJs: SheetJsModule | undefined
 
 export function countWorkbookFeatures(snapshot: WorkbookSnapshot, warnings: readonly string[]): PublicWorkbookFeatureCounts {
   return {
@@ -164,7 +180,7 @@ export function inspectWorkbookFootprint(bytes: Uint8Array, fileName: string): W
   if (isOpenXmlWorkbookFileName(fileName) && isZipWorkbook(bytes)) {
     return inspectXlsxWorkbookFootprintLowMemory(bytes, fileName)
   }
-  const workbook = XLSX.read(bytes, {
+  const workbook = loadOptionalSheetJs().read(bytes, {
     type: 'array',
     cellFormula: true,
     cellText: false,
@@ -337,7 +353,7 @@ function countLargeSimpleHeadlessFingerprintFeatures(inspected: LargeSimpleXlsxH
 }
 
 export function extractFormulaOracles(bytes: Uint8Array): FormulaOracle[] {
-  const workbook = XLSX.read(bytes, { type: 'array', cellFormula: true, cellText: false, cellDates: false })
+  const workbook = loadOptionalSheetJs().read(bytes, { type: 'array', cellFormula: true, cellText: false, cellDates: false })
   const oracles: FormulaOracle[] = []
   for (const sheetName of workbook.SheetNames) {
     const sheet = workbook.Sheets[sheetName]
@@ -636,7 +652,7 @@ function expandUsedRange(current: WorkbookSheetUsedRange | null, row: number, co
     : { startRow: row, startColumn: column, endRow: row, endColumn: column }
 }
 
-function worksheetCellEntries(sheet: XLSX.WorkSheet): WorksheetCellEntry[] {
+function worksheetCellEntries(sheet: SheetJsWorksheet): WorksheetCellEntry[] {
   const denseRows = (sheet as Record<string, unknown>)['!data']
   if (Array.isArray(denseRows)) {
     const denseEntries: WorksheetCellEntry[] = []
@@ -649,7 +665,7 @@ function worksheetCellEntries(sheet: XLSX.WorkSheet): WorksheetCellEntry[] {
           return
         }
         denseEntries.push({
-          address: XLSX.utils.encode_cell({ r: rowIndex, c: columnIndex }),
+          address: encodeCellAddress(rowIndex, columnIndex),
           cell,
           row: rowIndex,
           column: columnIndex,
@@ -664,15 +680,34 @@ function worksheetCellEntries(sheet: XLSX.WorkSheet): WorksheetCellEntry[] {
     if (!/^[A-Z]{1,3}[1-9][0-9]*$/u.test(address) || !isRecord(value)) {
       continue
     }
-    const decoded = XLSX.utils.decode_cell(address)
+    const decoded = decodeCellAddress(address)
+    if (!decoded) {
+      continue
+    }
     entries.push({
       address,
       cell: value,
-      row: decoded.r,
-      column: decoded.c,
+      row: decoded.row,
+      column: decoded.column,
     })
   }
   return entries.toSorted((left, right) => left.row - right.row || left.column - right.column)
+}
+
+function loadOptionalSheetJs(): SheetJsModule {
+  if (loadedSheetJs) {
+    return loadedSheetJs
+  }
+  const loadedModule: unknown = requireModule('xlsx')
+  if (!isSheetJsModule(loadedModule)) {
+    throw new TypeError('SheetJS xlsx module is missing the read export required for legacy workbook corpus fallback.')
+  }
+  loadedSheetJs = loadedModule
+  return loadedSheetJs
+}
+
+function isSheetJsModule(value: unknown): value is SheetJsModule {
+  return isRecord(value) && typeof value['read'] === 'function'
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
