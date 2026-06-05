@@ -20,7 +20,7 @@ def main() -> None:
     payload = json.loads(result.stdout)
     if payload.get("verified") is not True:
         raise SystemExit(f"expected verified=true, received: {payload}")
-    if payload.get("packageVersion") != "0.161.0":
+    if payload.get("packageVersion") != "0.162.0":
         raise SystemExit(f"unexpected package version: {payload.get('packageVersion')}")
     if payload.get("editedCell") != "Inputs!B3":
         raise SystemExit(f"unexpected edited cell: {payload.get('editedCell')}")
