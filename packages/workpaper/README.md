@@ -126,9 +126,9 @@ not the first-run path:
 ## Use A WorkPaper In Node
 
 ```ts
-import { WorkPaper } from '@bilig/workpaper'
+import { buildA1WorkPaper } from '@bilig/workpaper'
 
-const workbook = WorkPaper.buildFromSheets({
+const book = buildA1WorkPaper({
   Inputs: [
     ['Metric', 'Value'],
     ['Units', 40],
@@ -140,43 +140,25 @@ const workbook = WorkPaper.buildFromSheets({
   ],
 })
 
-function cell(address: string) {
-  const parsed = workbook.simpleCellAddressFromString(address)
-
-  if (parsed === undefined) {
-    throw new Error(`Unknown cell: ${address}`)
-  }
-
-  return parsed
-}
-
-function setCell(address: string, value: string | number | boolean | null) {
-  workbook.setCellContents(cell(address), value)
-}
-
-function displayAt(address: string) {
-  return workbook.getCellDisplayValue(cell(address))
-}
-
-const before = displayAt('Summary!B2')
-
-setCell('Inputs!B2', 48)
-setCell('Inputs!B3', 1500)
-
-const after = displayAt('Summary!B2')
-const document = workbook.exportSnapshot()
-
-console.log({
-  editedCells: ['Inputs!B2', 'Inputs!B3'],
-  readCell: 'Summary!B2',
-  before,
-  after,
-  persistedDocumentBytes: JSON.stringify(document).length,
-  verified: after === '72000',
+const proof = book.editAndReadback('Inputs!B2', 48, {
+  readbackRange: 'Summary!B2',
 })
 
-workbook.dispose()
+console.log({
+  editedCell: proof.editedCell,
+  before: proof.beforeReadback.displayValues,
+  after: proof.afterReadback.displayValues,
+  afterRestore: proof.restoredReadback.displayValues,
+  persistedDocumentBytes: proof.persistedDocumentBytes,
+  verified: proof.verified,
+})
+
+book.dispose()
 ```
+
+Use `book.set('Inputs!B2', 48)`, `book.setMany({ 'Inputs!B3': 1500 })`,
+`book.readMany(['Inputs!B2', 'Summary!B2'])`, `book.display('Summary!B2')`,
+and `book.saveJson()` when you do not need the full proof object.
 
 ## Use WorkPaper Tools With The Vercel AI SDK
 

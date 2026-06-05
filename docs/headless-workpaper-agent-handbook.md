@@ -121,7 +121,7 @@ transcript.
 | If the agent has...   | Use this path                                                                             | Verification target                                                                      |
 | --------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | an MCP client         | `bilig-workpaper-mcp --workpaper ./model.workpaper.json --init-demo-workpaper --writable` | `set_cell_contents` followed by `get_cell_display_value` and `export_workpaper_document` |
-| plain Node/TypeScript | `@bilig/workpaper` directly                                                               | `setCellContents()` followed by `getCellDisplayValue()` and serialized restore           |
+| plain Node/TypeScript | `@bilig/workpaper` directly                                                               | `buildA1WorkPaper()` with `editAndReadback()` and `saveJson()` proof                     |
 | an agent SDK          | wrap the same TypeScript functions as tools                                               | one mutating tool returns before/after formula readback                                  |
 | a service route       | the serverless WorkPaper API example                                                      | route response proves inputs, outputs, persistence, and restored values                  |
 | an `.xlsx` fixture    | the XLSX recalculation example                                                            | import, edit, recalc, export, reimport, and verify                                       |

@@ -97,7 +97,11 @@ Claude Desktop users can install the released MCPB bundle from:
 
 ## Direct TypeScript
 
-Use `WorkPaper.buildFromSheets()` for hand-authored models, `setCellContents()` for edits, `getCellDisplayValue()` for readback, and `exportWorkPaperDocument()` plus `serializeWorkPaperDocument()` for persistence proof.
+Use `buildA1WorkPaper()` for hand-authored models. Prefer
+`book.set("Inputs!B2", value)`, `book.display("Summary!B2")`, and
+`book.editAndReadback("Inputs!B2", value, { readbackRange: "Summary!B2" })`
+before reaching for lower-level sheet ids or zero-based `{ row, col }`
+addresses.
 
 ## Boundaries
 

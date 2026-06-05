@@ -148,9 +148,9 @@ stdio command when the workflow must persist a project WorkPaper JSON file.
 Use `bilig-workpaper` directly when workbook logic belongs in a service, queue worker, test, or route:
 
 ```ts
-import { WorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from 'bilig-workpaper'
+import { buildA1WorkPaper } from 'bilig-workpaper'
 
-const workbook = WorkPaper.buildFromSheets({
+const book = buildA1WorkPaper({
   Inputs: [
     ['Metric', 'Value'],
     ['Customers', 20],
@@ -162,17 +162,19 @@ const workbook = WorkPaper.buildFromSheets({
   ],
 })
 
-const inputs = workbook.getSheetId('Inputs')
-const summary = workbook.getSheetId('Summary')
-if (inputs === undefined || summary === undefined) {
-  throw new Error('Workbook is missing required sheets')
-}
+const proof = book.editAndReadback('Inputs!B2', 32, {
+  readbackRange: 'Summary!B2',
+})
 
-workbook.setCellContents({ sheet: inputs, row: 1, col: 1 }, 32)
-const revenue = workbook.getCellDisplayValue({ sheet: summary, row: 1, col: 1 })
-const saved = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))
+console.log({
+  editedCell: proof.editedCell,
+  after: proof.afterReadback.displayValues,
+  afterRestore: proof.restoredReadback.displayValues,
+  persistedDocumentBytes: proof.persistedDocumentBytes,
+  verified: proof.verified,
+})
 
-console.log({ revenue, savedBytes: saved.length })
+book.dispose()
 ```
 
 ## XLSX Formula Clinic

@@ -59,12 +59,7 @@ export async function requireSharedPublicDocsDiscovery(args: {
     'adoption blocker form',
     'submit a workbook fixture',
     '## TypeScript API Shape',
-    'WorkPaper.buildFromSheets({',
     "['Revenue', '=Inputs!B2*Inputs!B3']",
-    'workbook.setCellContents({ sheet: inputs, row: 1, col: 1 }, 32)',
-    'workbook.getCellDisplayValue({ sheet: summary, row: 1, col: 1 })',
-    'serializeWorkPaperDocument(',
-    'exportWorkPaperDocument(workbook, { includeConfig: true })',
     '## Proof You Can Reproduce',
     'https://github.com/proompteng/bilig/discussions/new?category=general',
     'above edits one input',
@@ -80,6 +75,19 @@ export async function requireSharedPublicDocsDiscovery(args: {
     'SECURITY.md',
     'SUPPORT.md',
     'production-adoption-checklist-headless-workpaper',
+  ])
+  requireDocumentIncludes({ path: 'README.md', content: args.readme }, [
+    'buildA1WorkPaper({',
+    "book.editAndReadback('Inputs!B2', 32, {",
+    'proof.afterReadback.displayValues',
+    '`book.saveJson()`',
+  ])
+  requireDocumentIncludes({ path: 'packages/headless/README.md', content: args.headlessReadme }, [
+    'WorkPaper.buildFromSheets({',
+    'workbook.setCellContents({ sheet: inputs, row: 1, col: 1 }, 32)',
+    'workbook.getCellDisplayValue({ sheet: summary, row: 1, col: 1 })',
+    'serializeWorkPaperDocument(',
+    'exportWorkPaperDocument(workbook, { includeConfig: true })',
   ])
   requireDocumentsNotInclude(primaryPublicDocs, [
     '## Current Public Proof',

@@ -614,9 +614,9 @@ Most integrations are just this: build a workbook, write an input, read the
 calculated value, and save the workbook state.
 
 ```ts
-import { WorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/workpaper'
+import { buildA1WorkPaper } from '@bilig/workpaper'
 
-const workbook = WorkPaper.buildFromSheets({
+const book = buildA1WorkPaper({
   Inputs: [
     ['Metric', 'Value'],
     ['Customers', 20],
@@ -628,19 +628,24 @@ const workbook = WorkPaper.buildFromSheets({
   ],
 })
 
-const inputs = workbook.getSheetId('Inputs')
-const summary = workbook.getSheetId('Summary')
-if (inputs === undefined || summary === undefined) {
-  throw new Error('Workbook is missing required sheets')
-}
+const proof = book.editAndReadback('Inputs!B2', 32, {
+  readbackRange: 'Summary!B2',
+})
 
-workbook.setCellContents({ sheet: inputs, row: 1, col: 1 }, 32)
+console.log({
+  editedCell: proof.editedCell,
+  revenue: proof.afterReadback.displayValues[0]?.[0],
+  persistedDocumentBytes: proof.persistedDocumentBytes,
+  verified: proof.verified,
+})
 
-const revenue = workbook.getCellDisplayValue({ sheet: summary, row: 1, col: 1 })
-const saved = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))
-
-console.log({ revenue, savedBytes: saved.length })
+book.dispose()
 ```
+
+The lower-level `WorkPaper` runtime is still exported for engine integrations,
+but the A1 facade is the default service and agent path. Use
+`book.set()`, `book.setMany()`, `book.readMany()`, `book.display()`, and
+`book.saveJson()` when a full readback proof is not needed.
 
 ## When To Reach For It
 

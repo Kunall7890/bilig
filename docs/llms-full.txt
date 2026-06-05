@@ -112,7 +112,11 @@ Claude Desktop users can install the released MCPB bundle from:
 
 ## Direct TypeScript
 
-Use `WorkPaper.buildFromSheets()` for hand-authored models, `setCellContents()` for edits, `getCellDisplayValue()` for readback, and `exportWorkPaperDocument()` plus `serializeWorkPaperDocument()` for persistence proof.
+Use `buildA1WorkPaper()` for hand-authored models. Prefer
+`book.set("Inputs!B2", value)`, `book.display("Summary!B2")`, and
+`book.editAndReadback("Inputs!B2", value, { readbackRange: "Summary!B2" })`
+before reaching for lower-level sheet ids or zero-based `{ row, col }`
+addresses.
 
 ## Boundaries
 
@@ -269,9 +273,9 @@ stdio command when the workflow must persist a project WorkPaper JSON file.
 Use `@bilig/workpaper` directly when workbook logic belongs in a service, queue worker, test, or route:
 
 ```ts
-import { WorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/workpaper'
+import { buildA1WorkPaper } from '@bilig/workpaper'
 
-const workbook = WorkPaper.buildFromSheets({
+const book = buildA1WorkPaper({
   Inputs: [
     ['Metric', 'Value'],
     ['Customers', 20],
@@ -283,17 +287,19 @@ const workbook = WorkPaper.buildFromSheets({
   ],
 })
 
-const inputs = workbook.getSheetId('Inputs')
-const summary = workbook.getSheetId('Summary')
-if (inputs === undefined || summary === undefined) {
-  throw new Error('Workbook is missing required sheets')
-}
+const proof = book.editAndReadback('Inputs!B2', 32, {
+  readbackRange: 'Summary!B2',
+})
 
-workbook.setCellContents({ sheet: inputs, row: 1, col: 1 }, 32)
-const revenue = workbook.getCellDisplayValue({ sheet: summary, row: 1, col: 1 })
-const saved = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))
+console.log({
+  editedCell: proof.editedCell,
+  after: proof.afterReadback.displayValues,
+  afterRestore: proof.restoredReadback.displayValues,
+  persistedDocumentBytes: proof.persistedDocumentBytes,
+  verified: proof.verified,
+})
 
-console.log({ revenue, savedBytes: saved.length })
+book.dispose()
 ```
 
 ## XLSX Formula Clinic
@@ -987,9 +993,9 @@ Most integrations are just this: build a workbook, write an input, read the
 calculated value, and save the workbook state.
 
 ```ts
-import { WorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/workpaper'
+import { buildA1WorkPaper } from '@bilig/workpaper'
 
-const workbook = WorkPaper.buildFromSheets({
+const book = buildA1WorkPaper({
   Inputs: [
     ['Metric', 'Value'],
     ['Customers', 20],
@@ -1001,19 +1007,24 @@ const workbook = WorkPaper.buildFromSheets({
   ],
 })
 
-const inputs = workbook.getSheetId('Inputs')
-const summary = workbook.getSheetId('Summary')
-if (inputs === undefined || summary === undefined) {
-  throw new Error('Workbook is missing required sheets')
-}
+const proof = book.editAndReadback('Inputs!B2', 32, {
+  readbackRange: 'Summary!B2',
+})
 
-workbook.setCellContents({ sheet: inputs, row: 1, col: 1 }, 32)
+console.log({
+  editedCell: proof.editedCell,
+  revenue: proof.afterReadback.displayValues[0]?.[0],
+  persistedDocumentBytes: proof.persistedDocumentBytes,
+  verified: proof.verified,
+})
 
-const revenue = workbook.getCellDisplayValue({ sheet: summary, row: 1, col: 1 })
-const saved = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))
-
-console.log({ revenue, savedBytes: saved.length })
+book.dispose()
 ```
+
+The lower-level `WorkPaper` runtime is still exported for engine integrations,
+but the A1 facade is the default service and agent path. Use
+`book.set()`, `book.setMany()`, `book.readMany()`, `book.display()`, and
+`book.saveJson()` when a full readback proof is not needed.
 
 ## When To Reach For It
 
@@ -4476,9 +4487,9 @@ not the first-run path:
 ## Use A WorkPaper In Node
 
 ```ts
-import { WorkPaper } from '@bilig/workpaper'
+import { buildA1WorkPaper } from '@bilig/workpaper'
 
-const workbook = WorkPaper.buildFromSheets({
+const book = buildA1WorkPaper({
   Inputs: [
     ['Metric', 'Value'],
     ['Units', 40],
@@ -4490,43 +4501,25 @@ const workbook = WorkPaper.buildFromSheets({
   ],
 })
 
-function cell(address: string) {
-  const parsed = workbook.simpleCellAddressFromString(address)
-
-  if (parsed === undefined) {
-    throw new Error(`Unknown cell: ${address}`)
-  }
-
-  return parsed
-}
-
-function setCell(address: string, value: string | number | boolean | null) {
-  workbook.setCellContents(cell(address), value)
-}
-
-function displayAt(address: string) {
-  return workbook.getCellDisplayValue(cell(address))
-}
-
-const before = displayAt('Summary!B2')
-
-setCell('Inputs!B2', 48)
-setCell('Inputs!B3', 1500)
-
-const after = displayAt('Summary!B2')
-const document = workbook.exportSnapshot()
-
-console.log({
-  editedCells: ['Inputs!B2', 'Inputs!B3'],
-  readCell: 'Summary!B2',
-  before,
-  after,
-  persistedDocumentBytes: JSON.stringify(document).length,
-  verified: after === '72000',
+const proof = book.editAndReadback('Inputs!B2', 48, {
+  readbackRange: 'Summary!B2',
 })
 
-workbook.dispose()
+console.log({
+  editedCell: proof.editedCell,
+  before: proof.beforeReadback.displayValues,
+  after: proof.afterReadback.displayValues,
+  afterRestore: proof.restoredReadback.displayValues,
+  persistedDocumentBytes: proof.persistedDocumentBytes,
+  verified: proof.verified,
+})
+
+book.dispose()
 ```
+
+Use `book.set('Inputs!B2', 48)`, `book.setMany({ 'Inputs!B3': 1500 })`,
+`book.readMany(['Inputs!B2', 'Summary!B2'])`, `book.display('Summary!B2')`,
+and `book.saveJson()` when you do not need the full proof object.
 
 ## Use WorkPaper Tools With The Vercel AI SDK
 
@@ -4845,7 +4838,7 @@ transcript.
 | If the agent has...   | Use this path                                                                             | Verification target                                                                      |
 | --------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | an MCP client         | `bilig-workpaper-mcp --workpaper ./model.workpaper.json --init-demo-workpaper --writable` | `set_cell_contents` followed by `get_cell_display_value` and `export_workpaper_document` |
-| plain Node/TypeScript | `@bilig/workpaper` directly                                                               | `setCellContents()` followed by `getCellDisplayValue()` and serialized restore           |
+| plain Node/TypeScript | `@bilig/workpaper` directly                                                               | `buildA1WorkPaper()` with `editAndReadback()` and `saveJson()` proof                     |
 | an agent SDK          | wrap the same TypeScript functions as tools                                               | one mutating tool returns before/after formula readback                                  |
 | a service route       | the serverless WorkPaper API example                                                      | route response proves inputs, outputs, persistence, and restored values                  |
 | an `.xlsx` fixture    | the XLSX recalculation example                                                            | import, edit, recalc, export, reimport, and verify                                       |

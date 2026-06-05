@@ -13,9 +13,9 @@ npm install bilig-workpaper
 ## Use A WorkPaper In Node
 
 ```ts
-import { WorkPaper } from 'bilig-workpaper'
+import { buildA1WorkPaper } from 'bilig-workpaper'
 
-const workbook = WorkPaper.buildFromSheets({
+const book = buildA1WorkPaper({
   Inputs: [
     ['Metric', 'Value'],
     ['Units', 40],
@@ -27,20 +27,19 @@ const workbook = WorkPaper.buildFromSheets({
   ],
 })
 
-const inputs = workbook.getSheetId('Inputs')
-const summary = workbook.getSheetId('Summary')
+const proof = book.editAndReadback('Inputs!B2', 48, {
+  readbackRange: 'Summary!B2',
+})
 
-if (inputs === undefined || summary === undefined) {
-  throw new Error('Expected sheets to exist')
-}
+console.log({
+  editedCell: proof.editedCell,
+  after: proof.afterReadback.displayValues,
+  afterRestore: proof.restoredReadback.displayValues,
+  persistedDocumentBytes: proof.persistedDocumentBytes,
+  verified: proof.verified,
+})
 
-workbook.setCellContents({ sheet: inputs, row: 1, col: 1 }, 48)
-workbook.setCellContents({ sheet: inputs, row: 2, col: 1 }, 1500)
-
-console.log(workbook.getCellValue({ sheet: summary, row: 1, col: 1 }))
-console.log(workbook.exportSnapshot())
-
-workbook.dispose()
+book.dispose()
 ```
 
 ## XLSX Import And Export
