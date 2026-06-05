@@ -58,6 +58,7 @@ import { addExportWorksheetPropertiesToXlsxBytes } from './xlsx-sheet-properties
 import { applyExportSheetVisibilitiesToWorkbook } from './xlsx-sheet-visibility.js'
 import { addExportSlicerConnectionArtifactsToXlsxBytes } from './xlsx-slicer-connection-artifacts.js'
 import { addExportSparklinesToXlsxBytes } from './xlsx-sparklines.js'
+import { tryExportBiligSimpleXlsx } from './xlsx-bilig-simple-export.js'
 import { addExportHyperlinkDisplaysToXlsxBytes, addExportHyperlinksToWorksheet, hasExportHyperlinks } from './xlsx-hyperlinks.js'
 import { loadOptionalSheetJs } from './xlsx-optional-sheetjs.js'
 import { preserveSnapshotNumberFormats } from './xlsx-export-number-formats.js'
@@ -754,6 +755,10 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
     if (sourcePreservingBytes !== null) {
       return sourcePreservingBytes
     }
+  }
+  const biligSimpleBytes = tryExportBiligSimpleXlsx(snapshot)
+  if (biligSimpleBytes !== null) {
+    return biligSimpleBytes
   }
   const sheetJs = loadOptionalSheetJs()
   const workbook = sheetJs.utils.book_new()

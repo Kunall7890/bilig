@@ -199,6 +199,10 @@
     "packageDir": "packages/xlsx",
     "sourceEntry": "packages/xlsx/src/address.ts"
   },
+  "@bilig/xlsx/simple-workbook-writer": {
+    "packageDir": "packages/xlsx",
+    "sourceEntry": "packages/xlsx/src/simple-workbook-writer.ts"
+  },
   "@bilig/xlsx/source-preserving-literal-patches": {
     "packageDir": "packages/xlsx",
     "sourceEntry": "packages/xlsx/src/source-preserving-literal-patches.ts"

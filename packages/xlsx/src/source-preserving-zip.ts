@@ -28,6 +28,15 @@ export interface FilePreparedZipEntry extends PreparedZipEntrySizes {
   readonly compressedPath: string
 }
 
+export interface ZipDosTimeParts {
+  readonly time: number
+  readonly date: number
+}
+
+export interface SourcePreservingZipOptions {
+  readonly dosTime?: ZipDosTimeParts
+}
+
 const zipLocalFileHeaderSignature = 0x04034b50
 const zipCentralDirectoryFileHeaderSignature = 0x02014b50
 const zipEndOfCentralDirectorySignature = 0x06054b50
@@ -49,7 +58,7 @@ function writeUint32(output: Uint8Array, offset: number, value: number): void {
   output[offset + 3] = (value >>> 24) & 0xff
 }
 
-function currentZipDosTimeParts(): { readonly time: number; readonly date: number } {
+function currentZipDosTimeParts(): ZipDosTimeParts {
   const now = new Date()
   const year = Math.max(1980, Math.min(2099, now.getFullYear()))
   return {
@@ -170,11 +179,12 @@ function endOfCentralDirectory(recordCount: number, centralDirectorySize: number
 export function zipSourcePreservingEntries(
   zip: SourcePreservingZip,
   preparedEntries: ReadonlyMap<string, PreparedZipEntry> = new Map(),
+  options: SourcePreservingZipOptions = {},
 ): Uint8Array {
   const outputChunks: Uint8Array[] = []
   let outputByteLength = 0
   const records: SourcePreservingZipEntryRecord[] = []
-  const { time, date } = currentZipDosTimeParts()
+  const { time, date } = options.dosTime ?? currentZipDosTimeParts()
   const pushOutput = (chunk: Uint8Array): void => {
     outputChunks.push(chunk)
     outputByteLength += chunk.byteLength
@@ -239,10 +249,11 @@ export function zipSourcePreservingEntriesToFile(
   zip: SourcePreservingZip,
   preparedEntries: ReadonlyMap<string, FilePreparedZipEntry>,
   outputPath: string,
+  options: SourcePreservingZipOptions = {},
 ): number {
   let outputByteLength = 0
   const records: SourcePreservingZipEntryRecord[] = []
-  const { time, date } = currentZipDosTimeParts()
+  const { time, date } = options.dosTime ?? currentZipDosTimeParts()
   const paths = [...new Set([...Object.keys(zip), ...preparedEntries.keys()])]
   const fd = openSync(outputPath, 'w')
   const pushOutput = (chunk: Uint8Array): void => {

@@ -49,6 +49,11 @@
       "import": "./dist/source-preserving-literal-patches.js",
       "default": "./dist/source-preserving-literal-patches.js"
     },
+    "./simple-workbook-writer": {
+      "types": "./dist/simple-workbook-writer.d.ts",
+      "import": "./dist/simple-workbook-writer.js",
+      "default": "./dist/simple-workbook-writer.js"
+    },
     "./zip-reader": {
       "types": "./dist/zip-reader.d.ts",
       "import": "./dist/zip-reader.js",

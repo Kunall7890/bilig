@@ -11,11 +11,14 @@ import {
   encodeCellAddress,
   encodeCellRange,
   normalizeCellAddress,
+  readXlsxZipEntries,
   readXmlAttribute,
   worksheetCellElementPattern,
+  writeSimpleXlsxWorkbook,
 } from '../index.js'
 
 const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+const textDecoder = new TextDecoder()
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -75,5 +78,37 @@ describe('@bilig/xlsx package boundary', () => {
     ].map((match) => match[0])
 
     expect(cells).toHaveLength(2)
+  })
+
+  it('writes deterministic simple workbook bytes for generated fixtures', () => {
+    const workbook = {
+      sheets: [
+        {
+          name: 'Sheet 1',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'segment' },
+            { address: 'B1', row: 0, col: 1, formula: 'SUM(1,2)', value: 3 },
+          ],
+        },
+      ],
+    }
+
+    expect(writeSimpleXlsxWorkbook(workbook)).toEqual(writeSimpleXlsxWorkbook(workbook))
+  })
+
+  it('writes compatibility theme and escaped formula XML in simple workbooks', () => {
+    const workbook = {
+      sheets: [
+        {
+          name: 'Sheet 1',
+          cells: [{ address: 'A1', row: 0, col: 0, formula: 'TEXTJOIN("-",TRUE,B1:B2)' }],
+        },
+      ],
+    }
+    const zip = readXlsxZipEntries(writeSimpleXlsxWorkbook(workbook))
+
+    expect(zip['xl/theme/theme1.xml']).toBeDefined()
+    expect(textDecoder.decode(zip['xl/_rels/workbook.xml.rels'])).toContain('relationships/theme')
+    expect(textDecoder.decode(zip['xl/worksheets/sheet1.xml'])).toContain('<f>TEXTJOIN(&quot;-&quot;,TRUE,B1:B2)</f>')
   })
 })

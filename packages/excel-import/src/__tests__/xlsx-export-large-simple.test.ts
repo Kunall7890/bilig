@@ -7,13 +7,47 @@ import { readBenchToleranceMultiplier } from '../../../../scripts/bench-toleranc
 import { exportXlsx, importXlsx } from '../index.js'
 
 describe('large simple XLSX export', () => {
+  it('routes simple string and formula exports through the @bilig/xlsx writer', () => {
+    const exported = exportXlsx({
+      version: 1,
+      workbook: { name: 'simple-bilig-writer' },
+      sheets: [
+        {
+          id: 1,
+          name: 'Inputs',
+          order: 0,
+          cells: [
+            { address: 'A1', value: 'Revenue' },
+            { address: 'B1', value: 1200 },
+            { address: 'C1', formula: 'B1*2', value: 2400 },
+          ],
+        },
+      ],
+    })
+    const zip = unzipSync(exported)
+    const sheetXml = strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+    const imported = importXlsx(exported, 'simple-bilig-writer.xlsx')
+
+    expect(zip['xl/sharedStrings.xml']).toBeUndefined()
+    expect(sheetXml).toContain('t="inlineStr"')
+    expect(imported.snapshot.sheets[0]?.cells).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ address: 'A1', value: 'Revenue' }),
+        expect.objectContaining({ address: 'B1', value: 1200 }),
+        expect.objectContaining({ address: 'C1', value: 2400, formula: 'B1*2' }),
+      ]),
+    )
+  })
+
   it('round-trips large value-heavy sheets without the style writer hot path', () => {
     const exported = exportXlsx(buildLargeSimpleSnapshot())
+    const zip = unzipSync(exported)
     const imported = importXlsx(exported, 'large-simple.xlsx')
     const sheet = imported.snapshot.sheets[0]
     const styleRange = sheet?.metadata?.styleRanges?.find((entry) => entry.range.startAddress === 'A1')
     const style = imported.snapshot.workbook.metadata?.styles?.find((entry) => entry.id === styleRange?.styleId)
 
+    expect(zip['xl/sharedStrings.xml']).toBeUndefined()
     expect(sheet?.cells).toHaveLength(100_000)
     expect(sheet?.cells.find((cell) => cell.address === 'A2')).toMatchObject({ value: 50, format: '0.00' })
     expect(sheet?.metadata?.merges).toEqual([{ sheetName: 'Large', startAddress: 'A1', endAddress: 'B1' }])
@@ -46,10 +80,12 @@ describe('large simple XLSX export', () => {
     const start = performance.now()
     const exported = exportXlsx(buildFormulaHeavyMetadataSnapshot())
     const durationMs = performance.now() - start
+    const zip = unzipSync(exported)
     const workbook = XLSX.read(exported, { type: 'array', cellFormula: true, cellText: false, cellDates: false })
     const imported = importXlsx(exported, 'issue-90-formula-heavy-export.xlsx')
     const sheet = imported.snapshot.sheets[0]
 
+    expect(zip['xl/sharedStrings.xml']).toBeUndefined()
     expect(durationMs).toBeLessThan(6_000 * readBenchmarkTolerance())
     expect(sheet?.cells).toHaveLength(60_000)
     expect(sheet?.cells.find((cell) => cell.address === 'B100')).toMatchObject({
