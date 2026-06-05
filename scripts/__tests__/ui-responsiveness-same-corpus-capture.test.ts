@@ -1,11 +1,12 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Page } from '@playwright/test'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { exportXlsx } from '../../packages/excel-import/src/index.js'
 import { buildWorkbookBenchmarkCorpus } from '../../packages/benchmarks/src/workbook-corpus.js'
+import { readXlsxZipEntries, zipSourcePreservingEntries } from '../../packages/xlsx/src/index.js'
 import {
   assertSameCorpusBrowserRunAllowed,
   assertSameCorpusCaptureCurrentContractEvidenceReady,
@@ -15,6 +16,7 @@ import {
   buildSameCorpusFingerprint,
   buildSameCorpusCaptureArtifact,
   collectSameCorpusProductMeasurements,
+  emitSameCorpusXlsx,
   parseCaptureArgs,
   parseEmitXlsxArgs,
   parsePreflightArgs,
@@ -387,6 +389,25 @@ describe('same-corpus UI responsiveness capture CLI', () => {
 
   it('rejects XLSX emission mode when the next flag would be consumed as the directory', () => {
     expect(() => parseEmitXlsxArgs(['--emit-xlsx', '--check'])).toThrow('Missing directory after --emit-xlsx')
+  })
+
+  it('checks emitted same-corpus XLSX fixtures by inflated entry contents instead of ZIP bytes', () => {
+    const targetDirectory = mkdtempSync(join(tmpdir(), 'bilig-ui-same-corpus-xlsx-'))
+    const args = { check: false, corpusId: 'wide-mixed-250k' as const, targetDirectory }
+    const consoleLog = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+    try {
+      emitSameCorpusXlsx(args)
+      const outputFile = join(targetDirectory, 'wide-mixed-250k.xlsx')
+      const source = readFileSync(outputFile)
+      const repacked = zipSourcePreservingEntries({ ...readXlsxZipEntries(source) }, new Map(), { dosTime: { time: 1, date: 33 } })
+
+      expect(Buffer.from(repacked).equals(source)).toBe(false)
+      writeFileSync(outputFile, repacked)
+
+      expect(() => emitSameCorpusXlsx({ ...args, check: true })).not.toThrow()
+    } finally {
+      consoleLog.mockRestore()
+    }
   })
 
   it('builds deterministic literal-cell fingerprints for same-corpus verification', () => {

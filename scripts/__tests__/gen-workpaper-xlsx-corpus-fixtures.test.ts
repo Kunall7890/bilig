@@ -7,7 +7,7 @@ import {
 } from '@bilig/xlsx'
 import { describe, expect, it } from 'vitest'
 
-import { xlsxZipEntryContentsEqual } from '../gen-workpaper-xlsx-corpus-fixtures.ts'
+import { xlsxZipEntryContentsEqual } from '../xlsx-fixture-comparison.ts'
 
 function workbookWithValue(value: string): SimpleXlsxWorkbook {
   return {

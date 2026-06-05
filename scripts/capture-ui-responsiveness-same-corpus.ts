@@ -35,6 +35,7 @@ import {
   writeSameCorpusProofArchiveManifest,
   writeSameCorpusProofArchiveZip,
 } from './ui-responsiveness-same-corpus-proof-archive.ts'
+import { xlsxZipEntryContentsEqual } from './xlsx-fixture-comparison.ts'
 
 export {
   parseCaptureArgs,
@@ -472,7 +473,7 @@ export function emitSameCorpusXlsx(args: EmitXlsxArgs): void {
       throw new Error(`Same-corpus XLSX fixture is missing: ${outputFile}`)
     }
     const existingBytes = readFileSync(outputFile)
-    if (!existingBytes.equals(workbookBytes)) {
+    if (!xlsxZipEntryContentsEqual(existingBytes, workbookBytes)) {
       throw new Error(`Same-corpus XLSX fixture is stale: ${outputFile}`)
     }
   } else {
