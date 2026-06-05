@@ -136,7 +136,12 @@ export function exportXlsxSourceLiteralPatchesToFileAsync(
 }
 
 export function exportWorkPaperXlsx(workbook: WorkPaperXlsxExportSource): Uint8Array {
-  return exportXlsx(workbook.exportSourcePreservingXlsxSnapshot?.() ?? workbook.exportSnapshot())
+  const sourcePreservingSnapshot = workbook.exportSourcePreservingXlsxSnapshot?.()
+  const sourcePreservingInput = sourcePreservingSnapshot ? sourcePreservingPatchInputFromSnapshot(sourcePreservingSnapshot) : null
+  if (sourcePreservingInput) {
+    return exportXlsxSourceLiteralPatches(sourcePreservingInput)
+  }
+  return exportXlsx(sourcePreservingSnapshot ?? workbook.exportSnapshot())
 }
 
 export async function exportWorkPaperXlsxToFileAsync(

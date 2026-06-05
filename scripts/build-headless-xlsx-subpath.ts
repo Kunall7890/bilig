@@ -23,6 +23,7 @@ import { basename } from 'node:path'
 import {
   createFileImportedXlsxSourceReader,
   exportXlsx,
+  exportXlsxSourceLiteralPatches,
   exportXlsxSourceLiteralPatchesToFileAsync,
   importXlsxFromZipByteSource,
 } from './xlsx-internal/index.js'
@@ -73,7 +74,8 @@ export function exportWorkPaperXlsx(workbook) {
     typeof workbook.exportSourcePreservingXlsxSnapshot === 'function'
       ? workbook.exportSourcePreservingXlsxSnapshot()
       : null
-  return exportXlsx(snapshot ?? workbook.exportSnapshot())
+  const sourcePreservingInput = snapshot ? sourcePreservingPatchInputFromSnapshot(snapshot) : null
+  return sourcePreservingInput ? exportXlsxSourceLiteralPatches(sourcePreservingInput) : exportXlsx(snapshot ?? workbook.exportSnapshot())
 }
 
 export async function exportWorkPaperXlsxToFileAsync(workbook, outputPath) {
