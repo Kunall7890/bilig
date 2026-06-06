@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ErrorCode, ValueTag } from '@bilig/protocol'
+import { formatAddress } from '@bilig/formula'
+import { ErrorCode, ValueTag, type WorkbookSnapshot } from '@bilig/protocol'
 import { SpreadsheetEngine } from '../engine.js'
 import { EngineEvaluationTimeoutError, EngineMutationError } from '../engine/errors.js'
 import type { EngineCellMutationRef } from '../cell-mutations-at.js'
@@ -949,6 +950,67 @@ describe('SpreadsheetEngine formula initialization', () => {
       formulaForEach.mockRestore()
     }
   })
+
+  it(
+    'defers large cached formula instance tables until runtime-image export',
+    async () => {
+      const formulaCount = 16_385
+      const snapshot: WorkbookSnapshot = {
+        version: 1,
+        workbook: {
+          name: 'engine-formula-initialize-large-cached-formula-instance-defer',
+          metadata: {
+            calculationSettings: {
+              mode: 'manual',
+              compatibilityMode: 'excel-modern',
+              fullCalcOnLoad: false,
+            },
+          },
+        },
+        sheets: [
+          {
+            id: 1,
+            name: 'Sheet1',
+            order: 0,
+            cells: Array.from({ length: formulaCount }, (_, row) => ({
+              address: formatAddress(row, 1),
+              row,
+              col: 1,
+              formula: `A${row + 1}+1`,
+              value: row + 1,
+            })),
+          },
+        ],
+      }
+      const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-large-cached-formula-instance-defer' })
+      await engine.ready()
+      engine.importSnapshot(snapshot)
+
+      expect(engine.getCellValue('Sheet1', `B${formulaCount}`)).toEqual({ tag: ValueTag.Number, value: formulaCount })
+
+      const formulaForEach = vi.spyOn(getRuntimeFormulaStore(engine), 'forEach')
+      try {
+        const leanSnapshot = engine.exportSnapshot({ includeRuntimeImage: false })
+        expect(readRuntimeImage(leanSnapshot)).toBeUndefined()
+        expect(formulaForEach).not.toHaveBeenCalled()
+        expect(leanSnapshot.sheets[0]?.cells.at(-1)).toMatchObject({
+          address: `B${formulaCount}`,
+          formula: `A${formulaCount}+1`,
+          value: formulaCount,
+        })
+
+        const runtimeImage = readRuntimeImage(engine.exportSnapshot())
+        expect(runtimeImage?.formulaInstances).toHaveLength(formulaCount)
+        expect(formulaForEach).toHaveBeenCalled()
+        formulaForEach.mockClear()
+        expect(readRuntimeImage(engine.exportSnapshot())?.formulaInstances).toHaveLength(formulaCount)
+        expect(formulaForEach).not.toHaveBeenCalled()
+      } finally {
+        formulaForEach.mockRestore()
+      }
+    },
+    OVER_DIRECT_LIMIT_TEST_TIMEOUT_MS,
+  )
 
   it('bulk-materializes mixed parser-cache template sheets into strided family runs', async () => {
     const rowCount = 12

@@ -9,6 +9,7 @@ import type { CachedFormulaInitializationRef, EngineFormulaInitializationService
 const EMPTY_U32 = new Uint32Array(0)
 const EMPTY_EDGE_SLICE: EdgeSlice = { ptr: -1, len: 0, cap: 0 }
 const CACHED_FORMULA_PLACEHOLDER_AST: FormulaNode = { kind: 'NumberLiteral', value: 0 }
+const MAX_EAGER_CACHED_FORMULA_INSTANCE_RECORDS = 16_384
 
 function createCachedImportedRuntimeFormula(cellIndex: number, source: string): RuntimeFormula {
   const compiled: RuntimeFormula['compiled'] = {
@@ -92,8 +93,11 @@ export function initializeCachedFormulaSourcesAtNow(args: {
   const hadExistingFormulas = serviceArgs.state.formulas.size > 0
   serviceArgs.state.workbook.cellStore.ensureCapacity(serviceArgs.state.workbook.cellStore.size + reservedNewCells)
   serviceArgs.ensureRecalcScratchCapacity(serviceArgs.state.workbook.cellStore.size + reservedNewCells + 1)
-  const formulaInstances: FormulaInstanceSnapshot[] | undefined =
-    hadExistingFormulas || serviceArgs.hydrateFreshFormulaInstances === undefined ? undefined : []
+  const canEagerHydrateFormulaInstances =
+    !hadExistingFormulas &&
+    serviceArgs.hydrateFreshFormulaInstances !== undefined &&
+    refs.length <= MAX_EAGER_CACHED_FORMULA_INSTANCE_RECORDS
+  const formulaInstances: FormulaInstanceSnapshot[] | undefined = canEagerHydrateFormulaInstances ? [] : undefined
   serviceArgs.state.workbook.withBatchedColumnVersionUpdates(() => {
     for (let index = 0; index < refs.length; index += 1) {
       serviceArgs.checkEvaluationBudget()
