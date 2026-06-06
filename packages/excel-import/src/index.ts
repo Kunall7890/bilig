@@ -101,6 +101,7 @@ declare global {
 
 interface XlsxExportModule {
   readonly exportXlsx: (snapshot: WorkbookSnapshot) => Uint8Array
+  readonly exportXlsxToFile: (snapshot: WorkbookSnapshot, outputPath: string) => XlsxSourceLiteralPatchFileExportResult
 }
 
 interface XlsxSourcePreservingExportModule {
@@ -234,6 +235,10 @@ function isXlsxExportFunction(value: unknown): value is XlsxExportModule['export
   return typeof value === 'function'
 }
 
+function isXlsxExportToFileFunction(value: unknown): value is XlsxExportModule['exportXlsxToFile'] {
+  return typeof value === 'function'
+}
+
 function isXlsxSourceLiteralPatchExportFunction(
   value: unknown,
 ): value is XlsxSourcePreservingExportModule['exportXlsxSourceLiteralPatches'] {
@@ -274,9 +279,11 @@ function isLargeSimpleInspectFunction(value: unknown): value is TryInspectLargeS
 
 function readXlsxExportModule(value: unknown): XlsxExportModule {
   const loadedExportXlsx = isRecord(value) ? value['exportXlsx'] : undefined
-  if (isXlsxExportFunction(loadedExportXlsx)) {
+  const loadedExportXlsxToFile = isRecord(value) ? value['exportXlsxToFile'] : undefined
+  if (isXlsxExportFunction(loadedExportXlsx) && isXlsxExportToFileFunction(loadedExportXlsxToFile)) {
     return {
       exportXlsx: loadedExportXlsx,
+      exportXlsxToFile: loadedExportXlsxToFile,
     }
   }
   throw new Error('XLSX export module is missing required exports')
@@ -338,6 +345,10 @@ function readLargeSimpleInspectModule(value: unknown): LargeSimpleInspectModule 
 
 export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   return loadXlsxExportModule().exportXlsx(snapshot)
+}
+
+export function exportXlsxToFile(snapshot: WorkbookSnapshot, outputPath: string): XlsxSourceLiteralPatchFileExportResult {
+  return loadXlsxExportModule().exportXlsxToFile(snapshot, outputPath)
 }
 
 export function exportXlsxSourceLiteralPatches(input: XlsxSourceLiteralPatchExportInput): Uint8Array {

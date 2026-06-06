@@ -1,3 +1,4 @@
+import { writeFileSync } from 'node:fs'
 import { unzipSync, zipSync } from 'fflate'
 import { decodeCellAddress, decodeCellRange, encodeCellAddress, encodeCellRange } from '@bilig/xlsx'
 import type {
@@ -75,6 +76,7 @@ import {
   exportXlsxSourceLiteralPatches,
   exportXlsxSourceLiteralPatchesToFileAsync,
   exportXlsxSourceLiteralPatchesToFile,
+  tryExportSourcePreservingXlsxToFile,
   tryExportSourcePreservingXlsx,
   type XlsxSourceLiteralPatch,
   type XlsxSourceLiteralPatchExportInput,
@@ -918,4 +920,17 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   const cellMetadataBytes = addExportCellMetadataToXlsxBytes(addExportPrinterSettingsToXlsxBytes(printPageSetupBytes, snapshot), snapshot)
   const nativeSpillBytes = addExportNativeSpillsToXlsxBytes(cellMetadataBytes, snapshot)
   return addExportHyperlinkDisplaysToXlsxBytes(nativeSpillBytes, snapshot)
+}
+
+export function exportXlsxToFile(snapshot: WorkbookSnapshot, outputPath: string): XlsxSourceLiteralPatchFileExportResult {
+  const importedSource = readImportedXlsxSourceReference(snapshot)
+  if (importedSource !== undefined && readImportedXlsxSourceCellPatches(snapshot).length > 0) {
+    const sourcePreservingResult = tryExportSourcePreservingXlsxToFile(snapshot, importedSource, outputPath)
+    if (sourcePreservingResult !== null) {
+      return sourcePreservingResult
+    }
+  }
+  const bytes = exportXlsx(snapshot)
+  writeFileSync(outputPath, bytes)
+  return { bytesWritten: bytes.byteLength }
 }

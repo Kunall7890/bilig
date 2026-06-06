@@ -4,6 +4,13 @@ type WorkbookSheetCells = WorkbookSnapshot['sheets'][number]['cells']
 type WorkbookSheetCell = WorkbookSheetCells[number]
 
 const lazyCellsBrand = Symbol('bilig.lazyImportedXlsxCells')
+export const lazySheetCellReaderSymbol = Symbol.for('bilig.lazyImportedXlsxCells.readCellWithCoordinates')
+
+export interface ImportedWorkbookLazySheetCellRead {
+  readonly cell: WorkbookSheetCell
+  readonly row: number
+  readonly col: number
+}
 
 export interface ImportedWorkbookLazySheetCells extends Array<WorkbookSheetCell> {
   readonly [lazyCellsBrand]: true
@@ -16,6 +23,7 @@ export function isLazyWorkbookSheetCells(cells: WorkbookSheetCells | undefined):
 export function createLazyWorkbookSheetCells(
   cellCount: number,
   materialize: (index: number) => WorkbookSheetCell | undefined,
+  options: { readonly readCellWithCoordinates?: (index: number) => ImportedWorkbookLazySheetCellRead | undefined } = {},
 ): WorkbookSheetCells {
   const iterate = function* (): IterableIterator<WorkbookSheetCell> {
     for (let index = 0; index < cellCount; index += 1) {
@@ -31,6 +39,9 @@ export function createLazyWorkbookSheetCells(
     get: (_target, property) => {
       if (property === lazyCellsBrand) {
         return true
+      }
+      if (property === lazySheetCellReaderSymbol) {
+        return options.readCellWithCoordinates
       }
       if (property === 'length') {
         return cellCount
@@ -172,10 +183,16 @@ export function createLazyWorkbookSheetCells(
       return Reflect.get(Array.prototype, property)
     },
     has: (_target, property) =>
-      property === lazyCellsBrand || property === 'length' || (typeof property === 'string' && isArrayIndexProperty(property)),
+      property === lazyCellsBrand ||
+      property === lazySheetCellReaderSymbol ||
+      property === 'length' ||
+      (typeof property === 'string' && isArrayIndexProperty(property)),
     getOwnPropertyDescriptor: (_target, property) => {
       if (property === 'length') {
         return { configurable: true, enumerable: false, value: cellCount }
+      }
+      if (property === lazySheetCellReaderSymbol && options.readCellWithCoordinates) {
+        return { configurable: true, enumerable: false, value: options.readCellWithCoordinates }
       }
       if (typeof property === 'string' && isArrayIndexProperty(property)) {
         const value = materialize(Number(property))

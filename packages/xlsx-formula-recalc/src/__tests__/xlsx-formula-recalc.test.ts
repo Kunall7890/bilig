@@ -114,6 +114,18 @@ describe('xlsx-formula-recalc', () => {
     restored.dispose()
   })
 
+  it('recalculates manual-calc lazy imported worksheets without cloning lazy cell proxies', () => {
+    const result = recalculateXlsx(buildLargeManualCalcWorkbookBytes(), {
+      fileName: 'large-manual-lazy-import.xlsx',
+      reads: ['Data!B1'],
+    })
+
+    expect(readNumber(result.reads['Data!B1'])).toBe(4)
+    expect(readCachedFormulaValue(result.xlsx, 'xl/worksheets/sheet1.xml', 'B1')).toBe('4')
+    expect(readWorkbookCalcPrAttribute(result.xlsx, 'calcMode')).toBe('manual')
+    expect(readWorkbookCalcPrAttribute(result.xlsx, 'fullCalcOnLoad')).toBeNull()
+  })
+
   it('inspects stale XLSX formula caches through the public API', () => {
     const sourceWorkbook = WorkPaper.buildFromSheets({
       Sheet1: [
@@ -419,6 +431,54 @@ function readNumber(value: unknown): number {
     return value.value
   }
   throw new Error(`Expected numeric cell value, received ${JSON.stringify(value)}`)
+}
+
+function buildLargeManualCalcWorkbookBytes(): Uint8Array {
+  const rowCount = 65_537
+  const rows = ['<row r="1"><c r="A1"><v>2</v></c><c r="B1"><f>A1*2</f><v>999</v></c></row>']
+  for (let row = 2; row <= rowCount; row += 1) {
+    rows.push(`<row r="${String(row)}"><c r="A${String(row)}"><v>${String(row)}</v></c></row>`)
+  }
+  return buildIndependentWorkbook(
+    [
+      {
+        name: 'Data',
+        path: 'xl/worksheets/sheet1.xml',
+        xml: [
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+          '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+          `<dimension ref="A1:B${String(rowCount)}"/>`,
+          `<sheetData>${rows.join('')}</sheetData>`,
+          '</worksheet>',
+        ].join(''),
+      },
+    ],
+    '<calcPr calcMode="manual" fullCalcOnLoad="0"/>',
+  )
+}
+
+function buildIndependentWorkbook(
+  sheets: readonly { readonly name: string; readonly path: string; readonly xml: string }[],
+  calcPrXml = '',
+): Uint8Array {
+  return zipSync({
+    'xl/workbook.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${officeRelationshipNamespace}">
+  <sheets>${sheets
+    .map((sheet, index) => `<sheet name="${sheet.name}" sheetId="${String(index + 1)}" r:id="rId${String(index + 1)}"/>`)
+    .join('')}</sheets>${calcPrXml}
+</workbook>`),
+    'xl/_rels/workbook.xml.rels': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+${sheets
+  .map(
+    (sheet, index) =>
+      `<Relationship Id="rId${String(index + 1)}" Type="${officeRelationshipNamespace}/worksheet" Target="${sheet.path.slice('xl/'.length)}"/>`,
+  )
+  .join('')}
+</Relationships>`),
+    ...Object.fromEntries(sheets.map((sheet) => [sheet.path, strToU8(sheet.xml)])),
+  })
 }
 
 function replaceCellXml(bytes: Uint8Array, sheetPath: string, address: string, replacement: string): Uint8Array {

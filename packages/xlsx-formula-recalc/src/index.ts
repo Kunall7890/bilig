@@ -1,11 +1,12 @@
+import { writeFileSync } from 'node:fs'
 import { WorkPaper, type RawCellContent, type WorkPaperCellAddress, type WorkPaperChange, type WorkPaperConfig } from '@bilig/headless'
 import type { ImportedWorkbookDiagnostics, XlsxExternalWorkbookInput, XlsxImportOptions } from '@bilig/headless/xlsx'
-import { exportXlsx, importXlsx } from '@bilig/headless/xlsx'
+import { exportXlsx, exportXlsxToFile, importXlsx } from '@bilig/headless/xlsx'
 import { ErrorCode, formatErrorCode, ValueTag } from '@bilig/protocol'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 
 export { WorkPaper } from '@bilig/headless'
-export { exportXlsx, importXlsx } from '@bilig/headless/xlsx'
+export { exportXlsx, exportXlsxToFile, importXlsx } from '@bilig/headless/xlsx'
 
 type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSnapshot>
 type WorkbookSnapshot = Parameters<typeof WorkPaper.buildFromSnapshot>[0]
@@ -14,6 +15,23 @@ interface FormulaErrorCache {
   readonly sheetName: string
   readonly address: string
   readonly value: string
+}
+
+const sourcePreservingOutputCalculationSettings = Symbol.for('bilig.sourcePreservingXlsxOutputCalculationSettings')
+const importedXlsxSourceBytes = Symbol.for('bilig.importedXlsxSourceBytes')
+const importedXlsxSourceCellPatches = Symbol.for('bilig.importedXlsxSourceCellPatches')
+
+interface ImportedXlsxSourceCellPatch {
+  readonly kind: 'literal'
+  readonly sheetName: string
+  readonly address: string
+  readonly value: string | number | boolean | null
+  readonly preserveFormula?: boolean
+}
+
+type SnapshotWithImportedXlsxSource = WorkbookSnapshot & {
+  readonly [importedXlsxSourceBytes]?: unknown
+  readonly [importedXlsxSourceCellPatches]?: readonly ImportedXlsxSourceCellPatch[]
 }
 
 export type XlsxFormulaRecalcCellValue = ReturnType<WorkPaperInstance['getCellValue']>
@@ -40,7 +58,81 @@ export interface XlsxFormulaRecalcResult {
   readonly diagnostics?: ImportedWorkbookDiagnostics
 }
 
+export interface XlsxFormulaRecalcFileOptions extends XlsxFormulaRecalcOptions {
+  readonly outputPath: string
+}
+
+export interface XlsxFormulaRecalcFileResult {
+  readonly bytesWritten: number
+  readonly warnings: readonly string[]
+  readonly sheetNames: readonly string[]
+  readonly reads: Readonly<Record<string, XlsxFormulaRecalcCellValue>>
+  readonly changes: readonly WorkPaperChange[]
+  readonly diagnostics?: ImportedWorkbookDiagnostics
+}
+
+interface PreparedXlsxFormulaRecalcOutput {
+  readonly outputSnapshot: WorkbookSnapshot
+  readonly errorCaches: readonly FormulaErrorCache[]
+  readonly warnings: readonly string[]
+  readonly sheetNames: readonly string[]
+  readonly reads: Readonly<Record<string, XlsxFormulaRecalcCellValue>>
+  readonly changes: readonly WorkPaperChange[]
+  readonly diagnostics?: ImportedWorkbookDiagnostics
+}
+
 export function recalculateXlsx(input: Uint8Array | ArrayBuffer | Buffer, options: XlsxFormulaRecalcOptions = {}): XlsxFormulaRecalcResult {
+  return withPreparedRecalculatedXlsxOutput(input, options, (prepared) => {
+    const exportedXlsx = toUint8Array(exportXlsx(prepared.outputSnapshot))
+    return {
+      xlsx: addFormulaErrorCachesToXlsxBytes(exportedXlsx, prepared.outputSnapshot, prepared.errorCaches),
+      warnings: prepared.warnings,
+      sheetNames: prepared.sheetNames,
+      reads: prepared.reads,
+      changes: prepared.changes,
+      ...(prepared.diagnostics ? { diagnostics: prepared.diagnostics } : {}),
+    }
+  })
+}
+
+export function recalculateXlsxToFile(
+  input: Uint8Array | ArrayBuffer | Buffer,
+  options: XlsxFormulaRecalcFileOptions,
+): XlsxFormulaRecalcFileResult {
+  return withPreparedRecalculatedXlsxOutput(input, options, (prepared) => {
+    if (prepared.errorCaches.length === 0) {
+      const exported = exportXlsxToFile(prepared.outputSnapshot, options.outputPath)
+      return {
+        bytesWritten: exported.bytesWritten,
+        warnings: prepared.warnings,
+        sheetNames: prepared.sheetNames,
+        reads: prepared.reads,
+        changes: prepared.changes,
+        ...(prepared.diagnostics ? { diagnostics: prepared.diagnostics } : {}),
+      }
+    }
+    const exportedXlsx = addFormulaErrorCachesToXlsxBytes(
+      toUint8Array(exportXlsx(prepared.outputSnapshot)),
+      prepared.outputSnapshot,
+      prepared.errorCaches,
+    )
+    writeFileSync(options.outputPath, exportedXlsx)
+    return {
+      bytesWritten: exportedXlsx.byteLength,
+      warnings: prepared.warnings,
+      sheetNames: prepared.sheetNames,
+      reads: prepared.reads,
+      changes: prepared.changes,
+      ...(prepared.diagnostics ? { diagnostics: prepared.diagnostics } : {}),
+    }
+  })
+}
+
+function withPreparedRecalculatedXlsxOutput<Result>(
+  input: Uint8Array | ArrayBuffer | Buffer,
+  options: XlsxFormulaRecalcOptions,
+  consume: (prepared: PreparedXlsxFormulaRecalcOutput) => Result,
+): Result {
   const imported = importXlsx(
     toUint8Array(input),
     options.fileName ?? 'workbook.xlsx',
@@ -56,39 +148,217 @@ export function recalculateXlsx(input: Uint8Array | ArrayBuffer | Buffer, option
   try {
     const changes: WorkPaperChange[] = []
     for (const edit of options.edits ?? []) {
-      changes.push(...workbook.setCellContents(parseQualifiedCellTarget(workbook, edit.target), edit.value))
+      appendChanges(changes, workbook.setCellContents(parseQualifiedCellTarget(workbook, edit.target), edit.value))
     }
-    changes.push(...workbook.rebuildAndRecalculate())
+    appendChanges(changes, workbook.rebuildAndRecalculate())
 
     const reads: Record<string, XlsxFormulaRecalcCellValue> = {}
     for (const target of options.reads ?? []) {
       reads[target] = workbook.getCellValue(parseQualifiedCellTarget(workbook, target))
     }
 
-    const outputFormulaCaches = snapshotWithFormulaCachedValues(workbook, workbook.exportSnapshot())
-    const outputSnapshot = outputFormulaCaches.snapshot
-    const exportedXlsx = toUint8Array(
-      exportXlsx(
-        restoreOutputCalculationSettings(
-          outputSnapshot,
-          options.config?.calculationSettings === undefined ? originalCalculationSettings : undefined,
-        ),
-      ),
+    const sourcePreservingOutputSnapshot = sourcePreservingSnapshotForRecalculationExport(
+      workbook,
+      imported.snapshot,
+      options.config?.calculationSettings === undefined ? originalCalculationSettings : undefined,
+      options.edits?.length ?? 0,
     )
-    return {
-      xlsx: addFormulaErrorCachesToXlsxBytes(exportedXlsx, outputSnapshot, outputFormulaCaches.errorCaches),
+    if (sourcePreservingOutputSnapshot) {
+      return consume({
+        outputSnapshot: sourcePreservingOutputSnapshot,
+        errorCaches: [],
+        warnings: imported.warnings,
+        sheetNames: imported.sheetNames,
+        reads,
+        changes,
+        ...(imported.diagnostics ? { diagnostics: imported.diagnostics } : {}),
+      })
+    }
+
+    const outputFormulaCaches = snapshotWithFormulaCachedValues(workbook, workbook.exportSnapshot())
+    return consume({
+      outputSnapshot: restoreOutputCalculationSettings(
+        outputFormulaCaches.snapshot,
+        options.config?.calculationSettings === undefined ? originalCalculationSettings : undefined,
+      ),
+      errorCaches: outputFormulaCaches.errorCaches,
       warnings: imported.warnings,
       sheetNames: imported.sheetNames,
       reads,
       changes,
       ...(imported.diagnostics ? { diagnostics: imported.diagnostics } : {}),
-    }
+    })
   } finally {
     workbook.dispose()
   }
 }
 
+function sourcePreservingSnapshotForRecalculationExport(
+  workbook: WorkPaperInstance,
+  importedSnapshot: WorkbookSnapshot,
+  originalCalculationSettings: WorkbookCalculationSettings | undefined,
+  editCount: number,
+): WorkbookSnapshot | null {
+  const sourcePreservingSnapshot = workbook.exportSourcePreservingXlsxSnapshot?.()
+  if (!sourcePreservingSnapshot && editCount > 0) {
+    return null
+  }
+  const source = readImportedXlsxSourceReference(sourcePreservingSnapshot ?? importedSnapshot)
+  if (source === undefined) {
+    return null
+  }
+  const formulaCachePatches = formulaCachePatchesForImportedSnapshot(workbook, importedSnapshot)
+  if (formulaCachePatches === null) {
+    return null
+  }
+  const outputSnapshot = attachSourcePreservingRecalculationPatches(
+    restoreOutputCalculationSettings(
+      sourcePreservingSnapshot ?? minimalSourcePreservingSnapshot(importedSnapshot),
+      originalCalculationSettings,
+    ),
+    source,
+    mergeImportedXlsxSourceCellPatches(readImportedXlsxSourceCellPatches(sourcePreservingSnapshot), formulaCachePatches),
+  )
+  if (originalCalculationSettings !== undefined) {
+    Object.defineProperty(outputSnapshot, sourcePreservingOutputCalculationSettings, {
+      configurable: true,
+      enumerable: false,
+      value: calculationSettingsAfterExplicitRecalculation(originalCalculationSettings),
+    })
+  }
+  return outputSnapshot
+}
+
+function formulaCachePatchesForImportedSnapshot(
+  workbook: WorkPaperInstance,
+  importedSnapshot: WorkbookSnapshot,
+): readonly ImportedXlsxSourceCellPatch[] | null {
+  const patches: ImportedXlsxSourceCellPatch[] = []
+  for (const sheet of importedSnapshot.sheets) {
+    const sheetId = workbook.getSheetId(sheet.name)
+    if (sheetId === undefined) {
+      continue
+    }
+    for (const cell of sheet.cells) {
+      if (typeof cell.formula !== 'string' || cell.formula.trim().length === 0) {
+        continue
+      }
+      const address = cellA1Address(cell)
+      if (address === null) {
+        return null
+      }
+      const coordinates = cellCoordinates(cell)
+      if (coordinates === null) {
+        return null
+      }
+      const cellValue = workbook.getCellValue({ sheet: sheetId, row: coordinates.row, col: coordinates.col })
+      const cachedValue = literalInputForFormulaCache(cellValue)
+      if (cachedValue !== undefined) {
+        patches.push({ kind: 'literal', sheetName: sheet.name, address, value: cachedValue, preserveFormula: true })
+        continue
+      }
+      if (errorInputForFormulaCache(cellValue) !== undefined) {
+        return null
+      }
+    }
+  }
+  return patches
+}
+
+function readImportedXlsxSourceReference(snapshot: WorkbookSnapshot | null | undefined): unknown {
+  return snapshot === null || snapshot === undefined ? undefined : (snapshot as SnapshotWithImportedXlsxSource)[importedXlsxSourceBytes]
+}
+
+function readImportedXlsxSourceCellPatches(snapshot: WorkbookSnapshot | null | undefined): readonly ImportedXlsxSourceCellPatch[] {
+  return snapshot === null || snapshot === undefined
+    ? []
+    : ((snapshot as SnapshotWithImportedXlsxSource)[importedXlsxSourceCellPatches] ?? [])
+}
+
+function attachSourcePreservingRecalculationPatches(
+  snapshot: WorkbookSnapshot,
+  source: unknown,
+  patches: readonly ImportedXlsxSourceCellPatch[],
+): WorkbookSnapshot {
+  Object.defineProperty(snapshot, importedXlsxSourceBytes, {
+    configurable: true,
+    enumerable: false,
+    value: source,
+  })
+  Object.defineProperty(snapshot, importedXlsxSourceCellPatches, {
+    configurable: true,
+    enumerable: false,
+    value: patches,
+  })
+  return snapshot
+}
+
+function mergeImportedXlsxSourceCellPatches(
+  basePatches: readonly ImportedXlsxSourceCellPatch[],
+  formulaCachePatches: readonly ImportedXlsxSourceCellPatch[],
+): readonly ImportedXlsxSourceCellPatch[] {
+  const merged = new Map<string, ImportedXlsxSourceCellPatch>()
+  for (const patch of basePatches) {
+    merged.set(`${patch.sheetName}!${patch.address}`, patch)
+  }
+  for (const patch of formulaCachePatches) {
+    merged.set(`${patch.sheetName}!${patch.address}`, patch)
+  }
+  return [...merged.values()]
+}
+
+function minimalSourcePreservingSnapshot(importedSnapshot: WorkbookSnapshot): WorkbookSnapshot {
+  return {
+    version: importedSnapshot.version,
+    workbook: { name: importedSnapshot.workbook.name },
+    sheets: importedSnapshot.sheets.map((sheet) => ({
+      ...(sheet.id === undefined ? {} : { id: sheet.id }),
+      name: sheet.name,
+      order: sheet.order,
+      cells: [],
+    })),
+  }
+}
+
+function cellA1Address(cell: WorkbookSnapshot['sheets'][number]['cells'][number]): string | null {
+  if (typeof cell.address === 'string' && cell.address.length > 0) {
+    return cell.address
+  }
+  const coordinates = cellCoordinates(cell)
+  return coordinates ? encodeA1CellReference(coordinates.row, coordinates.col) : null
+}
+
+function cellCoordinates(cell: WorkbookSnapshot['sheets'][number]['cells'][number]): { readonly row: number; readonly col: number } | null {
+  const row = cell.row
+  const col = cell.col
+  if (Number.isInteger(row) && Number.isInteger(col) && row !== undefined && col !== undefined) {
+    return { row, col }
+  }
+  if (typeof cell.address !== 'string') {
+    return null
+  }
+  try {
+    return parseA1CellReference(cell.address)
+  } catch {
+    return null
+  }
+}
+
+function encodeA1CellReference(row: number, col: number): string {
+  let column = ''
+  for (let value = col + 1; value > 0; value = Math.floor((value - 1) / 26)) {
+    column = String.fromCharCode(((value - 1) % 26) + 65) + column
+  }
+  return `${column}${String(row + 1)}`
+}
+
 export const recalculateSheetjsWorkbook = recalculateXlsx
+
+function appendChanges(target: WorkPaperChange[], changes: readonly WorkPaperChange[]): void {
+  for (const change of changes) {
+    target.push(change)
+  }
+}
 
 export const xlsxCacheDoctorSchemaVersion = 'xlsx-cache-doctor.v1'
 
@@ -321,7 +591,18 @@ function snapshotWithFormulaCachedValues(
   workbook: WorkPaperInstance,
   snapshot: WorkbookSnapshot,
 ): { readonly snapshot: WorkbookSnapshot; readonly errorCaches: readonly FormulaErrorCache[] } {
-  const next = structuredClone(snapshot)
+  const next: WorkbookSnapshot = {
+    ...snapshot,
+    workbook: {
+      ...snapshot.workbook,
+      ...(snapshot.workbook.metadata === undefined ? {} : { metadata: structuredClone(snapshot.workbook.metadata) }),
+    },
+    sheets: snapshot.sheets.map((sheet) => ({
+      ...sheet,
+      ...(sheet.metadata === undefined ? {} : { metadata: structuredClone(sheet.metadata) }),
+      cells: sheet.cells.map((cell) => ({ ...cell })),
+    })),
+  }
   const errorCaches: FormulaErrorCache[] = []
   for (const sheet of next.sheets) {
     const sheetId = workbook.getSheetId(sheet.name)
@@ -449,22 +730,28 @@ function escapeRegExp(value: string): string {
 }
 
 function snapshotForFreshFormulaRecalculation(snapshot: WorkbookSnapshot): WorkbookSnapshot {
-  const next = structuredClone(snapshot)
-  const calculationSettings = next.workbook.metadata?.calculationSettings
+  const calculationSettings = snapshot.workbook.metadata?.calculationSettings
   if (calculationSettings === undefined) {
-    return next
+    return snapshot
   }
   if (calculationSettings.mode !== 'manual' && calculationSettings.fullCalcOnLoad !== false) {
-    return next
+    return snapshot
   }
 
-  next.workbook.metadata ??= {}
-  next.workbook.metadata.calculationSettings = {
-    ...calculationSettings,
-    mode: 'automatic',
-    fullCalcOnLoad: true,
+  return {
+    ...snapshot,
+    workbook: {
+      ...snapshot.workbook,
+      metadata: {
+        ...snapshot.workbook.metadata,
+        calculationSettings: {
+          ...calculationSettings,
+          mode: 'automatic',
+          fullCalcOnLoad: true,
+        },
+      },
+    },
   }
-  return next
 }
 
 function restoreOutputCalculationSettings(
@@ -474,10 +761,16 @@ function restoreOutputCalculationSettings(
   if (originalCalculationSettings === undefined) {
     return snapshot
   }
-  const next = structuredClone(snapshot)
-  next.workbook.metadata ??= {}
-  next.workbook.metadata.calculationSettings = calculationSettingsAfterExplicitRecalculation(originalCalculationSettings)
-  return next
+  return {
+    ...snapshot,
+    workbook: {
+      ...snapshot.workbook,
+      metadata: {
+        ...snapshot.workbook.metadata,
+        calculationSettings: calculationSettingsAfterExplicitRecalculation(originalCalculationSettings),
+      },
+    },
+  }
 }
 
 function calculationSettingsAfterExplicitRecalculation(settings: WorkbookCalculationSettings): WorkbookCalculationSettings {

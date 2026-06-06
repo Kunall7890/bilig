@@ -44,3 +44,15 @@ export interface ImportedWorksheetArenaSharedStringCellInput {
   readonly column: number
   readonly sharedStringIndex: number
 }
+
+export interface ImportedWorksheetArenaNativeScanCellInput {
+  readonly sheetIndex: number
+  readonly rows: Uint32Array
+  readonly columns: Uint16Array
+  readonly valueKinds: Uint8Array
+  readonly numbers: Float64Array
+  readonly sharedStringIds: Uint32Array
+  readonly formulaOnlyValueKind: number
+  readonly numberValueKind: number
+  readonly sharedStringValueKind: number
+}

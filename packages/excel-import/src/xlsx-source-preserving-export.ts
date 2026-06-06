@@ -32,6 +32,7 @@ import {
   readXlsxZipEntriesLazyFromByteSource,
   type XlsxZipByteSource,
 } from './xlsx-zip.js'
+import { applyExportCalculationSettingsToWorkbookXml } from './xlsx-calculation-settings.js'
 
 interface WorksheetPatch {
   readonly literals: ReadonlyMap<string, XlsxScalarCellPatch>
@@ -41,9 +42,15 @@ type ImportedXlsxSourceReference = Uint8Array | ImportedXlsxSourceReader
 
 type SourcePreservingZip = Record<string, Uint8Array>
 
+const sourcePreservingOutputCalculationSettings = Symbol.for('bilig.sourcePreservingXlsxOutputCalculationSettings')
+
 interface XlsxScalarCellPatch {
   readonly value: LiteralInput
   readonly preserveFormula: boolean
+}
+
+type SnapshotWithSourcePreservingOutputCalculationSettings = WorkbookSnapshot & {
+  readonly [sourcePreservingOutputCalculationSettings]?: NonNullable<WorkbookSnapshot['workbook']['metadata']>['calculationSettings']
 }
 
 export interface XlsxSourceLiteralPatch {
@@ -663,6 +670,19 @@ function ensureWorkbookRecalculation(zip: Record<string, Uint8Array>): boolean {
   return true
 }
 
+function applySourcePreservingWorkbookCalculationSettings(zip: Record<string, Uint8Array>, snapshot: WorkbookSnapshot): boolean {
+  const settings = (snapshot as SnapshotWithSourcePreservingOutputCalculationSettings)[sourcePreservingOutputCalculationSettings]
+  if (!settings) {
+    return ensureWorkbookRecalculation(zip)
+  }
+  const workbookXml = getZipText(zip, 'xl/workbook.xml')
+  if (!workbookXml) {
+    return false
+  }
+  setZipText(zip, 'xl/workbook.xml', applyExportCalculationSettingsToWorkbookXml(workbookXml, settings))
+  return true
+}
+
 export function tryExportSourcePreservingXlsx(snapshot: WorkbookSnapshot, source: ImportedXlsxSourceReference): Uint8Array | null {
   const literalPatches = readImportedXlsxSourceCellPatches(snapshot)
   if (literalPatches.length === 0) {
@@ -704,7 +724,7 @@ export function tryExportSourcePreservingXlsx(snapshot: WorkbookSnapshot, source
     setZipText(zip, sheetPath, patchedXml)
   }
   removeCalcChain(zip)
-  if (!ensureWorkbookRecalculation(zip)) {
+  if (!applySourcePreservingWorkbookCalculationSettings(zip, snapshot)) {
     return null
   }
   return zipSourcePreservingEntries(zip, preparedEntries)
@@ -751,7 +771,7 @@ export function tryExportSourcePreservingXlsxToFile(
     preparedEntries.set(sheetPath, preparedEntry)
   }
   removeCalcChain(zip)
-  if (!ensureWorkbookRecalculation(zip)) {
+  if (!applySourcePreservingWorkbookCalculationSettings(zip, snapshot)) {
     cleanupTemporaryFiles(preparedEntryPaths)
     return null
   }
@@ -814,7 +834,7 @@ export async function tryExportSourcePreservingXlsxToFileAsync(
     preparedEntries.set(sheetPath, preparedEntry)
   }
   removeCalcChain(zip)
-  if (!ensureWorkbookRecalculation(zip)) {
+  if (!applySourcePreservingWorkbookCalculationSettings(zip, snapshot)) {
     cleanupTemporaryFiles(preparedEntryPaths)
     return null
   }

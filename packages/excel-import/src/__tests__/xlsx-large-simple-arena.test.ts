@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { ImportedWorkbookArena, ImportedWorksheetStyleIndexArena } from '../xlsx-large-simple-arena.js'
 import { createLazyWorkbookRichTextCells, mergeWorkbookRichTextCells } from '../xlsx-large-simple-lazy-rich-text-cells.js'
+import { lazySheetCellReaderSymbol, type ImportedWorkbookLazySheetCellRead } from '../xlsx-large-simple-lazy-sheet-cells.js'
 import {
   isLazySheetCellIndexRange,
   type LazySheetCellIndexRange,
@@ -19,6 +20,21 @@ function readLazySheetCellIndexes(arena: ImportedWorkbookArena, sheetIndex: numb
     return value
   }
   throw new Error('Expected lazy sheet indexes to be a count, range, or Uint32Array.')
+}
+
+function readLazySheetCellWithCoordinates(cells: unknown, index: number): ImportedWorkbookLazySheetCellRead | undefined {
+  if (typeof cells !== 'object' || cells === null) {
+    throw new Error('Expected lazy sheet cells object.')
+  }
+  const reader = Reflect.get(cells, lazySheetCellReaderSymbol)
+  if (!isLazySheetCellReader(reader)) {
+    throw new Error('Expected lazy sheet cells to expose coordinate reader.')
+  }
+  return reader(index)
+}
+
+function isLazySheetCellReader(value: unknown): value is (index: number) => ImportedWorkbookLazySheetCellRead | undefined {
+  return typeof value === 'function'
 }
 
 function isLazySheetCellIndexRangeRecord(value: unknown): value is LazySheetCellIndexRange {
@@ -191,6 +207,11 @@ describe('large simple XLSX import arena', () => {
     expect(arena.readPreviewText(0, 0)).toBe('')
     expect(arena.retainedStorageByteLength()).toBeLessThan(retainedBeforeScratchRelease)
     expect(lazyCells).toHaveLength(1)
+    expect(readLazySheetCellWithCoordinates(lazyCells, 0)).toEqual({
+      row: 0,
+      col: 0,
+      cell: { address: 'A1', value: 'Alpha', formula: 'B1' },
+    })
     expect(lazyCells[0]).toEqual({ address: 'A1', value: 'Alpha', formula: 'B1' })
     expect([...lazyCells]).toEqual([{ address: 'A1', value: 'Alpha', formula: 'B1' }])
   })
@@ -212,6 +233,12 @@ describe('large simple XLSX import arena', () => {
     expect(arena.cellCount).toBe(0)
     expect(pool.count).toBe(0)
     expect(detachedCells).toHaveLength(4)
+    expect(readLazySheetCellWithCoordinates(detachedCells, 0)).toEqual({
+      row: 0,
+      col: 0,
+      cell: { address: 'A1', value: 'Alpha', formula: 'B1' },
+    })
+    expect(Object.keys(readLazySheetCellWithCoordinates(detachedCells, 0)!.cell)).toEqual(['address', 'value', 'formula'])
     expect(detachedCells[0]).toEqual({ address: 'A1', value: 'Alpha', formula: 'B1' })
     expect(detachedCells.at(-1)).toEqual({ address: 'B2', value: true })
     expect(detachedCells.map((cell) => cell.address)).toEqual(['A1', 'B1', 'A2', 'B2'])
@@ -563,6 +590,45 @@ describe('large simple XLSX import arena', () => {
       { address: 'A1', value: 'Packed shared label' },
       { address: 'B1', value: 42 },
       { address: 'C1', value: 42.5 },
+    ])
+  })
+
+  it('bulk-imports native scan cells through compact arena storage', () => {
+    const arena = new ImportedWorkbookArena()
+    arena.trackRowRunCellCoordinates(0)
+
+    arena.addNativeScanCells({
+      sheetIndex: 0,
+      rows: new Uint32Array([0, 0, 0, 1, 1]),
+      columns: new Uint16Array([0, 1, 2, 0, 1]),
+      valueKinds: new Uint8Array([1, 1, 2, 1, 0]),
+      numbers: new Float64Array([1.25, 2.5, Number.NaN, 4.75, Number.NaN]),
+      sharedStringIds: new Uint32Array([0, 0, 1, 0, 0]),
+      formulaOnlyValueKind: 0,
+      numberValueKind: 1,
+      sharedStringValueKind: 2,
+    })
+    arena.setFormula(4, 'A1+B1')
+
+    const snapshot = arena.snapshot()
+    expect(snapshot.numberValues).toBeUndefined()
+    expect(snapshot.sparseNumberCellIndexes).toEqual(new Uint32Array([0, 1, 3]))
+    expect(snapshot.sparseNumberValues).toEqual(new Float64Array([1.25, 2.5, 4.75]))
+    expect(arena.readPreviewText(0, 0)).toBe('1.25')
+
+    expect(
+      arena.retainSharedStringReferences([
+        { text: 'unused', rich: false },
+        { text: 'Native shared label', rich: false },
+      ]),
+    ).toEqual([])
+    expect(arena.readPreviewText(0, 2)).toBe('Native shared label')
+    expect(arena.materializeSheetCells(0)).toEqual([
+      { address: 'A1', value: 1.25 },
+      { address: 'B1', value: 2.5 },
+      { address: 'C1', value: 'Native shared label' },
+      { address: 'A2', value: 4.75 },
+      { address: 'B2', formula: 'A1+B1' },
     ])
   })
 

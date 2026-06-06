@@ -265,8 +265,9 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
   }
 
   override rebuildAndRecalculate(): WorkPaperChange[] {
-    this.invalidateImportedXlsxSource()
-    return super.rebuildAndRecalculate()
+    const changes = super.rebuildAndRecalculate()
+    if (this.importedXlsxSource !== undefined) this.recordImportedXlsxFormulaCachePatches(changes)
+    return changes
   }
 
   override setCellContents(address: WorkPaperCellAddress, content: RawCellContent | WorkPaperSheet): WorkPaperChange[] {

@@ -68,6 +68,19 @@ describe('xlsx-recalc CLI', () => {
     }
   })
 
+  it('documents the formula evaluation timeout option', () => {
+    let stdout = ''
+
+    const exitCode = runXlsxFormulaRecalcCli(['--help'], {
+      stdout: (text) => {
+        stdout += text
+      },
+    })
+
+    expect(exitCode).toBe(0)
+    expect(stdout).toContain('--timeout-ms <n>')
+  })
+
   it('inspects workbook formula cells and stale cached formula values before writing an output file', () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-formula-recalc-cli-inspect-'))
     try {

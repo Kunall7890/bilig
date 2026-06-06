@@ -38,6 +38,7 @@ import {
 } from './runtime-image-dense-snapshot-restore.js'
 import { formulaCachedLiteralToRestoredValue, restoreFreshRuntimeLiteralCell, restoreLiteralCell } from './runtime-image-literal-restore.js'
 import { restoreVisualMetadata, restoreWorkbookStructure } from './runtime-image-metadata-restore.js'
+import { readLazySheetCellReader } from './runtime-image-lazy-sheet-cell-reader.js'
 
 type WorkbookSnapshotCell = WorkbookSnapshot['sheets'][number]['cells'][number]
 
@@ -569,11 +570,16 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
             }
           }
         } else {
+          const readLazyCell = readLazySheetCellReader(sheet.cells)
           const attachFreshCell = createFreshRuntimeCellAttacher(args.workbook, sheetRecord)
           for (let cellIndex = 0; cellIndex < sheet.cells.length; cellIndex += 1) {
             args.checkEvaluationBudget?.()
-            const cell = sheet.cells[cellIndex]!
-            const coords = readRestoredCellCoordinates(sheet.name, cell)
+            const lazyCell = readLazyCell?.(cellIndex)
+            const cell = lazyCell?.cell ?? sheet.cells[cellIndex]!
+            const coords =
+              lazyCell && hasSnapshotCoordinate(lazyCell.row) && hasSnapshotCoordinate(lazyCell.col)
+                ? { row: lazyCell.row, col: lazyCell.col }
+                : readRestoredCellCoordinates(sheet.name, cell)
             const restoredCellIndex = args.workbook.cellStore.allocateReserved(sheetId, coords.row, coords.col)
             const rowId = (rowIds[coords.row] ??= ensureRowId(coords.row))
             const colId = (colIds[coords.col] ??= ensureColId(coords.col))
@@ -890,11 +896,17 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
             }
           }
         } else {
+          const readLazyCell = readLazySheetCellReader(sheet.cells)
           const attachCell = getFreshCellAttacher()
           for (let index = 0; index < sheet.cells.length; index += 1) {
             args.checkEvaluationBudget?.()
-            const cell = sheet.cells[index]!
-            const coords = sheetCoords?.[index] ?? readRestoredCellCoordinates(sheet.name, cell)
+            const lazyCell = readLazyCell?.(index)
+            const cell = lazyCell?.cell ?? sheet.cells[index]!
+            const coords =
+              sheetCoords?.[index] ??
+              (lazyCell && hasSnapshotCoordinate(lazyCell.row) && hasSnapshotCoordinate(lazyCell.col)
+                ? { row: lazyCell.row, col: lazyCell.col }
+                : readRestoredCellCoordinates(sheet.name, cell))
             const cellIndex = args.workbook.cellStore.allocateReserved(sheetId, coords.row, coords.col)
             const rowId = (rowIds[coords.row] ??= ensureRowId(coords.row))
             const colId = (colIds[coords.col] ??= ensureColId(coords.col))

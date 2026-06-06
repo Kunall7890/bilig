@@ -15,9 +15,10 @@ import type {
   ImportedWorkbookArenaSnapshot,
   ImportedWorksheetArenaCellInput,
   ImportedWorksheetArenaSharedStringCellInput,
+  ImportedWorksheetArenaNativeScanCellInput,
 } from './xlsx-large-simple-arena-types.js'
 import { createLazyWorkbookRichTextCells } from './xlsx-large-simple-lazy-rich-text-cells.js'
-import { createLazyWorkbookSheetCells } from './xlsx-large-simple-lazy-sheet-cells.js'
+import { createLazyWorkbookSheetCells, type ImportedWorkbookLazySheetCellRead } from './xlsx-large-simple-lazy-sheet-cells.js'
 import { createDetachedLazyWorkbookSheetCells } from './xlsx-large-simple-detached-lazy-sheet-cells.js'
 import {
   lazySheetCellArenaIndex,
@@ -34,6 +35,7 @@ export type {
   ImportedWorkbookArenaOptions,
   ImportedWorkbookArenaSnapshot,
   ImportedWorksheetArenaCellInput,
+  ImportedWorksheetArenaNativeScanCellInput,
   ImportedWorksheetArenaSharedStringCellInput,
 } from './xlsx-large-simple-arena-types.js'
 export { ImportedWorksheetStyleIndexArena } from './xlsx-large-simple-style-index-arena.js'
@@ -69,6 +71,41 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
       this.previewSharedStringIndexes[preview] = input.sharedStringIndex
     }
     return index
+  }
+
+  addNativeScanCells(input: ImportedWorksheetArenaNativeScanCellInput): void {
+    const cellCount = Math.min(input.rows.length, input.columns.length, input.valueKinds.length)
+    if (cellCount === 0) {
+      return
+    }
+    for (let offset = 0; offset < cellCount; offset += 1) {
+      this.ensureCapacity(this.length + 1)
+      const row = input.rows[offset] ?? 0
+      const column = input.columns[offset] ?? 0
+      const index = this.appendCell(input.sheetIndex, row, column)
+      const nativeValueKind = input.valueKinds[offset] ?? input.formulaOnlyValueKind
+      if (nativeValueKind === input.numberValueKind) {
+        const value = input.numbers[offset] ?? Number.NaN
+        this.addValue(index, value)
+        if (isPreviewCell(row, column)) {
+          const previewValue = this.materializeValue(index)
+          if (previewValue !== undefined) {
+            this.setPreviewValue(row, column, previewValue)
+          }
+        }
+        continue
+      }
+      if (nativeValueKind === input.sharedStringValueKind) {
+        this.valueKinds[index] = valueKindSharedStringRef
+        this.storeSharedStringIndex(index, input.sharedStringIds[offset] ?? 0)
+        const preview = previewIndex(row, column)
+        if (preview !== -1) {
+          this.previewSharedStringIndexes[preview] = input.sharedStringIds[offset] ?? 0
+        }
+        continue
+      }
+      this.valueKinds[index] = valueKindEmpty
+    }
   }
 
   setFormula(cellIndex: number, formula: string): void {
@@ -137,12 +174,13 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
   createLazySheetCells(sheetIndex: number): WorkbookSheetCells {
     const arenaIndexes = this.lazySheetCellIndexes(sheetIndex)
     const cellCount = lazySheetCellIndexCount(arenaIndexes)
-    return createLazyWorkbookSheetCells(cellCount, (index) => {
+    const readCell = (index: number): ImportedWorkbookLazySheetCellRead | undefined => {
       if (!Number.isInteger(index) || index < 0 || index >= cellCount) {
         return undefined
       }
-      return this.materializeCellAtArenaIndex(lazySheetCellArenaIndex(arenaIndexes, index))
-    })
+      return this.materializeCellReadAtArenaIndex(lazySheetCellArenaIndex(arenaIndexes, index))
+    }
+    return createLazyWorkbookSheetCells(cellCount, (index) => readCell(index)?.cell, { readCellWithCoordinates: readCell })
   }
 
   createDetachedLazySheetCells(sheetIndex: number): WorkbookSheetCells {
@@ -521,6 +559,17 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
     index: number,
     options: { readonly includeCoordinates?: boolean } = {},
   ): WorkbookSheetCell | undefined {
+    const read = this.materializeCellReadAtArenaIndex(index)
+    if (!read) {
+      return undefined
+    }
+    if (!options.includeCoordinates) {
+      return read.cell
+    }
+    return { ...read.cell, row: read.row, col: read.col }
+  }
+
+  private materializeCellReadAtArenaIndex(index: number): ImportedWorkbookLazySheetCellRead | undefined {
     if (index < 0 || index >= this.length) {
       return undefined
     }
@@ -534,7 +583,6 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
     const col = this.columnAt(index)
     const cell: WorkbookSheetCell = {
       address: encodeCellAddress(row, col),
-      ...(options.includeCoordinates ? { row, col } : {}),
     }
     if (value !== undefined) {
       cell.value = value
@@ -542,7 +590,7 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
     if (formula !== undefined) {
       cell.formula = formula
     }
-    return cell
+    return { cell, row, col }
   }
 
   private countMaterializedSheetCells(sheetIndex: number): number {

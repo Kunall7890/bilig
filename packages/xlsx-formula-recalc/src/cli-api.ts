@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { basename, dirname, extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -9,7 +9,7 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import {
   exportXlsx,
   inspectXlsxCache,
-  recalculateXlsx,
+  recalculateXlsxToFile,
   WorkPaper,
   type XlsxFormulaRecalcCellValue,
   type XlsxFormulaRecalcEdit,
@@ -29,6 +29,7 @@ interface CliOptions {
   readonly externalWorkbooks: readonly CliExternalWorkbook[]
   readonly inspect: boolean
   readonly inspectLimit: number | 'all'
+  readonly timeoutMs?: number
   readonly json: boolean
 }
 
@@ -83,13 +84,14 @@ export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFo
       printInspectionSummary({ input, inputName, externalWorkbooks, options, writeStdout })
       return 0
     }
-    const result = recalculateXlsx(input, {
+    const result = recalculateXlsxToFile(input, {
       fileName: inputName,
       ...(externalWorkbooks.length > 0 ? { externalWorkbooks } : {}),
       edits: options.edits,
       reads: options.reads,
+      ...(options.timeoutMs === undefined ? {} : { config: { evaluationTimeoutMs: options.timeoutMs } }),
+      outputPath: options.outputPath,
     })
-    writeFileSync(options.outputPath, result.xlsx)
 
     const summary = {
       mode: options.mode,
@@ -308,6 +310,7 @@ function parseCliArgs(args: readonly string[], commandName: string): CliOptions 
   let outputPath: string | undefined
   let inspect = false
   let inspectLimit: CliOptions['inspectLimit'] = defaultInspectFormulaLimit
+  let timeoutMs: number | undefined
   let json = false
 
   for (let index = demo ? 0 : 1; index < args.length; index += 1) {
@@ -344,6 +347,10 @@ function parseCliArgs(args: readonly string[], commandName: string): CliOptions 
         inspectLimit = parseInspectLimit(requireNextArg(args, index, '--inspect-limit'))
         index += 1
         break
+      case '--timeout-ms':
+        timeoutMs = parsePositiveIntegerOption(requireNextArg(args, index, '--timeout-ms'), '--timeout-ms')
+        index += 1
+        break
       case '--out':
       case '-o':
         outputPath = requireNextArg(args, index, arg)
@@ -367,6 +374,7 @@ function parseCliArgs(args: readonly string[], commandName: string): CliOptions 
     externalWorkbooks,
     inspect,
     inspectLimit,
+    ...(timeoutMs === undefined ? {} : { timeoutMs }),
     json,
   }
 }
@@ -393,6 +401,7 @@ function printInspectionSummary(args: PrintInspectionSummaryInput): void {
     ...(args.externalWorkbooks.length > 0 ? { externalWorkbooks: args.externalWorkbooks } : {}),
     edits: args.options.edits,
     inspectLimit: args.options.inspectLimit,
+    ...(args.options.timeoutMs === undefined ? {} : { config: { evaluationTimeoutMs: args.options.timeoutMs } }),
   })
   const summary = {
     schemaVersion: inspection.schemaVersion,
@@ -570,6 +579,14 @@ function parseInspectLimit(raw: string): CliOptions['inspectLimit'] {
   return value
 }
 
+function parsePositiveIntegerOption(raw: string, option: string): number {
+  const value = Number(raw)
+  if (!Number.isInteger(value) || value < 1) {
+    throw new Error(`Expected ${option} to be a positive integer, received: ${raw}`)
+  }
+  return value
+}
+
 function requireNextArg(args: readonly string[], index: number, option: string): string {
   const value = args[index + 1]
   if (!value || value.startsWith('--')) {
@@ -609,6 +626,7 @@ Options:
                           Print a ready-to-commit GitHub Actions workflow that uses proompteng/bilig@v1.
   --set <Sheet!A1=value>  Edit an input cell before diagnosis. Repeatable.
   --inspect-limit <all|n> Formula cells to recompute during inspection. Defaults to ${defaultInspectFormulaLimit}.
+  --timeout-ms <n>        Formula evaluation timeout in milliseconds.
   --fail-on-stale <true|false>
                           With ${printGithubActionOption}, decide whether the generated workflow fails pull requests. Defaults to false.
   --changed-files-only <true|false>
@@ -638,6 +656,7 @@ Options:
   --read <Sheet!A1>       Read a recalculated cell after edits. Repeatable.
   --inspect               Inspect formula cells, stale cached values, and suggested --read targets.
   --inspect-limit <all|n> Formula cells to recompute during inspection. Defaults to ${defaultInspectFormulaLimit}.
+  --timeout-ms <n>        Formula evaluation timeout in milliseconds.
   --external-workbook <path>
                           Supply a companion XLSX for external-link cache refresh. Repeatable.
   --external-workbook-target <path> <target>

@@ -162,6 +162,10 @@ function insertWorkbookCalcPr(workbookXml: string, calcPrXml: string): string {
   return `${workbookXml.slice(0, insertIndex)}${calcPrXml}${workbookXml.slice(insertIndex)}`
 }
 
+function removeWorkbookCalcPr(workbookXml: string): string {
+  return workbookXml.replace(/<calcPr\b[^>]*(?:\/>|>[\s\S]*?<\/calcPr>)/u, '')
+}
+
 function upsertWorkbookPrDateSystem(workbookXml: string, dateSystem: WorkbookCalculationSettingsSnapshot['dateSystem']): string {
   if (dateSystem !== '1904') {
     return workbookXml.replace(/<workbookPr\b([^>]*)\sdate1904="(?:1|true)"([^>]*)\/>/iu, '<workbookPr$1$2/>')
@@ -180,10 +184,22 @@ function upsertWorkbookPrDateSystem(workbookXml: string, dateSystem: WorkbookCal
   return `${workbookXml.slice(0, sheetsIndex)}<workbookPr date1904="1"/>${workbookXml.slice(sheetsIndex)}`
 }
 
+export function applyExportCalculationSettingsToWorkbookXml(
+  workbookXml: string,
+  settings: WorkbookCalculationSettingsSnapshot | undefined,
+): string {
+  if (!settings) {
+    return workbookXml
+  }
+  let nextWorkbookXml = upsertWorkbookPrDateSystem(workbookXml, settings.dateSystem)
+  const calcPrXml = buildWorkbookCalcPr(settings)
+  nextWorkbookXml = calcPrXml ? insertWorkbookCalcPr(nextWorkbookXml, calcPrXml) : removeWorkbookCalcPr(nextWorkbookXml)
+  return nextWorkbookXml
+}
+
 export function addExportCalculationSettingsToXlsxBytes(bytes: Uint8Array, snapshot: WorkbookSnapshot): Uint8Array {
   const settings = snapshot.workbook.metadata?.calculationSettings
-  const calcPrXml = settings ? buildWorkbookCalcPr(settings) : null
-  if (!settings || (!calcPrXml && !hasNonDefaultDateSystem(settings))) {
+  if (!settings) {
     return bytes
   }
 
@@ -192,9 +208,9 @@ export function addExportCalculationSettingsToXlsxBytes(bytes: Uint8Array, snaps
   if (!workbookXml) {
     return bytes
   }
-  let nextWorkbookXml = hasNonDefaultDateSystem(settings) ? upsertWorkbookPrDateSystem(workbookXml, settings.dateSystem) : workbookXml
-  if (calcPrXml) {
-    nextWorkbookXml = insertWorkbookCalcPr(nextWorkbookXml, calcPrXml)
+  const nextWorkbookXml = applyExportCalculationSettingsToWorkbookXml(workbookXml, settings)
+  if (nextWorkbookXml === workbookXml && !hasNonDefaultDateSystem(settings)) {
+    return bytes
   }
   setZipText(zip, 'xl/workbook.xml', nextWorkbookXml)
   return zipSync(zip)

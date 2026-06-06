@@ -16,6 +16,9 @@ vi.mock('@bilig/excel-import', async () => {
     exportXlsx: () => {
       throw new Error('Generic XLSX writer should not be called for source-preserving WorkPaper XLSX export')
     },
+    exportXlsxToFile: () => {
+      throw new Error('Generic XLSX file writer should not be called in this test')
+    },
     exportXlsxSourceLiteralPatches: biligXlsx.exportXlsxSourceLiteralPatches,
     exportXlsxSourceLiteralPatchesToFile: biligXlsx.exportXlsxSourceLiteralPatchesToFile,
     exportXlsxSourceLiteralPatchesToFileAsync: biligXlsx.exportXlsxSourceLiteralPatchesToFileAsync,

@@ -18,6 +18,8 @@ import {
 import { WorkPaper } from '../index.js'
 import { exportWorkPaperXlsxToFileAsync, importXlsxFile } from '../xlsx.js'
 
+const sourcePreservingOutputCalculationSettings = Symbol.for('bilig.sourcePreservingXlsxOutputCalculationSettings')
+
 function sourceWorkbookBytes(): Uint8Array {
   const workbook = XLSX.utils.book_new()
   const sheet = XLSX.utils.aoa_to_sheet([
@@ -252,6 +254,50 @@ describe('WorkPaper source-preserving XLSX export', () => {
     } finally {
       workbook.dispose()
     }
+  })
+
+  it('keeps source-preserving scalar patches across explicit rebuilds', () => {
+    const sourceBytes = sourceWorkbookBytes()
+    const imported = importXlsx(sourceBytes, 'source-preserving-rebuild-formula-cache.xlsx')
+    attachSourceBytesForTest(imported.snapshot, sourceBytes)
+    const workbook = WorkPaper.buildFromSnapshot(imported.snapshot)
+    try {
+      workbook.setCellContents({ sheet: 1, row: 0, col: 0 }, 5)
+      workbook.rebuildAndRecalculate()
+
+      const minimalSnapshot = workbook.exportSourcePreservingXlsxSnapshot()
+      expect(minimalSnapshot?.sheets[0]?.cells).toHaveLength(0)
+
+      const exportedZip = unzipSync(exportXlsx(minimalSnapshot!))
+      const sheetXml = strFromU8(exportedZip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+      expect(cellXml(sheetXml, 'A1')).toContain('<v>5</v>')
+      expect(cellXml(sheetXml, 'B1')).toContain('<f>A1+1</f><v>2</v>')
+      expect(strFromU8(exportedZip['customXml/item1.xml'] ?? new Uint8Array())).toBe('<keep source="true"/>')
+    } finally {
+      workbook.dispose()
+    }
+  })
+
+  it('applies recalculated workbook calc settings to source-preserving patches', () => {
+    const sourceBytes = setWorkbookCalcPr(sourceWorkbookBytes(), '<calcPr calcMode="manual" fullCalcOnLoad="0" forceFullCalc="1"/>')
+    const imported = importXlsx(sourceBytes, 'source-preserving-calc-settings.xlsx')
+    attachSourceBytesForTest(imported.snapshot, sourceBytes)
+    attachSourcePatchesForTest(imported.snapshot, [{ sheetName: 'Data', address: 'A1', value: 5 }])
+    imported.snapshot.workbook.metadata = {
+      ...imported.snapshot.workbook.metadata,
+      calculationSettings: { mode: 'manual' },
+    }
+    Object.defineProperty(imported.snapshot, sourcePreservingOutputCalculationSettings, {
+      configurable: true,
+      enumerable: false,
+      value: { mode: 'manual' },
+    })
+
+    const exportedZip = unzipSync(exportXlsx(imported.snapshot))
+    const workbookXml = strFromU8(exportedZip['xl/workbook.xml'] ?? new Uint8Array())
+    expect(readCalcPrAttribute(workbookXml, 'calcMode')).toBe('manual')
+    expect(readCalcPrAttribute(workbookXml, 'fullCalcOnLoad')).toBeNull()
+    expect(readCalcPrAttribute(workbookXml, 'forceFullCalc')).toBeNull()
   })
 
   it('exports source-preserving scalar edits from a range reader without materializing source bytes', () => {
@@ -548,4 +594,21 @@ describe('WorkPaper source-preserving XLSX export', () => {
 function cellXml(sheetXml: string, address: string): string {
   const match = new RegExp(`<c\\b(?=[^>]*\\br="${address}")(?:[^>"']|"[^"]*"|'[^']*')*(?:/>|>[\\s\\S]*?</c>)`, 'u').exec(sheetXml)
   return match?.[0] ?? ''
+}
+
+function setWorkbookCalcPr(bytes: Uint8Array, calcPrXml: string): Uint8Array {
+  const zip = unzipSync(bytes)
+  const workbookXml = strFromU8(zip['xl/workbook.xml'] ?? new Uint8Array())
+  if (/<calcPr\b[\s\S]*?\/>/u.test(workbookXml)) {
+    zip['xl/workbook.xml'] = strToU8(workbookXml.replace(/<calcPr\b[\s\S]*?\/>/u, calcPrXml))
+    return zipSync(zip)
+  }
+  zip['xl/workbook.xml'] = strToU8(workbookXml.replace('</workbook>', `${calcPrXml}</workbook>`))
+  return zipSync(zip)
+}
+
+function readCalcPrAttribute(workbookXml: string, name: string): string | null {
+  const calcPr = /<calcPr\b([^>]*)\/?>/u.exec(workbookXml)?.[1] ?? ''
+  const match = new RegExp(`\\b${name}="([^"]*)"`, 'u').exec(calcPr)
+  return match?.[1] ?? null
 }

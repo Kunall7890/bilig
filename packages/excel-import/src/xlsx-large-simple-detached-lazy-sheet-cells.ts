@@ -13,12 +13,11 @@ import {
   valueKindString,
   valueKindTinyInteger,
 } from './xlsx-large-simple-arena-constants.js'
-import { createLazyWorkbookSheetCells } from './xlsx-large-simple-lazy-sheet-cells.js'
+import { createLazyWorkbookSheetCells, type ImportedWorkbookLazySheetCellRead } from './xlsx-large-simple-lazy-sheet-cells.js'
 import { lazySheetCellArenaIndex, type LazySheetCellIndexes } from './xlsx-large-simple-lazy-sheet-indexes.js'
 import type { LargeSimpleSharedStrings } from './xlsx-large-simple-shared-strings.js'
 
 type WorkbookSheetCells = WorkbookSnapshot['sheets'][number]['cells']
-type WorkbookSheetCell = WorkbookSheetCells[number]
 
 export interface DetachedLazySheetCellSource {
   readonly cellCount: number
@@ -56,10 +55,12 @@ export interface DetachedLazySheetCellSource {
 }
 
 export function createDetachedLazyWorkbookSheetCells(source: DetachedLazySheetCellSource): WorkbookSheetCells {
-  return createLazyWorkbookSheetCells(source.cellCount, (index) => materializeDetachedLazyCell(source, index))
+  return createLazyWorkbookSheetCells(source.cellCount, (index) => readDetachedLazyCell(source, index)?.cell, {
+    readCellWithCoordinates: (index) => readDetachedLazyCell(source, index),
+  })
 }
 
-function materializeDetachedLazyCell(source: DetachedLazySheetCellSource, index: number): WorkbookSheetCell | undefined {
+function readDetachedLazyCell(source: DetachedLazySheetCellSource, index: number): ImportedWorkbookLazySheetCellRead | undefined {
   if (!Number.isInteger(index) || index < 0 || index >= source.cellCount) {
     return undefined
   }
@@ -76,9 +77,13 @@ function materializeDetachedLazyCell(source: DetachedLazySheetCellSource, index:
   const row = detachedRowAt(source, arenaIndex)
   const col = detachedColumnAt(source, arenaIndex)
   return {
-    address: encodeCellAddress(row, col),
-    ...(value !== undefined ? { value } : {}),
-    ...(formula !== undefined ? { formula } : {}),
+    row,
+    col,
+    cell: {
+      address: encodeCellAddress(row, col),
+      ...(value !== undefined ? { value } : {}),
+      ...(formula !== undefined ? { formula } : {}),
+    },
   }
 }
 

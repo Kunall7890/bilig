@@ -3,6 +3,7 @@ import {
   createFileImportedXlsxSourceReader as createFileImportedXlsxSourceReaderImpl,
   createTempFileImportedXlsxSourceReader as createTempFileImportedXlsxSourceReaderImpl,
   exportXlsx as exportXlsxImpl,
+  exportXlsxToFile as exportXlsxToFileImpl,
   exportXlsxSourceLiteralPatches as exportXlsxSourceLiteralPatchesImpl,
   exportXlsxSourceLiteralPatchesToFile as exportXlsxSourceLiteralPatchesToFileImpl,
   exportXlsxSourceLiteralPatchesToFileAsync as exportXlsxSourceLiteralPatchesToFileAsyncImpl,
@@ -135,6 +136,10 @@ export function exportXlsx(input: WorkbookSnapshot | WorkPaperXlsxExportSource):
 
 function exportWorkbookSnapshotXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   return exportXlsxImpl(snapshot)
+}
+
+export function exportXlsxToFile(snapshot: WorkbookSnapshot, outputPath: string): XlsxSourceLiteralPatchFileExportResult {
+  return exportXlsxToFileImpl(snapshot, outputPath)
 }
 
 export function createFileImportedXlsxSourceReader(path: string, byteLength?: number): XlsxZipSourceReader {

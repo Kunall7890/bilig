@@ -1,6 +1,6 @@
 import { Effect, Exit } from 'effect'
 import { describe, expect, it, vi } from 'vitest'
-import { ErrorCode, ValueTag } from '@bilig/protocol'
+import { ErrorCode, ValueTag, type WorkbookSnapshot } from '@bilig/protocol'
 import { FormulaTable } from '../formula-table.js'
 import { createReplicaState } from '../replica-state.js'
 import { createEngineSnapshotService } from '../engine/services/snapshot-service.js'
@@ -11,6 +11,8 @@ import { createEngineCounters } from '../perf/engine-counters.js'
 import { attachRuntimeImage, readRuntimeImage, readRuntimeSnapshot } from '../snapshot/runtime-image-codec.js'
 import { CellFlags } from '../cell-store.js'
 import type { FormulaFamilyStore } from '../formula/formula-family-store.js'
+
+const lazySheetCellReaderSymbol = Symbol.for('bilig.lazyImportedXlsxCells.readCellWithCoordinates')
 
 function isFormulaFamilyStore(value: unknown): value is FormulaFamilyStore {
   return (
@@ -224,6 +226,69 @@ describe('EngineSnapshotService', () => {
     })
     expect(workbook.getCellFormat(b2!)).toBe('0.00')
     expect(workbook.cellStore.flags[c3!] & CellFlags.AuthoredBlank).toBe(CellFlags.AuthoredBlank)
+    expect(counters.snapshotOpsReplayed).toBe(0)
+  })
+
+  it('restores raw snapshots from lazy native coordinate readers without reparsing addresses', () => {
+    const workbook = new WorkbookStore('book')
+    const strings = new StringPool()
+    const counters = createEngineCounters()
+    const state = {
+      workbook,
+      strings,
+      formulas: new FormulaTable(workbook.cellStore),
+      replicaState: createReplicaState('replica'),
+      entityVersions: new Map(),
+      sheetDeleteVersions: new Map(),
+      counters,
+    }
+    const service = createEngineSnapshotService({
+      state,
+      getCellByIndex: () => {
+        throw new Error('unused')
+      },
+      resetWorkbook: (workbookName) => {
+        workbook.reset(workbookName)
+      },
+      initializeCellFormulasAt: () => {
+        throw new Error('unexpected formula initialization for literal-only snapshot')
+      },
+    })
+    const cells: WorkbookSnapshot['sheets'][number]['cells'] = [
+      { address: 'C3', value: 12 },
+      { address: 'D4', value: 'native-coordinates' },
+    ]
+    Object.defineProperty(cells, lazySheetCellReaderSymbol, {
+      configurable: true,
+      enumerable: false,
+      value: (index: number) => {
+        const cell = cells[index]
+        return cell ? { cell, row: index, col: index } : undefined
+      },
+    })
+
+    Effect.runSync(
+      service.importWorkbook({
+        version: 1,
+        workbook: { name: 'lazy-native-coordinate-restore' },
+        sheets: [{ id: 7, name: 'Sheet1', order: 0, cells }],
+      }),
+    )
+
+    const sheetId = workbook.getSheet('Sheet1')?.id
+    expect(sheetId).toBe(7)
+    const a1 = workbook.getCellIndexAt(sheetId!, 0, 0)
+    const b2 = workbook.getCellIndexAt(sheetId!, 1, 1)
+    expect(a1).toBeDefined()
+    expect(b2).toBeDefined()
+    expect(workbook.cellStore.getValue(a1!, (id) => strings.get(id))).toEqual({ tag: ValueTag.Number, value: 12 })
+    expect(workbook.cellStore.getValue(b2!, (id) => strings.get(id))).toEqual({
+      tag: ValueTag.String,
+      value: 'native-coordinates',
+      stringId: 1,
+    })
+    expect(workbook.getCellIndexAt(sheetId!, 2, 2)).toBeUndefined()
+    expect(workbook.getCellIndexAt(sheetId!, 3, 3)).toBeUndefined()
     expect(counters.snapshotOpsReplayed).toBe(0)
   })
 

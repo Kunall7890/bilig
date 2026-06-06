@@ -7,6 +7,8 @@ import type { ImportedWorkbookArena, ImportedWorksheetStyleIndexArena } from './
 
 export type LargeSimpleWorksheetScanStorageKind = 'js' | 'wasm' | 'wasm-fallback'
 
+const maxBulkNativeScanTransferCells = 262_144
+
 export class LargeSimpleWorksheetScanStorageBridge {
   private wasmStorage: LargeSimpleWorksheetWasmScanStorage | null
   private scanStorageKind: LargeSimpleWorksheetScanStorageKind
@@ -171,20 +173,34 @@ class LargeSimpleWorksheetWasmScanStorage {
 
   transferCellsAndStylesToArena(sheetIndex: number, arena: ImportedWorkbookArena, styleIndexes: ImportedWorksheetStyleIndexArena): void {
     const snapshot = this.storage.snapshot()
-    for (let index = 0; index < snapshot.rows.length; index += 1) {
-      const row = snapshot.rows[index] ?? 0
-      const column = snapshot.columns[index] ?? 0
-      const valueKind = snapshot.valueKinds[index] ?? this.storage.valueKindFormulaOnly
-      switch (valueKind) {
-        case this.storage.valueKindNumber:
-          arena.addCell({ sheetIndex, row, column, value: snapshot.numbers[index] })
-          break
-        case this.storage.valueKindSharedString:
-          arena.addSharedStringCell({ sheetIndex, row, column, sharedStringIndex: snapshot.sharedStringIds[index] ?? 0 })
-          break
-        default:
-          arena.addCell({ sheetIndex, row, column, value: undefined })
-          break
+    if (arena.cellCount === 0 && snapshot.rows.length <= maxBulkNativeScanTransferCells) {
+      arena.addNativeScanCells({
+        sheetIndex,
+        rows: snapshot.rows,
+        columns: snapshot.columns,
+        valueKinds: snapshot.valueKinds,
+        numbers: snapshot.numbers,
+        sharedStringIds: snapshot.sharedStringIds,
+        formulaOnlyValueKind: this.storage.valueKindFormulaOnly,
+        numberValueKind: this.storage.valueKindNumber,
+        sharedStringValueKind: this.storage.valueKindSharedString,
+      })
+    } else {
+      for (let index = 0; index < snapshot.rows.length; index += 1) {
+        const row = snapshot.rows[index] ?? 0
+        const column = snapshot.columns[index] ?? 0
+        const valueKind = snapshot.valueKinds[index] ?? this.storage.valueKindFormulaOnly
+        switch (valueKind) {
+          case this.storage.valueKindNumber:
+            arena.addCell({ sheetIndex, row, column, value: snapshot.numbers[index] })
+            break
+          case this.storage.valueKindSharedString:
+            arena.addSharedStringCell({ sheetIndex, row, column, sharedStringIndex: snapshot.sharedStringIds[index] ?? 0 })
+            break
+          default:
+            arena.addCell({ sheetIndex, row, column, value: undefined })
+            break
+        }
       }
     }
     for (let index = 0; index < snapshot.styleRows.length; index += 1) {
