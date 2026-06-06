@@ -133,7 +133,7 @@ export function createEngineRecalcService(args: EngineRecalcServiceArgs): Engine
         wasmProgramFlushed = true
       }
 
-      if (changedRoots.length === 0 && kernelSyncRoots.length > 0) {
+      if (changedRoots.length === 0 && kernelSyncRoots.length > 0 && pendingFirstPassOrder === undefined) {
         for (let index = 0; index < kernelSyncRoots.length; index += 1) {
           const cellIndex = kernelSyncRoots[index]!
           if (deferredKernelSyncSeen[cellIndex] === deferredKernelSyncEpoch) {

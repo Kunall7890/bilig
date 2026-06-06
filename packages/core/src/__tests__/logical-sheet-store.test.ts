@@ -175,13 +175,18 @@ describe('LogicalSheetStore', () => {
     colIds.forEach((id, index) => {
       axisMap.setId('column', index, id)
     })
-    const logical = new LogicalSheetStore(7, axisMap, cellPages, cellIdentities, new AxisResidentCellIndex())
+    const residentCells = new AxisResidentCellIndex()
+    const logical = new LogicalSheetStore(7, axisMap, cellPages, cellIdentities, residentCells)
 
     logical.deferVisibleCellPageRebuild()
     logical.setFreshVisibleDenseRowMajorIdentitiesWithAxisIdsDeferred(100, rowIds, colIds)
     axisMap.splice('column', 1, 0, 1, [])
 
     expect(logical.getVisibleCell(2, 3)).toBe(108)
+    expect(logical.listResidentCellIndices('row', ['row-2'])).toEqual([103, 104, 105])
+    expect(logical.listResidentCellIndices('column', ['col-b'])).toEqual([101, 104, 107])
+    expect(Reflect.get(residentCells, 'rowIds')).toHaveLength(0)
+    expect(Reflect.get(residentCells, 'colIds')).toHaveLength(0)
     expect(rebuildCount).toBe(0)
     expect(logical.getVisibleCell(2, 1)).toBeUndefined()
   })

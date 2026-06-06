@@ -1,4 +1,5 @@
 import { CellFlags } from '../../cell-store.js'
+import type { ExcelDateSystem } from '@bilig/formula'
 import { addEngineCounter } from '../../perf/engine-counters.js'
 import type { U32 } from '../runtime-state.js'
 import { evaluateInitialDirectScalar, evaluateInitialDirectScalarNumber } from './formula-initialization-direct-scalar.js'
@@ -40,6 +41,7 @@ export function evaluateInitialDirectFormulas(
     preEvaluatedCellIndices?.length ?? 0,
   )
   const preEvaluatedCellsAreReusable = options?.preEvaluatedCellsAreReusable === true
+  const workbookDateSystem = (args.state.workbook.getCalculationSettings().dateSystem ?? '1900') as ExcelDateSystem
   let preEvaluatedCellIndex = 0
   const pushChangedCellIndex = (cellIndex: number): void => {
     if (changedCellCount === changedCellBuffer.length) {
@@ -101,7 +103,7 @@ export function evaluateInitialDirectFormulas(
           pushChangedCellIndex(cellIndex)
           continue
         }
-        const fallbackValue = evaluateInitialDirectScalar(args.state, formula.directScalar)
+        const fallbackValue = evaluateInitialDirectScalar(args.state, formula.directScalar, workbookDateSystem)
         if (fallbackValue !== undefined) {
           valueWriter.writeValue(cellIndex, fallbackValue)
           pushChangedCellIndex(cellIndex)

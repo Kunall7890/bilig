@@ -1,9 +1,14 @@
+import { parseArithmeticScalarText, type ExcelDateSystem } from '@bilig/formula'
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import type { EngineRuntimeState, RuntimeDirectScalarDescriptor, RuntimeDirectScalarOperand } from '../runtime-state.js'
 
 type DirectScalarCellRead = { kind: 'number'; value: number } | { kind: 'error'; code: ErrorCode }
 
-function coerceInitialDirectScalarCell(state: Pick<EngineRuntimeState, 'workbook'>, cellIndex: number): DirectScalarCellRead | undefined {
+function coerceInitialDirectScalarCell(
+  state: Pick<EngineRuntimeState, 'workbook' | 'strings'>,
+  cellIndex: number,
+  dateSystem: ExcelDateSystem,
+): DirectScalarCellRead | undefined {
   const cellStore = state.workbook.cellStore
   const tag = (cellStore.tags[cellIndex] as ValueTag | undefined) ?? ValueTag.Empty
   switch (tag) {
@@ -15,16 +20,20 @@ function coerceInitialDirectScalarCell(state: Pick<EngineRuntimeState, 'workbook
       return { kind: 'number', value: 0 }
     case ValueTag.Error:
       return { kind: 'error', code: (cellStore.errors[cellIndex] as ErrorCode | undefined) ?? ErrorCode.None }
-    case ValueTag.String:
-      return { kind: 'error', code: ErrorCode.Value }
+    case ValueTag.String: {
+      const text = state.strings.get(cellStore.stringIds[cellIndex] ?? 0) ?? ''
+      const numeric = parseArithmeticScalarText(text, dateSystem)
+      return numeric === undefined ? { kind: 'error', code: ErrorCode.Value } : { kind: 'number', value: numeric }
+    }
     default:
       return undefined
   }
 }
 
 function readInitialDirectScalarOperand(
-  state: Pick<EngineRuntimeState, 'workbook'>,
+  state: Pick<EngineRuntimeState, 'workbook' | 'strings'>,
   operand: RuntimeDirectScalarOperand,
+  dateSystem: ExcelDateSystem,
 ): DirectScalarCellRead | undefined {
   switch (operand.kind) {
     case 'literal-number':
@@ -32,23 +41,24 @@ function readInitialDirectScalarOperand(
     case 'error':
       return { kind: 'error', code: operand.code }
     case 'cell':
-      return coerceInitialDirectScalarCell(state, operand.cellIndex)
+      return coerceInitialDirectScalarCell(state, operand.cellIndex, dateSystem)
   }
 }
 
 export function evaluateInitialDirectScalar(
-  state: Pick<EngineRuntimeState, 'workbook'>,
+  state: Pick<EngineRuntimeState, 'workbook' | 'strings'>,
   directScalar: RuntimeDirectScalarDescriptor,
+  dateSystem: ExcelDateSystem = '1900',
 ): CellValue | undefined {
   if (directScalar.kind === 'abs') {
-    const operand = readInitialDirectScalarOperand(state, directScalar.operand)
+    const operand = readInitialDirectScalarOperand(state, directScalar.operand, dateSystem)
     if (!operand) {
       return undefined
     }
     return operand.kind === 'error' ? { tag: ValueTag.Error, code: operand.code } : { tag: ValueTag.Number, value: Math.abs(operand.value) }
   }
-  const left = readInitialDirectScalarOperand(state, directScalar.left)
-  const right = readInitialDirectScalarOperand(state, directScalar.right)
+  const left = readInitialDirectScalarOperand(state, directScalar.left, dateSystem)
+  const right = readInitialDirectScalarOperand(state, directScalar.right, dateSystem)
   if (!left || !right) {
     return undefined
   }

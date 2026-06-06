@@ -12,6 +12,15 @@ describe('workbook cell key index', () => {
     expect(index.has(makeCellKey(2, 4, 7))).toBe(false)
   })
 
+  it('does not retain explicit map entries for lazily resolvable physical cell keys', () => {
+    const index = createCellKeyIndexMap((sheetId, row, col) => (sheetId === 2 && row === 4 && col === 6 ? 42 : undefined))
+
+    index.set(makeCellKey(2, 4, 6), 99)
+
+    expect(index.size).toBe(0)
+    expect(index.get(makeCellKey(2, 4, 6))).toBe(42)
+  })
+
   it('falls back to explicit map entries for invalid physical cell keys', () => {
     const index = createCellKeyIndexMap(() => undefined)
 

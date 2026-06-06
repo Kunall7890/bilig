@@ -103,15 +103,27 @@ export class LogicalSheetStore {
   }
 
   getVisibleCell(row: number, col: number): number | undefined {
-    const denseCellIndex = this.getDenseRowMajorVisibleCellAtPosition(row, col)
+    const rowId = this.axisMap.getId('row', row)
+    const colId = this.axisMap.getId('column', col)
+    const denseCellIndex = rowId === undefined || colId === undefined ? undefined : this.getDenseRowMajorVisibleCell(rowId, colId)
     if (denseCellIndex !== undefined) {
       return denseCellIndex
     }
-    const location = this.resolveVisibleLocation(row, col)
+    const location =
+      rowId === undefined || colId === undefined
+        ? undefined
+        : {
+            sheetId: this.sheetId,
+            rowId,
+            colId,
+          }
     if (!location) {
       return undefined
     }
-    return this.getDenseRowMajorVisibleCell(location.rowId, location.colId) ?? this.cellPages.get(location)
+    if (this.denseRowMajorVisibleCellBlocks.length > 0 && this.cellPages.hasDeferredRebuild()) {
+      return this.cellPages.getDeferred(location)
+    }
+    return this.cellPages.get(location)
   }
 
   setVisibleCell(row: number, col: number, cellIndex: number, factories: LogicalAxisIdFactories): LogicalVisibleCellRef {
@@ -202,14 +214,16 @@ export class LogicalSheetStore {
       rowRef: this.ensureVisibleAxis('row', row, factories.createRowId),
       colRef: this.ensureVisibleAxis('column', col, factories.createColumnId),
     }
-    this.cellPages.set(
-      {
-        sheetId: this.sheetId,
-        rowId: resolved.rowRef.id!,
-        colId: resolved.colRef.id!,
-      },
-      cellIndex,
-    )
+    const location = {
+      sheetId: this.sheetId,
+      rowId: resolved.rowRef.id!,
+      colId: resolved.colRef.id!,
+    }
+    if (this.cellPages.hasDeferredRebuild()) {
+      this.cellPages.setDeferred(location, cellIndex)
+    } else {
+      this.cellPages.set(location, cellIndex)
+    }
     const identity: CellAxisIdentity = {
       sheetId: this.sheetId,
       rowId: resolved.rowRef.id!,
@@ -444,27 +458,6 @@ export class LogicalSheetStore {
         continue
       }
       return block.firstCellIndex + rowOffset * block.colCount + colOffset
-    }
-    return undefined
-  }
-
-  private getDenseRowMajorVisibleCellAtPosition(row: number, col: number): number | undefined {
-    if (row < 0 || col < 0) {
-      return undefined
-    }
-    for (let index = this.denseRowMajorVisibleCellBlocks.length - 1; index >= 0; index -= 1) {
-      const block = this.denseRowMajorVisibleCellBlocks[index]!
-      if (row >= block.rowIds.length || col >= block.colIds.length) {
-        continue
-      }
-      const rowId = block.rowIds[row]
-      const colId = block.colIds[col]
-      if (rowId === undefined || colId === undefined) {
-        continue
-      }
-      if (this.axisMap.getId('row', row) === rowId && this.axisMap.getId('column', col) === colId) {
-        return block.firstCellIndex + row * block.colCount + col
-      }
     }
     return undefined
   }

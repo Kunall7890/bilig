@@ -136,6 +136,7 @@ export function createFormulaBindingSheetRenameHandler(args: {
       }
       const previousOwnerSheetName = ownerSheetName === newSheetName ? oldSheetName : ownerSheetName
       if (
+        formula.compiled.jsPlan.length > 0 &&
         args.serviceArgs.compiledPlans.isSoleOwner(formula.planId, formula.compiled) &&
         formula.compiled.symbolicNames.length === 0 &&
         formula.compiled.symbolicTables.length === 0 &&
@@ -193,6 +194,7 @@ export function createFormulaBindingSheetRenameHandler(args: {
           }
         : undefined
       const canPreserveRuntime =
+        formula.compiled.jsPlan.length > 0 &&
         formula.directLookup === undefined &&
         formula.directCriteria === undefined &&
         (canRewriteCompiledPreservingBindings(formula, renamedMetadata.compiled) ||

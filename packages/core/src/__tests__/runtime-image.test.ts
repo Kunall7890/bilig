@@ -207,6 +207,7 @@ describe('restoreWorkbookFromRuntimeImage', () => {
   it('uses flat formula source refs for runtime-image snapshot fallback formulas when available', () => {
     const workbook = new WorkbookStore('runtime-image-snapshot-formula-sources')
     const sourceCalls: Array<{ cellIndex?: number; col: number; row: number; sheetId: number; source: string }> = []
+    let sourcePotentialNewCells: number | undefined
     const mutationCalls: unknown[] = []
     const snapshot: WorkbookSnapshot = {
       version: 1,
@@ -248,7 +249,8 @@ describe('restoreWorkbookFromRuntimeImage', () => {
       initializeCellFormulasAt: (refs) => {
         mutationCalls.push(...refs)
       },
-      initializeFormulaSourcesAt: (refs) => {
+      initializeFormulaSourcesAt: (refs, potentialNewCells) => {
+        sourcePotentialNewCells = potentialNewCells
         sourceCalls.push(...collectFormulaSourceRefs(refs))
       },
     })
@@ -265,6 +267,7 @@ describe('restoreWorkbookFromRuntimeImage', () => {
         source: 'A1+1',
       },
     ])
+    expect(sourcePotentialNewCells).toBe(1)
   })
 
   it('hydrates cached iterative formula values for runtime-image snapshot fallback formulas', () => {
@@ -1013,6 +1016,7 @@ describe('restoreWorkbookFromSnapshot', () => {
   it('uses flat formula source refs during fresh snapshot restore when available', () => {
     const workbook = new WorkbookStore('snapshot-flat-formula-sources')
     const sourceCalls: Array<{ cellIndex?: number; col: number; row: number; sheetId: number; source: string }> = []
+    let sourcePotentialNewCells: number | undefined
     const mutationCalls: unknown[] = []
     const snapshot: WorkbookSnapshot = {
       version: 1,
@@ -1038,7 +1042,8 @@ describe('restoreWorkbookFromSnapshot', () => {
       initializeCellFormulasAt: (refs) => {
         mutationCalls.push(...refs)
       },
-      initializeFormulaSourcesAt: (refs) => {
+      initializeFormulaSourcesAt: (refs, potentialNewCells) => {
+        sourcePotentialNewCells = potentialNewCells
         sourceCalls.push(...collectFormulaSourceRefs(refs))
       },
     })
@@ -1055,5 +1060,57 @@ describe('restoreWorkbookFromSnapshot', () => {
         source: 'A1+1',
       },
     ])
+    expect(sourcePotentialNewCells).toBe(1)
+  })
+
+  it('restores row-major fresh snapshot runs without per-cell logical page entries', () => {
+    const workbook = new WorkbookStore('snapshot-dense-row-run-logical-storage')
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: { name: 'snapshot-dense-row-run-logical-storage' },
+      sheets: [
+        {
+          id: 1,
+          name: 'Sheet1',
+          order: 0,
+          cells: [
+            { address: 'A1', value: 1 },
+            { address: 'C1', value: 3 },
+            { address: 'A2', value: 4 },
+            { address: 'C2', value: 6 },
+          ],
+        },
+      ],
+    }
+
+    restoreWorkbookFromSnapshot({
+      snapshot,
+      workbook,
+      strings: new StringPool(),
+      resetWorkbook: () => {},
+      initializeCellFormulasAt: () => {},
+    })
+
+    const sheet = workbook.getSheet('Sheet1')
+    const logical = Reflect.get(sheet!, 'logical')
+    const cellPages = Reflect.get(logical, 'cellPages')
+    const cellIdentities = Reflect.get(sheet!, 'cellIdentities')
+    expect(Reflect.get(cellPages, 'cells').size).toBe(0)
+    expect(Reflect.get(logical, 'denseRowMajorVisibleCellBlocks')).toHaveLength(1)
+    expect(Reflect.get(cellIdentities, 'rowIds')).toHaveLength(0)
+    expect(Reflect.get(cellIdentities, 'colIds')).toHaveLength(0)
+
+    expect(sheet?.grid.getPhysical(0, 0)).toBeGreaterThanOrEqual(0)
+    expect(sheet?.grid.getPhysical(0, 1)).toBe(-1)
+    expect(sheet?.grid.getPhysical(0, 2)).toBeGreaterThanOrEqual(0)
+    expect(sheet?.grid.get(0, 1)).toBe(-1)
+    expect(Reflect.get(cellPages, 'cells').size).toBe(0)
+    expect(workbook.getCellIndex('Sheet1', 'A2')).toBe(sheet?.grid.getPhysical(1, 0))
+    expect(workbook.getCellIndex('Sheet1', 'C2')).toBe(sheet?.grid.getPhysical(1, 2))
+
+    const ensured = workbook.ensureCellAt(sheet!.id, 4, 4)
+    expect(ensured.created).toBe(true)
+    expect(sheet?.grid.get(4, 4)).toBe(ensured.cellIndex)
+    expect(Reflect.get(cellPages, 'cells').size).toBe(1)
   })
 })

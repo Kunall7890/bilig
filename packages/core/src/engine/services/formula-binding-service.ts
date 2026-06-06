@@ -71,6 +71,7 @@ import { applyDirectScalarReplacementRuntimePlanFields, applyFormulaRuntimePlanF
 import { rebuildDeferredFormulaFamilyIndex } from './formula-family-index-rebuild.js'
 import { bindFreshDirectAggregateFormulaRun } from './formula-binding-fresh-direct-aggregate-run.js'
 import { bindFreshDirectScalarFormulaRun } from './formula-binding-fresh-direct-scalar-run.js'
+import { createFormulaBindingInstanceTableRebuildController } from './formula-binding-instance-table-rebuild.js'
 import { tryRewriteSimpleDirectScalarFormulaSourcePreservingBinding } from './formula-binding-direct-scalar-rewrite.js'
 import { updateFormulaBindingVolatileIndex } from './formula-binding-volatile-index.js'
 import { refreshFormulaBindingTrackedMetadata } from './formula-binding-tracked-metadata.js'
@@ -96,6 +97,11 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     serviceArgs: args,
     formulaFamilyShapeKeyCache,
   })
+  const formulaInstanceTableRebuild = createFormulaBindingInstanceTableRebuildController({
+    formulaInstances: args.formulaInstances,
+    rebuildFormulaInstancesNow,
+    recordFormulaInstanceNow,
+  })
   const formulaFamilyIndex = createFormulaBindingFamilyIndexController({
     formulaFamilies: args.formulaFamilies,
     formulaFamilyShapeKeyCache,
@@ -115,6 +121,7 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     formulaMemberCounts.clear()
     formulaSheetIndex.clear()
     formulaFamilyIndex.clearNow()
+    formulaInstanceTableRebuild.clearRebuildNow()
   }
 
   const updateVolatileFormulaIndex = (cellIndex: number, formula: RuntimeFormula | undefined): void =>
@@ -466,9 +473,7 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
       programLength: existing.runtimeProgram.length,
     })
     updateVolatileFormulaIndex(cellIndex, existing)
-    if (!args.formulaInstances.get(cellIndex)) {
-      recordFormulaInstanceNow(cellIndex, source, nextTemplateId, ownerPosition)
-    }
+    formulaInstanceTableRebuild.recordIfMissingOrRebuildingNow(cellIndex, source, nextTemplateId, ownerPosition)
     if (shouldRefreshSheetIndexes) {
       trackFormulaSheetIndexes(cellIndex, ownerSheetName, existing.compiled)
     }
@@ -916,16 +921,10 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     upsertFormulaFamilyRunNow(run) {
       formulaFamilyIndex.upsertFormulaFamilyRunNow(run)
     },
-    deferFormulaInstanceTableRebuildNow: rebuildFormulaInstancesNow,
-    upsertFreshFormulaInstancesNow(records) {
-      args.formulaInstances.upsertMany(records)
-    },
-    hydrateFreshFormulaInstancesNow(records) {
-      args.formulaInstances.hydrate(records)
-    },
-    exportFormulaInstancesNow() {
-      return args.formulaInstances.list()
-    },
+    deferFormulaInstanceTableRebuildNow: formulaInstanceTableRebuild.deferRebuildNow,
+    upsertFreshFormulaInstancesNow: formulaInstanceTableRebuild.upsertFreshFormulaInstancesNow,
+    hydrateFreshFormulaInstancesNow: formulaInstanceTableRebuild.hydrateFreshFormulaInstancesNow,
+    exportFormulaInstancesNow: formulaInstanceTableRebuild.exportFormulaInstancesNow,
     refreshRangeDependenciesNow,
     retargetRangeDependenciesNow,
     rebindFormulaCellsNow,

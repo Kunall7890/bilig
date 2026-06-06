@@ -24,6 +24,8 @@ import type {
   HydratedPreparedFormulaInitializationRef,
 } from './formula-initialization-service-types.js'
 
+const MAX_EAGER_FRESH_FORMULA_INSTANCE_RECORDS = 16_384
+
 export interface HydratedPreparedFormulaInitializationUncheckedArgs {
   readonly serviceArgs: EngineFormulaInitializationServiceArgs
   readonly refs: InitialFormulaEntryRefSource<HydratedPreparedFormulaInitializationRef>
@@ -68,10 +70,11 @@ export function initializeHydratedPreparedCellFormulasAtNowUnchecked({
   let canAssignTopoInBatch = !hadExistingFormulas
   let needsFreshTopoRebuild = false
   let nextTopoRank = 0
+  const canEagerHydrateFreshFormulaInstances =
+    !hadExistingFormulas && args.hydrateFreshFormulaInstances !== undefined && refs.length <= MAX_EAGER_FRESH_FORMULA_INSTANCE_RECORDS
   const shouldDeferFormulaInstanceTable =
-    !hadExistingFormulas && (args.hydrateFreshFormulaInstances !== undefined || args.deferFormulaInstanceTableRebuild !== undefined)
-  const alignedFreshFormulaInstances =
-    !hadExistingFormulas && args.hydrateFreshFormulaInstances !== undefined ? readAlignedFreshFormulaInstancesFromRefs(refs) : undefined
+    !hadExistingFormulas && (canEagerHydrateFreshFormulaInstances || args.deferFormulaInstanceTableRebuild !== undefined)
+  const alignedFreshFormulaInstances = canEagerHydrateFreshFormulaInstances ? readAlignedFreshFormulaInstancesFromRefs(refs) : undefined
   const alignedFreshFormulaFamilyRuns = readAlignedFreshFormulaFamilyRunsFromRefs({
     refs,
     hadExistingFormulas,
@@ -80,7 +83,7 @@ export function initializeHydratedPreparedCellFormulasAtNowUnchecked({
   const shouldDeferFormulaFamilyIndex =
     args.deferFormulaFamilyIndexRebuild !== undefined && (!hadExistingFormulas || alignedFreshFormulaFamilyRuns !== undefined)
   const deferredFormulaInstances =
-    !hadExistingFormulas && args.hydrateFreshFormulaInstances !== undefined && alignedFreshFormulaInstances === undefined
+    canEagerHydrateFreshFormulaInstances && alignedFreshFormulaInstances === undefined
       ? Array<FormulaInstanceSnapshot>(refs.length)
       : undefined
   let deferredFormulaInstanceCount = 0

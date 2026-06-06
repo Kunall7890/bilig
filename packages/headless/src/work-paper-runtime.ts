@@ -1,5 +1,5 @@
 import type { EngineCellMutationRef, SheetRecord, SpreadsheetEngine } from '@bilig/core/headless-runtime'
-import { MAX_COLS, MAX_ROWS, type CellSnapshot, type CellValue, type WorkbookSnapshot } from '@bilig/protocol'
+import { MAX_COLS, MAX_ROWS, ValueTag, type CellSnapshot, type CellValue, type LiteralInput, type WorkbookSnapshot } from '@bilig/protocol'
 import {
   WorkPaperInvalidArgumentsError,
   WorkPaperNamedExpressionDoesNotExistError,
@@ -72,6 +72,8 @@ import {
   canRecordImportedXlsxLiteralPatch,
   readImportedXlsxSource,
   readImportedXlsxSourceCellPatches,
+  releaseImportedXlsxSourceReaderSnapshotCells,
+  setImportedXlsxFormulaCachePatch,
   setImportedXlsxLiteralPatch,
   type ImportedXlsxSourceCellPatch,
   type ImportedXlsxSourceReference,
@@ -84,6 +86,22 @@ const EMPTY_WORKPAPER_CHANGES: WorkPaperChange[] = []
 type NamedExpressionValueSnapshot = WorkPaperNamedExpressionValueSnapshot
 
 let nextWorkbookId = 1
+
+function importedXlsxPatchValueFromCellValue(value: CellValue): LiteralInput | undefined {
+  switch (value.tag) {
+    case ValueTag.Empty:
+      return null
+    case ValueTag.Number:
+      return value.value
+    case ValueTag.Boolean:
+      return value.value
+    case ValueTag.String:
+      return value.value
+    case ValueTag.Error:
+      return undefined
+  }
+}
+
 function resolveConfiguredWorkPaperConfig(configInput: WorkPaperConfig): WorkPaperConfig {
   validateWorkPaperConfig(configInput)
   return {
@@ -230,6 +248,22 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     )
   }
 
+  private recordImportedXlsxFormulaCachePatches(changes: readonly WorkPaperChange[]): void {
+    if (this.importedXlsxSource === undefined) {
+      return
+    }
+    for (const change of changes) {
+      if (change.kind !== 'cell' || this.getCellFormula(change.address) === undefined) {
+        continue
+      }
+      const value = importedXlsxPatchValueFromCellValue(change.newValue)
+      if (value === undefined) {
+        continue
+      }
+      setImportedXlsxFormulaCachePatch(this.importedXlsxSourceCellPatches, change.sheetName, change.a1, value)
+    }
+  }
+
   override rebuildAndRecalculate(): WorkPaperChange[] {
     this.invalidateImportedXlsxSource()
     return super.rebuildAndRecalculate()
@@ -251,6 +285,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
       if (shouldRecordPatch) {
         this.preservedImportedSnapshot = undefined
         setImportedXlsxLiteralPatch(this.importedXlsxSourceCellPatches, this.sheetName(address.sheet), this.a1(address), content)
+        this.recordImportedXlsxFormulaCachePatches(changes)
       }
       return changes
     } finally {
@@ -664,6 +699,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     for (const patch of readImportedXlsxSourceCellPatches(snapshot)) {
       workbook.importedXlsxSourceCellPatches.set(`${patch.sheetName}!${patch.address}`, patch)
     }
+    releaseImportedXlsxSourceReaderSnapshotCells(snapshot, importedXlsxSource)
     return workbook
   }
 

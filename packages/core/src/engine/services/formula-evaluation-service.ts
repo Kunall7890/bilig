@@ -7,6 +7,7 @@ import {
   formatAddress,
   lowerToPlan,
   isArrayValue,
+  parseFormula,
   scalarFromEvaluationResult,
   type EvaluationContext,
   type EvaluationResult,
@@ -55,6 +56,7 @@ import { createRowVisibilityResolvers } from './formula-evaluation-row-hidden.js
 import { readPrecisionAsDisplayedCellValue, roundFormulaResultForPrecisionAsDisplayed } from './precision-as-displayed.js'
 import { resolveStructuredReferenceNow } from './formula-evaluation-structured-reference.js'
 import type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
+import { tryEvaluateFormulaLeafInlineScalar } from './formula-leaf-inline-scalar-evaluator.js'
 export type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
 
 const DIRECT_CRITERIA_MATCH_CACHE_LIMIT = 16_384
@@ -696,7 +698,10 @@ export function createEngineFormulaEvaluationService(args: {
       checkEvaluationBudget: (stepCost) => args.checkEvaluationBudget(stepCost),
     }
     const compiled = getRuntimeFormulaStructuralCompiled(formula) ?? formula.compiled
-    const jsPlan = compiled.jsPlan.length > 0 ? compiled.jsPlan : lowerToPlan(compiled.optimizedAst)
+    const jsPlan =
+      compiled.jsPlan.length > 0
+        ? compiled.jsPlan
+        : lowerToPlan(compiled.astMatchesSource === false ? parseFormula(compiled.source) : compiled.optimizedAst)
     const result = compiled.producesSpill
       ? evaluatePlanResult(jsPlan, evaluationContext)
       : evaluatePlanScalarResult(jsPlan, evaluationContext)
@@ -809,7 +814,8 @@ export function createEngineFormulaEvaluationService(args: {
         aggregateCache: args.aggregateCache,
         readCellValueByIndex,
       }) ??
-      tryEvaluateDirectCriteriaAggregate(formula, cellIndex)
+      tryEvaluateDirectCriteriaAggregate(formula, cellIndex) ??
+      (formula.inlineScalarFastPlanKind !== undefined ? tryEvaluateFormulaLeafInlineScalar({ state: args.state, formula }) : undefined)
     return directResult === undefined
       ? undefined
       : formula.compiled.producesSpill
@@ -834,7 +840,8 @@ export function createEngineFormulaEvaluationService(args: {
         aggregateCache: args.aggregateCache,
         readCellValueByIndex,
       }) ??
-      tryEvaluateDirectCriteriaAggregate(formula, cellIndex)
+      tryEvaluateDirectCriteriaAggregate(formula, cellIndex) ??
+      (formula.inlineScalarFastPlanKind !== undefined ? tryEvaluateFormulaLeafInlineScalar({ state: args.state, formula }) : undefined)
     if (directResult !== undefined) {
       return storeFormulaResult(cellIndex, formula, directResult)
     }

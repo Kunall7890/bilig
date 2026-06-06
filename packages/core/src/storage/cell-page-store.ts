@@ -29,6 +29,10 @@ export class CellPageStore {
     return this.cells.get(this.key(location))
   }
 
+  getDeferred(location: LogicalCellLocation): number | undefined {
+    return this.cells.get(this.key(location))
+  }
+
   set(location: LogicalCellLocation, cellIndex: number): void {
     this.ensurePages()
     this.cells.set(this.key(location), cellIndex)
@@ -44,6 +48,14 @@ export class CellPageStore {
 
   deferRebuild(): void {
     this.pagesDirty = true
+  }
+
+  hasOnlyDeferredRebuild(): boolean {
+    return this.pagesDirty && this.cells.size === 0
+  }
+
+  hasDeferredRebuild(): boolean {
+    return this.pagesDirty
   }
 
   delete(location: LogicalCellLocation): boolean {

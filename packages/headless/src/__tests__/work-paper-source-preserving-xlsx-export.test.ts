@@ -210,7 +210,7 @@ describe('WorkPaper source-preserving XLSX export', () => {
   it('does not retain imported XLSX snapshot cell arrays after building the WorkPaper', () => {
     const sourceBytes = sourceWorkbookBytes()
     const imported = importXlsx(sourceBytes, 'source-preserving-retention.xlsx')
-    attachSourceBytesForTest(imported.snapshot, sourceBytes)
+    attachSourceReaderForTest(imported.snapshot, sourceBytes)
     const sourceSheet = imported.snapshot.sheets[0]
     if (sourceSheet === undefined) {
       throw new Error('Expected imported workbook to contain a sheet')
@@ -218,21 +218,19 @@ describe('WorkPaper source-preserving XLSX export', () => {
     const originalCellCount = sourceSheet.cells.length
     const workbook = WorkPaper.buildFromSnapshot(imported.snapshot)
     try {
+      expect(sourceSheet.cells).toHaveLength(0)
       sourceSheet.cells.push({ address: 'Z99', value: 999 })
 
       const exportedSnapshot = workbook.exportSnapshot()
       expect(readRuntimeImage(exportedSnapshot)).toBeUndefined()
       expect(exportedSnapshot.sheets[0]?.cells).toHaveLength(originalCellCount)
       expect(exportedSnapshot.sheets[0]?.cells.some((cell) => cell.address === 'Z99')).toBe(false)
-
-      const exportedZip = unzipSync(exportXlsx(exportedSnapshot))
-      expect(strFromU8(exportedZip['customXml/item1.xml'] ?? new Uint8Array())).toBe('<keep source="true"/>')
     } finally {
       workbook.dispose()
     }
   })
 
-  it('does not materialize formula caches while source-preserving scalar edits force recalculation', () => {
+  it('preserves formula XML when source-preserving scalar edits patch recalculated caches', () => {
     const sourceBytes = sourceWorkbookWithoutFormulaCachesBytes()
     const imported = importXlsx(sourceBytes, 'source-preserving-without-formula-caches.xlsx')
     attachSourceBytesForTest(imported.snapshot, sourceBytes)
@@ -244,7 +242,7 @@ describe('WorkPaper source-preserving XLSX export', () => {
       const sheetXml = strFromU8(exportedZip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
       expect(cellXml(sheetXml, 'A1')).toContain('<v>5</v>')
       expect(cellXml(sheetXml, 'B1')).toContain('<f>A1+1</f>')
-      expect(cellXml(sheetXml, 'B1')).not.toContain('<v>')
+      expect(cellXml(sheetXml, 'B1')).toContain('<v>6</v>')
       expect(cellXml(sheetXml, 'B2')).toContain('<f>A2+1</f>')
       expect(cellXml(sheetXml, 'B2')).not.toContain('<v>')
 

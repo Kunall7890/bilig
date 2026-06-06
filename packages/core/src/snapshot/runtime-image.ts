@@ -28,6 +28,14 @@ import { pushRuntimeImageCachedFormulaRef, type CachedRuntimeFormulaRef } from '
 import { getOrCreateSheetFormulaMap, toFormulaInstanceKey } from './runtime-image-formula-map.js'
 import { attachRuntimeFormulaFamilyRunHints, selectRuntimeFormulaFamilyRunHints } from './runtime-image-formula-family-run-hints.js'
 import { restoreAlignedRuntimeFormulaFamilyRuns, type RuntimeImageFormulaFamilyRunSnapshot } from './runtime-image-formula-family-runs.js'
+import {
+  attachDenseFreshRuntimeCells,
+  attachDenseFreshRuntimeCellIdentities,
+  getDenseRuntimeSheetRestorePlan,
+  getDenseSnapshotSheetRestoreRuns,
+  releaseRestoredSheetCells,
+  shouldReleaseImportedSourceSnapshotCells,
+} from './runtime-image-dense-snapshot-restore.js'
 import { formulaCachedLiteralToRestoredValue, restoreFreshRuntimeLiteralCell, restoreLiteralCell } from './runtime-image-literal-restore.js'
 import { restoreVisualMetadata, restoreWorkbookStructure } from './runtime-image-metadata-restore.js'
 
@@ -223,11 +231,6 @@ interface FreshRuntimeLogicalSheetInternals {
 
 type FreshRuntimeCellAttacher = (row: number, col: number, cellIndex: number, rowId: string, colId: string) => void
 
-interface DenseRuntimeSheetRestorePlan {
-  readonly width: number
-  readonly height: number
-}
-
 class RestoredFormulaSourceRefTable implements EngineFormulaSourceRefTable {
   readonly sheetIds: Uint32Array
   readonly cellIndices: Uint32Array
@@ -422,66 +425,11 @@ function createFreshRuntimeCellAttacher(workbook: WorkbookStore, sheet: SheetRec
   }
 }
 
-function attachDenseFreshRuntimeCells(
-  sheet: SheetRecord,
-  firstCellIndex: number,
-  rowStart: number,
-  colStart: number,
-  rowIds: readonly string[],
-  colIds: readonly string[],
-): boolean {
-  const logicalCandidate: unknown = sheet.logical
-  const logical = isFreshRuntimeLogicalSheetInternals(logicalCandidate) ? logicalCandidate : undefined
-  const attachDenseFreshVisibleCellIdentities = logical?.setFreshVisibleDenseRowMajorIdentitiesWithAxisIdsDeferred?.bind(logical)
-  if (!attachDenseFreshVisibleCellIdentities) {
-    return false
-  }
-  logical?.deferVisibleCellPageRebuild?.()
-  attachDenseFreshVisibleCellIdentities(firstCellIndex, rowIds, colIds)
-  sheet.grid.setDenseRowMajor(rowStart, colStart, rowIds.length, colIds.length, firstCellIndex)
-  return true
-}
-
-function getDenseRuntimeSheetRestorePlan(
-  sheet: WorkbookSnapshot['sheets'][number],
-  sheetCells: RuntimeImageSheetCellsSnapshot | undefined,
-): DenseRuntimeSheetRestorePlan | undefined {
-  const dimensions = sheetCells?.dimensions
-  if (!dimensions) {
-    return undefined
-  }
-  const { width, height } = dimensions
-  const cellCount = sheetCells.cellCount ?? sheetCells.coords.length
-  const hasDenseCoordinateOrder = sheetCells.coordinateOrder === 'dense-row-major'
-  if (
-    !Number.isInteger(width) ||
-    !Number.isInteger(height) ||
-    width <= 0 ||
-    height <= 0 ||
-    cellCount !== sheet.cells.length ||
-    width * height !== sheet.cells.length
-  ) {
-    return undefined
-  }
-  if (hasDenseCoordinateOrder) {
-    return { width, height }
-  }
-  if (sheetCells.coords.length !== sheet.cells.length) {
-    return undefined
-  }
-  for (let index = 0; index < sheetCells.coords.length; index += 1) {
-    const coords = sheetCells.coords[index]!
-    if (coords.row !== Math.floor(index / width) || coords.col !== index % width) {
-      return undefined
-    }
-  }
-  return { width, height }
-}
-
 export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): WorkbookRestoreResult {
   const orderedSheets = restoreWorkbookStructure(args)
   args.checkEvaluationBudget?.()
   const potentialNewCells = orderedSheets.reduce((count, sheet) => count + sheet.cells.length, 0)
+  const shouldReleaseSheetCells = shouldReleaseImportedSourceSnapshotCells(args.snapshot)
   const formulaRefs: EngineCellMutationRef[] = []
   const formulaSourceRefs = args.initializeFormulaSourcesAt ? new RestoredFormulaSourceRefTable(potentialNewCells) : undefined
   const hydratedPreparedFormulaRefs: HydratedPreparedRuntimeFormulaRef[] = []
@@ -513,16 +461,12 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
         const colIds: string[] = []
         const ensureRowId = args.workbook.createLogicalAxisIdEnsurer(sheetId, 'row')
         const ensureColId = args.workbook.createLogicalAxisIdEnsurer(sheetId, 'column')
-        const attachFreshCell = createFreshRuntimeCellAttacher(args.workbook, sheetRecord)
         let literalColumns: WrittenColumnTracker | undefined
-        for (let cellIndex = 0; cellIndex < sheet.cells.length; cellIndex += 1) {
-          args.checkEvaluationBudget?.()
-          const cell = sheet.cells[cellIndex]!
-          const coords = readRestoredCellCoordinates(sheet.name, cell)
-          const restoredCellIndex = args.workbook.cellStore.allocateReserved(sheetId, coords.row, coords.col)
-          const rowId = (rowIds[coords.row] ??= ensureRowId(coords.row))
-          const colId = (colIds[coords.col] ??= ensureColId(coords.col))
-          attachFreshCell(coords.row, coords.col, restoredCellIndex, rowId, colId)
+        const restoreFreshCell = (
+          cell: WorkbookSnapshotCell,
+          coords: RuntimeImageCellCoordinateSnapshot,
+          restoredCellIndex: number,
+        ): void => {
           if (cell.formula !== undefined) {
             let hydratedCachedFormula = false
             const shouldPreserveCachedUnsupportedValue =
@@ -600,9 +544,47 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
             args.workbook.setCellFormat(restoredCellIndex, cell.format)
           }
         }
+        const denseRuns = getDenseSnapshotSheetRestoreRuns(sheet)
+        if (denseRuns) {
+          const setGridCell = sheetRecord.grid.createRowMajorSetter()
+          for (const run of denseRuns) {
+            args.checkEvaluationBudget?.()
+            const firstCellIndex = args.workbook.cellStore.size
+            const runRowIds = run.rows.map((row) => (rowIds[row] ??= ensureRowId(row)))
+            const runColIds = run.cols.map((col) => (colIds[col] ??= ensureColId(col)))
+            const attachedDenseIdentities = attachDenseFreshRuntimeCellIdentities(sheetRecord, firstCellIndex, runRowIds, runColIds)
+            if (!attachedDenseIdentities) {
+              throw new Error(`Dense snapshot restore is unavailable for sheet: ${sheet.name}`)
+            }
+            let sheetCellIndex = run.startIndex
+            for (const row of run.rows) {
+              args.checkEvaluationBudget?.()
+              for (const col of run.cols) {
+                const cell = sheet.cells[sheetCellIndex]!
+                const restoredCellIndex = args.workbook.cellStore.allocateReserved(sheetId, row, col)
+                setGridCell(row, col, restoredCellIndex)
+                restoreFreshCell(cell, { row, col }, restoredCellIndex)
+                sheetCellIndex += 1
+              }
+            }
+          }
+        } else {
+          const attachFreshCell = createFreshRuntimeCellAttacher(args.workbook, sheetRecord)
+          for (let cellIndex = 0; cellIndex < sheet.cells.length; cellIndex += 1) {
+            args.checkEvaluationBudget?.()
+            const cell = sheet.cells[cellIndex]!
+            const coords = readRestoredCellCoordinates(sheet.name, cell)
+            const restoredCellIndex = args.workbook.cellStore.allocateReserved(sheetId, coords.row, coords.col)
+            const rowId = (rowIds[coords.row] ??= ensureRowId(coords.row))
+            const colId = (colIds[coords.col] ??= ensureColId(coords.col))
+            attachFreshCell(coords.row, coords.col, restoredCellIndex, rowId, colId)
+            restoreFreshCell(cell, coords, restoredCellIndex)
+          }
+        }
         if (literalColumns && literalColumns.count > 0) {
           args.workbook.notifyColumnsWritten(sheetId, materializeWrittenColumns(literalColumns))
         }
+        releaseRestoredSheetCells(sheet, shouldReleaseSheetCells)
       }
     } finally {
       args.workbook.cellStore.onSetValue = previousOnSetValue
@@ -619,10 +601,10 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
   }
   if (formulaSourceRefs && formulaSourceRefs.length > 0) {
     args.checkEvaluationBudget?.()
-    args.initializeFormulaSourcesAt!(formulaSourceRefs, potentialNewCells)
+    args.initializeFormulaSourcesAt!(formulaSourceRefs, formulaSourceRefs.length)
   } else if (formulaRefs.length > 0) {
     args.checkEvaluationBudget?.()
-    args.initializeCellFormulasAt(formulaRefs, potentialNewCells)
+    args.initializeCellFormulasAt(formulaRefs, formulaRefs.length)
   }
 
   args.checkEvaluationBudget?.()
@@ -971,7 +953,7 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
   }
   if (formulaSourceRefs && formulaSourceRefs.length > 0) {
     args.checkEvaluationBudget?.()
-    args.initializeFormulaSourcesAt!(formulaSourceRefs, totalCellCount)
+    args.initializeFormulaSourcesAt!(formulaSourceRefs, formulaSourceRefs.length)
   }
   if (formulaRefs.length > 0) {
     args.checkEvaluationBudget?.()

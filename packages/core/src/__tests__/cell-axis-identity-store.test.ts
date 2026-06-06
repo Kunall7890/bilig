@@ -94,6 +94,27 @@ describe('CellAxisIdentityStore', () => {
     expect(rowCells).toEqual([1])
   })
 
+  it('queries dense resident row-major runs without materializing primary resident arrays', () => {
+    const index = new AxisResidentCellIndex()
+
+    index.addDenseRowMajorDeferredParts(10, ['row-a', 'row-b'], ['column-a', 'column-b', 'column-c'])
+
+    expect(index.get(14)).toEqual({ rowId: 'row-b', colId: 'column-b' })
+    expect(index.cellsInRow('row-b')).toEqual([13, 14, 15])
+    expect(index.cellsInColumn('column-b')).toEqual([11, 14])
+    expect(Reflect.get(index, 'rowIds')).toHaveLength(0)
+    expect(Reflect.get(index, 'colIds')).toHaveLength(0)
+
+    index.set(14, { rowId: 'row-c', colId: 'column-d' })
+    expect(index.cellsInRow('row-b')).toEqual([13, 15])
+    expect(index.cellsInColumn('column-b')).toEqual([11])
+    expect(index.cellsInRow('row-c')).toEqual([14])
+
+    expect(index.delete(15)).toBe(true)
+    expect(index.get(15)).toBeUndefined()
+    expect(index.cellsInRow('row-b')).toEqual([13])
+  })
+
   it('rebuilds resident cells from identity storage after a deferred primary rebuild', () => {
     const store = new CellAxisIdentityStore()
     const index = new AxisResidentCellIndex((callback) => {

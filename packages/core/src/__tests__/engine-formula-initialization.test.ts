@@ -5,6 +5,7 @@ import { EngineEvaluationTimeoutError, EngineMutationError } from '../engine/err
 import type { EngineCellMutationRef } from '../cell-mutations-at.js'
 import type { FormulaFamilyStore } from '../formula/formula-family-store.js'
 import { INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT } from '../engine/services/formula-initialization-direct-formulas.js'
+import { readRuntimeImage } from '../snapshot/runtime-image-codec.js'
 import { findErrorByName, getFormulaBindingNowService } from './operation-service-test-helpers.js'
 
 const OVER_DIRECT_LIMIT_TEST_TIMEOUT_MS = 10_000
@@ -935,6 +936,18 @@ describe('SpreadsheetEngine formula initialization', () => {
       directFormulaInitialEvaluations: refs.length,
       nativeDirectScalarInitialEvaluations: refs.length,
     })
+
+    const formulaForEach = vi.spyOn(getRuntimeFormulaStore(engine), 'forEach')
+    const runtimeImage = readRuntimeImage(engine.exportSnapshot())
+    try {
+      expect(runtimeImage?.formulaInstances).toHaveLength(refs.length)
+      expect(formulaForEach).toHaveBeenCalled()
+      formulaForEach.mockClear()
+      expect(readRuntimeImage(engine.exportSnapshot())?.formulaInstances).toHaveLength(refs.length)
+      expect(formulaForEach).not.toHaveBeenCalled()
+    } finally {
+      formulaForEach.mockRestore()
+    }
   })
 
   it('bulk-materializes mixed parser-cache template sheets into strided family runs', async () => {

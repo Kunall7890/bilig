@@ -1,4 +1,5 @@
 import { ValueTag } from '@bilig/protocol'
+import type { ExcelDateSystem } from '@bilig/formula'
 import type { EngineCellMutationRef, EngineFormulaSourceRefs } from '../../cell-mutations-at.js'
 import { CellFlags } from '../../cell-store.js'
 import type { FormulaInstanceSnapshot } from '../../formula/formula-instance-table.js'
@@ -77,6 +78,9 @@ export type {
   HydratedPreparedFormulaInitializationRef,
   PreparedFormulaInitializationRef,
 } from './formula-initialization-service-types.js'
+
+const MAX_EAGER_FRESH_FORMULA_INSTANCE_RECORDS = 16_384
+
 export function createEngineFormulaInitializationService(args: EngineFormulaInitializationServiceArgs): EngineFormulaInitializationService {
   const hasCycleMembersNow = (): boolean => scanFormulaInitializationCycleMembers(args.state)
   const resolveSheetName = createFormulaInitializationSheetNameResolver(args.state)
@@ -120,9 +124,9 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
       let formulaChangedCount = 0
       let topologyChanged = false
       let compileMs = 0
-      let workbookDateSystem: string | undefined
-      const resolveWorkbookDateSystem = (): string | undefined =>
-        (workbookDateSystem ??= args.state.workbook.getCalculationSettings().dateSystem)
+      let workbookDateSystem: ExcelDateSystem | undefined
+      const resolveWorkbookDateSystem = (): ExcelDateSystem =>
+        (workbookDateSystem ??= (args.state.workbook.getCalculationSettings().dateSystem ?? '1900') as ExcelDateSystem)
       const reservedNewCells = potentialNewCells ?? refs.length
       const hadExistingFormulas = args.state.formulas.size > 0
       args.state.workbook.cellStore.ensureCapacity(args.state.workbook.cellStore.size + reservedNewCells)
@@ -169,10 +173,11 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
           ? undefined
           : createInitialNativeDirectLookupBatch({ state: args.state, capacity: refs.length })
       let nativeInitialDirectLookupCellCount = 0
+      const canEagerHydrateFreshFormulaInstances =
+        !hadExistingFormulas && args.hydrateFreshFormulaInstances !== undefined && refs.length <= MAX_EAGER_FRESH_FORMULA_INSTANCE_RECORDS
       const shouldDeferFormulaInstanceTable =
-        !hadExistingFormulas && (args.hydrateFreshFormulaInstances !== undefined || args.deferFormulaInstanceTableRebuild !== undefined)
-      const deferredFormulaInstances =
-        !hadExistingFormulas && args.hydrateFreshFormulaInstances !== undefined ? Array<FormulaInstanceSnapshot>(refs.length) : undefined
+        !hadExistingFormulas && (canEagerHydrateFreshFormulaInstances || args.deferFormulaInstanceTableRebuild !== undefined)
+      const deferredFormulaInstances = canEagerHydrateFreshFormulaInstances ? Array<FormulaInstanceSnapshot>(refs.length) : undefined
       let deferredFormulaInstanceCount = 0
       const alignedFreshFormulaFamilyRuns = readAlignedFreshFormulaFamilyRunsFromRefs({
         refs,
@@ -291,7 +296,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
             noteInlineInitialDirectScalarCell(prepared, runtimeFormula)
             return
           }
-          const fallbackValue = evaluateInitialDirectScalar(args.state, runtimeFormula.directScalar)
+          const fallbackValue = evaluateInitialDirectScalar(args.state, runtimeFormula.directScalar, resolveWorkbookDateSystem())
           if (fallbackValue !== undefined) {
             inlineInitialDirectScalarWriter.writeValueAt(prepared.cellIndex, prepared.sheetId, prepared.col, fallbackValue)
             noteInlineInitialDirectScalarCell(prepared, runtimeFormula)

@@ -52,6 +52,7 @@ export function releaseWorkPaperEngine(engine: SpreadsheetEngine): void {
     pooledWorkPaperEngines.length >= MAX_POOLED_WORKPAPER_ENGINES
   ) {
     engine.workbook.releaseReusableBuffers()
+    engine.resetForReuse({ workbookName: 'Workbook', trackReplicaVersions: false })
     return
   }
   engine.resetForReuse({ workbookName: 'Workbook', trackReplicaVersions: false })

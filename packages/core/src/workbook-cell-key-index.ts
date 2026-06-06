@@ -35,6 +35,13 @@ class LogicalCellKeyIndexMap extends Map<number, number> {
     super()
   }
 
+  override set(key: number, value: number): this {
+    if (decodeCellKey(key)) {
+      return this
+    }
+    return super.set(key, value)
+  }
+
   override get(key: number): number | undefined {
     const decoded = decodeCellKey(key)
     if (decoded) {

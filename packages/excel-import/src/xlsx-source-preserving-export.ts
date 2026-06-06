@@ -34,12 +34,17 @@ import {
 } from './xlsx-zip.js'
 
 interface WorksheetPatch {
-  readonly literals: ReadonlyMap<string, LiteralInput>
+  readonly literals: ReadonlyMap<string, XlsxScalarCellPatch>
 }
 
 type ImportedXlsxSourceReference = Uint8Array | ImportedXlsxSourceReader
 
 type SourcePreservingZip = Record<string, Uint8Array>
+
+interface XlsxScalarCellPatch {
+  readonly value: LiteralInput
+  readonly preserveFormula: boolean
+}
 
 export interface XlsxSourceLiteralPatch {
   readonly sheetName: string
@@ -127,6 +132,19 @@ function literalCellBody(value: LiteralInput): { readonly type: string | null; r
   return { type: 'inlineStr', body: inlineStringBody(value) }
 }
 
+function formulaCachedValue(value: LiteralInput): { readonly type: string | null; readonly valueXml: string } | null {
+  if (value === null) {
+    return { type: null, valueXml: '' }
+  }
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? { type: null, valueXml: `<v>${String(value)}</v>` } : null
+  }
+  if (typeof value === 'boolean') {
+    return { type: 'b', valueXml: `<v>${value ? '1' : '0'}</v>` }
+  }
+  return { type: 'str', valueXml: `<v>${escapeXmlText(value)}</v>` }
+}
+
 function rewriteCellXml(cellXml: string, type: string | null, body: string): string | null {
   const parts = cellParts(cellXml)
   if (!parts) {
@@ -139,6 +157,34 @@ function rewriteCellXml(cellXml: string, type: string | null, body: string): str
 function patchLiteralCellXml(cellXml: string, value: LiteralInput): string | null {
   const valueBody = literalCellBody(value)
   return valueBody ? rewriteCellXml(cellXml, valueBody.type, valueBody.body) : null
+}
+
+const formulaElementPattern = /<(?:[A-Za-z_][\w.-]*:)?f\b(?:[^/>]*\/>|[\s\S]*?<\/(?:[A-Za-z_][\w.-]*:)?f>)/u
+const cachedValueElementPattern = /<((?:[A-Za-z_][\w.-]*:)?v)\b[^>]*>[\s\S]*?<\/\1>/u
+
+function patchFormulaCacheCellXml(cellXml: string, value: LiteralInput): string | null {
+  const valueBody = formulaCachedValue(value)
+  const parts = cellParts(cellXml)
+  if (!valueBody || !parts) {
+    return null
+  }
+  const formulaMatch = formulaElementPattern.exec(parts.body)
+  if (!formulaMatch) {
+    return null
+  }
+  const nextOpeningTag = setCellType(parts.openingTag, valueBody.type)
+  const formulaEnd = formulaMatch.index + formulaMatch[0].length
+  const nextBody =
+    valueBody.valueXml.length === 0
+      ? parts.body.replace(cachedValueElementPattern, '')
+      : cachedValueElementPattern.test(parts.body)
+        ? parts.body.replace(cachedValueElementPattern, valueBody.valueXml)
+        : `${parts.body.slice(0, formulaEnd)}${valueBody.valueXml}${parts.body.slice(formulaEnd)}`
+  return `${nextOpeningTag.endsWith('/>') ? nextOpeningTag.slice(0, -2) + '>' : nextOpeningTag}${nextBody}</${parts.tagName}>`
+}
+
+function patchScalarCellXml(cellXml: string, patch: XlsxScalarCellPatch): string | null {
+  return patch.preserveFormula ? patchFormulaCacheCellXml(cellXml, patch.value) : patchLiteralCellXml(cellXml, patch.value)
 }
 
 function literalCellXml(address: string, value: LiteralInput): string | null {
@@ -236,7 +282,7 @@ function patchWorksheetXml(sheetXml: string, patch: WorksheetPatch): string | nu
       return cellXml
     }
     if (patch.literals.has(address)) {
-      const patched = patchLiteralCellXml(cellXml, patch.literals.get(address) ?? null)
+      const patched = patchScalarCellXml(cellXml, patch.literals.get(address) ?? { value: null, preserveFormula: false })
       if (!patched) {
         failed = true
         return cellXml
@@ -251,7 +297,7 @@ function patchWorksheetXml(sheetXml: string, patch: WorksheetPatch): string | nu
   }
   for (const [address, value] of patch.literals.entries()) {
     if (!patchedLiterals.has(address)) {
-      const inserted = insertLiteralCell(nextXml, address, value)
+      const inserted = value.preserveFormula ? null : insertLiteralCell(nextXml, address, value.value)
       if (inserted === null) {
         return null
       }
@@ -412,7 +458,7 @@ function tryWriteStreamingPatchedWorksheetEntry(
       const openingTag = worksheetCellOpeningTagPattern.exec(cellXml)?.[0]
       const address = openingTag ? readXmlAttribute(openingTag, 'r') : null
       if (address && patch.literals.has(address)) {
-        const patched = patchLiteralCellXml(cellXml, patch.literals.get(address) ?? null)
+        const patched = patchScalarCellXml(cellXml, patch.literals.get(address) ?? { value: null, preserveFormula: false })
         if (!patched) {
           failed = true
           return
@@ -516,7 +562,7 @@ async function tryWriteNativeStreamingPatchedWorksheetEntry(
       const openingTag = worksheetCellOpeningTagPattern.exec(cellXml)?.[0]
       const address = openingTag ? readXmlAttribute(openingTag, 'r') : null
       if (address && patch.literals.has(address)) {
-        const patched = patchLiteralCellXml(cellXml, patch.literals.get(address) ?? null)
+        const patched = patchScalarCellXml(cellXml, patch.literals.get(address) ?? { value: null, preserveFormula: false })
         if (!patched) {
           failed = true
           return
@@ -566,11 +612,11 @@ async function tryWriteNativeStreamingPatchedWorksheetEntry(
   }
 }
 
-function literalPatchesBySheet(patches: readonly ImportedXlsxSourceCellPatch[]): Map<string, Map<string, LiteralInput>> {
-  const output = new Map<string, Map<string, LiteralInput>>()
+function literalPatchesBySheet(patches: readonly ImportedXlsxSourceCellPatch[]): Map<string, Map<string, XlsxScalarCellPatch>> {
+  const output = new Map<string, Map<string, XlsxScalarCellPatch>>()
   for (const patch of patches) {
-    const sheetPatches = output.get(patch.sheetName) ?? new Map<string, LiteralInput>()
-    sheetPatches.set(patch.address, patch.value)
+    const sheetPatches = output.get(patch.sheetName) ?? new Map<string, XlsxScalarCellPatch>()
+    sheetPatches.set(patch.address, { value: patch.value, preserveFormula: patch.preserveFormula === true })
     output.set(patch.sheetName, sheetPatches)
   }
   return output
@@ -633,7 +679,7 @@ export function tryExportSourcePreservingXlsx(snapshot: WorkbookSnapshot, source
   )
   const literalsBySheet = literalPatchesBySheet(literalPatches)
   for (const sheet of orderedSheets) {
-    const literals = literalsBySheet.get(sheet.name) ?? new Map<string, LiteralInput>()
+    const literals = literalsBySheet.get(sheet.name) ?? new Map<string, XlsxScalarCellPatch>()
     if (literals.size === 0) {
       continue
     }
@@ -685,7 +731,7 @@ export function tryExportSourcePreservingXlsxToFile(
   )
   const literalsBySheet = literalPatchesBySheet(literalPatches)
   for (const sheet of orderedSheets) {
-    const literals = literalsBySheet.get(sheet.name) ?? new Map<string, LiteralInput>()
+    const literals = literalsBySheet.get(sheet.name) ?? new Map<string, XlsxScalarCellPatch>()
     if (literals.size === 0) {
       continue
     }
@@ -747,7 +793,7 @@ export async function tryExportSourcePreservingXlsxToFileAsync(
   )
   const literalsBySheet = literalPatchesBySheet(literalPatches)
   for (const sheet of orderedSheets) {
-    const literals = literalsBySheet.get(sheet.name) ?? new Map<string, LiteralInput>()
+    const literals = literalsBySheet.get(sheet.name) ?? new Map<string, XlsxScalarCellPatch>()
     if (literals.size === 0) {
       continue
     }

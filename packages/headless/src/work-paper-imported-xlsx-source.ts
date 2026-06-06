@@ -34,6 +34,18 @@ export function readImportedXlsxSourceCellPatches(snapshot: WorkbookSnapshot): r
   return (snapshot as SnapshotWithImportedXlsxSource)[importedXlsxSourceCellPatches] ?? []
 }
 
+export function releaseImportedXlsxSourceReaderSnapshotCells(
+  snapshot: WorkbookSnapshot,
+  source: ImportedXlsxSourceReference | undefined,
+): void {
+  if (source === undefined || source instanceof Uint8Array) {
+    return
+  }
+  for (const sheet of snapshot.sheets) {
+    sheet.cells = []
+  }
+}
+
 export function attachImportedXlsxSourceMetadata(
   snapshot: WorkbookSnapshot,
   source: ImportedXlsxSourceReference | undefined,
@@ -74,6 +86,21 @@ export function setImportedXlsxLiteralPatch(
     sheetName,
     address,
     value,
+  })
+}
+
+export function setImportedXlsxFormulaCachePatch(
+  patches: Map<string, ImportedXlsxSourceCellPatch>,
+  sheetName: string,
+  address: string,
+  value: LiteralInput,
+): void {
+  patches.set(`${sheetName}!${address}`, {
+    kind: 'literal',
+    sheetName,
+    address,
+    value,
+    preserveFormula: true,
   })
 }
 
