@@ -36,6 +36,7 @@ const nativeXlsxExcelImportFixtureTests = [
   'packages/excel-import/src/__tests__/xlsx-calculation-properties-roundtrip.test.ts',
   'packages/excel-import/src/__tests__/xlsx-cell-metadata-roundtrip.test.ts',
   'packages/excel-import/src/__tests__/xlsx-cell-rich-text-roundtrip.test.ts',
+  'packages/excel-import/src/__tests__/xlsx-conditional-format-roundtrip.test.ts',
   'packages/excel-import/src/__tests__/xlsx-data-validations-roundtrip.test.ts',
   'packages/excel-import/src/__tests__/xlsx-date1904-system.test.ts',
   'packages/excel-import/src/__tests__/xlsx-defined-names-import.test.ts',

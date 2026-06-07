@@ -1,6 +1,6 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import { exportXlsx, importXlsx } from '../index.js'
 
@@ -92,26 +92,26 @@ describe('xlsx conditional format roundtrip', () => {
 })
 
 function buildConditionalFormattingWorkbook(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([[0, 'Open']])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Checks')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Checks',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 0 },
+            { address: 'B1', row: 0, col: 1, value: 'Open' },
+          ],
+        },
+      ],
+    }),
+  )
   zip['xl/worksheets/sheet1.xml'] = strToU8(conditionalFormattingWorksheetXml)
   zip['xl/styles.xml'] = strToU8(conditionalFormattingStylesXml)
   return zipSync(zip)
 }
 
 function buildAdvancedConditionalFormattingWorkbook(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    [10, 20, 30],
-    [20, 40, 60],
-    [30, 60, 90],
-  ])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Dashboard')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(buildDashboardWorkbook())
   zip['xl/worksheets/sheet1.xml'] = strToU8(advancedConditionalFormattingWorksheetXml)
   return zipSync(zip)
 }
@@ -147,25 +147,25 @@ function buildStyledFormulaConditionalFormattingWorkbook(): Uint8Array {
 }
 
 function buildRootNamespacedAdvancedConditionalFormattingWorkbook(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    [10, 20, 30],
-    [20, 40, 60],
-    [30, 60, 90],
-  ])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Dashboard')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(buildDashboardWorkbook())
   zip['xl/worksheets/sheet1.xml'] = strToU8(rootNamespacedAdvancedConditionalFormattingWorksheetXml)
   return zipSync(zip)
 }
 
 function buildSimpleConditionalFormattingWorkbook(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([[7], [1]])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Checks')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Checks',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 7 },
+            { address: 'A2', row: 1, col: 0, value: 1 },
+          ],
+        },
+      ],
+    }),
+  )
   zip['xl/worksheets/sheet1.xml'] = strToU8(
     [
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
@@ -177,6 +177,27 @@ function buildSimpleConditionalFormattingWorkbook(): Uint8Array {
     ].join(''),
   )
   return zipSync(zip)
+}
+
+function buildDashboardWorkbook(): Uint8Array {
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Dashboard',
+        cells: [
+          { address: 'A1', row: 0, col: 0, value: 10 },
+          { address: 'B1', row: 0, col: 1, value: 20 },
+          { address: 'C1', row: 0, col: 2, value: 30 },
+          { address: 'A2', row: 1, col: 0, value: 20 },
+          { address: 'B2', row: 1, col: 1, value: 40 },
+          { address: 'C2', row: 1, col: 2, value: 60 },
+          { address: 'A3', row: 2, col: 0, value: 30 },
+          { address: 'B3', row: 2, col: 1, value: 60 },
+          { address: 'C3', row: 2, col: 2, value: 90 },
+        ],
+      },
+    ],
+  })
 }
 
 const conditionalFormattingWorksheetXml = [
