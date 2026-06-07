@@ -1,7 +1,9 @@
-import { readFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { ValueTag } from '../../packages/protocol/src/enums.js'
+import { writeSimpleXlsxWorkbook } from '../../packages/xlsx/src/simple-workbook-writer.js'
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -9,9 +11,11 @@ import {
   buildNativeRecalcPublicCorpusTarget,
   cellValueFromCliRead,
   cellValueFromFormulaCacheLiteral,
+  discoverNativeRecalcPublicCorpusTargetsForCorpora,
   formulaOracleReadTarget,
   formulaOraclesFromNativeFormulaCacheCells,
   quoteSheetNameForTarget,
+  readNativeRecalcPublicCorpusInputs,
   summarizeNativeRecalcPublicCorpusResults,
   type NativeRecalcPublicCorpusResult,
 } from '../xlsx-native-recalc-public-corpus.ts'
@@ -149,6 +153,106 @@ describe('xlsx native recalc public corpus runner', () => {
         expected: { tag: ValueTag.String, value: 'old units', stringId: 0 },
       },
     ])
+  })
+
+  it('parses repeated native corpus manifest/cache inputs', () => {
+    expect(
+      readNativeRecalcPublicCorpusInputs(['--corpus', './one/manifest.json', './one', '--corpus', './two/manifest.json', './two']),
+    ).toEqual([
+      {
+        manifestPath: join(process.cwd(), 'one/manifest.json'),
+        cacheDir: join(process.cwd(), 'one'),
+      },
+      {
+        manifestPath: join(process.cwd(), 'two/manifest.json'),
+        cacheDir: join(process.cwd(), 'two'),
+      },
+    ])
+
+    expect(() => readNativeRecalcPublicCorpusInputs(['--corpus', './manifest.json'])).toThrow(
+      'Expected --corpus <manifest-path> <cache-dir>',
+    )
+  })
+
+  it('dedupes formula workbook targets by SHA across combined public corpora', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-native-public-corpus-combined-'))
+    try {
+      const firstCacheDir = join(tempDir, 'first')
+      const secondCacheDir = join(tempDir, 'second')
+      mkdirSync(join(firstCacheDir, 'files'), { recursive: true })
+      mkdirSync(join(secondCacheDir, 'files'), { recursive: true })
+      const firstWorkbook = writeSimpleXlsxWorkbook({
+        sheets: [
+          {
+            name: 'Summary',
+            cells: [
+              { address: 'A1', row: 0, col: 0, value: 2 },
+              { address: 'B1', row: 0, col: 1, formula: 'A1*2', value: 4 },
+            ],
+          },
+        ],
+      })
+      const secondWorkbook = writeSimpleXlsxWorkbook({
+        sheets: [
+          {
+            name: 'Summary',
+            cells: [
+              { address: 'A1', row: 0, col: 0, value: 3 },
+              { address: 'B1', row: 0, col: 1, formula: 'A1*2', value: 6 },
+            ],
+          },
+        ],
+      })
+      writeFileSync(join(firstCacheDir, artifact.cachePath), firstWorkbook)
+      writeFileSync(join(secondCacheDir, artifact.cachePath), firstWorkbook)
+      writeFileSync(join(secondCacheDir, 'files/second-formula-workbook.xlsx'), secondWorkbook)
+
+      const duplicateArtifact = { ...artifact, id: 'workbook-public-formula-duplicate' }
+      const secondArtifact = {
+        ...artifact,
+        id: 'workbook-public-formula-second',
+        sourceId: 'source-public-formula-second',
+        downloadUrl: 'https://example.com/second-formula-workbook.xlsx',
+        fileName: 'second-formula-workbook.xlsx',
+        cachePath: 'files/second-formula-workbook.xlsx',
+        sha256: 'b'.repeat(64),
+      }
+      const discovered = discoverNativeRecalcPublicCorpusTargetsForCorpora({
+        corpora: [
+          {
+            cacheDir: firstCacheDir,
+            manifest: {
+              schemaVersion: 1,
+              targetWorkbookCount: 2,
+              generatedAt: '2026-06-07T00:00:00.000Z',
+              sources: [],
+              artifacts: [artifact],
+            },
+          },
+          {
+            cacheDir: secondCacheDir,
+            manifest: {
+              schemaVersion: 1,
+              targetWorkbookCount: 2,
+              generatedAt: '2026-06-07T00:00:00.000Z',
+              sources: [],
+              artifacts: [duplicateArtifact, secondArtifact],
+            },
+          },
+        ],
+        outputDir: join(tempDir, 'outputs'),
+        maxRssBytes: 350 * 1024 * 1024,
+        limit: 1,
+        maxFormulaReadsPerWorkbook: 10,
+        minFormulaCellsPerWorkbook: 1,
+      })
+
+      expect(discovered.discoveredFormulaWorkbookCount).toBe(2)
+      expect(discovered.targets).toHaveLength(1)
+      expect(discovered.targets[0]?.sha256).toBe(artifact.sha256)
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
   })
 
   it('summarizes public native recalc results without treating unsupported formulas as passes', () => {

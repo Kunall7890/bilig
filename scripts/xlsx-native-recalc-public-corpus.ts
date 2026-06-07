@@ -80,9 +80,19 @@ interface NativeRecalcPublicCorpusDiagnostics {
   readonly unsupportedReason?: string
 }
 
+export interface NativeRecalcPublicCorpusInput {
+  readonly manifestPath: string
+  readonly cacheDir: string
+}
+
+export interface NativeRecalcPublicCorpus {
+  readonly manifest: PublicWorkbookManifest
+  readonly cacheDir: string
+}
+
 async function main(): Promise<void> {
-  const cacheDir = resolve(readStringArg('--cache-dir', defaultCacheDir))
-  const manifestPath = resolve(readStringArg('--manifest', defaultManifestPath))
+  const corpusInputs = readNativeRecalcPublicCorpusInputs()
+  const primaryCorpusInput = corpusInputs[0]
   const outputDir = resolve(readStringArg('--output-dir', defaultOutputDir))
   const cliPath = resolve(readStringArg('--cli', defaultCliPath))
   const nodeBin = readStringArg('--node-bin', process.env['BILIG_XLSX_NATIVE_RECALC_NODE'] ?? 'node')
@@ -97,10 +107,12 @@ async function main(): Promise<void> {
   const dryRun = readFlagArg('--dry-run')
   mkdirSync(outputDir, { recursive: true })
 
-  const manifest = parsePublicWorkbookManifestJson(JSON.parse(readFileSync(manifestPath, 'utf8')))
-  const discoveredTargets = discoverNativeRecalcPublicCorpusTargets({
-    cacheDir,
-    manifest,
+  const corpora = corpusInputs.map((input) => ({
+    cacheDir: input.cacheDir,
+    manifest: parsePublicWorkbookManifestJson(JSON.parse(readFileSync(input.manifestPath, 'utf8'))),
+  }))
+  const discoveredTargets = discoverNativeRecalcPublicCorpusTargetsForCorpora({
+    corpora,
     outputDir,
     maxRssBytes,
     limit,
@@ -133,8 +145,9 @@ async function main(): Promise<void> {
       {
         mode: 'xlsx-native-recalc-public-corpus',
         targets: {
-          manifestPath,
-          cacheDir,
+          manifestPath: primaryCorpusInput.manifestPath,
+          cacheDir: primaryCorpusInput.cacheDir,
+          corpora: corpusInputs,
           maxRssBytes,
           limit,
           maxFormulaReadsPerWorkbook,
@@ -161,6 +174,37 @@ async function main(): Promise<void> {
   }
 }
 
+export function readNativeRecalcPublicCorpusInputs(
+  args: readonly string[] = process.argv.slice(2),
+): readonly NativeRecalcPublicCorpusInput[] {
+  const corpora: NativeRecalcPublicCorpusInput[] = []
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] !== '--corpus') {
+      continue
+    }
+    const manifestPath = args[index + 1]
+    const cacheDir = args[index + 2]
+    if (!manifestPath || !cacheDir || manifestPath.startsWith('--') || cacheDir.startsWith('--')) {
+      throw new Error('Expected --corpus <manifest-path> <cache-dir>')
+    }
+    corpora.push({
+      manifestPath: resolve(manifestPath),
+      cacheDir: resolve(cacheDir),
+    })
+    index += 2
+  }
+  if (corpora.length > 0) {
+    return corpora
+  }
+  const cacheDir = resolve(readStringArg('--cache-dir', defaultCacheDir))
+  return [
+    {
+      manifestPath: resolve(readStringArg('--manifest', defaultManifestPath)),
+      cacheDir,
+    },
+  ]
+}
+
 export function discoverNativeRecalcPublicCorpusTargets(args: {
   readonly manifest: PublicWorkbookManifest
   readonly cacheDir: string
@@ -173,32 +217,56 @@ export function discoverNativeRecalcPublicCorpusTargets(args: {
   readonly discoveredFormulaWorkbookCount: number
   readonly targets: readonly NativeRecalcPublicCorpusTarget[]
 } {
+  return discoverNativeRecalcPublicCorpusTargetsForCorpora({
+    ...args,
+    corpora: [{ manifest: args.manifest, cacheDir: args.cacheDir }],
+  })
+}
+
+export function discoverNativeRecalcPublicCorpusTargetsForCorpora(args: {
+  readonly corpora: readonly NativeRecalcPublicCorpus[]
+  readonly outputDir: string
+  readonly maxRssBytes: number
+  readonly limit: number
+  readonly maxFormulaReadsPerWorkbook: number
+  readonly minFormulaCellsPerWorkbook?: number
+}): {
+  readonly discoveredFormulaWorkbookCount: number
+  readonly targets: readonly NativeRecalcPublicCorpusTarget[]
+} {
   const targets: NativeRecalcPublicCorpusTarget[] = []
   let discoveredFormulaWorkbookCount = 0
+  const seenSha256 = new Set<string>()
   const minFormulaCellsPerWorkbook = args.minFormulaCellsPerWorkbook ?? defaultMinFormulaCellsPerWorkbook
-  for (const artifact of args.manifest.artifacts) {
-    const inputPath = join(args.cacheDir, artifact.cachePath)
-    if (!existsSync(inputPath)) {
-      continue
+  for (const corpus of args.corpora) {
+    for (const artifact of corpus.manifest.artifacts) {
+      if (seenSha256.has(artifact.sha256)) {
+        continue
+      }
+      const inputPath = join(corpus.cacheDir, artifact.cachePath)
+      if (!existsSync(inputPath)) {
+        continue
+      }
+      const oracles = readFormulaOraclesForArtifact(artifact, inputPath)
+      if (oracles.length < minFormulaCellsPerWorkbook) {
+        continue
+      }
+      seenSha256.add(artifact.sha256)
+      discoveredFormulaWorkbookCount += 1
+      if (targets.length >= args.limit) {
+        continue
+      }
+      targets.push(
+        buildNativeRecalcPublicCorpusTarget({
+          artifact,
+          inputPath,
+          outputDir: args.outputDir,
+          maxRssBytes: args.maxRssBytes,
+          oracles,
+          maxFormulaReadsPerWorkbook: args.maxFormulaReadsPerWorkbook,
+        }),
+      )
     }
-    const oracles = readFormulaOraclesForArtifact(artifact, inputPath)
-    if (oracles.length < minFormulaCellsPerWorkbook) {
-      continue
-    }
-    discoveredFormulaWorkbookCount += 1
-    if (targets.length >= args.limit) {
-      continue
-    }
-    targets.push(
-      buildNativeRecalcPublicCorpusTarget({
-        artifact,
-        inputPath,
-        outputDir: args.outputDir,
-        maxRssBytes: args.maxRssBytes,
-        oracles,
-        maxFormulaReadsPerWorkbook: args.maxFormulaReadsPerWorkbook,
-      }),
-    )
   }
   return { discoveredFormulaWorkbookCount, targets }
 }
