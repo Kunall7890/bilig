@@ -2,8 +2,10 @@ import { writeFileSync } from 'node:fs'
 import { WorkPaper, type RawCellContent, type WorkPaperCellAddress, type WorkPaperChange } from '@bilig/headless'
 import { exportXlsx, exportXlsxToFile, importXlsx } from '@bilig/headless/xlsx'
 import {
+  type CellValue,
   ErrorCode,
   formatErrorCode,
+  type LiteralInput,
   ValueTag,
   type CompatibilityMode,
   type WorkbookCalculationMode,
@@ -13,29 +15,14 @@ import {
   patchXlsxTextParts,
   type ImportedWorkbookDiagnostics,
   type XlsxExternalWorkbookInput,
+  type XlsxFormulaRecalcNativeDiagnostics,
   type XlsxImportOptions,
   type XlsxTextPartPatch,
 } from '@bilig/xlsx'
 
-import type {
-  XlsxFormulaRecalcCellValue,
-  XlsxFormulaRecalcEdit,
-  XlsxFormulaRecalcFileResult,
-  XlsxFormulaRecalcResult,
-} from '@bilig/xlsx-formula-recalc'
-
 export { WorkPaper } from '@bilig/headless'
 export { exportXlsx, exportXlsxToFile, importXlsx } from '@bilig/headless/xlsx'
-export type {
-  XlsxExternalWorkbookHydrationDiagnostics,
-  XlsxExternalWorkbookInput,
-  XlsxFormulaRecalcCellValue,
-  XlsxFormulaRecalcChange,
-  XlsxFormulaRecalcDiagnostics,
-  XlsxFormulaRecalcEdit,
-  XlsxFormulaRecalcFileResult,
-  XlsxFormulaRecalcResult,
-} from '@bilig/xlsx-formula-recalc'
+export type { XlsxExternalWorkbookInput, XlsxExternalWorkbookHydrationDiagnostics } from '@bilig/xlsx'
 export {
   type StreamingNativeFormulaCounts,
   type XlsxFormulaRecalcNativeDiagnostics,
@@ -88,6 +75,15 @@ interface PreparedXlsxFormulaRecalcOutput {
   readonly diagnostics?: ImportedWorkbookDiagnostics
 }
 
+export type XlsxFormulaRecalcCellValue = CellValue
+export type XlsxFormulaRecalcChange = WorkPaperChange
+export type XlsxFormulaRecalcDiagnostics = ImportedWorkbookDiagnostics & Partial<XlsxFormulaRecalcNativeDiagnostics>
+
+export interface XlsxFormulaRecalcEdit {
+  readonly target: string
+  readonly value: LiteralInput
+}
+
 export type XlsxFormulaRecalcWorkPaperEngine = 'auto' | 'workpaper'
 export type XlsxFormulaRecalcWorkPaperFallbackPolicy = 'error' | 'workpaper'
 
@@ -127,6 +123,24 @@ export interface XlsxFormulaRecalcOptions {
 
 export interface XlsxFormulaRecalcFileOptions extends XlsxFormulaRecalcOptions {
   readonly outputPath: string
+}
+
+export interface XlsxFormulaRecalcResult {
+  readonly xlsx: Uint8Array
+  readonly warnings: readonly string[]
+  readonly sheetNames: readonly string[]
+  readonly reads: Readonly<Record<string, XlsxFormulaRecalcCellValue>>
+  readonly changes: readonly XlsxFormulaRecalcChange[]
+  readonly diagnostics?: XlsxFormulaRecalcDiagnostics
+}
+
+export interface XlsxFormulaRecalcFileResult {
+  readonly bytesWritten: number
+  readonly warnings: readonly string[]
+  readonly sheetNames: readonly string[]
+  readonly reads: Readonly<Record<string, XlsxFormulaRecalcCellValue>>
+  readonly changes: readonly XlsxFormulaRecalcChange[]
+  readonly diagnostics?: XlsxFormulaRecalcDiagnostics
 }
 
 export function recalculateXlsx(input: Uint8Array | ArrayBuffer | Buffer, options: XlsxFormulaRecalcOptions = {}): XlsxFormulaRecalcResult {

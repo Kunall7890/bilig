@@ -320,6 +320,23 @@ describe('repository dependency policy', () => {
     expect(unscopedWorkPaperEvaluator).not.toContain('xlsx-cache')
   })
 
+  it('keeps bilig-workpaper off the xlsx-formula-recalc package boundary', () => {
+    const manifest = packageManifest('packages/bilig')
+    const dependencies = objectField(manifest, 'dependencies')
+    const scripts = objectField(manifest, 'scripts')
+    const xlsxRiskTool = readFileSync(join(repoRoot, 'packages/bilig/src/work-paper-mcp-xlsx-risk-tool.ts'), 'utf8')
+    const sourceViolations = sourceFiles(join(repoRoot, 'packages/bilig/src')).flatMap((sourceFile) =>
+      sourceSpecifierViolations(relativePath(sourceFile), ['@bilig/xlsx-formula-recalc']),
+    )
+
+    expect(dependencies).not.toHaveProperty('@bilig/xlsx-formula-recalc')
+    expect(dependencies).not.toHaveProperty('xlsx-formula-recalc')
+    expect(stringField(scripts, 'build')).not.toContain('@bilig/xlsx-formula-recalc')
+    expect(sourceViolations).toEqual([])
+    expect(xlsxRiskTool).toContain("from '@bilig/xlsx/workbook-compatibility-report'")
+    expect(xlsxRiskTool).not.toContain('@bilig/xlsx-formula-recalc')
+  })
+
   it('keeps native file recalc CLI and public file types off static headless imports', () => {
     const violations = nativeXlsxFormulaRecalcPathBoundarySources.flatMap((path) => sourceSpecifierViolations(path, ['@bilig/headless']))
 

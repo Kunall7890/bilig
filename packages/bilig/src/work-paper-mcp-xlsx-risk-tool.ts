@@ -2,10 +2,7 @@ import { readFileSync } from 'node:fs'
 import { basename, resolve } from 'node:path'
 
 import type { WorkPaperMcpToolServer } from '@bilig/headless/mcp'
-import {
-  buildWorkbookCompatibilityReport,
-  type WorkbookCompatibilityReport,
-} from '@bilig/xlsx-formula-recalc/workbook-compatibility-report'
+import { buildWorkbookCompatibilityReport, type WorkbookCompatibilityReport } from '@bilig/xlsx/workbook-compatibility-report'
 
 type JsonObject = Record<string, unknown>
 type JsonRpcId = string | number | null

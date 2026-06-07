@@ -85,13 +85,12 @@
     "access": "public"
   },
   "scripts": {
-    "build": "pnpm --dir ../.. --filter @bilig/xlsx-formula-recalc build && pnpm --dir ../.. --filter @bilig/headless build && rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json"
+    "build": "pnpm --dir ../.. --filter @bilig/xlsx build && pnpm --dir ../.. --filter @bilig/headless build && rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json"
   },
   "dependencies": {
     "@bilig/headless": "workspace:*",
     "@bilig/protocol": "workspace:*",
-    "@bilig/xlsx": "workspace:*",
-    "@bilig/xlsx-formula-recalc": "workspace:*"
+    "@bilig/xlsx": "workspace:*"
   },
   "engines": {
     "node": ">=22.0.0"

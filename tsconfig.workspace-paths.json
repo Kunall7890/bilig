@@ -64,6 +64,7 @@
       "@bilig/xlsx/streaming-native-recalc": ["./packages/xlsx/src/streaming-native-recalc.ts"],
       "@bilig/xlsx/targeted-cell-reader": ["./packages/xlsx/src/targeted-cell-reader.ts"],
       "@bilig/xlsx/workbook-cell-reader": ["./packages/xlsx/src/workbook-cell-reader.ts"],
+      "@bilig/xlsx/workbook-compatibility-report": ["./packages/xlsx/src/workbook-compatibility-report.ts"],
       "@bilig/xlsx/zip-reader": ["./packages/xlsx/src/zip-reader.ts"],
       "@bilig/zero-sync": ["./packages/zero-sync/src/index.ts"],
       "bilig-workpaper": ["./packages/bilig/src/index.ts"],

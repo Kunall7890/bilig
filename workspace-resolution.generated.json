@@ -239,6 +239,10 @@
     "packageDir": "packages/xlsx",
     "sourceEntry": "packages/xlsx/src/workbook-cell-reader.ts"
   },
+  "@bilig/xlsx/workbook-compatibility-report": {
+    "packageDir": "packages/xlsx",
+    "sourceEntry": "packages/xlsx/src/workbook-compatibility-report.ts"
+  },
   "@bilig/xlsx/zip-reader": {
     "packageDir": "packages/xlsx",
     "sourceEntry": "packages/xlsx/src/zip-reader.ts"

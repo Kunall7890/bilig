@@ -84,6 +84,11 @@
       "import": "./dist/workbook-cell-reader.js",
       "default": "./dist/workbook-cell-reader.js"
     },
+    "./workbook-compatibility-report": {
+      "types": "./dist/workbook-compatibility-report.d.ts",
+      "import": "./dist/workbook-compatibility-report.js",
+      "default": "./dist/workbook-compatibility-report.js"
+    },
     "./zip-reader": {
       "types": "./dist/zip-reader.d.ts",
       "import": "./dist/zip-reader.js",

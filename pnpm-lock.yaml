@@ -327,9 +327,6 @@ importers:
       '@bilig/xlsx':
         specifier: workspace:*
         version: link:../xlsx
-      '@bilig/xlsx-formula-recalc':
-        specifier: workspace:*
-        version: link:../bilig-xlsx-formula-recalc
 
   packages/bilig-exceljs-formula-recalc:
     dependencies:
