@@ -585,6 +585,8 @@ describe('repository dependency policy', () => {
     expect(limitsSource).toContain('shouldAllowLegacyLargeSheetJsFallback(options)')
     expect(limitsSource).toContain('options.limits === false && options.allowLegacyLargeSheetJsFallback === true')
     expect(publicImport).toContain('shouldAllowLegacyLargeSheetJsFallback(options)')
+    expect(byteSourceImportSource).toContain("from '@bilig/xlsx/zip-reader'")
+    expect(byteSourceImportSource).toContain("import { readXlsxZipEntriesLazy } from './xlsx-zip.js'")
     expect(publicGuardIndex).toBeGreaterThan(-1)
     expect(publicReaderMaterializationIndex).toBeGreaterThan(publicGuardIndex)
     expect(publicZipSourceMaterializationIndex).toBeGreaterThan(publicGuardIndex)
