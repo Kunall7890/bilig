@@ -47,7 +47,7 @@ import { markVolatileDependentFormulaCells } from './workpaper-xlsx-volatile-dep
 
 const defaultEvaluationTimeoutMs = 30_000
 const childProcessTimeoutPaddingMs = 1_000
-const defaultMaxFileBytes = 50 * 1024 * 1024
+const defaultMaxFileBytes = 1_000_000
 const defaultMismatchSampleLimit = 25
 const ignoredDirectoryNames = new Set(['.git', 'build', 'dist', 'node_modules'])
 const skipReasons: readonly WorkPaperXlsxFormulaSkipReason[] = [
@@ -163,25 +163,11 @@ function checkWorkbookFileInChildProcess(
   }
   const childTimeoutMs =
     options.childProcessTimeoutMs ?? (options.evaluationTimeoutMs ?? defaultEvaluationTimeoutMs) + childProcessTimeoutPaddingMs
-  const child = spawnSync(
-    'bun',
-    [
-      fileURLToPath(import.meta.url),
-      '--internal-check-file-json',
-      filePath,
-      '--timeout-ms',
-      String(options.evaluationTimeoutMs ?? defaultEvaluationTimeoutMs),
-      '--mismatch-sample-limit',
-      String(mismatchSampleLimit),
-      '--max-file-bytes',
-      String(maxFileBytesFor(options)),
-    ],
-    {
-      cwd: process.cwd(),
-      encoding: 'utf8',
-      timeout: childTimeoutMs,
-    },
-  )
+  const child = spawnSync('bun', workPaperXlsxCorpusChildArgs(filePath, options, mismatchSampleLimit), {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    timeout: childTimeoutMs,
+  })
   const fileName = basename(filePath)
 
   if (child.error) {
@@ -684,7 +670,7 @@ function oversizedWorkbookResult(
     matchRate: 1,
     compatibility: emptyCompatibilitySummary(),
     elapsedMs: roundElapsed(performance.now() - startedAt),
-    error: `XLSX file exceeds max file size: ${formatByteSize(fileSizeBytes)} > ${formatByteSize(maxFileBytes)}`,
+    error: `XLSX file exceeds max file size: ${formatByteSize(fileSizeBytes)} > ${formatByteSize(maxFileBytes)}${largeWorkPaperMaterializationHint(options)}`,
   }
 }
 
@@ -693,7 +679,37 @@ function maxFileBytesFor(options: WorkPaperXlsxCorpusOptions): number {
   if (!Number.isFinite(maxFileBytes) || maxFileBytes <= 0) {
     throw new Error(`maxFileBytes must be a positive finite integer, got ${String(maxFileBytes)}`)
   }
-  return Math.trunc(maxFileBytes)
+  const requestedBytes = Math.trunc(maxFileBytes)
+  if (requestedBytes > defaultMaxFileBytes && options.allowLargeWorkPaperMaterialization !== true) {
+    return defaultMaxFileBytes
+  }
+  return requestedBytes
+}
+
+function largeWorkPaperMaterializationHint(options: WorkPaperXlsxCorpusOptions): string {
+  const requestedBytes = options.maxFileBytes ?? defaultMaxFileBytes
+  return requestedBytes >= defaultMaxFileBytes && options.allowLargeWorkPaperMaterialization !== true
+    ? '. Large WorkPaper XLSX corpus materialization is small-workbook only by default; pass --allow-large-workpaper-materialization for an explicit legacy large-workbook run.'
+    : ''
+}
+
+function workPaperXlsxCorpusChildArgs(
+  filePath: string,
+  options: WorkPaperXlsxCorpusOptions,
+  mismatchSampleLimit: number,
+): readonly string[] {
+  return [
+    fileURLToPath(import.meta.url),
+    '--internal-check-file-json',
+    filePath,
+    '--timeout-ms',
+    String(options.evaluationTimeoutMs ?? defaultEvaluationTimeoutMs),
+    '--mismatch-sample-limit',
+    String(mismatchSampleLimit),
+    '--max-file-bytes',
+    String(maxFileBytesFor(options)),
+    ...(options.allowLargeWorkPaperMaterialization === true ? ['--allow-large-workpaper-materialization'] : []),
+  ]
 }
 
 function formulaText(cell: XlsxWorkbookCell): string | null {

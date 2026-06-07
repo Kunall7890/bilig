@@ -66,6 +66,7 @@ const defaultCorpusRunStopMarkerPath = join(rootDir, '.agent-coordination', '202
 const defaultTargetWorkbookCount = 500
 const defaultMinFormulaCells = 1
 const defaultMinComplexityScore = 5
+const defaultWorkPaperHeadlessMaxFileBytes = 1_000_000
 
 async function main(): Promise<void> {
   const command = process.argv[2] ?? 'plan'
@@ -85,6 +86,7 @@ async function main(): Promise<void> {
       {
         childProcessTimeoutMs: args.childTimeoutMs,
         evaluationTimeoutMs: args.timeoutMs,
+        allowLargeWorkPaperMaterialization: args.allowLargeWorkPaperMaterialization === true,
         maxFileBytes: args.maxFileBytes,
       },
     )
@@ -122,7 +124,8 @@ function readRecentComplexArgs(): RecentComplexArgs {
     generatedAt: readStringArg('--generated-at', new Date().toISOString()),
     headlessScorecardPath: resolve(readStringArg('--headless-scorecard', defaultHeadlessScorecardPath)),
     manifestPath: resolve(readStringArg('--manifest', defaultManifestPath)),
-    maxFileBytes: readNumberArg('--max-file-bytes', 50 * 1024 * 1024),
+    allowLargeWorkPaperMaterialization: readFlagArg('--allow-large-workpaper-materialization'),
+    maxFileBytes: readNumberArg('--max-file-bytes', defaultWorkPaperHeadlessMaxFileBytes),
     minComplexityScore: readNumberArg('--min-complexity-score', defaultMinComplexityScore),
     minFormulaCells: readNonNegativeIntegerArg('--min-formula-cells', defaultMinFormulaCells),
     scorecardPath: resolve(readStringArg('--scorecard', defaultScorecardPath)),
@@ -141,6 +144,7 @@ function readNonNegativeIntegerArg(name: string, fallback: number): number {
 }
 
 interface RecentComplexArgs {
+  readonly allowLargeWorkPaperMaterialization?: boolean
   readonly cacheDir: string
   readonly childTimeoutMs: number
   readonly corpusRunStopMarkerPath: string
@@ -445,6 +449,9 @@ function recentComplexCommands(
     formatCommandPath(args.scorecardPath),
     '--headless-scorecard',
     formatCommandPath(args.headlessScorecardPath),
+    '--max-file-bytes',
+    String(args.maxFileBytes),
+    ...(args.allowLargeWorkPaperMaterialization === true ? ['--allow-large-workpaper-materialization'] : []),
     '--min-formula-cells',
     String(args.minFormulaCells),
     '--min-complexity-score',

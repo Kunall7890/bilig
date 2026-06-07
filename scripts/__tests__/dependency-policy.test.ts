@@ -302,6 +302,21 @@ describe('repository dependency policy', () => {
     expect(violations).toEqual([])
   })
 
+  it('keeps WorkPaper XLSX corpus materialization small-workbook only by default', () => {
+    const corpus = readFileSync(join(repoRoot, 'scripts/check-workpaper-xlsx-corpus.ts'), 'utf8')
+    const corpusCli = readFileSync(join(repoRoot, 'scripts/workpaper-xlsx-corpus-cli.ts'), 'utf8')
+    const recentComplex = readFileSync(join(repoRoot, 'scripts/public-workbook-corpus-recent-complex.ts'), 'utf8')
+
+    expect(corpus).toContain('const defaultMaxFileBytes = 1_000_000')
+    expect(corpus).toContain('options.allowLargeWorkPaperMaterialization !== true')
+    expect(corpus).toContain('--allow-large-workpaper-materialization')
+    expect(corpusCli).toContain("const allowLargeWorkPaperMaterializationFlag = '--allow-large-workpaper-materialization'")
+    expect(corpusCli).toContain('Default: 1000000.')
+    expect(recentComplex).toContain('const defaultWorkPaperHeadlessMaxFileBytes = 1_000_000')
+    expect(recentComplex).toContain("readFlagArg('--allow-large-workpaper-materialization')")
+    expect(recentComplex).not.toContain("maxFileBytes: readNumberArg('--max-file-bytes', 50 * 1024 * 1024)")
+  })
+
   it('keeps public workbook corpus test fixtures on @bilig/xlsx instead of SheetJS', () => {
     const violations = nativeXlsxPublicWorkbookCorpusTests.filter((path) =>
       hasRuntimeXlsxImport(readFileSync(join(repoRoot, path), 'utf8')),

@@ -17,6 +17,7 @@ export type WorkPaperXlsxFormulaSkipReason =
   | 'volatile-or-environment-dependent-formula'
 
 export interface WorkPaperXlsxCorpusOptions {
+  readonly allowLargeWorkPaperMaterialization?: boolean
   readonly childProcessTimeoutMs?: number
   readonly evaluationTimeoutMs?: number
   readonly maxFileBytes?: number

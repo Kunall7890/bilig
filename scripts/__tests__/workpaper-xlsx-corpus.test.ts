@@ -112,6 +112,40 @@ describe('WorkPaper XLSX corpus verifier', () => {
     })
   })
 
+  it('keeps WorkPaper corpus materialization small-workbook only by default', () => {
+    withTempCorpus((corpusDir) => {
+      const workbookPath = join(corpusDir, 'large-workpaper-default.xlsx')
+      writeWorkbook(workbookPath, deterministicBytes(1_100_000))
+
+      const result = runWorkPaperXlsxCorpus([workbookPath], { maxFileBytes: 50 * 1024 * 1024 })
+
+      expect(result.summary.failedErrors).toBe(1)
+      expect(result.files[0]).toMatchObject({
+        fileName: 'large-workpaper-default.xlsx',
+        status: 'error',
+        formulaCells: 0,
+      })
+      expect(result.files[0]?.error).toContain('XLSX file exceeds max file size')
+      expect(result.files[0]?.error).toContain('--allow-large-workpaper-materialization')
+    })
+  })
+
+  it('requires an explicit opt-in before honoring large WorkPaper corpus limits', () => {
+    withTempCorpus((corpusDir) => {
+      const workbookPath = join(corpusDir, 'large-workpaper-legacy.xlsx')
+      writeWorkbook(workbookPath, deterministicBytes(1_100_000))
+
+      const result = runWorkPaperXlsxCorpus([workbookPath], {
+        allowLargeWorkPaperMaterialization: true,
+        maxFileBytes: 50 * 1024 * 1024,
+      })
+
+      expect(result.summary.failedErrors).toBe(1)
+      expect(result.files[0]?.error).not.toContain('XLSX file exceeds max file size')
+      expect(result.files[0]?.error).not.toContain('--allow-large-workpaper-materialization')
+    })
+  })
+
   it('refuses unisolated CLI corpus runs unless explicitly enabled for debugging', () => {
     const env = { ...process.env }
     delete env.BILIG_ALLOW_UNISOLATED_XLSX_CORPUS
@@ -176,6 +210,23 @@ describe('WorkPaper XLSX corpus verifier', () => {
     const options = parseWorkPaperXlsxCorpusCliArgs(['--min-match-rate', '0.75', checkedInCorpusFile()])
 
     expect(options.minMatchRate).toBe(0.75)
+  })
+
+  it('parses the explicit large WorkPaper materialization opt-in', () => {
+    const cliOptions = parseWorkPaperXlsxCorpusCliArgs([
+      '--max-file-bytes',
+      String(50 * 1024 * 1024),
+      '--allow-large-workpaper-materialization',
+      checkedInCorpusFile(),
+    ])
+    const internalOptions = parseWorkPaperXlsxCorpusInternalCliArgs([
+      '--internal-check-file-json',
+      checkedInCorpusFile(),
+      '--allow-large-workpaper-materialization',
+    ])
+
+    expect(cliOptions.allowLargeWorkPaperMaterialization).toBe(true)
+    expect(internalOptions.allowLargeWorkPaperMaterialization).toBe(true)
   })
 
   it('rejects non-decimal min-match-rate CLI values', () => {
@@ -532,6 +583,14 @@ function withTempCorpus(run: (corpusDir: string) => void): void {
 
 function writeWorkbook(path: string, workbook: Uint8Array): void {
   writeFileSync(path, workbook)
+}
+
+function deterministicBytes(length: number): Uint8Array {
+  const bytes = new Uint8Array(length)
+  for (let index = 0; index < bytes.length; index += 1) {
+    bytes[index] = (index * 31 + 17) & 0xff
+  }
+  return bytes
 }
 
 function buildIssueRegressionWorkbookBytes(): Uint8Array {

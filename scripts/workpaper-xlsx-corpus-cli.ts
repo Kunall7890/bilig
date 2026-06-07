@@ -22,6 +22,7 @@ const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const defaultCorpusRunStopMarkerPath = join(rootDir, '.agent-coordination', '20260507T074946Z-codex-stop-interactive-corpus-runs.md')
 const checkedInFixtureCorpusDirectories = new Set([resolve(rootDir, 'packages/headless/fixtures/xlsx-corpus')])
 const xlsxExtensions = new Set(['.xls', '.xlsm', '.xlsx'])
+const allowLargeWorkPaperMaterializationFlag = '--allow-large-workpaper-materialization'
 
 export function parseWorkPaperXlsxCorpusCliArgs(argv: readonly string[]): WorkPaperXlsxCorpusCliOptions {
   const paths: string[] = []
@@ -31,6 +32,7 @@ export function parseWorkPaperXlsxCorpusCliArgs(argv: readonly string[]): WorkPa
   let minMatchRate = 1
   let evaluationTimeoutMs: number | undefined
   let isolateFiles = true
+  let allowLargeWorkPaperMaterialization = false
   let maxFileBytes: number | undefined
   let mismatchSampleLimit: number | undefined
   let stopMarkerPath = defaultCorpusRunStopMarkerPath
@@ -44,6 +46,9 @@ export function parseWorkPaperXlsxCorpusCliArgs(argv: readonly string[]): WorkPa
       case '--allow-mismatches':
         maxMismatches = Number.POSITIVE_INFINITY
         minMatchRate = 0
+        break
+      case allowLargeWorkPaperMaterializationFlag:
+        allowLargeWorkPaperMaterialization = true
         break
       case publicCorpusStopMarkerOverrideFlag:
         break
@@ -102,6 +107,7 @@ export function parseWorkPaperXlsxCorpusCliArgs(argv: readonly string[]): WorkPa
   }
 
   return {
+    allowLargeWorkPaperMaterialization,
     childProcessTimeoutMs,
     isolateFiles,
     paths,
@@ -129,6 +135,7 @@ function resolveAllowUnisolatedXlsxCorpusOrThrow(env: Readonly<Record<string, st
 
 export function parseWorkPaperXlsxCorpusInternalCliArgs(argv: readonly string[]): WorkPaperXlsxCorpusInternalCliOptions {
   const paths: string[] = []
+  let allowLargeWorkPaperMaterialization = false
   let evaluationTimeoutMs: number | undefined
   let maxFileBytes: number | undefined
   let mismatchSampleLimit: number | undefined
@@ -139,6 +146,9 @@ export function parseWorkPaperXlsxCorpusInternalCliArgs(argv: readonly string[])
       case '--internal-check-file-json':
         paths.push(requiredArgValue(argv, index, arg))
         index += 1
+        break
+      case allowLargeWorkPaperMaterializationFlag:
+        allowLargeWorkPaperMaterialization = true
         break
       case '--mismatch-sample-limit':
         mismatchSampleLimit = parseNonNegativeInteger(requiredArgValue(argv, index, arg), arg)
@@ -162,6 +172,7 @@ export function parseWorkPaperXlsxCorpusInternalCliArgs(argv: readonly string[])
   }
 
   return {
+    allowLargeWorkPaperMaterialization,
     paths,
     evaluationTimeoutMs,
     maxFileBytes,
@@ -256,7 +267,9 @@ function usageText(): string {
     'Options:',
     '  --timeout-ms <ms>              WorkPaper initial evaluation timeout per workbook. Default: 30000.',
     '  --child-timeout-ms <ms>        Child-process timeout per workbook. Default: timeout-ms + 1000.',
-    '  --max-file-bytes <bytes>       Fail a workbook before loading it when the file is larger. Default: 52428800.',
+    '  --max-file-bytes <bytes>       Fail a workbook before loading it when the file is larger. Default: 1000000.',
+    '  --allow-large-workpaper-materialization',
+    '                                  Explicit legacy opt-in required when --max-file-bytes exceeds 1000000.',
     '  --no-isolate                  Debug-only: requires BILIG_ALLOW_UNISOLATED_XLSX_CORPUS=1.',
     '  --max-mismatches <count>       Maximum comparable cached-result mismatches before failing. Default: 0.',
     '  --min-match-rate <ratio>       Minimum comparable cached-result match rate before failing. Default: 1.',
