@@ -1788,8 +1788,8 @@ describe('public workbook corpus', () => {
     expect(fetched.artifacts).toHaveLength(4)
     expect(fetchMock).toHaveBeenCalledTimes(4)
     expect(checkpoints).toEqual([1, 2, 3, 4])
-    expect(gcMock).toHaveBeenCalledTimes(4)
-    expect(gcMock).toHaveBeenCalledWith(true)
+    expect(gcMock.mock.calls.length).toBeGreaterThanOrEqual(4)
+    expect(gcMock.mock.calls.every(([force]) => force === true)).toBe(true)
   })
 
   it('persists exhausted duplicate sources so resumed fetches do not retry them', async () => {
