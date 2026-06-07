@@ -349,7 +349,10 @@ describe('WorkPaper source-preserving XLSX export', () => {
   it('keeps SheetJS fallback byte-source imports range-patchable without source rereads', async () => {
     const sourceBytes = fallbackSourceWorkbookBytes()
     const source = instrumentedSourceReaderForTest(sourceBytes)
-    const imported = importXlsxFromZipByteSource(source, 'source-preserving-byte-source-fallback.xlsx', { limits: false })
+    const imported = importXlsxFromZipByteSource(source, 'source-preserving-byte-source-fallback.xlsx', {
+      allowLegacyLargeSheetJsFallback: true,
+      limits: false,
+    })
     const workbook = WorkPaper.buildFromSnapshot(imported.snapshot)
     const fullRangeReadsAfterBuild = source.fullRangeReadCount()
     const directory = mkdtempSync(join(tmpdir(), 'bilig-workpaper-byte-source-fallback-patch-'))

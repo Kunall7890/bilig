@@ -236,7 +236,10 @@ describe('large simple XLSX import ZIP ownership', () => {
     const outputPath = join(tempDir, 'exported.xlsx')
 
     try {
-      const imported = importXlsx(bytes, 'large-public-fallback-source-spool.xlsx', { limits: false })
+      const imported = importXlsx(bytes, 'large-public-fallback-source-spool.xlsx', {
+        allowLegacyLargeSheetJsFallback: true,
+        limits: false,
+      })
       const importedSource = readImportedXlsxSourceReference(imported.snapshot)
       const exported = exportXlsxToFile(imported.snapshot, outputPath)
 

@@ -81,6 +81,32 @@ describe('large XLSX workbook routing', () => {
     expect(thrown.reason).toBe('source-byte-count')
     expect(thrown.sourceByteLength).toBe(bytes.byteLength)
   })
+
+  it('does not treat limits false as an unbounded large SheetJS fallback opt-in', () => {
+    const bytes = buildWorkbook({
+      rowsXml: '<row r="1"><c r="A1"><v>1</v></c></row>',
+      dimension: 'A1',
+      paddingBytes: 1_100_000,
+      includeUnsupportedPackagePart: true,
+    })
+
+    let thrown: unknown
+    try {
+      importXlsx(bytes, 'sparse-large-limits-false-fallback.xlsx', {
+        externalWorkbooks: [{ bytes: new Uint8Array([1]), fileName: 'external.xlsx' }],
+        limits: false,
+      })
+    } catch (error) {
+      thrown = error
+    }
+
+    expect(thrown).toBeInstanceOf(XlsxImportSizeLimitExceededError)
+    if (!(thrown instanceof XlsxImportSizeLimitExceededError)) {
+      throw new Error('Expected XlsxImportSizeLimitExceededError')
+    }
+    expect(thrown.reason).toBe('source-byte-count')
+    expect(thrown.sourceByteLength).toBe(bytes.byteLength)
+  })
 })
 
 function buildFormulaWorkbook(options: {

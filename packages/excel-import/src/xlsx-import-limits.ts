@@ -72,6 +72,7 @@ export interface XlsxImportOptions {
   readonly externalWorkbooks?: readonly XlsxExternalWorkbookInput[]
   readonly externalLinkCacheArtifactMode?: XlsxExternalLinkCacheArtifactMode
   readonly limits?: XlsxImportLimits | false
+  readonly allowLegacyLargeSheetJsFallback?: boolean
   readonly preferNativeSimpleImport?: boolean
   readonly nativeOnly?: boolean
 }
@@ -177,7 +178,8 @@ export function planXlsxImportRoute(args: {
   const hasCalcChain = Object.hasOwn(args.workbookZip, 'xl/calcChain.xml')
   const bypassLargeSimpleByteThreshold =
     shouldBypassLargeSimpleByteThresholdForPackageArtifacts(args.workbookZip) && !hasFullImporterOnlyPackageMetadata(args.workbookZip)
-  const hasMaterializationLimits = args.options.limits !== undefined && args.options.limits !== false
+  const allowsLegacyLargeSheetJsFallback = shouldAllowLegacyLargeSheetJsFallback(args.options)
+  const hasMaterializationLimits = args.options.limits !== undefined && !allowsLegacyLargeSheetJsFallback
   const nativeOnly = args.options.nativeOnly === true
   const needsCalcChainFormulaCountInspection =
     hasCalcChain && args.sourceByteLength >= denseSheetJsByteThreshold && args.sourceByteLength < largeCalcChainStreamingByteThreshold
@@ -203,7 +205,7 @@ export function planXlsxImportRoute(args: {
         ? { minByteLength: 0 }
         : undefined,
     shouldInspectBeforeLargeSimpleRouting: hasMaterializationLimits || needsCalcChainFormulaCountInspection,
-    shouldInspectBeforeSheetJsFallback: args.options.limits !== false && args.sourceByteLength >= denseSheetJsByteThreshold,
+    shouldInspectBeforeSheetJsFallback: !allowsLegacyLargeSheetJsFallback && args.sourceByteLength >= denseSheetJsByteThreshold,
     shouldTryLargeSimpleImport,
     shouldRetryDataOnlyLargeSimpleImport: shouldRetryDataOnlyLargeSimpleImport(
       args.inspection,
@@ -223,10 +225,14 @@ export function planXlsxImportRoute(args: {
 }
 
 function resolveXlsxSheetJsFallbackLimits(options: XlsxImportOptions): Required<XlsxImportLimits> | null {
-  if (options.limits === false) {
+  if (shouldAllowLegacyLargeSheetJsFallback(options)) {
     return null
   }
   return resolveXlsxImportLimits(options) ?? defaultSheetJsFallbackImportLimits
+}
+
+export function shouldAllowLegacyLargeSheetJsFallback(options: XlsxImportOptions): boolean {
+  return options.limits === false && options.allowLegacyLargeSheetJsFallback === true
 }
 
 export function shouldRetryDataOnlyLargeSimpleImport(

@@ -82,6 +82,7 @@ export function importXlsxFromZipByteSource(
 ): ImportedWorkbook {
   const workbookZip = readXlsxZipEntriesLazyFromByteSource(borrowXlsxZipByteSource(source))
   if (!workbookZip) {
+    assertXlsxSheetJsFallbackWithinMaterializationLimits(null, options, source.byteLength)
     return importXlsxFromMaterializedSource(source, fileName, options)
   }
   const limits = resolveXlsxImportLimits(options)

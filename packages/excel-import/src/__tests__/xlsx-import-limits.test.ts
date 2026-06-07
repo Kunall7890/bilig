@@ -25,6 +25,26 @@ describe('xlsx import route planning', () => {
 
     expect(route.createLargeSimpleImportOptions().minByteLength).toBe(0)
   })
+
+  it('keeps limits false bounded unless large legacy fallback is explicit', () => {
+    const defaultRoute = planXlsxImportRoute({
+      workbookZip: zipWith(['xl/workbook.xml', 'xl/_rels/workbook.xml.rels', 'xl/worksheets/sheet1.xml']),
+      sourceByteLength: 1_100_000,
+      options: { limits: false },
+      inspection: null,
+    })
+    const legacyRoute = planXlsxImportRoute({
+      workbookZip: zipWith(['xl/workbook.xml', 'xl/_rels/workbook.xml.rels', 'xl/worksheets/sheet1.xml']),
+      sourceByteLength: 1_100_000,
+      options: { allowLegacyLargeSheetJsFallback: true, limits: false },
+      inspection: null,
+    })
+
+    expect(defaultRoute.shouldInspectBeforeSheetJsFallback).toBe(true)
+    expect(defaultRoute.inspectionOptions?.minByteLength).toBe(0)
+    expect(legacyRoute.shouldInspectBeforeSheetJsFallback).toBe(false)
+    expect(legacyRoute.inspectionOptions).toBeUndefined()
+  })
 })
 
 function zipWith(paths: readonly string[]): Unzipped {

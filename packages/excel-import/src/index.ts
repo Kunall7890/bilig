@@ -19,6 +19,7 @@ import {
   largeSimpleInMemoryUntouchedExportSourceLimit,
   planXlsxImportRoute,
   resolveXlsxImportLimits,
+  shouldAllowLegacyLargeSheetJsFallback,
   type XlsxImportOptions,
 } from './xlsx-import-limits.js'
 import type { LargeSimpleXlsxHeadlessInspectResult, tryInspectLargeSimpleXlsxHeadless } from './xlsx-large-simple-headless-inspect.js'
@@ -603,10 +604,10 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string, op
 }
 
 function spooledSourceReadBytesLimitFor(options: XlsxImportOptions): number | false {
-  if (options.limits === false) {
+  if (shouldAllowLegacyLargeSheetJsFallback(options)) {
     return false
   }
-  if (options.limits === undefined) {
+  if (options.limits === false || options.limits === undefined) {
     return denseSheetJsByteThreshold
   }
   const maxSourceBytes = options.limits.maxMaterializedSourceBytes
