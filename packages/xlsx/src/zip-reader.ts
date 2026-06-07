@@ -188,7 +188,7 @@ export async function forEachInflatedXlsxZipEntryChunkAsync(
   zip: XlsxZipEntries,
   path: string,
   onChunk: XlsxZipAsyncChunkConsumer,
-  options: { readonly chunkSize?: number } = {},
+  options: { readonly chunkSize?: number; readonly forceStreamingInflate?: boolean } = {},
 ): Promise<boolean> {
   const normalizedPath = normalizeZipPath(path)
   const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
@@ -222,6 +222,16 @@ export function releaseLazyXlsxZipSource(zip: XlsxZipEntries): boolean {
   return true
 }
 
+export function replaceLazyXlsxZipSource(zip: XlsxZipEntries, source: XlsxZipByteSource): boolean {
+  const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
+  if (!metadata?.source) {
+    return false
+  }
+  metadata.source.release?.()
+  metadata.source = source
+  return true
+}
+
 export function releaseInflatedLazyXlsxZipEntries(zip: XlsxZipEntries): number {
   const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
   if (!metadata?.source) {
@@ -239,9 +249,25 @@ export function releaseInflatedLazyXlsxZipEntries(zip: XlsxZipEntries): number {
   return releasedByteLength
 }
 
+export function readLazyXlsxZipSource(zip: XlsxZipEntries): Uint8Array | undefined {
+  const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
+  const source = metadata?.source
+  return source && isUint8ArrayZipByteSource(source) ? source.bytes : undefined
+}
+
 export function readLazyXlsxZipSourceByteLength(zip: XlsxZipEntries): number | undefined {
   const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
   return metadata ? (metadata.source?.byteLength ?? 0) : undefined
+}
+
+export function readXlsxZipEntryUncompressedSize(zip: XlsxZipEntries, path: string): number | undefined {
+  const normalizedPath = normalizeZipPath(path)
+  const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
+  const entry = metadata?.entriesByPath.get(normalizedPath)
+  if (entry) {
+    return entry.uncompressedSize
+  }
+  return zip[normalizedPath]?.byteLength
 }
 
 function byteSourceFromUint8Array(source: Uint8Array): Uint8ArrayXlsxZipByteSource {
@@ -252,6 +278,10 @@ function byteSourceFromUint8Array(source: Uint8Array): Uint8ArrayXlsxZipByteSour
       return source.subarray(start, end)
     },
   }
+}
+
+function isUint8ArrayZipByteSource(source: XlsxZipByteSource): source is Uint8ArrayXlsxZipByteSource {
+  return 'bytes' in source && source.bytes instanceof Uint8Array
 }
 
 function readCentralDirectoryEntries(source: XlsxZipByteSource): CentralDirectoryEntry[] | null {

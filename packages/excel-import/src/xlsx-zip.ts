@@ -1,5 +1,20 @@
 import { inflateSync, strFromU8, unzipSync, type Unzipped } from 'fflate'
 import { Inflate } from 'fflate-stream'
+import {
+  forEachInflatedXlsxZipEntryChunk as forEachCoreInflatedXlsxZipEntryChunk,
+  forEachInflatedXlsxZipEntryChunkAsync as forEachCoreInflatedXlsxZipEntryChunkAsync,
+  getZipText as getCoreZipText,
+  readLazyXlsxZipSource as readCoreLazyXlsxZipSource,
+  readLazyXlsxZipSourceByteLength as readCoreLazyXlsxZipSourceByteLength,
+  readXlsxZipEntries as readCoreXlsxZipEntries,
+  readXlsxZipEntriesLazy as readCoreXlsxZipEntriesLazy,
+  readXlsxZipEntriesLazyFromByteSource as readCoreXlsxZipEntriesLazyFromByteSource,
+  readXlsxZipEntryMetadata as readCoreXlsxZipEntryMetadata,
+  readXlsxZipEntryUncompressedSize as readCoreXlsxZipEntryUncompressedSize,
+  releaseInflatedLazyXlsxZipEntries as releaseCoreInflatedLazyXlsxZipEntries,
+  releaseLazyXlsxZipSource as releaseCoreLazyXlsxZipSource,
+  replaceLazyXlsxZipSource as replaceCoreLazyXlsxZipSource,
+} from '@bilig/xlsx/zip-reader'
 
 export type XlsxZipEntries = Unzipped
 export type XlsxZipSource = Uint8Array | XlsxZipEntries
@@ -32,6 +47,12 @@ export function readXlsxZipEntries(source: XlsxZipSource): XlsxZipEntries {
   if (!(source instanceof Uint8Array)) {
     return source
   }
+  try {
+    return readCoreXlsxZipEntries(source) as XlsxZipEntries
+  } catch {
+    // Fall back to the legacy reader for ZIPs fflate can recover but the core
+    // central-directory reader rejects.
+  }
   const zip = unzipSync(source)
   return shouldUseCentralDirectoryZipFallback(source, zip) ? (unzipFromCentralDirectory(byteSourceFromUint8Array(source)) ?? zip) : zip
 }
@@ -40,10 +61,19 @@ export function readXlsxZipEntriesLazy(source: XlsxZipSource): XlsxZipEntries {
   if (!(source instanceof Uint8Array)) {
     return source
   }
+  try {
+    return readCoreXlsxZipEntriesLazy(source) as XlsxZipEntries
+  } catch {
+    // Keep the compatibility fallback local to this legacy shim.
+  }
   return readXlsxZipEntriesLazyFromByteSource(byteSourceFromUint8Array(source)) ?? readXlsxZipEntries(source)
 }
 
 export function readXlsxZipEntriesLazyFromByteSource(source: XlsxZipByteSource): XlsxZipEntries | null {
+  const coreEntries = readCoreXlsxZipEntriesLazyFromByteSource(source)
+  if (coreEntries) {
+    return coreEntries as XlsxZipEntries
+  }
   const entries = readCentralDirectoryEntries(source)
   if (!entries) {
     return null
@@ -61,6 +91,10 @@ export function readXlsxZipEntriesLazyFromByteSource(source: XlsxZipByteSource):
 }
 
 export function readXlsxZipEntryMetadata(source: XlsxZipByteSource): readonly XlsxZipEntryMetadata[] | null {
+  const coreMetadata = readCoreXlsxZipEntryMetadata(source)
+  if (coreMetadata) {
+    return coreMetadata
+  }
   return (
     readCentralDirectoryEntries(source)?.map((entry) => ({
       path: entry.path,
@@ -76,6 +110,9 @@ export function normalizeZipPath(path: string): string {
 }
 
 export function getZipText(zip: XlsxZipEntries, path: string): string | null {
+  if (!hasLegacyCentralDirectorySource(zip)) {
+    return getCoreZipText(zip as Record<string, Uint8Array>, path)
+  }
   const file = zip[normalizeZipPath(path)]
   return file ? strFromU8(file) : null
 }
@@ -87,6 +124,9 @@ export function forEachInflatedXlsxZipEntryChunk(
   options: { readonly chunkSize?: number; readonly forceStreamingInflate?: boolean } = {},
 ): boolean {
   const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
+  if (!metadata) {
+    return forEachCoreInflatedXlsxZipEntryChunk(zip as Record<string, Uint8Array>, path, onChunk, options)
+  }
   const source = metadata?.source
   const entry = metadata?.entriesByPath.get(normalizeZipPath(path))
   if (metadata && (!source || !entry)) {
@@ -120,6 +160,9 @@ export async function forEachInflatedXlsxZipEntryChunkAsync(
   options: { readonly chunkSize?: number; readonly forceStreamingInflate?: boolean } = {},
 ): Promise<boolean> {
   const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
+  if (!metadata) {
+    return forEachCoreInflatedXlsxZipEntryChunkAsync(zip as Record<string, Uint8Array>, path, onChunk, options)
+  }
   const source = metadata?.source
   const entry = metadata?.entriesByPath.get(normalizeZipPath(path))
   if (metadata && (!source || !entry)) {
@@ -152,6 +195,9 @@ async function forEachInflatedXlsxZipEntryChunkInMemoryAsync(
 
 export function releaseLazyXlsxZipSource(zip: XlsxZipEntries): boolean {
   const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
+  if (!metadata) {
+    return releaseCoreLazyXlsxZipSource(zip as Record<string, Uint8Array>)
+  }
   if (!metadata?.source) {
     return false
   }
@@ -162,6 +208,9 @@ export function releaseLazyXlsxZipSource(zip: XlsxZipEntries): boolean {
 
 export function replaceLazyXlsxZipSource(zip: XlsxZipEntries, source: XlsxZipByteSource): boolean {
   const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
+  if (!metadata) {
+    return replaceCoreLazyXlsxZipSource(zip as Record<string, Uint8Array>, source)
+  }
   if (!metadata?.source) {
     return false
   }
@@ -172,6 +221,9 @@ export function replaceLazyXlsxZipSource(zip: XlsxZipEntries, source: XlsxZipByt
 
 export function releaseInflatedLazyXlsxZipEntries(zip: XlsxZipEntries): number {
   const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
+  if (!metadata) {
+    return releaseCoreInflatedLazyXlsxZipEntries(zip as Record<string, Uint8Array>)
+  }
   if (!metadata?.source) {
     return 0
   }
@@ -189,16 +241,25 @@ export function releaseInflatedLazyXlsxZipEntries(zip: XlsxZipEntries): number {
 
 export function readLazyXlsxZipSource(zip: XlsxZipEntries): Uint8Array | undefined {
   const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
+  if (!metadata) {
+    return readCoreLazyXlsxZipSource(zip as Record<string, Uint8Array>)
+  }
   const source = metadata?.source
   return source && isUint8ArrayZipByteSource(source) ? source.bytes : undefined
 }
 
 export function readLazyXlsxZipSourceByteLength(zip: XlsxZipEntries): number | undefined {
   const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
+  if (!metadata) {
+    return readCoreLazyXlsxZipSourceByteLength(zip as Record<string, Uint8Array>)
+  }
   return metadata ? (metadata.source?.byteLength ?? 0) : undefined
 }
 
 export function readXlsxZipEntryUncompressedSize(zip: XlsxZipEntries, path: string): number | undefined {
+  if (!hasLegacyCentralDirectorySource(zip)) {
+    return readCoreXlsxZipEntryUncompressedSize(zip as Record<string, Uint8Array>, path)
+  }
   const normalizedPath = normalizeZipPath(path)
   const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
   const entry = metadata?.entriesByPath.get(normalizedPath)
@@ -240,6 +301,10 @@ interface Uint8ArrayXlsxZipByteSource extends XlsxZipByteSource {
 
 type XlsxZipEntriesWithCentralDirectorySource = XlsxZipEntries & {
   readonly [xlsxZipCentralDirectorySourceSymbol]?: XlsxZipCentralDirectorySource
+}
+
+function hasLegacyCentralDirectorySource(zip: XlsxZipEntries): boolean {
+  return Boolean((zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol])
 }
 
 function shouldUseCentralDirectoryZipFallback(source: Uint8Array, zip: XlsxZipEntries): boolean {

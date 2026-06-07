@@ -603,6 +603,21 @@ describe('repository dependency policy', () => {
     expect(sourceBytesSource).toContain('Use readRange/readRangeInto or a file-backed native XLSX API for large workbooks.')
   })
 
+  it('keeps excel-import ZIP runtime delegated to the native xlsx core', () => {
+    const excelImportZip = readFileSync(join(repoRoot, 'packages/excel-import/src/xlsx-zip.ts'), 'utf8')
+
+    expect(excelImportZip).toContain("from '@bilig/xlsx/zip-reader'")
+    expect(excelImportZip).toContain('readCoreXlsxZipEntries(source)')
+    expect(excelImportZip).toContain('readCoreXlsxZipEntriesLazy(source)')
+    expect(excelImportZip).toContain('readCoreXlsxZipEntriesLazyFromByteSource(source)')
+    expect(excelImportZip).toContain('forEachCoreInflatedXlsxZipEntryChunk(')
+    expect(excelImportZip).toContain('forEachCoreInflatedXlsxZipEntryChunkAsync(')
+    expect(excelImportZip).toContain('replaceCoreLazyXlsxZipSource(')
+    expect(excelImportZip).toContain('releaseCoreInflatedLazyXlsxZipEntries(')
+    expect(excelImportZip).toContain('readCoreXlsxZipEntryUncompressedSize(')
+    expect(excelImportZip).toContain('function hasLegacyCentralDirectorySource(')
+  })
+
   it('keeps unchanged source export file-backed for imported XLSX source readers', () => {
     const exportSource = readFileSync(join(repoRoot, 'packages/excel-import/src/xlsx-export.ts'), 'utf8')
     const exportToFileStart = exportSource.indexOf('export function exportXlsxToFile(')
