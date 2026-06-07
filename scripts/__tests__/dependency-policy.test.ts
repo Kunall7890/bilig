@@ -656,6 +656,22 @@ describe('repository dependency policy', () => {
     expect(workPaperIndex).toBeGreaterThan(readBytesIndex)
   })
 
+  it('keeps public corpus workers on native file-backed scanners before materialized fallback', () => {
+    const workerCommands = readFileSync(join(repoRoot, 'scripts/public-workbook-corpus-worker-commands.ts'), 'utf8')
+    const fallbackGuardIndex = workerCommands.indexOf('assertMaterializedWorkbookFallbackWithinLimit(filePath')
+    const fingerprintReadIndex = workerCommands.indexOf('fingerprintWorkbookBytes(readFileSync(filePath)')
+    const footprintReadIndex = workerCommands.indexOf('const bytes = filePath ? readFileSync(filePath) : readFileSync(0)')
+
+    expect(workerCommands).toContain('const publicWorkbookCorpusWorkerMaterializedBytesFallbackLimit = 1_000_000')
+    expect(workerCommands).toContain("from '@bilig/xlsx/formula-cache-reader'")
+    expect(workerCommands).toContain("from '@bilig/xlsx/workbook-compatibility-report'")
+    expect(workerCommands).toContain('tryFingerprintFormulaWorkbookFromFile(filePath, fileName)')
+    expect(workerCommands).toContain('tryInspectNativeCompatibilityFootprintFromFile(filePath, fileName)')
+    expect(fallbackGuardIndex).toBeGreaterThan(-1)
+    expect(fingerprintReadIndex).toBeGreaterThan(fallbackGuardIndex)
+    expect(footprintReadIndex).toBeGreaterThan(fallbackGuardIndex)
+  })
+
   it('keeps WorkPaper evaluator doors owned by WorkPaper packages', () => {
     const xlsxEvaluator = readFileSync(join(repoRoot, 'packages/xlsx-formula-recalc/src/evaluator-cli.ts'), 'utf8')
     const unscopedWorkPaperBin = readFileSync(join(repoRoot, 'packages/bilig/bin/bilig-evaluate.js'), 'utf8')
