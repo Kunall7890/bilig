@@ -378,6 +378,45 @@ describe('xlsx-formula-recalc native aggregates', () => {
       rmSync(tempDir, { recursive: true, force: true })
     }
   })
+
+  it('hydrates external workbook companion values on the streaming-native file path', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-native-companion-external-reference-'))
+    try {
+      const sourcePath = join(tempDir, 'cached-external-reference.xlsx')
+      const outputPath = join(tempDir, 'cached-external-reference.recalculated.xlsx')
+      writeFileSync(sourcePath, buildCachedExternalReferenceWorkbook())
+
+      const result = await recalculateXlsxFileToFile(sourcePath, {
+        outputPath,
+        engine: 'streaming-native',
+        externalWorkbooks: [
+          {
+            fileName: 'source.xlsx',
+            target: 'file:///tmp/source.xlsx',
+            bytes: buildExternalCompanionReferenceWorkbook(),
+          },
+        ],
+        reads: ['Budget!B2', 'Budget!C2', 'Budget!D2', 'Budget!E2'],
+      })
+
+      expect(readNumber(result.reads['Budget!B2'])).toBe(2000)
+      expect(readNumber(result.reads['Budget!C2'])).toBe(120)
+      expect(readNumber(result.reads['Budget!D2'])).toBe(2024)
+      expect(readNumber(result.reads['Budget!E2'])).toBe(2050)
+      expect(result.diagnostics?.engineMode).toBe('streaming-native')
+      expect(result.diagnostics?.formulaCounts.evaluatedFormulaCellCount).toBe(4)
+      expect(result.diagnostics?.formulaCounts.unsupportedFormulaCellCount).toBe(0)
+      expect(result.diagnostics?.formulaCounts.patchedFormulaCacheCount).toBe(4)
+      const outputBytes = readFileSync(outputPath)
+      const sheetXml = strFromU8(unzipSync(outputBytes)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+      expect(sheetXml).toContain('<c r="B2"><f>[1]QTR_detailed!$B130/10^6</f><v>2000</v></c>')
+      expect(sheetXml).toContain('<c r="C2"><f>SUM([1]QTR_detailed!$R130:$T130)/10^6</f><v>120</v></c>')
+      expect(sheetXml).toContain('<c r="D2"><f>+\'[1]BS &amp; Op Stat\'!$D$5</f><v>2024</v></c>')
+      expect(sheetXml).toContain('<c r="E2"><f>SUM([1]QTR_detailed!$B130,[1]QTR_detailed!$T130,)/10^6</f><v>2050</v></c>')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
 })
 
 function readNumber(value: unknown): number {
@@ -952,6 +991,60 @@ function buildCachedExternalReferenceWorkbook(): Uint8Array {
       <c r="E2"><f>SUM([1]QTR_detailed!$B130,[1]QTR_detailed!$T130,)/10^6</f><v>0</v></c>
     </row>
   </sheetData>
+</worksheet>`),
+  })
+}
+
+function buildExternalCompanionReferenceWorkbook(): Uint8Array {
+  return zipSync({
+    'xl/workbook.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${officeRelationshipNamespace}">
+  <sheets>
+    <sheet name="Unused" sheetId="1" r:id="rId1"/>
+    <sheet name="QTR_detailed" sheetId="2" r:id="rId2"/>
+    <sheet name="BS &amp; Op Stat" sheetId="3" r:id="rId3"/>
+  </sheets>
+</workbook>`),
+    'xl/_rels/workbook.xml.rels': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="${officeRelationshipNamespace}/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="${officeRelationshipNamespace}/worksheet" Target="worksheets/sheet2.xml"/>
+  <Relationship Id="rId3" Type="${officeRelationshipNamespace}/worksheet" Target="worksheets/sheet3.xml"/>
+</Relationships>`),
+    '[Content_Types].xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+</Types>`),
+    '_rels/.rels': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rIdWorkbook" Type="${officeRelationshipNamespace}/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`),
+    'xl/worksheets/sheet1.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <dimension ref="A1"/>
+  <sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>
+</worksheet>`),
+    'xl/worksheets/sheet2.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <dimension ref="B130:T130"/>
+  <sheetData>
+    <row r="130">
+      <c r="B130"><v>2000000000</v></c>
+      <c r="R130"><v>30000000</v></c>
+      <c r="S130"><v>40000000</v></c>
+      <c r="T130"><v>50000000</v></c>
+    </row>
+  </sheetData>
+</worksheet>`),
+    'xl/worksheets/sheet3.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <dimension ref="D5"/>
+  <sheetData><row r="5"><c r="D5"><v>2024</v></c></row></sheetData>
 </worksheet>`),
   })
 }

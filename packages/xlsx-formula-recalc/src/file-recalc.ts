@@ -12,9 +12,6 @@ export async function recalculateXlsxFileToFile(
     return await recalculateXlsxToFileWithWorkPaper(inputPath, options)
   }
   try {
-    if ((options.externalWorkbooks?.length ?? 0) > 0) {
-      throw new Error('streaming-native does not support external workbook companions')
-    }
     if (options.config !== undefined) {
       throw new Error('streaming-native does not support WorkPaper config options')
     }
@@ -23,6 +20,7 @@ export async function recalculateXlsxFileToFile(
       outputPath: options.outputPath,
       ...(edits === undefined ? {} : { edits }),
       ...(options.reads === undefined ? {} : { reads: options.reads }),
+      ...(options.externalWorkbooks === undefined ? {} : { externalWorkbooks: options.externalWorkbooks }),
       ...(options.maxRssBytes === undefined ? {} : { maxRssBytes: options.maxRssBytes }),
     })
   } catch (error) {

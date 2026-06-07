@@ -1,20 +1,53 @@
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 
 import { decodeCellAddress } from './address.js'
+import type {
+  XlsxExternalWorkbookHydrationDiagnostics,
+  XlsxExternalWorkbookHydrationMatchKind,
+  XlsxExternalWorkbookHydrationReferenceDiagnostic,
+  XlsxExternalWorkbookInput,
+} from './external-workbook-types.js'
 import type { NativeFormulaCell, PendingCellValue, SheetScanState } from './streaming-native-recalc.js'
 import { readXmlAttribute } from './xml.js'
-import { getZipText, normalizeZipPath, type XlsxZipEntries } from './zip-reader.js'
+import { workbookSheetPathEntriesForSource } from './workbook-sheet-paths.js'
+import { getZipText, normalizeZipPath, readXlsxZipEntries, type XlsxZipEntries } from './zip-reader.js'
 
 interface ExternalReferenceScanTarget {
   readonly bookIndex: number
   readonly sheetName: string
-  readonly rows: Set<number>
+  readonly cellsByRow: Map<number, Set<number>>
+}
+
+interface ExternalLinkReference {
+  readonly bookIndex: number
+  readonly path: string
+  readonly target?: string
+  readonly workbookName?: string
+  readonly sheetNames: readonly string[]
+}
+
+interface ResolvedExternalWorkbookInput {
+  readonly input?: XlsxExternalWorkbookInput
+  readonly status: 'matched' | 'skipped-no-match' | 'skipped-ambiguous-match'
+  readonly candidateCount: number
+  readonly referenceCandidateCount?: number
+  readonly matchKind?: XlsxExternalWorkbookHydrationMatchKind
+}
+
+export interface StreamingNativeExternalCachedRows {
+  readonly rowsByAlias: ReadonlyMap<string, ReadonlyMap<number, Map<number, PendingCellValue>>>
+  readonly warnings: readonly string[]
+  readonly diagnostics?: XlsxExternalWorkbookHydrationDiagnostics
 }
 
 const externalReferencePattern =
   /'\[([1-9][0-9]*)\]((?:[^']|'')+)'!((?:\$?[A-Za-z]{1,3}\$?[0-9]+)(?::(?:\$?[A-Za-z]{1,3}\$?[0-9]+))?)|\[([1-9][0-9]*)\]([A-Za-z_][A-Za-z0-9_.]*)!((?:\$?[A-Za-z]{1,3}\$?[0-9]+)(?::(?:\$?[A-Za-z]{1,3}\$?[0-9]+))?)/gu
 const relationshipPattern = /<Relationship\b(?:[^>"']|"[^"]*"|'[^']*')*\/?>/gu
 const externalLinkRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLink'
+const externalWorkbookCompanionNoMatchWarning =
+  'Some supplied external workbook companions could not be matched; existing external-link cache values were preserved.'
+const externalWorkbookCompanionAmbiguousMatchWarning =
+  'Some supplied external workbook companions matched ambiguously; existing external-link cache values were preserved.'
 const emptyCellValue: CellValue = Object.freeze({ tag: ValueTag.Empty })
 
 export function normalizeExternalWorkbookReferences(formula: string): string {
@@ -42,12 +75,13 @@ export function readStreamingNativeExternalCachedRowsByAlias(
   zip: XlsxZipEntries,
   sheetScans: ReadonlyMap<string, SheetScanState>,
   resolveFormulaSource: (scan: SheetScanState, cell: NativeFormulaCell) => string,
-): ReadonlyMap<string, ReadonlyMap<number, Map<number, PendingCellValue>>> {
+  externalWorkbooks: readonly XlsxExternalWorkbookInput[] | undefined = undefined,
+): StreamingNativeExternalCachedRows {
   const targetsByAlias = collectExternalReferenceScanTargets(sheetScans, resolveFormulaSource)
   if (targetsByAlias.size === 0) {
-    return new Map()
+    return { rowsByAlias: new Map(), warnings: [] }
   }
-  const externalLinkPathsByBookIndex = readExternalLinkPathsByBookIndex(zip)
+  const externalLinkReferencesByBookIndex = readExternalLinkReferencesByBookIndex(zip)
   const targetsByBookIndex = new Map<number, ExternalReferenceScanTarget[]>()
   for (const target of targetsByAlias.values()) {
     const targets = targetsByBookIndex.get(target.bookIndex) ?? []
@@ -56,11 +90,11 @@ export function readStreamingNativeExternalCachedRowsByAlias(
   }
   const output = new Map<string, ReadonlyMap<number, Map<number, PendingCellValue>>>()
   for (const [bookIndex, targets] of targetsByBookIndex.entries()) {
-    const externalLinkPath = externalLinkPathsByBookIndex.get(bookIndex)
-    if (!externalLinkPath) {
+    const reference = externalLinkReferencesByBookIndex.get(bookIndex)
+    if (!reference) {
       continue
     }
-    const externalLinkXml = getZipText(zip, externalLinkPath)
+    const externalLinkXml = getZipText(zip, reference.path)
     if (!externalLinkXml) {
       continue
     }
@@ -68,7 +102,18 @@ export function readStreamingNativeExternalCachedRowsByAlias(
       output.set(alias, rows)
     }
   }
-  return output
+  if (externalWorkbooks && externalWorkbooks.length > 0) {
+    const companionRows = readCompanionExternalCachedRowsByAlias(externalWorkbooks, externalLinkReferencesByBookIndex, targetsByBookIndex)
+    for (const [alias, rows] of companionRows.rowsByAlias.entries()) {
+      output.set(alias, rows)
+    }
+    return {
+      rowsByAlias: output,
+      warnings: companionRows.warnings,
+      ...(companionRows.diagnostics === undefined ? {} : { diagnostics: companionRows.diagnostics }),
+    }
+  }
+  return { rowsByAlias: output, warnings: [] }
 }
 
 export function isStreamingNativeExternalReferenceAlias(sheetName: string): boolean {
@@ -90,9 +135,17 @@ function collectExternalReferenceScanTargets(
       }
       for (const reference of extractExternalFormulaReferences(formula)) {
         const alias = externalReferenceAlias(reference.bookIndex, reference.sheetName)
-        const target = targets.get(alias) ?? { bookIndex: reference.bookIndex, sheetName: reference.sheetName, rows: new Set<number>() }
+        const target = targets.get(alias) ?? {
+          bookIndex: reference.bookIndex,
+          sheetName: reference.sheetName,
+          cellsByRow: new Map<number, Set<number>>(),
+        }
         for (let row = reference.startRow; row <= reference.endRow; row += 1) {
-          target.rows.add(row)
+          const cols = target.cellsByRow.get(row) ?? new Set<number>()
+          for (let col = reference.startCol; col <= reference.endCol; col += 1) {
+            cols.add(col)
+          }
+          target.cellsByRow.set(row, cols)
         }
         targets.set(alias, target)
       }
@@ -106,6 +159,8 @@ function extractExternalFormulaReferences(formula: string): readonly {
   readonly sheetName: string
   readonly startRow: number
   readonly endRow: number
+  readonly startCol: number
+  readonly endCol: number
 }[] {
   externalReferencePattern.lastIndex = 0
   return [...formula.matchAll(externalReferencePattern)].flatMap((match) => {
@@ -133,12 +188,14 @@ function extractExternalFormulaReferences(formula: string): readonly {
         sheetName,
         startRow: Math.min(start.r, end.r),
         endRow: Math.max(start.r, end.r),
+        startCol: Math.min(start.c, end.c),
+        endCol: Math.max(start.c, end.c),
       },
     ]
   })
 }
 
-function readExternalLinkPathsByBookIndex(zip: XlsxZipEntries): ReadonlyMap<number, string> {
+function readExternalLinkReferencesByBookIndex(zip: XlsxZipEntries): ReadonlyMap<number, ExternalLinkReference> {
   const workbookXml = getZipText(zip, 'xl/workbook.xml')
   const workbookRelationshipsXml = getZipText(zip, 'xl/_rels/workbook.xml.rels')
   if (!workbookXml || !workbookRelationshipsXml) {
@@ -154,17 +211,26 @@ function readExternalLinkPathsByBookIndex(zip: XlsxZipEntries): ReadonlyMap<numb
       externalLinkTargetsByRelationshipId.set(id, resolveTargetPath('xl/workbook.xml', target))
     }
   }
-  const paths = new Map<number, string>()
+  const references = new Map<number, ExternalLinkReference>()
   let bookIndex = 1
   for (const match of workbookXml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?externalReference\b(?:[^>"']|"[^"]*"|'[^']*')*\/?>/gu)) {
     const relationshipId = readXmlAttribute(match[0], 'r:id') ?? readXmlAttribute(match[0], 'id')
-    const target = relationshipId ? externalLinkTargetsByRelationshipId.get(relationshipId) : undefined
-    if (target) {
-      paths.set(bookIndex, target)
+    const path = relationshipId ? externalLinkTargetsByRelationshipId.get(relationshipId) : undefined
+    if (path) {
+      const externalLinkXml = getZipText(zip, path)
+      const externalTarget = readExternalLinkWorkbookTarget(zip, path)
+      const workbookName = workbookIdentityFromName(externalTarget) ?? undefined
+      references.set(bookIndex, {
+        bookIndex,
+        path,
+        ...(externalTarget === undefined ? {} : { target: externalTarget }),
+        ...(workbookName === undefined ? {} : { workbookName }),
+        sheetNames: externalLinkXml ? readExternalLinkSheetNames(externalLinkXml) : [],
+      })
     }
     bookIndex += 1
   }
-  return paths
+  return references
 }
 
 function parseExternalLinkCachedRows(
@@ -190,7 +256,7 @@ function parseExternalLinkCachedRows(
     if (!target || sheetName === undefined) {
       continue
     }
-    const rows = readExternalCachedRows(match[3] ?? '', target.rows)
+    const rows = readExternalCachedRows(match[3] ?? '', target.cellsByRow, false)
     if (rows.size > 0) {
       output.set(externalReferenceAlias(bookIndex, sheetName), rows)
     }
@@ -198,8 +264,235 @@ function parseExternalLinkCachedRows(
   return output
 }
 
-function readExternalCachedRows(xml: string, targetRows: ReadonlySet<number>): Map<number, Map<number, PendingCellValue>> {
+function readExternalLinkSheetNames(externalLinkXml: string): readonly string[] {
+  return [...externalLinkXml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?sheetName\b(?:[^>"']|"[^"]*"|'[^']*')*\/?>/gu)].flatMap((match) => {
+    const name = readXmlAttribute(match[0], 'val')
+    return name ? [name] : []
+  })
+}
+
+function externalLinkRelationshipPartPath(partPath: string): string {
+  const normalized = normalizeZipPath(partPath)
+  const fileName = normalized.slice(normalized.lastIndexOf('/') + 1)
+  return `xl/externalLinks/_rels/${fileName}.rels`
+}
+
+function readExternalLinkWorkbookTarget(zip: XlsxZipEntries, externalLinkPath: string): string | undefined {
+  const relationshipsXml = getZipText(zip, externalLinkRelationshipPartPath(externalLinkPath))
+  if (!relationshipsXml) {
+    return undefined
+  }
+  for (const match of relationshipsXml.matchAll(relationshipPattern)) {
+    const tag = match[0]
+    const target = readXmlAttribute(tag, 'Target')
+    const type = readXmlAttribute(tag, 'Type')
+    const targetMode = readXmlAttribute(tag, 'TargetMode')
+    if (target && (targetMode === 'External' || type?.endsWith('/externalLinkPath') === true)) {
+      return target
+    }
+  }
+  return undefined
+}
+
+function readCompanionExternalCachedRowsByAlias(
+  externalWorkbooks: readonly XlsxExternalWorkbookInput[],
+  referencesByBookIndex: ReadonlyMap<number, ExternalLinkReference>,
+  targetsByBookIndex: ReadonlyMap<number, readonly ExternalReferenceScanTarget[]>,
+): StreamingNativeExternalCachedRows {
+  const output = new Map<string, ReadonlyMap<number, Map<number, PendingCellValue>>>()
+  const referenceDiagnostics: XlsxExternalWorkbookHydrationReferenceDiagnostic[] = []
+  const refreshedBookIndices: number[] = []
+  let refreshedSheetCount = 0
+  let refreshedCellCount = 0
+  let skippedNoMatchCount = 0
+  let skippedAmbiguousMatchCount = 0
+  let skippedEmptyRefreshCount = 0
+  for (const [bookIndex, targets] of targetsByBookIndex.entries()) {
+    const reference = referencesByBookIndex.get(bookIndex)
+    if (!reference) {
+      continue
+    }
+    const resolved = resolveExternalWorkbookInput(externalWorkbooks, referencesByBookIndex, reference)
+    if (!resolved.input) {
+      const skippedStatus = resolved.status === 'skipped-no-match' ? 'skipped-no-match' : 'skipped-ambiguous-match'
+      if (skippedStatus === 'skipped-no-match') {
+        skippedNoMatchCount += 1
+      } else {
+        skippedAmbiguousMatchCount += 1
+      }
+      referenceDiagnostics.push({
+        bookIndex,
+        ...(reference.workbookName === undefined ? {} : { workbookName: reference.workbookName }),
+        ...(reference.target === undefined ? {} : { target: reference.target }),
+        status: skippedStatus,
+        candidateCount: resolved.candidateCount,
+        ...(resolved.referenceCandidateCount === undefined ? {} : { referenceCandidateCount: resolved.referenceCandidateCount }),
+        ...(resolved.matchKind === undefined ? {} : { matchKind: resolved.matchKind }),
+      })
+      continue
+    }
+    const companionRows = readCompanionWorkbookCachedRowsByAlias(resolved.input, bookIndex, targets)
+    let referenceSheetCount = 0
+    let referenceCellCount = 0
+    for (const [alias, rows] of companionRows.entries()) {
+      output.set(alias, rows)
+      referenceSheetCount += 1
+      referenceCellCount += countExternalCachedCells(rows)
+    }
+    if (referenceSheetCount === 0 || referenceCellCount === 0) {
+      skippedEmptyRefreshCount += 1
+      referenceDiagnostics.push({
+        bookIndex,
+        ...(reference.workbookName === undefined ? {} : { workbookName: reference.workbookName }),
+        ...(reference.target === undefined ? {} : { target: reference.target }),
+        status: 'skipped-empty-refresh',
+        candidateCount: resolved.candidateCount,
+        ...(resolved.referenceCandidateCount === undefined ? {} : { referenceCandidateCount: resolved.referenceCandidateCount }),
+        ...(resolved.matchKind === undefined ? {} : { matchKind: resolved.matchKind }),
+        ...(resolved.input.fileName === undefined ? {} : { matchedFileName: resolved.input.fileName }),
+        ...(resolved.input.workbookName === undefined ? {} : { matchedWorkbookName: resolved.input.workbookName }),
+        ...(resolved.input.target === undefined ? {} : { matchedTarget: resolved.input.target }),
+      })
+      continue
+    }
+    refreshedBookIndices.push(bookIndex)
+    refreshedSheetCount += referenceSheetCount
+    refreshedCellCount += referenceCellCount
+    referenceDiagnostics.push({
+      bookIndex,
+      ...(reference.workbookName === undefined ? {} : { workbookName: reference.workbookName }),
+      ...(reference.target === undefined ? {} : { target: reference.target }),
+      status: 'refreshed',
+      candidateCount: resolved.candidateCount,
+      ...(resolved.referenceCandidateCount === undefined ? {} : { referenceCandidateCount: resolved.referenceCandidateCount }),
+      ...(resolved.matchKind === undefined ? {} : { matchKind: resolved.matchKind }),
+      ...(resolved.input.fileName === undefined ? {} : { matchedFileName: resolved.input.fileName }),
+      ...(resolved.input.workbookName === undefined ? {} : { matchedWorkbookName: resolved.input.workbookName }),
+      ...(resolved.input.target === undefined ? {} : { matchedTarget: resolved.input.target }),
+      refreshedSheetCount: referenceSheetCount,
+      refreshedCellCount: referenceCellCount,
+    })
+  }
+  const warnings = [
+    ...(skippedNoMatchCount > 0 ? [externalWorkbookCompanionNoMatchWarning] : []),
+    ...(skippedAmbiguousMatchCount > 0 ? [externalWorkbookCompanionAmbiguousMatchWarning] : []),
+  ]
+  return {
+    rowsByAlias: output,
+    warnings,
+    diagnostics: {
+      externalWorkbookCount: externalWorkbooks.length,
+      externalReferenceCount: targetsByBookIndex.size,
+      refreshedBookIndices,
+      refreshedSheetCount,
+      refreshedCellCount,
+      skippedNoMatchCount,
+      skippedAmbiguousMatchCount,
+      skippedEmptyRefreshCount,
+      references: referenceDiagnostics,
+    },
+  }
+}
+
+function resolveExternalWorkbookInput(
+  inputs: readonly XlsxExternalWorkbookInput[],
+  referencesByBookIndex: ReadonlyMap<number, ExternalLinkReference>,
+  reference: ExternalLinkReference,
+): ResolvedExternalWorkbookInput {
+  const exactTargetCandidates = inputs.filter((input) => externalWorkbookInputMatchesReferenceTarget(input, reference))
+  if (exactTargetCandidates.length === 1) {
+    return {
+      input: exactTargetCandidates[0]!,
+      status: 'matched',
+      candidateCount: 1,
+      matchKind: 'exact-target',
+    }
+  }
+  if (exactTargetCandidates.length > 1) {
+    return {
+      status: 'skipped-ambiguous-match',
+      candidateCount: exactTargetCandidates.length,
+      matchKind: 'exact-target',
+    }
+  }
+  const identityCandidates = inputs.filter((input) => externalWorkbookInputMatchesReferenceIdentity(input, reference))
+  if (identityCandidates.length === 0) {
+    return {
+      status: 'skipped-no-match',
+      candidateCount: 0,
+    }
+  }
+  const referenceCandidateCount = externalReferenceIdentityCandidateCount(referencesByBookIndex, reference)
+  if (identityCandidates.length > 1 || referenceCandidateCount !== 1) {
+    return {
+      status: 'skipped-ambiguous-match',
+      candidateCount: identityCandidates.length,
+      referenceCandidateCount,
+      matchKind: 'unique-workbook-identity',
+    }
+  }
+  return {
+    input: identityCandidates[0]!,
+    status: 'matched',
+    candidateCount: 1,
+    referenceCandidateCount,
+    matchKind: 'unique-workbook-identity',
+  }
+}
+
+function countExternalCachedCells(rows: ReadonlyMap<number, ReadonlyMap<number, PendingCellValue>>): number {
+  let count = 0
+  for (const row of rows.values()) {
+    count += row.size
+  }
+  return count
+}
+
+function readCompanionWorkbookCachedRowsByAlias(
+  input: XlsxExternalWorkbookInput,
+  bookIndex: number,
+  targets: readonly ExternalReferenceScanTarget[],
+): ReadonlyMap<string, ReadonlyMap<number, Map<number, PendingCellValue>>> {
+  const zip = readXlsxZipEntries(toUint8Array(input.bytes))
+  const sheetsByName = new Map(workbookSheetPathEntriesForSource(zip).map((sheet) => [sheetNameKey(sheet.name), sheet]))
+  const sharedStrings = readSharedStrings(zip)
+  const output = new Map<string, ReadonlyMap<number, Map<number, PendingCellValue>>>()
+  for (const target of targets) {
+    const sheet = sheetsByName.get(sheetNameKey(target.sheetName))
+    const sheetXml = sheet ? getZipText(zip, sheet.path) : null
+    if (!sheetXml) {
+      continue
+    }
+    const rows = readExternalCachedRows(sheetXml, target.cellsByRow, true, sharedStrings)
+    if (rows.size > 0) {
+      output.set(externalReferenceAlias(bookIndex, target.sheetName), rows)
+    }
+  }
+  return output
+}
+
+function readSharedStrings(zip: XlsxZipEntries): readonly string[] {
+  const sharedStringsXml = getZipText(zip, 'xl/sharedStrings.xml')
+  if (!sharedStringsXml) {
+    return []
+  }
+  return [...sharedStringsXml.matchAll(/<((?:[A-Za-z_][\w.-]*:)?si)\b(?:[^>"']|"[^"]*"|'[^']*')*>([\s\S]*?)<\/\1>/gu)].map((match) =>
+    readTextRuns(match[2] ?? ''),
+  )
+}
+
+function readExternalCachedRows(
+  xml: string,
+  targetCellsByRow: ReadonlyMap<number, ReadonlySet<number>>,
+  fillMissingCells: boolean,
+  sharedStrings: readonly string[] = [],
+): Map<number, Map<number, PendingCellValue>> {
   const output = new Map<number, Map<number, PendingCellValue>>()
+  if (fillMissingCells) {
+    for (const [row, cols] of targetCellsByRow.entries()) {
+      output.set(row, new Map([...cols].map((col) => [col, emptyCellValue] as const)))
+    }
+  }
   for (const rowMatch of xml.matchAll(/<((?:[A-Za-z_][\w.-]*:)?row)\b((?:[^>"']|"[^"]*"|'[^']*')*)>([\s\S]*?)<\/\1>/gu)) {
     const rowText = readXmlAttribute(rowMatch[2] ?? '', 'r')
     const rowNumber = rowText === null ? Number.NaN : Number(rowText)
@@ -207,15 +500,16 @@ function readExternalCachedRows(xml: string, targetRows: ReadonlySet<number>): M
       continue
     }
     const row = rowNumber - 1
-    if (!targetRows.has(row)) {
+    const targetCols = targetCellsByRow.get(row)
+    if (!targetCols) {
       continue
     }
-    const rowValues = new Map<number, PendingCellValue>()
+    const rowValues = output.get(row) ?? new Map<number, PendingCellValue>()
     for (const cellMatch of (rowMatch[3] ?? '').matchAll(
-      /<((?:[A-Za-z_][\w.-]*:)?cell)\b(?:[^>"']|"[^"]*"|'[^']*')*\/>|<((?:[A-Za-z_][\w.-]*:)?cell)\b(?:[^>"']|"[^"]*"|'[^']*')*>[\s\S]*?<\/\2>/gu,
+      /<((?:[A-Za-z_][\w.-]*:)?(?:cell|c))\b(?:[^>"']|"[^"]*"|'[^']*')*\/>|<((?:[A-Za-z_][\w.-]*:)?(?:cell|c))\b(?:[^>"']|"[^"]*"|'[^']*')*>[\s\S]*?<\/\2>/gu,
     )) {
       const cellXml = cellMatch[0]
-      const openingTag = /<(?:[A-Za-z_][\w.-]*:)?cell\b(?:[^>"']|"[^"]*"|'[^']*')*(?:\/>|>)/u.exec(cellXml)?.[0]
+      const openingTag = /<(?:[A-Za-z_][\w.-]*:)?(?:cell|c)\b(?:[^>"']|"[^"]*"|'[^']*')*(?:\/>|>)/u.exec(cellXml)?.[0]
       const addressText = openingTag ? readXmlAttribute(openingTag, 'r') : null
       if (!openingTag || !addressText) {
         continue
@@ -226,21 +520,32 @@ function readExternalCachedRows(xml: string, targetRows: ReadonlySet<number>): M
       } catch {
         continue
       }
-      rowValues.set(address.c, readExternalCachedCellValue(cellXml, openingTag))
+      if (!targetCols.has(address.c)) {
+        continue
+      }
+      rowValues.set(address.c, readExternalCachedCellValue(cellXml, openingTag, sharedStrings))
     }
     output.set(row, rowValues)
   }
   return output
 }
 
-function readExternalCachedCellValue(cellXml: string, openingTag: string): PendingCellValue {
+function readExternalCachedCellValue(cellXml: string, openingTag: string, sharedStrings: readonly string[] = []): PendingCellValue {
   const type = readXmlAttribute(openingTag, 't')
+  if (type === 'inlineStr') {
+    return stringCellValue(readTextRuns(cellXml))
+  }
   const rawValue = readElementText(cellXml, 'v')
   if (rawValue === null) {
     return emptyCellValue
   }
-  if (type === 'str' || type === 'inlineStr') {
-    return stringCellValue(type === 'inlineStr' ? readTextRuns(cellXml) : decodeXmlText(rawValue))
+  if (type === 'str') {
+    return stringCellValue(decodeXmlText(rawValue))
+  }
+  if (type === 's') {
+    const index = Number(decodeXmlText(rawValue).trim())
+    const value = Number.isSafeInteger(index) && index >= 0 ? sharedStrings[index] : undefined
+    return value === undefined ? emptyCellValue : stringCellValue(value)
   }
   if (type === 'b') {
     return { tag: ValueTag.Boolean, value: rawValue === '1' || rawValue.toLowerCase() === 'true' }
@@ -250,6 +555,95 @@ function readExternalCachedCellValue(cellXml: string, openingTag: string): Pendi
   }
   const numeric = Number(rawValue)
   return Number.isFinite(numeric) ? { tag: ValueTag.Number, value: numeric } : stringCellValue(decodeXmlText(rawValue))
+}
+
+function toUint8Array(bytes: Uint8Array | ArrayBuffer): Uint8Array {
+  return bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)
+}
+
+function normalizedWorkbookTarget(value: string | undefined): string | null {
+  if (!value) {
+    return null
+  }
+  const withoutFragment = value.split('#')[0]?.trim()
+  if (!withoutFragment) {
+    return null
+  }
+  const normalized = withoutFragment.replace(/\\/gu, '/').replace(/^file:\/+/iu, '/')
+  try {
+    return decodeURIComponent(normalized).toLocaleLowerCase('en-US')
+  } catch {
+    return normalized.toLocaleLowerCase('en-US')
+  }
+}
+
+function workbookIdentityFromName(value: string | undefined): string | null {
+  const target = normalizedWorkbookTarget(value)
+  if (!target) {
+    return null
+  }
+  const segments = target.split('/').filter((segment) => segment.length > 0)
+  return segments.at(-1) ?? target
+}
+
+function externalWorkbookInputIdentityNames(input: XlsxExternalWorkbookInput): ReadonlySet<string> {
+  return new Set(
+    [input.workbookName, input.fileName, input.target]
+      .map(workbookIdentityFromName)
+      .filter((value): value is string => value !== null && value.length > 0),
+  )
+}
+
+function externalReferenceIdentityNames(reference: ExternalLinkReference): ReadonlySet<string> {
+  return new Set(
+    [reference.workbookName, reference.target]
+      .map(workbookIdentityFromName)
+      .filter((value): value is string => value !== null && value.length > 0),
+  )
+}
+
+function externalWorkbookInputMatchesReferenceTarget(input: XlsxExternalWorkbookInput, reference: ExternalLinkReference): boolean {
+  const inputTarget = normalizedWorkbookTarget(input.target)
+  const referenceTarget = normalizedWorkbookTarget(reference.target)
+  return Boolean(inputTarget && referenceTarget && inputTarget === referenceTarget)
+}
+
+function externalWorkbookInputMatchesReferenceIdentity(input: XlsxExternalWorkbookInput, reference: ExternalLinkReference): boolean {
+  const inputTarget = normalizedWorkbookTarget(input.target)
+  const referenceTarget = normalizedWorkbookTarget(reference.target)
+  if (inputTarget && referenceTarget) {
+    return false
+  }
+  const inputNames = externalWorkbookInputIdentityNames(input)
+  if (inputNames.size === 0) {
+    return false
+  }
+  for (const referenceName of externalReferenceIdentityNames(reference)) {
+    if (inputNames.has(referenceName)) {
+      return true
+    }
+  }
+  return false
+}
+
+function externalReferenceIdentityCandidateCount(
+  referencesByBookIndex: ReadonlyMap<number, ExternalLinkReference>,
+  reference: ExternalLinkReference,
+): number {
+  const referenceNames = externalReferenceIdentityNames(reference)
+  if (referenceNames.size === 0) {
+    return 0
+  }
+  let count = 0
+  for (const candidate of referencesByBookIndex.values()) {
+    for (const referenceName of externalReferenceIdentityNames(candidate)) {
+      if (referenceNames.has(referenceName)) {
+        count += 1
+        break
+      }
+    }
+  }
+  return count
 }
 
 function resolveTargetPath(fromPath: string, target: string): string {
@@ -280,6 +674,10 @@ function externalReferenceAlias(bookIndex: number, sheetName: string): string {
     encodedSheetName += /^[A-Za-z0-9_]$/u.test(character) ? character : `_u${character.codePointAt(0)!.toString(16).padStart(4, '0')}_`
   }
   return `__bilig_external_${String(bookIndex)}_${encodedSheetName}`
+}
+
+function sheetNameKey(sheetName: string): string {
+  return sheetName.toLocaleLowerCase('en-US')
 }
 
 function stringCellValue(value: string): CellValue {

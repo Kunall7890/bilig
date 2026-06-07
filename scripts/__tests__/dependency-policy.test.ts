@@ -79,6 +79,7 @@ const fileBackedXlsxFormulaRecalcCliEntrypoints = [
   'packages/bilig-exceljs-formula-recalc/src/cli.ts',
 ] as const
 const xlsxOwnedStreamingNativeSources = [
+  'packages/xlsx/src/streaming-native-external-cache.ts',
   'packages/xlsx/src/streaming-native-inspect.ts',
   'packages/xlsx/src/streaming-native-recalc.ts',
   'packages/xlsx/src/streaming-native-row-chain-wasm.ts',

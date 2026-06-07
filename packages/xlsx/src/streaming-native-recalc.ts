@@ -5,7 +5,7 @@ import { ErrorCode, formatErrorCode, ValueTag, type CellValue, type LiteralInput
 
 import { decodeCellAddress, decodeCellRange, encodeCellAddress, type XlsxCellRange } from './address.js'
 import { createFileXlsxSourceReader } from './file-source.js'
-import type { XlsxExternalWorkbookHydrationDiagnostics } from './external-workbook-types.js'
+import type { XlsxExternalWorkbookHydrationDiagnostics, XlsxExternalWorkbookInput } from './external-workbook-types.js'
 import { exportXlsxSourceLiteralPatchesToFileAsync, type XlsxSourceLiteralPatch } from './source-preserving-literal-patches.js'
 import {
   isStreamingNativeExternalReferenceAlias,
@@ -53,6 +53,7 @@ export interface XlsxFormulaRecalcNativeDiagnostics {
   readonly formulaCounts: StreamingNativeFormulaCounts
   readonly patchedCacheCount: number
   readonly unsupportedReason?: string
+  readonly externalWorkbookHydration?: XlsxExternalWorkbookHydrationDiagnostics
 }
 
 export interface XlsxFormulaRecalcDiagnostics extends XlsxFormulaRecalcNativeDiagnostics {
@@ -63,6 +64,7 @@ export interface StreamingNativeXlsxFormulaRecalcOptions {
   readonly outputPath: string
   readonly edits?: readonly { readonly target: string; readonly value: LiteralInput }[]
   readonly reads?: readonly string[]
+  readonly externalWorkbooks?: readonly XlsxExternalWorkbookInput[]
   readonly maxRssBytes?: number
   readonly dryRun?: boolean
 }
@@ -288,7 +290,8 @@ export async function recalculateXlsxFileToFileStreamingNative(
 
     const tablesBySheet = readNativeTablesBySheet(zip, sheetScans)
     recordPhase('table-metadata')
-    const externalCachedRowsByAlias = readStreamingNativeExternalCachedRowsByAlias(zip, sheetScans, resolveFormulaSource)
+    const externalCache = readStreamingNativeExternalCachedRowsByAlias(zip, sheetScans, resolveFormulaSource, options.externalWorkbooks)
+    const externalCachedRowsByAlias = externalCache.rowsByAlias
     if (externalCachedRowsByAlias.size > 0) {
       recordPhase('external-link-cache')
     }
@@ -335,10 +338,11 @@ export async function recalculateXlsxFileToFileStreamingNative(
       readCount,
       formulaCounts,
       patchedCacheCount: formulaCounts.patchedFormulaCacheCount,
+      ...(externalCache.diagnostics === undefined ? {} : { externalWorkbookHydration: externalCache.diagnostics }),
     }
     return {
       bytesWritten,
-      warnings: [],
+      warnings: externalCache.warnings,
       sheetNames,
       reads: readValues,
       changes: [],
