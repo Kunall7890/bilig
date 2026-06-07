@@ -1,4 +1,5 @@
 export * from './address.js'
+export * from './external-workbook-types.js'
 export * from './file-source.js'
 export * from './formula-cache-reader.js'
 export * from './source-preserving-literal-patches.js'

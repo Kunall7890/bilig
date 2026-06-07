@@ -1,9 +1,14 @@
 import { writeFileSync } from 'node:fs'
-import { WorkPaper, type RawCellContent, type WorkPaperCellAddress, type WorkPaperChange, type WorkPaperConfig } from '@bilig/headless'
-import type { ImportedWorkbookDiagnostics, XlsxExternalWorkbookInput, XlsxImportOptions } from '@bilig/headless/xlsx'
+import { WorkPaper, type RawCellContent, type WorkPaperCellAddress, type WorkPaperChange } from '@bilig/headless'
 import { exportXlsx, exportXlsxToFile, importXlsx } from '@bilig/headless/xlsx'
 import { ErrorCode, formatErrorCode, ValueTag } from '@bilig/protocol'
-import { patchXlsxTextParts, type XlsxTextPartPatch } from '@bilig/xlsx'
+import {
+  patchXlsxTextParts,
+  type ImportedWorkbookDiagnostics,
+  type XlsxExternalWorkbookInput,
+  type XlsxImportOptions,
+  type XlsxTextPartPatch,
+} from '@bilig/xlsx'
 
 import type {
   XlsxFormulaRecalcCellValue,
@@ -12,6 +17,7 @@ import type {
   XlsxFormulaRecalcFileResult,
   XlsxFormulaRecalcOptions,
   XlsxFormulaRecalcResult,
+  XlsxFormulaRecalcWorkPaperConfig,
 } from './types.js'
 
 export { WorkPaper } from '@bilig/headless'
@@ -370,7 +376,7 @@ export interface XlsxCacheInspectionOptions {
   readonly externalWorkbooks?: readonly XlsxExternalWorkbookInput[]
   readonly edits?: readonly XlsxFormulaRecalcEdit[]
   readonly inspectLimit?: XlsxCacheInspectionLimit
-  readonly config?: WorkPaperConfig
+  readonly config?: XlsxFormulaRecalcWorkPaperConfig
 }
 
 export interface XlsxCacheStatusSummary {

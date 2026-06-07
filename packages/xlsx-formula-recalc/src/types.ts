@@ -1,15 +1,53 @@
-import type { RawCellContent, WorkPaperChange, WorkPaperConfig } from '@bilig/headless'
-import type { ImportedWorkbookDiagnostics, XlsxExternalWorkbookInput } from '@bilig/headless/xlsx'
-import type { CellValue } from '@bilig/protocol'
-import type { XlsxFormulaRecalcEngine, XlsxFormulaRecalcFallbackPolicy, XlsxFormulaRecalcNativeDiagnostics } from '@bilig/xlsx'
+import type { CellValue, CompatibilityMode, LiteralInput, WorkbookCalculationMode, WorkbookDateSystem } from '@bilig/protocol'
+import type {
+  XlsxExternalWorkbookInput,
+  XlsxExternalWorkbookHydrationDiagnostics,
+  XlsxFormulaRecalcEngine,
+  XlsxFormulaRecalcFallbackPolicy,
+  XlsxFormulaRecalcNativeDiagnostics,
+} from '@bilig/xlsx'
 
-export type { XlsxFormulaRecalcEngine, XlsxFormulaRecalcFallbackPolicy, XlsxFormulaRecalcNativeDiagnostics } from '@bilig/xlsx'
+export type {
+  XlsxExternalWorkbookInput,
+  XlsxExternalWorkbookHydrationDiagnostics,
+  XlsxFormulaRecalcEngine,
+  XlsxFormulaRecalcFallbackPolicy,
+  XlsxFormulaRecalcNativeDiagnostics,
+} from '@bilig/xlsx'
 
 export type XlsxFormulaRecalcCellValue = CellValue
+export type XlsxFormulaRecalcChange = unknown
+
+export interface XlsxFormulaRecalcWorkPaperConfig {
+  readonly calculationSettings?:
+    | {
+        readonly mode?: WorkbookCalculationMode
+        readonly compatibilityMode?: CompatibilityMode
+        readonly dateSystem?: WorkbookDateSystem
+        readonly iterate?: boolean | null
+        readonly iterateCount?: number | null
+        readonly iterateDelta?: string | null
+        readonly fullPrecision?: boolean | null
+        readonly fullCalcOnLoad?: boolean | null
+        readonly calcOnSave?: boolean | null
+        readonly calcCompleted?: boolean | null
+        readonly concurrentCalc?: boolean | null
+      }
+    | undefined
+  readonly evaluationTimeoutMs?: number
+  readonly maxRows?: number
+  readonly maxColumns?: number
+  readonly useColumnIndex?: boolean
+  readonly [key: string]: unknown
+}
+
+export interface XlsxFormulaRecalcImportedDiagnostics {
+  readonly externalWorkbookHydration?: XlsxExternalWorkbookHydrationDiagnostics
+}
 
 export interface XlsxFormulaRecalcEdit {
   readonly target: string
-  readonly value: RawCellContent
+  readonly value: LiteralInput
 }
 
 export interface XlsxFormulaRecalcOptions {
@@ -17,20 +55,20 @@ export interface XlsxFormulaRecalcOptions {
   readonly externalWorkbooks?: readonly XlsxExternalWorkbookInput[]
   readonly edits?: readonly XlsxFormulaRecalcEdit[]
   readonly reads?: readonly string[]
-  readonly config?: WorkPaperConfig
+  readonly config?: XlsxFormulaRecalcWorkPaperConfig
   readonly engine?: XlsxFormulaRecalcEngine
   readonly maxRssBytes?: number
   readonly fallbackPolicy?: XlsxFormulaRecalcFallbackPolicy
 }
 
-export type XlsxFormulaRecalcDiagnostics = ImportedWorkbookDiagnostics & Partial<XlsxFormulaRecalcNativeDiagnostics>
+export type XlsxFormulaRecalcDiagnostics = XlsxFormulaRecalcImportedDiagnostics & Partial<XlsxFormulaRecalcNativeDiagnostics>
 
 export interface XlsxFormulaRecalcResult {
   readonly xlsx: Uint8Array
   readonly warnings: readonly string[]
   readonly sheetNames: readonly string[]
   readonly reads: Readonly<Record<string, XlsxFormulaRecalcCellValue>>
-  readonly changes: readonly WorkPaperChange[]
+  readonly changes: readonly XlsxFormulaRecalcChange[]
   readonly diagnostics?: XlsxFormulaRecalcDiagnostics
 }
 
@@ -43,6 +81,6 @@ export interface XlsxFormulaRecalcFileResult {
   readonly warnings: readonly string[]
   readonly sheetNames: readonly string[]
   readonly reads: Readonly<Record<string, XlsxFormulaRecalcCellValue>>
-  readonly changes: readonly WorkPaperChange[]
+  readonly changes: readonly XlsxFormulaRecalcChange[]
   readonly diagnostics?: XlsxFormulaRecalcDiagnostics
 }

@@ -88,6 +88,11 @@ const legacyFormulaRecalcStreamingNativeSources = [
   'packages/xlsx-formula-recalc/src/streaming-native-recalc.ts',
   'packages/xlsx-formula-recalc/src/streaming-native-row-chain-wasm.ts',
 ] as const
+const nativeXlsxFormulaRecalcPathBoundarySources = [
+  'packages/xlsx-formula-recalc/src/cli-api.ts',
+  'packages/xlsx-formula-recalc/src/file-recalc.ts',
+  'packages/xlsx-formula-recalc/src/types.ts',
+] as const
 
 function packageManifestPaths(): string[] {
   return packageManifestDirs.flatMap((dir) => {
@@ -158,6 +163,13 @@ function sourceImportViolations(path: string, forbiddenImports: readonly string[
       .filter((specifier) => new RegExp(`from\\s+['"]${specifier.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}['"]`, 'u').test(source))
       .map((specifier) => `${relativePath(sourceFile)}: ${specifier}`)
   })
+}
+
+function sourceSpecifierViolations(path: string, forbiddenSpecifiers: readonly string[]): string[] {
+  const source = readFileSync(join(repoRoot, path), 'utf8')
+  return forbiddenSpecifiers
+    .filter((specifier) => new RegExp(`from\\s+['"]${specifier.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}(?:/[^'"]*)?['"]`, 'u').test(source))
+    .map((specifier) => `${path}: ${specifier}`)
 }
 
 describe('repository dependency policy', () => {
@@ -232,6 +244,12 @@ describe('repository dependency policy', () => {
     expect(cliApi).not.toMatch(/from\s+['"]\.\/index\.js['"]/u)
     expect(fileRecalc).toContain("from '@bilig/xlsx'")
     expect(fileRecalc).toContain("await Promise.all([import('node:fs'), import('./index.js')])")
+  })
+
+  it('keeps native file recalc CLI and public file types off static headless imports', () => {
+    const violations = nativeXlsxFormulaRecalcPathBoundarySources.flatMap((path) => sourceSpecifierViolations(path, ['@bilig/headless']))
+
+    expect(violations).toEqual([])
   })
 
   it('keeps published Bilig XLSX runtime packages free of SheetJS xlsx dependencies', () => {

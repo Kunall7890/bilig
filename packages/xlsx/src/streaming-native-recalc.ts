@@ -5,6 +5,7 @@ import { ErrorCode, ValueTag, type CellValue, type LiteralInput } from '@bilig/p
 
 import { decodeCellAddress, decodeCellRange, encodeCellAddress, type XlsxCellRange } from './address.js'
 import { createFileXlsxSourceReader } from './file-source.js'
+import type { XlsxExternalWorkbookHydrationDiagnostics } from './external-workbook-types.js'
 import { exportXlsxSourceLiteralPatchesToFileAsync, type XlsxSourceLiteralPatch } from './source-preserving-literal-patches.js'
 import { evaluateStreamingNativeWasmFormulas, expandStreamingNativeFormulaDependencyRows } from './streaming-native-row-chain-wasm.js'
 import { readXmlAttribute, worksheetCellElementPattern, worksheetCellOpeningTagPattern } from './xml.js'
@@ -52,7 +53,7 @@ export interface XlsxFormulaRecalcNativeDiagnostics {
 }
 
 export interface XlsxFormulaRecalcDiagnostics extends XlsxFormulaRecalcNativeDiagnostics {
-  readonly externalWorkbookHydration?: unknown
+  readonly externalWorkbookHydration?: XlsxExternalWorkbookHydrationDiagnostics
 }
 
 export interface StreamingNativeXlsxFormulaRecalcOptions {

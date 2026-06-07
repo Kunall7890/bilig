@@ -2,13 +2,12 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { basename, dirname, extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import type { RawCellContent } from '@bilig/headless'
-import type { XlsxExternalWorkbookInput } from '@bilig/headless/xlsx'
-import { ValueTag } from '@bilig/protocol'
+import { ValueTag, type LiteralInput } from '@bilig/protocol'
 import {
   inspectXlsxCacheFileStreamingNative,
   replaceXlsxWorksheetCellXml,
   StreamingNativeXlsxRecalcError,
+  type XlsxExternalWorkbookInput,
   writeSimpleXlsxWorkbook,
 } from '@bilig/xlsx'
 
@@ -890,7 +889,7 @@ function parseEdit(raw: string): XlsxFormulaRecalcEdit {
   }
 }
 
-function parseRawCellContent(raw: string): RawCellContent {
+function parseRawCellContent(raw: string): LiteralInput {
   if (raw === 'null') {
     return null
   }
