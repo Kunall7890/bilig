@@ -371,6 +371,23 @@ describe('repository dependency policy', () => {
     expect(readmeViolations).toEqual([])
   })
 
+  it('keeps workbook compatibility file reports on file-backed native scans', () => {
+    const reportSource = readFileSync(join(repoRoot, 'packages/xlsx/src/workbook-compatibility-report.ts'), 'utf8')
+    const cliStart = reportSource.indexOf('export function runWorkbookCompatibilityReportCli')
+    const cliEnd = reportSource.indexOf('export function buildWorkbookCompatibilityDemoBytes')
+    const cliSource = reportSource.slice(cliStart, cliEnd)
+
+    expect(cliStart).toBeGreaterThan(-1)
+    expect(cliEnd).toBeGreaterThan(cliStart)
+    expect(reportSource).toContain('export function buildWorkbookCompatibilityReportFromFile')
+    expect(reportSource).toContain('createFileXlsxSourceReader')
+    expect(reportSource).toContain('readXlsxFormulaCacheCellsFromFile')
+    expect(reportSource).toContain('const defaultFileInspectLimit: XlsxCacheInspectionLimit = 2000')
+    expect(cliSource).toContain('buildWorkbookCompatibilityReportFromFile')
+    expect(cliSource).not.toContain('readFileSync(requireInputPath(options))')
+    expect(cliSource).not.toContain('readXlsxWorkbookCells')
+  })
+
   it('keeps file-backed xlsx-recalc CLI on @bilig/xlsx without primary WorkPaper fallback', () => {
     const cliApi = readFileSync(join(repoRoot, 'packages/xlsx-formula-recalc/src/cli-api.ts'), 'utf8')
     const fileRecalc = readFileSync(join(repoRoot, 'packages/xlsx-formula-recalc/src/file-recalc.ts'), 'utf8')

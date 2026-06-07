@@ -3,10 +3,21 @@ import { basename } from 'node:path'
 
 import type { LiteralInput } from '@bilig/protocol'
 
+import { createFileXlsxSourceReader } from './file-source.js'
+import { readXlsxFormulaCacheCellsFromFile, type XlsxFormulaCacheScanResult } from './formula-cache-reader.js'
 import type { ImportedWorkbookDiagnostics, XlsxExternalWorkbookInput } from './external-workbook-types.js'
 import { writeSimpleXlsxWorkbook } from './simple-workbook-writer.js'
 import { readXlsxWorkbookCells, type XlsxWorkbookCells } from './workbook-cell-reader.js'
-import { getZipText, readXlsxZipEntriesLazy, type XlsxZipEntries } from './zip-reader.js'
+import { workbookSheetPathEntriesForSource } from './workbook-sheet-paths.js'
+import {
+  forEachInflatedXlsxZipEntryChunk,
+  getZipText,
+  readXlsxZipEntriesLazy,
+  readXlsxZipEntriesLazyFromByteSource,
+  readXlsxZipEntryMetadata,
+  type XlsxZipEntries,
+  type XlsxZipEntryMetadata,
+} from './zip-reader.js'
 
 export const workbookCompatibilityReportSchemaVersion = 'bilig-workbook-compatibility-report.v1'
 
@@ -23,6 +34,10 @@ export interface WorkbookCompatibilityReportOptions {
   readonly externalWorkbooks?: readonly XlsxExternalWorkbookInput[]
   readonly edits?: readonly WorkbookCompatibilityReportEdit[]
   readonly inspectLimit?: XlsxCacheInspectionLimit
+}
+
+export interface WorkbookCompatibilityReportFileOptions extends WorkbookCompatibilityReportOptions {
+  readonly fileName?: string
 }
 
 export interface WorkbookCompatibilityReportEdit {
@@ -108,7 +123,7 @@ interface WorkbookCompatibilityCliOptions {
   readonly mode: 'file' | 'demo'
   readonly inputPath: string | undefined
   readonly externalWorkbooks: readonly CliExternalWorkbook[]
-  readonly inspectLimit: XlsxCacheInspectionLimit
+  readonly inspectLimit?: XlsxCacheInspectionLimit
   readonly json: boolean
 }
 
@@ -119,7 +134,11 @@ export interface WorkbookCompatibilityReportCliContext {
 }
 
 const defaultInspectLimit: XlsxCacheInspectionLimit = 'all'
+const defaultFileInspectLimit: XlsxCacheInspectionLimit = 2000
 const docsUrl = 'https://proompteng.github.io/bilig/workbook-compatibility-report.html'
+const textDecoder = new TextDecoder()
+const worksheetCellStartTagPattern = /<(?:[A-Za-z_][\w.-]*:)?c\b/gu
+const worksheetCellStartCarryLength = 128
 const volatileFunctionNames = ['TODAY', 'NOW', 'RAND', 'RANDBETWEEN', 'RANDARRAY', 'OFFSET', 'INDIRECT', 'SUBTOTAL', 'AGGREGATE'] as const
 const knownUnsupportedRiskFunctions = new Set([
   'CALL',
@@ -162,6 +181,63 @@ export function buildWorkbookCompatibilityReport(
   const workbook = readXlsxWorkbookCells(zip)
   const workbookParts = scanWorkbookPackageParts(zip)
   const cacheInspection = inspectWorkbookFormulaCaches(workbook, options.inspectLimit ?? defaultInspectLimit)
+  return buildWorkbookCompatibilityReportFromScans({
+    fileName,
+    externalWorkbookCount: externalWorkbooks.length,
+    workbook: {
+      sheetNames: workbook.sheets.map((sheet) => sheet.name),
+      nonEmptyCellCount: workbook.sheets.reduce((sum, sheet) => sum + sheet.cells.length, 0),
+    },
+    workbookParts,
+    cacheInspection,
+  })
+}
+
+export function buildWorkbookCompatibilityReportFromFile(
+  inputPath: string,
+  options: WorkbookCompatibilityReportFileOptions = {},
+): WorkbookCompatibilityReport {
+  const fileName = options.fileName ?? basename(inputPath)
+  const externalWorkbooks = options.externalWorkbooks ?? []
+  const inspectLimit = options.inspectLimit ?? defaultFileInspectLimit
+  const source = createFileXlsxSourceReader(inputPath)
+  try {
+    const entryMetadata = readXlsxZipEntryMetadata(source)
+    const zip = readXlsxZipEntriesLazyFromByteSource(source)
+    if (!zip) {
+      throw new Error('Workbook compatibility report requires a ZIP central directory it can read lazily')
+    }
+    const workbook = scanWorkbookCellStats(zip)
+    const workbookParts = scanWorkbookPackageParts(zip, entryMetadata ?? undefined)
+    const cacheInspection = inspectWorkbookFormulaCacheScan(
+      readXlsxFormulaCacheCellsFromFile(inputPath, {
+        inspectLimit,
+      }),
+      inspectLimit,
+    )
+    return buildWorkbookCompatibilityReportFromScans({
+      fileName,
+      externalWorkbookCount: externalWorkbooks.length,
+      workbook,
+      workbookParts,
+      cacheInspection,
+    })
+  } finally {
+    source.release?.()
+  }
+}
+
+function buildWorkbookCompatibilityReportFromScans(input: {
+  readonly fileName: string
+  readonly externalWorkbookCount: number
+  readonly workbook: {
+    readonly sheetNames: readonly string[]
+    readonly nonEmptyCellCount: number
+  }
+  readonly workbookParts: WorkbookPackagePartScan
+  readonly cacheInspection: WorkbookFormulaCacheInspection
+}): WorkbookCompatibilityReport {
+  const { fileName, externalWorkbookCount, workbook, workbookParts, cacheInspection } = input
   const unsupportedFunctions = countNamedValues(
     cacheInspection.formulas.flatMap((entry) => knownUnsupportedFunctionNamesFromFormula(entry.formula)),
   )
@@ -171,13 +247,13 @@ export function buildWorkbookCompatibilityReport(
     verified: true,
     input: {
       fileName,
-      externalWorkbookCount: externalWorkbooks.length,
+      externalWorkbookCount,
       inspectLimit: cacheInspection.inspectionLimit,
     },
     workbook: {
-      sheetCount: workbook.sheets.length,
-      sheetNames: workbook.sheets.map((sheet) => sheet.name),
-      nonEmptyCellCount: workbook.sheets.reduce((sum, sheet) => sum + sheet.cells.length, 0),
+      sheetCount: workbook.sheetNames.length,
+      sheetNames: workbook.sheetNames,
+      nonEmptyCellCount: workbook.nonEmptyCellCount,
       formulaCellCount: cacheInspection.formulaCellCount,
       definedNameCount: workbookParts.definedNameCount,
       tableCount: workbookParts.tableCount,
@@ -252,14 +328,20 @@ export function runWorkbookCompatibilityReportCli(args: readonly string[], conte
       return 0
     }
     const options = parseCliArgs(args, commandName)
-    const input = options.mode === 'demo' ? buildWorkbookCompatibilityDemoBytes() : readFileSync(requireInputPath(options))
     const fileName = options.mode === 'demo' ? 'bilig-workbook-compatibility-demo.xlsx' : basename(requireInputPath(options))
     const externalWorkbooks = readExternalWorkbookInputs(options.externalWorkbooks)
-    const report = buildWorkbookCompatibilityReport(input, {
-      fileName,
-      ...(externalWorkbooks.length > 0 ? { externalWorkbooks } : {}),
-      inspectLimit: options.inspectLimit,
-    })
+    const report =
+      options.mode === 'demo'
+        ? buildWorkbookCompatibilityReport(buildWorkbookCompatibilityDemoBytes(), {
+            fileName,
+            ...(externalWorkbooks.length > 0 ? { externalWorkbooks } : {}),
+            ...(options.inspectLimit === undefined ? {} : { inspectLimit: options.inspectLimit }),
+          })
+        : buildWorkbookCompatibilityReportFromFile(requireInputPath(options), {
+            fileName,
+            ...(externalWorkbooks.length > 0 ? { externalWorkbooks } : {}),
+            ...(options.inspectLimit === undefined ? {} : { inspectLimit: options.inspectLimit }),
+          })
 
     if (options.json) {
       writeStdout(`${JSON.stringify(report, null, 2)}\n`)
@@ -380,6 +462,46 @@ function inspectWorkbookFormulaCaches(workbook: XlsxWorkbookCells, inspectLimit:
   }
 }
 
+function inspectWorkbookFormulaCacheScan(
+  scan: XlsxFormulaCacheScanResult,
+  inspectLimit: XlsxCacheInspectionLimit,
+): WorkbookFormulaCacheInspection {
+  const normalizedLimit = normalizeInspectLimit(inspectLimit)
+  const inspected = scan.cells.map((cell) => ({
+    target: cell.target,
+    formula: cell.formula,
+    hasCachedValue: cell.cachedValue !== undefined,
+  }))
+  const missingCache = inspected.filter((entry) => !entry.hasCachedValue).length
+  const unsupportedRecalculation = inspected.filter((entry) => knownUnsupportedFunctionNamesFromFormula(entry.formula).length > 0).length
+  const staleCachedFormulaCount = inspected.filter(
+    (entry) => entry.hasCachedValue && volatileFunctionNamesFromFormula(entry.formula).length > 0,
+  ).length
+  const volatileFormulaCount = inspected.filter((entry) => volatileFunctionNamesFromFormula(entry.formula).length > 0).length
+  const warnings = [
+    ...(volatileFormulaCount > 0
+      ? ['Volatile formulas were detected; cached formula values may depend on workbook calculation time.']
+      : []),
+    ...(unsupportedRecalculation > 0
+      ? ['Unsupported formula families were detected; use xlsx-cache-doctor or an oracle harness before trusting cached values.']
+      : []),
+  ].toSorted()
+  return {
+    formulaCellCount: scan.formulaCellCount,
+    inspectedFormulaCellCount: inspected.length,
+    uninspectedFormulaCellCount: scan.formulaCellCount - inspected.length,
+    inspectionLimit: normalizedLimit,
+    suggestedReads: inspected.map((entry) => entry.target),
+    staleCachedFormulaCount,
+    cacheStatusSummary: {
+      missingCache,
+      unsupportedRecalculation,
+    },
+    warnings,
+    formulas: inspected,
+  }
+}
+
 function normalizeInspectLimit(limit: XlsxCacheInspectionLimit): XlsxCacheInspectionLimit {
   if (limit === 'all') {
     return limit
@@ -390,8 +512,51 @@ function normalizeInspectLimit(limit: XlsxCacheInspectionLimit): XlsxCacheInspec
   return limit
 }
 
-function scanWorkbookPackageParts(zip: XlsxZipEntries): WorkbookPackagePartScan {
-  const paths = Object.keys(zip)
+function scanWorkbookCellStats(zip: XlsxZipEntries): { readonly sheetNames: readonly string[]; readonly nonEmptyCellCount: number } {
+  const sheets = workbookSheetPathEntriesForSource(zip)
+  let nonEmptyCellCount = 0
+  for (const sheet of sheets) {
+    nonEmptyCellCount += countWorksheetCellElements(zip, sheet.path)
+  }
+  return {
+    sheetNames: sheets.map((sheet) => sheet.name),
+    nonEmptyCellCount,
+  }
+}
+
+function countWorksheetCellElements(zip: XlsxZipEntries, sheetPath: string): number {
+  let count = 0
+  let buffer = ''
+  const processBuffer = (final: boolean): void => {
+    const safeEnd = final ? buffer.length : Math.max(0, buffer.length - worksheetCellStartCarryLength)
+    if (safeEnd === 0 && !final) {
+      return
+    }
+    for (const _match of buffer.slice(0, safeEnd).matchAll(worksheetCellStartTagPattern)) {
+      count += 1
+    }
+    buffer = buffer.slice(safeEnd)
+  }
+  const streamed = forEachInflatedXlsxZipEntryChunk(
+    zip,
+    sheetPath,
+    (chunk) => {
+      buffer += textDecoder.decode(chunk, { stream: true })
+      processBuffer(false)
+    },
+    { chunkSize: 64 * 1024, forceStreamingInflate: true },
+  )
+  if (!streamed) {
+    return 0
+  }
+  buffer += textDecoder.decode()
+  processBuffer(true)
+  return count
+}
+
+function scanWorkbookPackageParts(zip: XlsxZipEntries, entryMetadata: readonly XlsxZipEntryMetadata[] = []): WorkbookPackagePartScan {
+  const paths = entryMetadata.length > 0 ? entryMetadata.map((entry) => entry.path) : Object.keys(zip)
+  const metadataByPath = new Map(entryMetadata.map((entry) => [entry.path, entry]))
   const workbookXml = getZipText(zip, 'xl/workbook.xml') ?? ''
   const externalReferenceCount = workbookXml.match(/<(?:[A-Za-z_][\w.-]*:)?externalReference\b/gu)?.length ?? 0
   const externalLinkPartCount = paths.filter((path) => /^xl\/externalLinks\/externalLink[0-9]+\.xml$/u.test(path)).length
@@ -402,7 +567,7 @@ function scanWorkbookPackageParts(zip: XlsxZipEntries): WorkbookPackagePartScan 
     pivotTableCount: paths.filter((path) => /^xl\/pivotTables\/[^/]+\.xml$/u.test(path)).length,
     chartCount: paths.filter((path) => /^xl\/charts\/[^/]+\.xml$/u.test(path) || /^xl\/chartsheets\/[^/]+\.xml$/u.test(path)).length,
     macroModuleCount: macroPaths.length,
-    macroByteLength: macroPaths.reduce((sum, path) => sum + (zip[path]?.byteLength ?? 0), 0),
+    macroByteLength: macroPaths.reduce((sum, path) => sum + (metadataByPath.get(path)?.uncompressedSize ?? zip[path]?.byteLength ?? 0), 0),
     externalLinkCount: Math.max(externalReferenceCount, externalLinkPartCount),
   }
 }
@@ -464,7 +629,7 @@ function parseCliArgs(args: readonly string[], commandName: string): WorkbookCom
   }
 
   const externalWorkbooks: CliExternalWorkbook[] = []
-  let inspectLimit: XlsxCacheInspectionLimit = defaultInspectLimit
+  let inspectLimit: XlsxCacheInspectionLimit | undefined
   let json = false
 
   for (let index = demo ? 0 : 1; index < args.length; index += 1) {
@@ -502,7 +667,7 @@ function parseCliArgs(args: readonly string[], commandName: string): WorkbookCom
     mode: demo ? 'demo' : 'file',
     inputPath,
     externalWorkbooks,
-    inspectLimit,
+    ...(inspectLimit === undefined ? {} : { inspectLimit }),
     json,
   }
 }
@@ -614,7 +779,7 @@ Node service or agent workflow. This is not an Excel compatibility certificate.
 
 Options:
   --demo                  Generate an intentionally risky workbook and report on it.
-  --inspect-limit <all|n> Formula cells to recompute during inspection. Defaults to ${defaultInspectLimit}.
+  --inspect-limit <all|n> Formula cells to recompute during inspection. Defaults to ${defaultFileInspectLimit.toString()} for file-backed reports and ${defaultInspectLimit} for --demo.
   --external-workbook <path>
                           Supply a companion XLSX for external-link cache refresh. Repeatable.
   --external-workbook-target <path> <target>

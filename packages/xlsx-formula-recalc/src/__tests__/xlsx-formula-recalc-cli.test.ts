@@ -10,7 +10,11 @@ import { parse as parseYaml } from 'yaml'
 
 import { runXlsxFormulaRecalcCli, runXlsxFormulaRecalcCliAsync } from '../cli-api.js'
 import { WorkPaper, exportXlsx } from 'bilig-workpaper/xlsx'
-import { buildWorkbookCompatibilityReport, runWorkbookCompatibilityReportCli } from '../workbook-compatibility-report.js'
+import {
+  buildWorkbookCompatibilityReport,
+  buildWorkbookCompatibilityReportFromFile,
+  runWorkbookCompatibilityReportCli,
+} from '../workbook-compatibility-report.js'
 
 const officeRelationshipNamespace = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
 const packageVersion = readPackageVersion()
@@ -425,6 +429,41 @@ process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXls
     expect(stdout).not.toMatch(/compatibilityScore|excelCompatibilityPercent/u)
   })
 
+  it('prints a file-backed workbook compatibility report without full workbook materialization', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'workbook-compatibility-file-native-'))
+    try {
+      const inputPath = join(tempDir, 'provider-backed-risk.xlsx')
+      writeFileSync(inputPath, buildProviderBackedRiskWorkbook())
+      let stdout = ''
+
+      const exitCode = runWorkbookCompatibilityReportCli([inputPath, '--json'], {
+        stdout: (text) => {
+          stdout += text
+        },
+      })
+
+      expect(exitCode).toBe(0)
+      const report = readWorkbookCompatibilityReport(stdout)
+      expect(report.schemaVersion).toBe('bilig-workbook-compatibility-report.v1')
+      expect(report.verified).toBe(true)
+      expect(report.cacheInspection.inspectionLimit).toBe(2000)
+      expect(report.cacheInspection.uninspectedFormulaCellCount).toBe(0)
+      expect(report.workbook.formulaCellCount).toBe(5)
+      expect(report.findings.unsupportedFunctions).toEqual([
+        { name: 'GOOGLEFINANCE', count: 1 },
+        { name: 'IMPORTDATA', count: 1 },
+        { name: 'IMPORTHTML', count: 1 },
+        { name: 'IMPORTRANGE', count: 1 },
+        { name: 'TRANSLATE', count: 1 },
+      ])
+      expect(report.risk.level).toBe('high')
+      expect(report.recalculationCompleted).toBe(false)
+      expect(stdout).not.toMatch(/compatibilityScore|excelCompatibilityPercent/u)
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
   it('keeps workbook compatibility human output explicit about the trust boundary', () => {
     let stdout = ''
 
@@ -481,6 +520,28 @@ process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXls
     })
     expect(report.risk.level).toBe('medium')
     expect(report.risk.reasons).toContain('uninspected formula cells: 10')
+  })
+
+  it('keeps file-backed workbook compatibility inspection limits consistent with the bytes API', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'workbook-compatibility-file-limit-'))
+    try {
+      const inputPath = join(tempDir, 'limited-inspection.xlsx')
+      writeFileSync(inputPath, buildManyFormulaCacheWorkbook())
+
+      const report = buildWorkbookCompatibilityReportFromFile(inputPath, {
+        inspectLimit: 50,
+      })
+
+      expect(report.cacheInspection).toMatchObject({
+        inspectedFormulaCellCount: 50,
+        uninspectedFormulaCellCount: 10,
+        inspectionLimit: 50,
+      })
+      expect(report.risk.level).toBe('medium')
+      expect(report.risk.reasons).toContain('uninspected formula cells: 10')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
   })
 
   it('separates missing cached formula values from stale cached values', async () => {
@@ -917,6 +978,10 @@ interface WorkbookCompatibilityReportForTest {
   readonly risk: {
     readonly level: string
   }
+  readonly cacheInspection: {
+    readonly inspectionLimit: number | 'all'
+    readonly uninspectedFormulaCellCount: number
+  }
   readonly recalculationCompleted: boolean
   readonly excelParity: 'not_proven'
   readonly limitations: readonly string[]
@@ -1048,8 +1113,9 @@ function readWorkbookCompatibilityReport(stdout: string): WorkbookCompatibilityR
   const workbook = parsed['workbook']
   const findings = parsed['findings']
   const risk = parsed['risk']
+  const cacheInspection = parsed['cacheInspection']
   const limitations = parsed['limitations']
-  if (!isRecord(workbook) || !isRecord(findings) || !isRecord(risk) || !Array.isArray(limitations)) {
+  if (!isRecord(workbook) || !isRecord(findings) || !isRecord(risk) || !isRecord(cacheInspection) || !Array.isArray(limitations)) {
     throw new Error(`Unexpected workbook compatibility report shape: ${stdout}`)
   }
   return {
@@ -1067,6 +1133,10 @@ function readWorkbookCompatibilityReport(stdout: string): WorkbookCompatibilityR
     },
     risk: {
       level: requireString(risk['level']),
+    },
+    cacheInspection: {
+      inspectionLimit: cacheInspection['inspectionLimit'] === 'all' ? 'all' : requireNumber(cacheInspection['inspectionLimit']),
+      uninspectedFormulaCellCount: requireNumber(cacheInspection['uninspectedFormulaCellCount']),
     },
     recalculationCompleted: parsed['recalculationCompleted'] === true,
     excelParity: parsed['excelParity'] === 'not_proven' ? 'not_proven' : 'not_proven',

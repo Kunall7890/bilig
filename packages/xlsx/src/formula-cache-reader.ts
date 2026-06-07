@@ -4,7 +4,7 @@ import { translateFormulaReferences } from '@bilig/formula'
 
 import { decodeCellAddress, encodeCellAddress } from './address.js'
 import { createFileXlsxSourceReader } from './file-source.js'
-import { decodeXmlText, getXmlElementText, readXmlAttribute, worksheetCellElementPattern, worksheetCellOpeningTagPattern } from './xml.js'
+import { decodeXmlText, getXmlElementText, readXmlAttribute } from './xml.js'
 import { workbookSheetPathEntriesForSource } from './workbook-sheet-paths.js'
 import { forEachInflatedXlsxZipEntryChunk, readXlsxZipEntriesLazyFromByteSource, type XlsxZipEntries } from './zip-reader.js'
 
@@ -70,6 +70,8 @@ interface PendingFormulaCacheCell {
 
 const textDecoder = new TextDecoder()
 const formulaElementPattern = /<((?:[A-Za-z_][\w.-]*:)?f)\b(?:[^>"']|"[^"]*"|'[^']*')*(?:\/>|>[\s\S]*?<\/\1>)/u
+const worksheetCellStartTagPattern = /<(?:[A-Za-z_][\w.-]*:)?c\b/u
+const worksheetCellCarryLength = 128
 
 export function readXlsxFormulaCacheCellsFromFile(
   inputPath: string,
@@ -145,7 +147,9 @@ function collectXlsxFormulaCacheCells(
       inputBytes,
     )
     formulaCellCount += scan.formulaCellCount
-    pendingCells.push(...scan.cells)
+    for (const cell of scan.cells) {
+      pendingCells.push(cell)
+    }
   }
   const sharedStrings = readTargetSharedStrings(zip, sharedStringIndexes)
   return {
@@ -181,49 +185,43 @@ function collectXlsxFormulaCacheCellsForSheet(
   let formulaCellCount = 0
   let buffer = ''
   const processBuffer = (final: boolean): void => {
-    const safeEnd = final ? buffer.length : lastWorksheetCellStartIndex(buffer)
-    if (safeEnd === 0 && !final) {
-      return
-    }
-    const safeXml = buffer.slice(0, safeEnd)
-    for (const match of safeXml.matchAll(new RegExp(worksheetCellElementPattern.source, 'gu'))) {
-      const cellXml = match[0]
-      const openingTag = worksheetCellOpeningTagPattern.exec(cellXml)?.[0]
+    let cell = shiftWorksheetCellXml(buffer, final)
+    while (cell.status === 'cell') {
+      buffer = cell.buffer
+      const { cellXml, openingTag } = cell
       const addressText = openingTag ? readXmlAttribute(openingTag, 'r') : null
-      if (!openingTag || !addressText) {
-        continue
+      if (addressText) {
+        let decodedAddress: ReturnType<typeof decodeCellAddress> | null
+        try {
+          decodedAddress = decodeCellAddress(addressText)
+        } catch {
+          decodedAddress = null
+        }
+        const formula = decodedAddress ? readFormulaInfo(cellXml) : null
+        if (decodedAddress && formula) {
+          formulaCellCount += 1
+          if (formula.sharedFormulaIndex && formula.formula) {
+            sharedFormulaMasters.set(formula.sharedFormulaIndex, {
+              formula: formula.formula,
+              row: decodedAddress.r,
+              col: decodedAddress.c,
+            })
+          }
+          if (shouldCollect()) {
+            const formulaText = formulaSourceForCacheInspection(formula, sharedFormulaMasters, decodedAddress.r, decodedAddress.c)
+            const cachedValue = cachedValueForFormulaCacheInspection(cellXml, openingTag, sharedStringIndexes)
+            cells.push({
+              target: formatQualifiedTarget(sheetName, encodeCellAddress(decodedAddress)),
+              formula: formulaText.startsWith('=') ? formulaText : `=${formulaText}`,
+              ...(cachedValue === undefined ? {} : { cachedValue }),
+            })
+            markCollected()
+          }
+        }
       }
-      let decodedAddress
-      try {
-        decodedAddress = decodeCellAddress(addressText)
-      } catch {
-        continue
-      }
-      const formula = readFormulaInfo(cellXml)
-      if (!formula) {
-        continue
-      }
-      formulaCellCount += 1
-      if (formula.sharedFormulaIndex && formula.formula) {
-        sharedFormulaMasters.set(formula.sharedFormulaIndex, {
-          formula: formula.formula,
-          row: decodedAddress.r,
-          col: decodedAddress.c,
-        })
-      }
-      if (!shouldCollect()) {
-        continue
-      }
-      const formulaText = formulaSourceForCacheInspection(formula, sharedFormulaMasters, decodedAddress.r, decodedAddress.c)
-      const cachedValue = cachedValueForFormulaCacheInspection(cellXml, openingTag, sharedStringIndexes)
-      cells.push({
-        target: formatQualifiedTarget(sheetName, encodeCellAddress(decodedAddress)),
-        formula: formulaText.startsWith('=') ? formulaText : `=${formulaText}`,
-        ...(cachedValue === undefined ? {} : { cachedValue }),
-      })
-      markCollected()
+      cell = shiftWorksheetCellXml(buffer, final)
     }
-    buffer = buffer.slice(safeEnd)
+    buffer = cell.status === 'pending' ? cell.buffer : ''
   }
   const streamed = forEachInflatedXlsxZipEntryChunk(
     zip,
@@ -240,6 +238,64 @@ function collectXlsxFormulaCacheCellsForSheet(
   buffer += textDecoder.decode()
   processBuffer(true)
   return { formulaCellCount, cells }
+}
+
+type WorksheetCellShift =
+  | { readonly status: 'cell'; readonly cellXml: string; readonly openingTag: string; readonly buffer: string }
+  | { readonly status: 'pending'; readonly buffer: string }
+  | { readonly status: 'done' }
+
+function shiftWorksheetCellXml(buffer: string, final: boolean): WorksheetCellShift {
+  const startMatch = worksheetCellStartTagPattern.exec(buffer)
+  if (!startMatch) {
+    return {
+      status: final ? 'done' : 'pending',
+      buffer: final ? '' : buffer.slice(Math.max(0, buffer.length - worksheetCellCarryLength)),
+    }
+  }
+  const startIndex = startMatch.index
+  const openingEnd = findXmlTagEnd(buffer, startIndex)
+  if (openingEnd < 0) {
+    return { status: 'pending', buffer: buffer.slice(startIndex) }
+  }
+  const openingTag = buffer.slice(startIndex, openingEnd + 1)
+  const endIndex = openingTag.endsWith('/>') ? openingEnd + 1 : findXmlElementEnd(buffer, openingEnd + 1, openingTag)
+  if (endIndex < 0) {
+    return { status: 'pending', buffer: buffer.slice(startIndex) }
+  }
+  return {
+    status: 'cell',
+    cellXml: buffer.slice(startIndex, endIndex),
+    openingTag,
+    buffer: buffer.slice(endIndex),
+  }
+}
+
+function findXmlTagEnd(xml: string, startIndex: number): number {
+  let quote: '"' | "'" | null = null
+  for (let index = startIndex; index < xml.length; index += 1) {
+    const char = xml[index]
+    if (quote) {
+      if (char === quote) {
+        quote = null
+      }
+    } else if (char === '"' || char === "'") {
+      quote = char
+    } else if (char === '>') {
+      return index
+    }
+  }
+  return -1
+}
+
+function findXmlElementEnd(xml: string, startIndex: number, openingTag: string): number {
+  const tagName = /^<((?:[A-Za-z_][\w.-]*:)?c)\b/u.exec(openingTag)?.[1]
+  if (!tagName) {
+    return -1
+  }
+  const closingPattern = new RegExp(`</${escapeRegExp(tagName)}\\s*>`, 'u')
+  const relativeMatch = closingPattern.exec(xml.slice(startIndex))
+  return relativeMatch ? startIndex + relativeMatch.index + relativeMatch[0].length : -1
 }
 
 function readFormulaInfo(cellXml: string): FormulaInfo | null {
@@ -380,14 +436,6 @@ function isSharedStringReference(value: PendingCellValue): value is SharedString
   return value.kind === 'shared-string'
 }
 
-function lastWorksheetCellStartIndex(xml: string): number {
-  let index = -1
-  for (const match of xml.matchAll(/<(?:(?:[A-Za-z_][\w.-]*):)?c\b/gu)) {
-    index = match.index ?? index
-  }
-  return Math.max(0, index)
-}
-
 function formatQualifiedTarget(sheetName: string, address: string): string {
   return `${quoteSheetName(sheetName)}!${address}`
 }
@@ -424,4 +472,8 @@ function readTextRuns(xml: string): string {
     (match) => decodeXmlText(match[1] ?? ''),
   )
   return runs.length > 0 ? runs.join('') : ''
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
 }
