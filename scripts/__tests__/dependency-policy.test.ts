@@ -468,6 +468,18 @@ describe('repository dependency policy', () => {
     expect(streamingFileSource).toContain('tryPrepareStreamingPatchedWorksheetEntryFile')
   })
 
+  it('keeps excel-import source-preserving output as a shim over @bilig/xlsx', () => {
+    const sourcePreservingExport = readFileSync(join(repoRoot, 'packages/excel-import/src/xlsx-source-preserving-export.ts'), 'utf8')
+
+    expect(sourcePreservingExport).toContain("from '@bilig/xlsx'")
+    expect(sourcePreservingExport).toContain('exportBiligXlsxSourceLiteralPatches')
+    expect(sourcePreservingExport).toContain('forceWorkbookRecalculation: calculationTextPatches.length === 0')
+    expect(sourcePreservingExport).not.toContain('tryWriteStreamingPatchedWorksheetEntry')
+    expect(sourcePreservingExport).not.toContain('tryWriteNativeStreamingPatchedWorksheetEntry')
+    expect(sourcePreservingExport).not.toContain('zipSourcePreservingEntriesToFile')
+    expect(sourcePreservingExport).not.toContain('unzipSync(source.readBytes())')
+  })
+
   it('keeps large XLSX import preflight on @bilig/xlsx workbook path resolution', () => {
     const largeSimpleImport = readFileSync(join(repoRoot, 'packages/excel-import/src/xlsx-large-simple-import.ts'), 'utf8')
     const largeSimpleInspect = readFileSync(join(repoRoot, 'packages/excel-import/src/xlsx-large-simple-headless-inspect.ts'), 'utf8')

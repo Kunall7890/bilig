@@ -72,6 +72,7 @@ export interface XlsxSourceLiteralPatchExportInput {
   readonly source: Uint8Array | XlsxSourceReader
   readonly patches: readonly XlsxSourceLiteralPatch[]
   readonly textPatches?: readonly XlsxSourceTextPatch[]
+  readonly forceWorkbookRecalculation?: boolean
   readonly sheetNames?: readonly string[]
   readonly workbookName?: string
 }
@@ -630,18 +631,20 @@ function normalizedPatchInput(input: XlsxSourceLiteralPatchExportInput): {
   readonly source: Uint8Array | XlsxSourceReader
   readonly patches: readonly XlsxSourceLiteralPatch[]
   readonly textPatches: readonly XlsxSourceTextPatch[]
+  readonly forceWorkbookRecalculation: boolean
   readonly sheetNames: readonly string[]
 } {
   return {
     source: input.source,
     patches: input.patches,
     textPatches: input.textPatches ?? [],
+    forceWorkbookRecalculation: input.forceWorkbookRecalculation ?? true,
     sheetNames: input.sheetNames ?? uniquePatchedSheetNames(input.patches),
   }
 }
 
 export function exportXlsxSourceLiteralPatches(input: XlsxSourceLiteralPatchExportInput): Uint8Array {
-  const { source, patches, textPatches, sheetNames } = normalizedPatchInput(input)
+  const { source, patches, textPatches, forceWorkbookRecalculation, sheetNames } = normalizedPatchInput(input)
   const zip = readSourcePreservingZip(source)
   const preparedEntries = new Map<string, PreparedZipEntry>()
   const sheetPathsByName = new Map(workbookSheetPathEntriesFromSource(zip, sheetNames).map((entry) => [entry.name, entry.path]))
@@ -674,7 +677,7 @@ export function exportXlsxSourceLiteralPatches(input: XlsxSourceLiteralPatchExpo
     preparedEntries.set(path, deflatedPreparedEntry(new TextEncoder().encode(text)))
   })
   removeCalcChain(zip)
-  if (!ensureWorkbookRecalculation(zip)) {
+  if (forceWorkbookRecalculation && !ensureWorkbookRecalculation(zip)) {
     throw new Error('Unable to update XLSX workbook recalculation settings')
   }
   return zipSourcePreservingEntries(zip, preparedEntries)
@@ -693,7 +696,7 @@ export function exportXlsxSourceLiteralPatchesToFileAsync(
 function exportXlsxSourceLiteralPatchesToFileStreaming(
   input: XlsxSourceLiteralPatchFileExportInput,
 ): XlsxSourceLiteralPatchFileExportResult {
-  const { source, patches, textPatches, sheetNames } = normalizedPatchInput(input)
+  const { source, patches, textPatches, forceWorkbookRecalculation, sheetNames } = normalizedPatchInput(input)
   const zip = readSourcePreservingZip(source)
   const preparedEntries = new Map<string, FilePreparedZipEntry>()
   const preparedEntryPaths: string[] = []
@@ -725,7 +728,7 @@ function exportXlsxSourceLiteralPatchesToFileStreaming(
     preparedEntries.set(path, preparedEntry)
   })
   removeCalcChain(zip)
-  if (!ensureWorkbookRecalculation(zip)) {
+  if (forceWorkbookRecalculation && !ensureWorkbookRecalculation(zip)) {
     cleanupTemporaryFiles(preparedEntryPaths)
     throw new Error('Unable to update XLSX workbook recalculation settings')
   }

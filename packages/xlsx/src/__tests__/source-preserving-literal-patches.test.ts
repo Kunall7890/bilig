@@ -216,6 +216,34 @@ describe('@bilig/xlsx source-preserving literal patches', () => {
     expect(contentTypesXml).not.toContain('calcChain.xml')
   })
 
+  it('preserves explicit workbook calculation XML when forced recalculation is disabled', () => {
+    const exported = exportXlsxSourceLiteralPatches({
+      source: minimalWorkbookBytes(),
+      sheetNames: ['Revenue & Ops'],
+      forceWorkbookRecalculation: false,
+      textPatches: [
+        {
+          path: 'xl/workbook.xml',
+          patchText: (text) => text.replace('<calcPr calcMode="manual"/>', '<calcPr calcMode="manual" iterate="1"/>'),
+        },
+      ],
+      patches: [{ sheetName: 'Revenue & Ops', address: 'A1', value: 7 }],
+    })
+
+    const zip = readXlsxZipEntries(exported)
+    const workbookXml = getZipText(zip, 'xl/workbook.xml')
+    const workbookRelationshipsXml = getZipText(zip, 'xl/_rels/workbook.xml.rels')
+    const contentTypesXml = getZipText(zip, '[Content_Types].xml')
+
+    expect(workbookXml).toContain('calcMode="manual"')
+    expect(workbookXml).toContain('iterate="1"')
+    expect(workbookXml).not.toContain('fullCalcOnLoad="1"')
+    expect(workbookXml).not.toContain('forceFullCalc="1"')
+    expect(zip['xl/calcChain.xml']).toBeUndefined()
+    expect(workbookRelationshipsXml).not.toContain('calcChain')
+    expect(contentTypesXml).not.toContain('calcChain.xml')
+  })
+
   it('patches cached formula results without replacing formula XML', () => {
     const exported = exportXlsxSourceLiteralPatches({
       source: formulaCacheWorkbookBytes(),
