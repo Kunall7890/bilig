@@ -8,7 +8,9 @@ import {
   buildNativeRecalcPublicCorpusCliArgs,
   buildNativeRecalcPublicCorpusTarget,
   cellValueFromCliRead,
+  cellValueFromFormulaCacheLiteral,
   formulaOracleReadTarget,
+  formulaOraclesFromNativeFormulaCacheCells,
   quoteSheetNameForTarget,
   summarizeNativeRecalcPublicCorpusResults,
   type NativeRecalcPublicCorpusResult,
@@ -96,6 +98,57 @@ describe('xlsx native recalc public corpus runner', () => {
     expect(cellValueFromCliRead({ tag: 3, value: 'done' })).toEqual({ tag: ValueTag.String, value: 'done', stringId: 0 })
     expect(cellValueFromCliRead({ tag: 4, code: 5 })).toEqual({ tag: ValueTag.Error, code: 5 })
     expect(cellValueFromCliRead({ tag: 1, value: Number.NaN })).toBeNull()
+  })
+
+  it('converts native formula cache literals to protocol oracle values', () => {
+    expect(cellValueFromFormulaCacheLiteral(null)).toEqual({ tag: ValueTag.Empty })
+    expect(cellValueFromFormulaCacheLiteral(12.5)).toEqual({ tag: ValueTag.Number, value: 12.5 })
+    expect(cellValueFromFormulaCacheLiteral(true)).toEqual({ tag: ValueTag.Boolean, value: true })
+    expect(cellValueFromFormulaCacheLiteral('done')).toEqual({ tag: ValueTag.String, value: 'done', stringId: 0 })
+    expect(cellValueFromFormulaCacheLiteral('#REF!')).toBeNull()
+    expect(cellValueFromFormulaCacheLiteral(Number.NaN)).toBeNull()
+  })
+
+  it('builds formula oracles from @bilig/xlsx native formula cache cells', () => {
+    expect(
+      formulaOraclesFromNativeFormulaCacheCells([
+        {
+          target: "'Revenue & Ops'!B1",
+          formula: '=A1*10',
+          cachedValue: 20,
+        },
+        {
+          target: "'Bob''s Sheet'!C7",
+          formula: '=A7&" units"',
+          cachedValue: 'old units',
+        },
+        {
+          target: 'Data!D8',
+          formula: '=1/0',
+          cachedValue: '#DIV/0!',
+        },
+        {
+          target: 'Data!E9',
+          formula: '=NOW()',
+        },
+        {
+          target: "'Broken!F10",
+          formula: '=1',
+          cachedValue: 1,
+        },
+      ]),
+    ).toEqual([
+      {
+        sheetName: 'Revenue & Ops',
+        address: 'B1',
+        expected: { tag: ValueTag.Number, value: 20 },
+      },
+      {
+        sheetName: "Bob's Sheet",
+        address: 'C7',
+        expected: { tag: ValueTag.String, value: 'old units', stringId: 0 },
+      },
+    ])
   })
 
   it('summarizes public native recalc results without treating unsupported formulas as passes', () => {

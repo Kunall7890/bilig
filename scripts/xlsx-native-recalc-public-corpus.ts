@@ -4,13 +4,17 @@ import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
-import { ValueTag, type ErrorCode } from '../packages/protocol/src/enums.js'
+import { ErrorCode, ValueTag, type ErrorCode as ProtocolErrorCode } from '../packages/protocol/src/enums.js'
 import type { CellValue } from '../packages/protocol/src/types.js'
-import { cellValuesMatchOracle, extractFormulaOraclesFromXlsxByteSource } from './public-workbook-corpus-workbook.ts'
+import {
+  readXlsxFormulaCacheCellsFromFile,
+  type XlsxFormulaCacheCell,
+  type XlsxFormulaCacheLiteral,
+} from '../packages/xlsx/src/formula-cache-reader.js'
+import { cellValuesMatchOracle } from './public-workbook-corpus-workbook.ts'
 import { parsePublicWorkbookManifestJson } from './public-workbook-corpus-json.ts'
 import { readFlagArg, readMegabytesArg, readNumberArg, readStringArg } from './public-workbook-corpus-cli.ts'
 import type { FormulaOracle, PublicWorkbookArtifact, PublicWorkbookManifest } from './public-workbook-corpus-types.ts'
-import { FileBackedXlsxZipByteSource } from './public-workbook-corpus-xlsx-byte-source.ts'
 import { formatByteSize, startChildRssWatchdog, terminateChildProcess } from './public-workbook-corpus-process.ts'
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
@@ -190,12 +194,117 @@ export function discoverNativeRecalcPublicCorpusTargets(args: {
 }
 
 function readFormulaOraclesForArtifact(artifact: PublicWorkbookArtifact, inputPath: string): readonly FormulaOracle[] {
-  const source = new FileBackedXlsxZipByteSource(inputPath)
   try {
-    return extractFormulaOraclesFromXlsxByteSource(source, artifact.fileName) ?? []
-  } finally {
-    source.release()
+    if (!isOpenXmlWorkbookFileName(artifact.fileName)) {
+      return []
+    }
+    return formulaOraclesFromNativeFormulaCacheCells(readXlsxFormulaCacheCellsFromFile(inputPath).cells)
+  } catch {
+    return []
   }
+}
+
+export function formulaOraclesFromNativeFormulaCacheCells(cells: readonly XlsxFormulaCacheCell[]): readonly FormulaOracle[] {
+  const oracles: FormulaOracle[] = []
+  for (const cell of cells) {
+    if (cell.cachedValue === undefined) {
+      continue
+    }
+    const target = splitFormulaCacheTarget(cell.target)
+    const expected = cellValueFromFormulaCacheLiteral(cell.cachedValue)
+    if (!target || !expected) {
+      continue
+    }
+    oracles.push({
+      sheetName: target.sheetName,
+      address: target.address,
+      expected,
+    })
+  }
+  return oracles
+}
+
+export function cellValueFromFormulaCacheLiteral(value: XlsxFormulaCacheLiteral): CellValue | null {
+  if (value === null) {
+    return { tag: ValueTag.Empty }
+  }
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? { tag: ValueTag.Number, value } : null
+  }
+  if (typeof value === 'boolean') {
+    return { tag: ValueTag.Boolean, value }
+  }
+  if (typeof value === 'string') {
+    return errorCodeFromFormulaCacheText(value) ? null : { tag: ValueTag.String, value, stringId: 0 }
+  }
+  return null
+}
+
+function splitFormulaCacheTarget(target: string): { readonly sheetName: string; readonly address: string } | null {
+  const separatorIndex = findFormulaCacheTargetSeparator(target)
+  if (separatorIndex <= 0 || separatorIndex === target.length - 1) {
+    return null
+  }
+  const sheetName = unquoteFormulaCacheSheetName(target.slice(0, separatorIndex))
+  const address = target.slice(separatorIndex + 1)
+  return sheetName && /^[A-Z]+[1-9][0-9]*$/u.test(address) ? { sheetName, address } : null
+}
+
+function findFormulaCacheTargetSeparator(target: string): number {
+  let inQuotedSheetName = false
+  for (let index = 0; index < target.length; index += 1) {
+    const char = target[index]
+    if (char === "'") {
+      if (inQuotedSheetName && target[index + 1] === "'") {
+        index += 1
+        continue
+      }
+      inQuotedSheetName = !inQuotedSheetName
+      continue
+    }
+    if (char === '!' && !inQuotedSheetName) {
+      return index
+    }
+  }
+  return -1
+}
+
+function unquoteFormulaCacheSheetName(value: string): string | null {
+  if (!value.startsWith("'")) {
+    return value.length > 0 ? value : null
+  }
+  if (!value.endsWith("'") || value.length < 2) {
+    return null
+  }
+  return value.slice(1, -1).replaceAll("''", "'")
+}
+
+function errorCodeFromFormulaCacheText(value: string): ErrorCode | null {
+  switch (value.toUpperCase()) {
+    case '#DIV/0!':
+      return ErrorCode.Div0
+    case '#REF!':
+      return ErrorCode.Ref
+    case '#VALUE!':
+      return ErrorCode.Value
+    case '#NAME?':
+      return ErrorCode.Name
+    case '#N/A':
+      return ErrorCode.NA
+    case '#NUM!':
+      return ErrorCode.Num
+    case '#FIELD!':
+      return ErrorCode.Field
+    case '#NULL!':
+      return ErrorCode.Null
+    default:
+      return null
+  }
+}
+
+function isOpenXmlWorkbookFileName(fileName: string): boolean {
+  const normalized = fileName.toLowerCase()
+  return normalized.endsWith('.xlsx') || normalized.endsWith('.xlsm') || normalized.endsWith('.xltx') || normalized.endsWith('.xltm')
 }
 
 export function buildNativeRecalcPublicCorpusTarget(args: {
@@ -382,7 +491,7 @@ export function cellValueFromCliRead(value: unknown): CellValue | null {
   }
 }
 
-function isErrorCode(value: number): value is ErrorCode {
+function isErrorCode(value: number): value is ProtocolErrorCode {
   return Number.isInteger(value) && value >= 0 && value <= 11
 }
 
