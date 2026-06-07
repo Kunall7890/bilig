@@ -21,7 +21,7 @@ import {
   type XlsxZipEntries,
 } from '@bilig/xlsx'
 
-import { evaluateStreamingNativeWasmDirectScalars, evaluateStreamingNativeWasmRowChains } from './streaming-native-row-chain-wasm.js'
+import { evaluateStreamingNativeWasmFormulas, expandStreamingNativeFormulaDependencyRows } from './streaming-native-row-chain-wasm.js'
 
 export type XlsxFormulaRecalcEngineMode = 'streaming-native' | 'workpaper'
 export type XlsxFormulaRecalcEngine = 'auto' | XlsxFormulaRecalcEngineMode
@@ -92,7 +92,7 @@ interface QualifiedEdit extends QualifiedTarget {
 export interface SheetScanState {
   readonly sheetName: string
   readonly sheetPath: string
-  readonly targetRows: ReadonlySet<number>
+  readonly targetRows: Set<number>
   readonly rows: Map<number, Map<number, PendingCellValue>>
   readonly formulaCells: NativeFormulaCell[]
   readonly sharedFormulaMasters: Map<string, SharedFormulaMaster>
@@ -221,6 +221,27 @@ export async function recalculateXlsxFileToFileStreamingNative(
       sheetScans.set(sheet.name, scan)
     }
     recordPhase('worksheet-scan')
+
+    const expandedDependencySheets = expandStreamingNativeFormulaDependencyRows({
+      sheetScans,
+      resolveFormulaSource,
+    })
+    for (const sheetName of expandedDependencySheets) {
+      const scan = sheetScans.get(sheetName)
+      const sheetPath = sheetPathsByName.get(sheetName)
+      if (!scan || !sheetPath) {
+        continue
+      }
+      const nextScan = scanWorksheet(zip, sheetName, sheetPath, scan.targetRows)
+      const originalTargetRows = targetRowsBySheet.get(sheetName) ?? new Set<number>()
+      nextScan.formulaCells.splice(
+        0,
+        nextScan.formulaCells.length,
+        ...nextScan.formulaCells.filter((cell) => originalTargetRows.has(cell.row)),
+      )
+      sheetScans.set(sheetName, nextScan)
+    }
+    recordPhase('dependency-row-scan')
 
     const sharedStrings = readTargetSharedStrings(zip, collectSharedStringReferences(sheetScans))
     hydrateSharedStringReferences(sheetScans, sharedStrings)
@@ -383,7 +404,7 @@ function targetRowsForTargets(targets: readonly QualifiedTarget[]): Map<string, 
   return output
 }
 
-function scanWorksheet(zip: XlsxZipEntries, sheetName: string, sheetPath: string, targetRows: ReadonlySet<number>): SheetScanState {
+function scanWorksheet(zip: XlsxZipEntries, sheetName: string, sheetPath: string, targetRows: Set<number>): SheetScanState {
   const state: SheetScanState = {
     sheetName,
     sheetPath,
@@ -778,23 +799,15 @@ function evaluateFormulaCells(
   tablesBySheet: ReadonlyMap<string, readonly NativeTable[]>,
   patches: XlsxSourceLiteralPatch[],
 ): StreamingNativeFormulaCounts {
-  const nativeRowChains = evaluateStreamingNativeWasmRowChains({
+  const nativeFormulaCells = evaluateStreamingNativeWasmFormulas({
     sheetScans,
     tablesBySheet,
     resolveFormulaSource,
   })
-  const nativeDirectScalars = evaluateStreamingNativeWasmDirectScalars({
-    sheetScans,
-    tablesBySheet,
-    resolveFormulaSource,
-    skippedCells: nativeRowChains.processedCells,
-  })
-  const nativeProcessedCells = new Set([...nativeRowChains.processedCells, ...nativeDirectScalars.processedCells])
-  let evaluatedFormulaCellCount = nativeRowChains.evaluatedFormulaCellCount + nativeDirectScalars.evaluatedFormulaCellCount
-  let patchedFormulaCacheCount = nativeRowChains.patches.length + nativeDirectScalars.patches.length
+  let evaluatedFormulaCellCount = nativeFormulaCells.evaluatedFormulaCellCount
+  let patchedFormulaCacheCount = nativeFormulaCells.patches.length
   let unsupportedFormulaCellCount = 0
-  patches.push(...nativeRowChains.patches)
-  patches.push(...nativeDirectScalars.patches)
+  patches.push(...nativeFormulaCells.patches)
   for (const scan of sheetScans.values()) {
     const formulaCells = scan.formulaCells.toSorted((left, right) => left.row - right.row || left.col - right.col)
     const formulaPatches = new Map<string, XlsxSourceLiteralPatch>()
@@ -803,7 +816,7 @@ function evaluateFormulaCells(
     for (let pass = 0; pass < maxPasses; pass += 1) {
       let changed = false
       for (const cell of formulaCells) {
-        if (nativeProcessedCells.has(`${cell.sheetName}!${cell.address}`)) {
+        if (nativeFormulaCells.processedCells.has(`${cell.sheetName}!${cell.address}`)) {
           continue
         }
         const rowValues = scan.rows.get(cell.row)
@@ -855,8 +868,8 @@ function evaluateFormulaCells(
     evaluatedFormulaCellCount,
     patchedFormulaCacheCount,
     unsupportedFormulaCellCount,
-    nativeKernelFormulaCellCount: nativeRowChains.evaluatedFormulaCellCount + nativeDirectScalars.evaluatedFormulaCellCount,
-    nativeKernelBatchCount: nativeRowChains.batchCount + nativeDirectScalars.batchCount,
+    nativeKernelFormulaCellCount: nativeFormulaCells.evaluatedFormulaCellCount,
+    nativeKernelBatchCount: nativeFormulaCells.batchCount,
   }
 }
 

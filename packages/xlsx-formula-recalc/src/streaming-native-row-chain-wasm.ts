@@ -19,6 +19,20 @@ export interface StreamingNativeWasmDirectScalarResult {
   readonly processedCells: ReadonlySet<string>
 }
 
+export interface StreamingNativeWasmRangeAggregateResult {
+  readonly batchCount: number
+  readonly evaluatedFormulaCellCount: number
+  readonly patches: readonly XlsxSourceLiteralPatch[]
+  readonly processedCells: ReadonlySet<string>
+}
+
+export interface StreamingNativeWasmFormulaResult {
+  readonly batchCount: number
+  readonly evaluatedFormulaCellCount: number
+  readonly patches: readonly XlsxSourceLiteralPatch[]
+  readonly processedCells: ReadonlySet<string>
+}
+
 interface RowChainCandidate {
   readonly firstCell: NativeFormulaCell
   readonly secondCell: NativeFormulaCell
@@ -47,9 +61,23 @@ interface DirectScalarCandidate {
   readonly rowValues: Map<number, PendingCellValue>
 }
 
+interface RangeAggregateCandidate {
+  readonly cell: NativeFormulaCell
+  readonly values: readonly number[]
+  readonly rowValues: Map<number, PendingCellValue>
+}
+
 interface NumericSource {
   readonly constant?: number
   readonly column?: number
+}
+
+interface CellRangePlan {
+  readonly startRow: number
+  readonly endRow: number
+  readonly startCol: number
+  readonly endCol: number
+  readonly cellCount: number
 }
 
 interface FirstFormulaPlan {
@@ -79,6 +107,10 @@ interface InlineDivideSecondFormulaPlan {
 
 type SecondFormulaPlan = AffineSecondFormulaPlan | DivideSecondFormulaPlan | InlineDivideSecondFormulaPlan
 type CompiledRowChainCandidate = AffineRowChainCandidate | DivideRowChainCandidate
+
+const directAggregateOpSum = 1
+const maxExpandedFormulaDependencyRowsPerSheet = 20_000
+const maxNativeSumRangeCellCount = 50_000
 
 export function evaluateStreamingNativeWasmRowChains(args: {
   readonly sheetScans: ReadonlyMap<string, SheetScanState>
@@ -147,6 +179,30 @@ export function evaluateStreamingNativeWasmRowChains(args: {
   }
 }
 
+export function evaluateStreamingNativeWasmFormulas(args: {
+  readonly sheetScans: ReadonlyMap<string, SheetScanState>
+  readonly tablesBySheet: ReadonlyMap<string, readonly NativeTable[]>
+  readonly resolveFormulaSource: (scan: SheetScanState, cell: NativeFormulaCell) => string
+}): StreamingNativeWasmFormulaResult {
+  const rowChains = evaluateStreamingNativeWasmRowChains(args)
+  const directScalars = evaluateStreamingNativeWasmDirectScalars({
+    ...args,
+    skippedCells: rowChains.processedCells,
+  })
+  const rangeAggregates = evaluateStreamingNativeWasmRangeAggregates({
+    sheetScans: args.sheetScans,
+    resolveFormulaSource: args.resolveFormulaSource,
+    skippedCells: new Set([...rowChains.processedCells, ...directScalars.processedCells]),
+  })
+  return {
+    batchCount: rowChains.batchCount + directScalars.batchCount + rangeAggregates.batchCount,
+    evaluatedFormulaCellCount:
+      rowChains.evaluatedFormulaCellCount + directScalars.evaluatedFormulaCellCount + rangeAggregates.evaluatedFormulaCellCount,
+    patches: [...rowChains.patches, ...directScalars.patches, ...rangeAggregates.patches],
+    processedCells: new Set([...rowChains.processedCells, ...directScalars.processedCells, ...rangeAggregates.processedCells]),
+  }
+}
+
 export function evaluateStreamingNativeWasmDirectScalars(args: {
   readonly sheetScans: ReadonlyMap<string, SheetScanState>
   readonly tablesBySheet: ReadonlyMap<string, readonly NativeTable[]>
@@ -188,6 +244,86 @@ export function evaluateStreamingNativeWasmDirectScalars(args: {
   }
   return {
     batchCount: patches.length > 0 ? 1 : 0,
+    evaluatedFormulaCellCount: processedCells.size,
+    patches,
+    processedCells,
+  }
+}
+
+export function expandStreamingNativeFormulaDependencyRows(args: {
+  readonly sheetScans: ReadonlyMap<string, SheetScanState>
+  readonly resolveFormulaSource: (scan: SheetScanState, cell: NativeFormulaCell) => string
+}): ReadonlySet<string> {
+  const changedSheets = new Set<string>()
+  for (const scan of args.sheetScans.values()) {
+    let expandedRows = 0
+    for (const cell of scan.formulaCells) {
+      const range = tryCompileNativeSumRange(scan, cell, args.resolveFormulaSource)
+      if (!range) {
+        continue
+      }
+      for (let row = range.startRow; row <= range.endRow; row += 1) {
+        if (scan.targetRows.has(row)) {
+          continue
+        }
+        scan.targetRows.add(row)
+        changedSheets.add(scan.sheetName)
+        expandedRows += 1
+        if (expandedRows >= maxExpandedFormulaDependencyRowsPerSheet) {
+          break
+        }
+      }
+      if (expandedRows >= maxExpandedFormulaDependencyRowsPerSheet) {
+        break
+      }
+    }
+  }
+  return changedSheets
+}
+
+export function evaluateStreamingNativeWasmRangeAggregates(args: {
+  readonly sheetScans: ReadonlyMap<string, SheetScanState>
+  readonly resolveFormulaSource: (scan: SheetScanState, cell: NativeFormulaCell) => string
+  readonly skippedCells: ReadonlySet<string>
+}): StreamingNativeWasmRangeAggregateResult {
+  const candidates = collectRangeAggregateCandidates(args)
+  if (candidates.length === 0) {
+    return emptyResult()
+  }
+  const kernel = createKernelSync()
+  const patches: XlsxSourceLiteralPatch[] = []
+  const processedCells = new Set<string>()
+  let batchCount = 0
+  for (const group of groupRangeAggregateCandidates(candidates).values()) {
+    if (group.length === 0) {
+      continue
+    }
+    batchCount += 1
+    const valueCount = group[0]!.values.length
+    const outNumbers = new Float64Array(group.length)
+    kernel.evalDenseNumericRowAggregateBatch(
+      directAggregateOpSum,
+      Float64Array.from(group.flatMap((candidate) => candidate.values)),
+      group.length,
+      valueCount,
+      0,
+      valueCount,
+      0,
+      outNumbers,
+    )
+    for (let index = 0; index < group.length; index += 1) {
+      const candidate = group[index]!
+      const value = outNumbers[index]!
+      if (!Number.isFinite(value)) {
+        continue
+      }
+      candidate.rowValues.set(candidate.cell.col, { tag: ValueTag.Number, value })
+      patches.push(formulaPatch(candidate.cell, value))
+      processedCells.add(cellKey(candidate.cell))
+    }
+  }
+  return {
+    batchCount,
     evaluatedFormulaCellCount: processedCells.size,
     patches,
     processedCells,
@@ -295,6 +431,39 @@ function collectDirectScalarCandidates(args: {
   return candidates
 }
 
+function collectRangeAggregateCandidates(args: {
+  readonly sheetScans: ReadonlyMap<string, SheetScanState>
+  readonly resolveFormulaSource: (scan: SheetScanState, cell: NativeFormulaCell) => string
+  readonly skippedCells: ReadonlySet<string>
+}): RangeAggregateCandidate[] {
+  const candidates: RangeAggregateCandidate[] = []
+  for (const scan of args.sheetScans.values()) {
+    for (const cell of scan.formulaCells) {
+      if (args.skippedCells.has(cellKey(cell))) {
+        continue
+      }
+      const rowValues = scan.rows.get(cell.row)
+      if (!rowValues) {
+        continue
+      }
+      const range = tryCompileNativeSumRange(scan, cell, args.resolveFormulaSource)
+      if (!range) {
+        continue
+      }
+      const values = readNumericRangeValues(scan, range)
+      if (!values) {
+        continue
+      }
+      candidates.push({
+        cell,
+        values,
+        rowValues,
+      })
+    }
+  }
+  return candidates
+}
+
 function tryCompileFirstFormula(
   scan: SheetScanState,
   cell: NativeFormulaCell,
@@ -323,6 +492,54 @@ function tryCompileSecondFormula(
   } catch {
     return null
   }
+}
+
+function tryCompileNativeSumRange(
+  scan: SheetScanState,
+  cell: NativeFormulaCell,
+  resolveFormulaSource: (scan: SheetScanState, cell: NativeFormulaCell) => string,
+): CellRangePlan | null {
+  let node: FormulaNode
+  try {
+    node = parseFormula(resolveFormulaSource(scan, cell))
+  } catch {
+    return null
+  }
+  if (node.kind !== 'CallExpr' || node.callee.toLocaleUpperCase('en-US') !== 'SUM' || node.args.length !== 1) {
+    return null
+  }
+  const range = node.args[0]
+  if (
+    !range ||
+    range.kind !== 'RangeRef' ||
+    range.refKind !== 'cells' ||
+    range.sheetEndName !== undefined ||
+    (range.sheetName !== undefined && range.sheetName !== scan.sheetName)
+  ) {
+    return null
+  }
+  let start
+  let end
+  try {
+    start = decodeCellAddress(range.start.replaceAll('$', ''))
+    end = decodeCellAddress(range.end.replaceAll('$', ''))
+  } catch {
+    return null
+  }
+  const startRow = Math.min(start.r, end.r)
+  const endRow = Math.max(start.r, end.r)
+  const startCol = Math.min(start.c, end.c)
+  const endCol = Math.max(start.c, end.c)
+  const cellCount = (endRow - startRow + 1) * (endCol - startCol + 1)
+  return cellCount > 0 && cellCount <= maxNativeSumRangeCellCount
+    ? {
+        startRow,
+        endRow,
+        startCol,
+        endCol,
+        cellCount,
+      }
+    : null
 }
 
 function resolveFirstFormulaCandidate(
@@ -587,6 +804,28 @@ function readNumericSource(rowValues: ReadonlyMap<number, PendingCellValue>, sou
   return value.tag === ValueTag.Number && Number.isFinite(value.value) ? value.value : null
 }
 
+function readNumericRangeValues(scan: SheetScanState, range: CellRangePlan): readonly number[] | null {
+  const values: number[] = []
+  for (let row = range.startRow; row <= range.endRow; row += 1) {
+    const rowValues = scan.rows.get(row)
+    if (!rowValues) {
+      return null
+    }
+    for (let col = range.startCol; col <= range.endCol; col += 1) {
+      const value = resolvedCellValue(rowValues.get(col))
+      if (value.tag === ValueTag.Empty) {
+        values.push(0)
+        continue
+      }
+      if (value.tag !== ValueTag.Number || !Number.isFinite(value.value)) {
+        return null
+      }
+      values.push(value.value)
+    }
+  }
+  return values.length === range.cellCount ? values : null
+}
+
 function resolvedCellValue(value: PendingCellValue | undefined): CellValue {
   if (value === undefined || isSharedStringReference(value)) {
     return { tag: ValueTag.Empty }
@@ -605,6 +844,17 @@ function groupCandidates(candidates: readonly CompiledRowChainCandidate[]): Map<
       candidate.secondKind === 'affine'
         ? `affine:${String(candidate.firstOperatorCode)}:${String(candidate.secondScale)}:${String(candidate.secondOffset)}`
         : `divide:${String(candidate.firstOperatorCode)}`
+    const group = output.get(key) ?? []
+    group.push(candidate)
+    output.set(key, group)
+  }
+  return output
+}
+
+function groupRangeAggregateCandidates(candidates: readonly RangeAggregateCandidate[]): Map<number, RangeAggregateCandidate[]> {
+  const output = new Map<number, RangeAggregateCandidate[]>()
+  for (const candidate of candidates) {
+    const key = candidate.values.length
     const group = output.get(key) ?? []
     group.push(candidate)
     output.set(key, group)
