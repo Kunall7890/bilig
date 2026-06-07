@@ -1,4 +1,5 @@
 import { strToU8, zipSync } from 'fflate'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 describe('public workbook corpus fingerprinting', () => {
@@ -37,6 +38,38 @@ describe('public workbook corpus fingerprinting', () => {
     expect(first).toMatch(/^[a-f0-9]{64}$/u)
     expect(second).toMatch(/^[a-f0-9]{64}$/u)
     expect(first).not.toBe(second)
+  })
+
+  it('uses native-only import for formula workbook fingerprint fallback', async () => {
+    let observedOptions: unknown
+    vi.doMock('../../packages/excel-import/src/index.js', () => ({
+      importXlsx: (_bytes: Uint8Array, _fileName: string, options: unknown) => {
+        observedOptions = options
+        return {
+          snapshot: {
+            version: 1,
+            workbook: { name: 'formula' },
+            sheets: [
+              {
+                id: 1,
+                name: 'Sheet1',
+                order: 0,
+                cells: [{ address: 'B1', row: 0, col: 1, formula: 'A1+1', value: 2 }],
+              },
+            ],
+          },
+          workbookName: 'formula',
+          sheetNames: ['Sheet1'],
+          warnings: [],
+        }
+      },
+    }))
+    const { fingerprintWorkbookBytes } = await import('../public-workbook-corpus-workbook.ts')
+
+    const fingerprint = fingerprintWorkbookBytes(buildFormulaWorkbookBytes(), 'formula.xlsx')
+
+    expect(fingerprint).toMatch(/^[a-f0-9]{64}$/u)
+    expect(observedOptions).toEqual({ nativeOnly: true, preferNativeSimpleImport: true })
   })
 })
 
@@ -87,5 +120,19 @@ function buildFormulaFreePowerPivotLikeWorkbookBytes(rowCount: number): Uint8Arr
     'xl/charts/chart1.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart/></c:chartSpace>`),
     'xl/model/item.data': strToU8('model-payload'),
+  })
+}
+
+function buildFormulaWorkbookBytes(): Uint8Array {
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Sheet1',
+        cells: [
+          { address: 'A1', row: 0, col: 0, value: 1 },
+          { address: 'B1', row: 0, col: 1, formula: 'A1+1', value: 2 },
+        ],
+      },
+    ],
   })
 }

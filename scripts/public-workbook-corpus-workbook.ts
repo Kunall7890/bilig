@@ -1,16 +1,13 @@
 import { createHash } from 'node:crypto'
-import { createRequire } from 'node:module'
 
 import { workbookSheetPathEntriesForSource } from '@bilig/xlsx'
 import { importXlsx, type ImportedWorkbook } from '../packages/excel-import/src/index.js'
-import { readImportedExternalWorkbookReferences } from '../packages/excel-import/src/xlsx-external-references.js'
 import { readWorkbookSheets } from '../packages/excel-import/src/xlsx-large-simple-workbook-metadata.js'
 import { decodeCellAddress, encodeCellAddress } from '../packages/excel-import/src/xlsx-large-simple-xml-byte-utils.js'
 import { decodeXmlText, normalizeWorksheetText } from '../packages/excel-import/src/xlsx-large-simple-worksheet-stream-text.js'
 import {
   forEachInflatedXlsxZipEntryChunk,
   getZipText,
-  readXlsxZipEntries,
   readXlsxZipEntriesLazyFromByteSource,
   releaseInflatedLazyXlsxZipEntries,
   type XlsxZipByteSource,
@@ -40,34 +37,10 @@ export interface WorkbookFootprint {
 
 type WorkbookSheetUsedRange = NonNullable<PublicWorkbookCorpusCase['workbookMetadata']['dimensions'][number]['usedRange']>
 
-interface WorksheetCellEntry {
-  readonly address: string
-  readonly cell: Record<string, unknown>
-  readonly row: number
-  readonly column: number
-}
-
-interface SheetJsWorkbook {
-  readonly SheetNames: readonly string[]
-  readonly Sheets: Readonly<Record<string, SheetJsWorksheet | undefined>>
-  readonly Workbook?: {
-    readonly Names?: readonly unknown[]
-  }
-}
-
-type SheetJsWorksheet = Record<string, unknown>
-
-interface SheetJsModule {
-  readonly read: (bytes: Uint8Array, options: Record<string, unknown>) => SheetJsWorkbook
-}
-
 const largeSimpleHeadlessFingerprintCellThreshold = 100_000
 const formulaOracleWorksheetChunkSize = 16 * 1024
 const maxFormulaOracleCellXmlBufferLength = 8 * 1024 * 1024
 const xmlCellStartPattern = /<(?:[A-Za-z_][\w.-]*:)?c\b/u
-const requireModule = createRequire(import.meta.url)
-
-let loadedSheetJs: SheetJsModule | undefined
 
 export function countWorkbookFeatures(snapshot: WorkbookSnapshot, warnings: readonly string[]): PublicWorkbookFeatureCounts {
   return {
@@ -181,52 +154,12 @@ export function inspectWorkbookFootprint(bytes: Uint8Array, fileName: string): W
   if (isOpenXmlWorkbookFileName(fileName) && isZipWorkbook(bytes)) {
     return inspectXlsxWorkbookFootprintLowMemory(bytes, fileName)
   }
-  const workbook = loadOptionalSheetJs().read(bytes, {
-    type: 'array',
-    cellFormula: true,
-    cellText: false,
-    cellDates: false,
-    dense: false,
-  })
-  const featureCounts = emptyFeatureCounts()
-  const dimensions: PublicWorkbookCorpusCase['workbookMetadata']['dimensions'] = []
-  featureCounts.sheetCount = workbook.SheetNames.length
-  featureCounts.definedNameCount = Array.isArray(workbook.Workbook?.Names) ? workbook.Workbook.Names.length : 0
-  featureCounts.pivotCount = countRawPivotTableParts(bytes)
-  const externalWorkbookReferences = [...readImportedExternalWorkbookReferences(bytes).values()]
-  for (const sheetName of workbook.SheetNames) {
-    const sheet = workbook.Sheets[sheetName]
-    let rowCount = 0
-    let columnCount = 0
-    let nonEmptyCellCount = 0
-    let usedRange: WorkbookSheetUsedRange | null = null
-    if (sheet) {
-      for (const { cell, row, column } of worksheetCellEntries(sheet)) {
-        rowCount = Math.max(rowCount, row + 1)
-        columnCount = Math.max(columnCount, column + 1)
-        nonEmptyCellCount += 1
-        usedRange = expandUsedRange(usedRange, row, column)
-        featureCounts.cellCount += 1
-        if (typeof cell.f === 'string' && cell.f.trim().length > 0) {
-          featureCounts.formulaCellCount += 1
-        }
-        if (cell.v !== undefined) {
-          featureCounts.valueCellCount += 1
-        }
-      }
-      featureCounts.mergeCount += Array.isArray(sheet['!merges']) ? sheet['!merges'].length : 0
-    }
-    dimensions.push({ sheetName, rowCount, columnCount, nonEmptyCellCount, usedRange })
-  }
-  return {
-    featureCounts,
-    workbookMetadata: {
-      workbookName: fileName.replace(/\.(xlsx|xlsm|csv)$/iu, '') || fileName,
-      sheetNames: workbook.SheetNames,
-      dimensions,
-    },
-    externalWorkbookReferences,
-  }
+  throw new Error(
+    [
+      `Public workbook corpus footprinting is native XLSX/XLSM only: ${fileName}`,
+      'SheetJS fallback is disabled for corpus verification.',
+    ].join('; '),
+  )
 }
 
 export async function inspectWorkbookFootprintForWorker(bytes: Uint8Array, fileName: string): Promise<WorkbookFootprint> {
@@ -238,14 +171,6 @@ export async function inspectWorkbookFootprintForWorker(bytes: Uint8Array, fileN
 
 function isOpenXmlWorkbookFileName(fileName: string): boolean {
   return /\.(xlsx|xlsm|xltx|xltm)$/iu.test(fileName)
-}
-
-function countRawPivotTableParts(bytes: Uint8Array): number {
-  try {
-    return Object.keys(readXlsxZipEntries(bytes)).filter((path) => /^xl\/pivotTables\/pivotTable\d+\.xml$/iu.test(path)).length
-  } catch {
-    return 0
-  }
 }
 
 export function fingerprintWorkbookBytes(bytes: Uint8Array, fileName: string): string {
@@ -263,7 +188,10 @@ export function fingerprintWorkbookBytes(bytes: Uint8Array, fileName: string): s
       return footprintFingerprint
     }
   }
-  const imported = importXlsx(bytes, fileName)
+  const imported = importXlsx(bytes, fileName, {
+    nativeOnly: true,
+    preferNativeSimpleImport: true,
+  })
   const footprint = preflightFootprint ?? inspectWorkbookFootprint(bytes, fileName)
   const importedCounts = countWorkbookFeatures(imported.snapshot, imported.warnings)
   const counts = {
@@ -610,68 +538,6 @@ function expandUsedRange(current: WorkbookSheetUsedRange | null, row: number, co
         endColumn: Math.max(current.endColumn, column),
       }
     : { startRow: row, startColumn: column, endRow: row, endColumn: column }
-}
-
-function worksheetCellEntries(sheet: SheetJsWorksheet): WorksheetCellEntry[] {
-  const denseRows = (sheet as Record<string, unknown>)['!data']
-  if (Array.isArray(denseRows)) {
-    const denseEntries: WorksheetCellEntry[] = []
-    denseRows.forEach((row, rowIndex) => {
-      if (!Array.isArray(row)) {
-        return
-      }
-      row.forEach((cell, columnIndex) => {
-        if (!isRecord(cell)) {
-          return
-        }
-        denseEntries.push({
-          address: encodeCellAddress(rowIndex, columnIndex),
-          cell,
-          row: rowIndex,
-          column: columnIndex,
-        })
-      })
-    })
-    return denseEntries
-  }
-
-  const entries: WorksheetCellEntry[] = []
-  for (const [address, value] of Object.entries(sheet)) {
-    if (!/^[A-Z]{1,3}[1-9][0-9]*$/u.test(address) || !isRecord(value)) {
-      continue
-    }
-    const decoded = decodeCellAddress(address)
-    if (!decoded) {
-      continue
-    }
-    entries.push({
-      address,
-      cell: value,
-      row: decoded.row,
-      column: decoded.column,
-    })
-  }
-  return entries.toSorted((left, right) => left.row - right.row || left.column - right.column)
-}
-
-function loadOptionalSheetJs(): SheetJsModule {
-  if (loadedSheetJs) {
-    return loadedSheetJs
-  }
-  const loadedModule: unknown = requireModule('xlsx')
-  if (!isSheetJsModule(loadedModule)) {
-    throw new TypeError('SheetJS xlsx module is missing the read export required for legacy workbook corpus fallback.')
-  }
-  loadedSheetJs = loadedModule
-  return loadedSheetJs
-}
-
-function isSheetJsModule(value: unknown): value is SheetJsModule {
-  return isRecord(value) && typeof value['read'] === 'function'
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
 }
 
 function rowIndexFromAddress(address: string): number {

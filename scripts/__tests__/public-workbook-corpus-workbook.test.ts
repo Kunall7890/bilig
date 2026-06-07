@@ -198,6 +198,12 @@ describe('public workbook corpus workbook helpers', () => {
     ])
   }, 15_000)
 
+  it('fails closed instead of using SheetJS for non-native footprint inputs', () => {
+    expect(() => inspectWorkbookFootprint(new Uint8Array([1, 2, 3, 4]), 'legacy.xls')).toThrow(
+      /SheetJS fallback is disabled for corpus verification/u,
+    )
+  })
+
   it('counts raw XLSX pivot table parts even when semantic pivot import is unavailable', () => {
     const footprint = inspectWorkbookFootprint(exportXlsx(buildPivotWorkbookSnapshot()), 'raw-pivot.xlsx')
 

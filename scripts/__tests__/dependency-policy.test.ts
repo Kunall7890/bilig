@@ -759,6 +759,7 @@ describe('repository dependency policy', () => {
 
   it('keeps public corpus workers on native file-backed scanners before materialized fallback', () => {
     const workerCommands = readFileSync(join(repoRoot, 'scripts/public-workbook-corpus-worker-commands.ts'), 'utf8')
+    const workbookHelpers = readFileSync(join(repoRoot, 'scripts/public-workbook-corpus-workbook.ts'), 'utf8')
     const fallbackGuardIndex = workerCommands.indexOf('assertMaterializedWorkbookFallbackWithinLimit(filePath')
     const fingerprintReadIndex = workerCommands.indexOf('fingerprintWorkbookBytes(readFileSync(filePath)')
     const footprintReadIndex = workerCommands.indexOf('const bytes = filePath ? readFileSync(filePath) : readFileSync(0)')
@@ -771,6 +772,11 @@ describe('repository dependency policy', () => {
     expect(fallbackGuardIndex).toBeGreaterThan(-1)
     expect(fingerprintReadIndex).toBeGreaterThan(fallbackGuardIndex)
     expect(footprintReadIndex).toBeGreaterThan(fallbackGuardIndex)
+    expect(workbookHelpers).toContain('nativeOnly: true')
+    expect(workbookHelpers).toContain('SheetJS fallback is disabled for corpus verification.')
+    expect(workbookHelpers).not.toContain('createRequire(import.meta.url)')
+    expect(workbookHelpers).not.toContain("requireModule('xlsx')")
+    expect(workbookHelpers).not.toContain('loadOptionalSheetJs')
   })
 
   it('keeps external XLSX stress public import small-workbook only before materialized reads', () => {
