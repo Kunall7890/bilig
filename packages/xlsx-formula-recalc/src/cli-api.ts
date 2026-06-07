@@ -546,12 +546,6 @@ interface PrintableInspectionSummary {
 
 async function printInspectionSummaryAsync(args: PrintInspectionSummaryAsyncInput): Promise<void> {
   if (args.options.mode === 'file') {
-    if (args.options.engine === 'workpaper') {
-      throw legacyWorkPaperCliPathError('engine')
-    }
-    if (args.options.fallbackPolicy === 'workpaper') {
-      throw legacyWorkPaperCliPathError('fallbackPolicy')
-    }
     if (args.externalWorkbooks.length > 0) {
       throw new Error('streaming-native inspection does not support external workbook companions')
     }

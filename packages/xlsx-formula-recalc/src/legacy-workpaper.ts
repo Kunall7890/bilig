@@ -1,7 +1,14 @@
 import { writeFileSync } from 'node:fs'
 import { WorkPaper, type RawCellContent, type WorkPaperCellAddress, type WorkPaperChange } from '@bilig/headless'
 import { exportXlsx, exportXlsxToFile, importXlsx } from '@bilig/headless/xlsx'
-import { ErrorCode, formatErrorCode, ValueTag } from '@bilig/protocol'
+import {
+  ErrorCode,
+  formatErrorCode,
+  ValueTag,
+  type CompatibilityMode,
+  type WorkbookCalculationMode,
+  type WorkbookDateSystem,
+} from '@bilig/protocol'
 import {
   patchXlsxTextParts,
   type ImportedWorkbookDiagnostics,
@@ -10,19 +17,20 @@ import {
   type XlsxTextPartPatch,
 } from '@bilig/xlsx'
 
-import type {
-  XlsxFormulaRecalcCellValue,
-  XlsxFormulaRecalcEdit,
-  XlsxFormulaRecalcFileOptions,
-  XlsxFormulaRecalcFileResult,
-  XlsxFormulaRecalcOptions,
-  XlsxFormulaRecalcResult,
-  XlsxFormulaRecalcWorkPaperConfig,
-} from './types.js'
+import type { XlsxFormulaRecalcCellValue, XlsxFormulaRecalcEdit, XlsxFormulaRecalcFileResult, XlsxFormulaRecalcResult } from './types.js'
 
 export { WorkPaper } from '@bilig/headless'
 export { exportXlsx, exportXlsxToFile, importXlsx } from '@bilig/headless/xlsx'
-export type * from './types.js'
+export type {
+  XlsxExternalWorkbookHydrationDiagnostics,
+  XlsxExternalWorkbookInput,
+  XlsxFormulaRecalcCellValue,
+  XlsxFormulaRecalcChange,
+  XlsxFormulaRecalcDiagnostics,
+  XlsxFormulaRecalcEdit,
+  XlsxFormulaRecalcFileResult,
+  XlsxFormulaRecalcResult,
+} from './types.js'
 export {
   type StreamingNativeFormulaCounts,
   type XlsxFormulaRecalcNativeDiagnostics,
@@ -75,8 +83,49 @@ interface PreparedXlsxFormulaRecalcOutput {
   readonly diagnostics?: ImportedWorkbookDiagnostics
 }
 
+export type XlsxFormulaRecalcWorkPaperEngine = 'auto' | 'workpaper'
+export type XlsxFormulaRecalcWorkPaperFallbackPolicy = 'error' | 'workpaper'
+
+export interface XlsxFormulaRecalcWorkPaperConfig {
+  readonly calculationSettings?:
+    | {
+        readonly mode?: WorkbookCalculationMode
+        readonly compatibilityMode?: CompatibilityMode
+        readonly dateSystem?: WorkbookDateSystem
+        readonly iterate?: boolean | null
+        readonly iterateCount?: number | null
+        readonly iterateDelta?: string | null
+        readonly fullPrecision?: boolean | null
+        readonly fullCalcOnLoad?: boolean | null
+        readonly calcOnSave?: boolean | null
+        readonly calcCompleted?: boolean | null
+        readonly concurrentCalc?: boolean | null
+      }
+    | undefined
+  readonly evaluationTimeoutMs?: number
+  readonly maxRows?: number
+  readonly maxColumns?: number
+  readonly useColumnIndex?: boolean
+  readonly [key: string]: unknown
+}
+
+export interface XlsxFormulaRecalcOptions {
+  readonly fileName?: string
+  readonly externalWorkbooks?: readonly XlsxExternalWorkbookInput[]
+  readonly edits?: readonly XlsxFormulaRecalcEdit[]
+  readonly reads?: readonly string[]
+  readonly config?: XlsxFormulaRecalcWorkPaperConfig
+  readonly engine?: XlsxFormulaRecalcWorkPaperEngine
+  readonly maxRssBytes?: number
+  readonly fallbackPolicy?: XlsxFormulaRecalcWorkPaperFallbackPolicy
+}
+
+export interface XlsxFormulaRecalcFileOptions extends XlsxFormulaRecalcOptions {
+  readonly outputPath: string
+}
+
 export function recalculateXlsx(input: Uint8Array | ArrayBuffer | Buffer, options: XlsxFormulaRecalcOptions = {}): XlsxFormulaRecalcResult {
-  assertBytesApiEngine(options.engine)
+  assertBytesApiEngine((options as { readonly engine?: string }).engine)
   return withPreparedRecalculatedXlsxOutput(input, options, (prepared) => {
     const exportedXlsx = toUint8Array(exportXlsx(prepared.outputSnapshot))
     return {
@@ -124,7 +173,7 @@ export function recalculateXlsxToFile(
   })
 }
 
-function assertBytesApiEngine(engine: XlsxFormulaRecalcOptions['engine'] | undefined): void {
+function assertBytesApiEngine(engine: string | undefined): void {
   if (engine === 'streaming-native') {
     throw new Error('streaming-native engine requires recalculateXlsxFileToFile() with file-backed input and output paths')
   }

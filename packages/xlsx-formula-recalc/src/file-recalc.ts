@@ -7,14 +7,15 @@ export async function recalculateXlsxFileToFile(
   inputPath: string,
   options: XlsxFormulaRecalcFileOptions,
 ): Promise<XlsxFormulaRecalcFileResult> {
-  const engine = options.engine ?? 'auto'
+  const legacyOptions = options as { readonly config?: unknown; readonly engine?: string; readonly fallbackPolicy?: string }
+  const engine = legacyOptions.engine ?? 'auto'
   if (engine === 'workpaper') {
     throw legacyWorkPaperPathError('engine')
   }
-  if (options.fallbackPolicy === 'workpaper') {
+  if (legacyOptions.fallbackPolicy === 'workpaper') {
     throw legacyWorkPaperPathError('fallbackPolicy')
   }
-  if (options.config !== undefined) {
+  if (legacyOptions.config !== undefined) {
     throw new Error('streaming-native does not support WorkPaper config options')
   }
   const edits = nativeLiteralEdits(options.edits)

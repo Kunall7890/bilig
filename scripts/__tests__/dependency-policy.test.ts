@@ -266,15 +266,31 @@ describe('repository dependency policy', () => {
     expect(nativeRecalc).not.toContain("'workpaper'")
   })
 
-  it('keeps file-backed xlsx-recalc CLI loading @bilig/xlsx before WorkPaper fallback', () => {
+  it('keeps file-backed xlsx-recalc CLI on @bilig/xlsx without primary WorkPaper fallback', () => {
     const cliApi = readFileSync(join(repoRoot, 'packages/xlsx-formula-recalc/src/cli-api.ts'), 'utf8')
     const fileRecalc = readFileSync(join(repoRoot, 'packages/xlsx-formula-recalc/src/file-recalc.ts'), 'utf8')
+    const scopedIndex = readFileSync(join(repoRoot, 'packages/bilig-xlsx-formula-recalc/src/index.ts'), 'utf8')
 
     expect(cliApi).toContain("from './file-recalc.js'")
     expect(cliApi).toContain("from '@bilig/xlsx'")
     expect(cliApi).not.toMatch(/from\s+['"]\.\/index\.js['"]/u)
+    expect(cliApi).not.toContain("import('./legacy-workpaper.js')")
     expect(fileRecalc).toContain("from '@bilig/xlsx'")
-    expect(fileRecalc).toContain("await Promise.all([import('node:fs'), import('./legacy-workpaper.js')])")
+    expect(fileRecalc).not.toContain("import('./legacy-workpaper.js')")
+    expect(scopedIndex).not.toContain('legacy-workpaper')
+  })
+
+  it('keeps primary xlsx-formula-recalc option types native-only', () => {
+    const primaryTypes = readFileSync(join(repoRoot, 'packages/xlsx-formula-recalc/src/types.ts'), 'utf8')
+    const legacyWorkPaper = readFileSync(join(repoRoot, 'packages/xlsx-formula-recalc/src/legacy-workpaper.ts'), 'utf8')
+
+    expect(primaryTypes).toContain("export type XlsxFormulaRecalcEngineMode = 'streaming-native'")
+    expect(primaryTypes).toContain("export type XlsxFormulaRecalcFallbackPolicy = 'error'")
+    expect(primaryTypes).not.toContain("'workpaper'")
+    expect(primaryTypes).not.toContain('XlsxFormulaRecalcWorkPaperConfig')
+    expect(primaryTypes).not.toContain('readonly config?:')
+    expect(legacyWorkPaper).toContain("export type XlsxFormulaRecalcWorkPaperEngine = 'auto' | 'workpaper'")
+    expect(legacyWorkPaper).toContain('export interface XlsxFormulaRecalcWorkPaperConfig')
   })
 
   it('keeps native file recalc CLI and public file types off static headless imports', () => {

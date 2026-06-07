@@ -183,6 +183,7 @@ describe('xlsx-formula-recalc', () => {
       writeFileSync(sourcePath, buildNativeTableFormulaWorkbook())
 
       await expect(
+        // @ts-expect-error Exercising the runtime guard for legacy JS callers.
         recalculateXlsxFileToFile(sourcePath, {
           outputPath: engineOutputPath,
           engine: 'workpaper',
@@ -192,6 +193,7 @@ describe('xlsx-formula-recalc', () => {
       expect(existsSync(engineOutputPath)).toBe(false)
 
       await expect(
+        // @ts-expect-error Exercising the runtime guard for legacy JS callers.
         recalculateXlsxFileToFile(sourcePath, {
           outputPath: fallbackOutputPath,
           fallbackPolicy: 'workpaper',

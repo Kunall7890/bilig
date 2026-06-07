@@ -1,37 +1,14 @@
-import type { CellValue, CompatibilityMode, LiteralInput, WorkbookCalculationMode, WorkbookDateSystem } from '@bilig/protocol'
+import type { CellValue, LiteralInput } from '@bilig/protocol'
 import type { XlsxExternalWorkbookInput, XlsxExternalWorkbookHydrationDiagnostics, XlsxFormulaRecalcNativeDiagnostics } from '@bilig/xlsx'
 
 export type { XlsxExternalWorkbookInput, XlsxExternalWorkbookHydrationDiagnostics, XlsxFormulaRecalcNativeDiagnostics } from '@bilig/xlsx'
 
-export type XlsxFormulaRecalcEngineMode = 'streaming-native' | 'workpaper'
+export type XlsxFormulaRecalcEngineMode = 'streaming-native'
 export type XlsxFormulaRecalcEngine = 'auto' | XlsxFormulaRecalcEngineMode
-export type XlsxFormulaRecalcFallbackPolicy = 'error' | 'workpaper'
+export type XlsxFormulaRecalcFallbackPolicy = 'error'
 
 export type XlsxFormulaRecalcCellValue = CellValue
 export type XlsxFormulaRecalcChange = unknown
-
-export interface XlsxFormulaRecalcWorkPaperConfig {
-  readonly calculationSettings?:
-    | {
-        readonly mode?: WorkbookCalculationMode
-        readonly compatibilityMode?: CompatibilityMode
-        readonly dateSystem?: WorkbookDateSystem
-        readonly iterate?: boolean | null
-        readonly iterateCount?: number | null
-        readonly iterateDelta?: string | null
-        readonly fullPrecision?: boolean | null
-        readonly fullCalcOnLoad?: boolean | null
-        readonly calcOnSave?: boolean | null
-        readonly calcCompleted?: boolean | null
-        readonly concurrentCalc?: boolean | null
-      }
-    | undefined
-  readonly evaluationTimeoutMs?: number
-  readonly maxRows?: number
-  readonly maxColumns?: number
-  readonly useColumnIndex?: boolean
-  readonly [key: string]: unknown
-}
 
 export interface XlsxFormulaRecalcImportedDiagnostics {
   readonly externalWorkbookHydration?: XlsxExternalWorkbookHydrationDiagnostics
@@ -47,7 +24,6 @@ export interface XlsxFormulaRecalcOptions {
   readonly externalWorkbooks?: readonly XlsxExternalWorkbookInput[]
   readonly edits?: readonly XlsxFormulaRecalcEdit[]
   readonly reads?: readonly string[]
-  readonly config?: XlsxFormulaRecalcWorkPaperConfig
   readonly engine?: XlsxFormulaRecalcEngine
   readonly maxRssBytes?: number
   readonly fallbackPolicy?: XlsxFormulaRecalcFallbackPolicy
