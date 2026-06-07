@@ -548,6 +548,7 @@ describe('repository dependency policy', () => {
       join(repoRoot, 'packages/excel-import/src/xlsx-large-simple-workbook-metadata.ts'),
       'utf8',
     )
+    const workbookSheetPaths = readFileSync(join(repoRoot, 'packages/excel-import/src/xlsx-workbook-sheet-paths.ts'), 'utf8')
 
     expect(largeSimpleImport).toContain("from '@bilig/xlsx'")
     expect(largeSimpleImport).toContain('workbookSheetPathEntriesForSource(zip)')
@@ -557,6 +558,9 @@ describe('repository dependency policy', () => {
     expect(largeSimpleInspect).not.toContain('readWorksheetPathsByRelationshipId')
     expect(largeSimpleWorkbookMetadata).not.toContain('readWorksheetPathsByRelationshipId')
     expect(largeSimpleWorkbookMetadata).not.toContain('worksheetRelationshipType')
+    expect(workbookSheetPaths).toContain("from '@bilig/xlsx'")
+    expect(workbookSheetPaths).toContain('coreWorkbookSheetPathEntriesForSource(source)')
+    expect(workbookSheetPaths).toContain('return coreWorkbookSheetPathEntriesFromSource(source, sheetNames)')
   })
 
   it('keeps SheetJS fallback import bounded before source-byte materialization', () => {

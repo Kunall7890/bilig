@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { strToU8, zipSync } from 'fflate'
 import { readImportedWorksheetTextValues } from '../xlsx-worksheet-text-values.js'
-import { workbookSheetPathEntries } from '../xlsx-workbook-sheet-paths.js'
+import { workbookSheetPathEntries, workbookSheetPathEntriesFromSource } from '../xlsx-workbook-sheet-paths.js'
 import type { SheetJsWorkBook } from '../xlsx-sheetjs-types.js'
 
 const worksheetRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet'
@@ -94,6 +94,38 @@ describe('xlsx workbook sheet paths', () => {
     expect(workbookSheetPathEntries(workbook, ['Chart1', 'Sheet1', 'Source'])).toEqual([
       { name: 'Sheet1', index: 1, path: 'xl/worksheets/sheet1.xml' },
       { name: 'Source', index: 2, path: 'xl/worksheets/sheet2.xml' },
+    ])
+  })
+
+  it('uses shared native source path resolution for source-only entries', () => {
+    const source = zipSync({
+      'xl/workbook.xml': strToU8(
+        [
+          '<workbook xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+          '<sheets>',
+          '<sheet name="Chart1" sheetId="1" r:id="rIdChart"/>',
+          '<sheet name="Sheet1" sheetId="2" r:id="rIdSheet1"/>',
+          '<sheet name="Source" sheetId="3" r:id="rIdSource"/>',
+          '</sheets>',
+          '</workbook>',
+        ].join(''),
+      ),
+      'xl/_rels/workbook.xml.rels': strToU8(
+        [
+          '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+          `<Relationship Id="rIdChart" Type="${chartSheetRelationshipType}" Target="chartsheets/sheet1.xml"/>`,
+          `<Relationship Id="rIdSheet1" Type="${worksheetRelationshipType}" Target="worksheets/sheet1.xml"/>`,
+          `<Relationship Id="rIdSource" Type="${worksheetRelationshipType}" Target="worksheets/custom-source.xml"/>`,
+          '</Relationships>',
+        ].join(''),
+      ),
+      'xl/worksheets/sheet1.xml': strToU8('<worksheet/>'),
+      'xl/worksheets/custom-source.xml': strToU8('<worksheet/>'),
+    })
+
+    expect(workbookSheetPathEntriesFromSource(source, ['Chart1', 'Sheet1', 'Source'])).toEqual([
+      { name: 'Sheet1', index: 1, path: 'xl/worksheets/sheet1.xml' },
+      { name: 'Source', index: 2, path: 'xl/worksheets/custom-source.xml' },
     ])
   })
 

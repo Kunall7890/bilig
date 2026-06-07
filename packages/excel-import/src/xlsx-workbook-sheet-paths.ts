@@ -1,8 +1,12 @@
 import { XMLParser } from 'fast-xml-parser'
+import {
+  workbookSheetPathEntriesForSource as coreWorkbookSheetPathEntriesForSource,
+  workbookSheetPathEntriesFromSource as coreWorkbookSheetPathEntriesFromSource,
+} from '@bilig/xlsx'
 import type { SheetJsWorkBook } from './xlsx-sheetjs-types.js'
 
 import { parseRelationships, resolveTargetPath } from './xlsx-pivot-artifacts.js'
-import { getZipText, normalizeZipPath, readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
+import { normalizeZipPath, readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 interface WorkbookSheetEntry {
   name: string
@@ -95,13 +99,11 @@ function sortedWorksheetPaths(zip: XlsxZipSource | undefined): string[] {
   if (!zip) {
     return []
   }
-  return Object.keys(readXlsxZipEntries(zip))
-    .filter((path) => /^xl\/worksheets\/[^/]+\.xml$/u.test(path))
-    .toSorted((left, right) => {
-      const leftIndex = Number(/^xl\/worksheets\/sheet([0-9]+)\.xml$/u.exec(left)?.[1] ?? Number.MAX_SAFE_INTEGER)
-      const rightIndex = Number(/^xl\/worksheets\/sheet([0-9]+)\.xml$/u.exec(right)?.[1] ?? Number.MAX_SAFE_INTEGER)
-      return leftIndex - rightIndex || left.localeCompare(right)
-    })
+  const corePaths = coreWorkbookSheetPathEntriesForSource(zip).map((entry) => entry.path)
+  if (corePaths.length > 0) {
+    return corePaths
+  }
+  return sortedRawWorksheetPaths(zip)
 }
 
 export function workbookDirectorySheetPaths(workbook: SheetJsWorkBook, source?: XlsxZipSource): string[] {
@@ -116,18 +118,18 @@ export function workbookDirectorySheetPaths(workbook: SheetJsWorkBook, source?: 
 }
 
 export function workbookSheetPathsByName(workbook: SheetJsWorkBook, source?: XlsxZipSource): Map<string, string> {
-  const sourceZip = source ? readXlsxZipEntries(source) : undefined
+  if (source) {
+    return new Map(coreWorkbookSheetPathEntriesForSource(source).map((entry) => [entry.name, entry.path]))
+  }
   const files = workbookFiles(workbook)
-  const workbookRelationships = parseRelationships(
-    sourceZip ? getZipText(sourceZip, workbookRelationshipsPath) : getFileText(files, workbookRelationshipsPath),
-  )
+  const workbookRelationships = parseRelationships(getFileText(files, workbookRelationshipsPath))
   const worksheetRelationshipsById = new Map(
     workbookRelationships
       .filter((relationship) => relationship.type === worksheetRelationshipType || relationship.target.includes('worksheets/'))
       .map((relationship) => [relationship.id, normalizeZipPath(resolveTargetPath(workbookPath, relationship.target))]),
   )
   const output = new Map<string, string>()
-  for (const entry of readWorkbookSheetEntries(sourceZip ? getZipText(sourceZip, workbookPath) : getFileText(files, workbookPath))) {
+  for (const entry of readWorkbookSheetEntries(getFileText(files, workbookPath))) {
     const worksheetPath = worksheetRelationshipsById.get(entry.relationshipId)
     if (worksheetPath) {
       output.set(entry.name, worksheetPath)
@@ -164,27 +166,15 @@ export function workbookSheetPathEntries(
 }
 
 export function workbookSheetPathEntriesFromSource(source: XlsxZipSource, sheetNames: readonly string[]): WorkbookSheetPathEntry[] {
-  const zip = readXlsxZipEntries(source)
-  const workbookRelationships = parseRelationships(getZipText(zip, workbookRelationshipsPath))
-  const worksheetRelationshipsById = new Map(
-    workbookRelationships
-      .filter((relationship) => relationship.type === worksheetRelationshipType || relationship.target.includes('worksheets/'))
-      .map((relationship) => [relationship.id, normalizeZipPath(resolveTargetPath(workbookPath, relationship.target))]),
-  )
-  const sheetRelationshipsByName = new Map(
-    readWorkbookSheetEntries(getZipText(zip, workbookPath)).map((entry) => [entry.name, entry.relationshipId]),
-  )
-  const fallbackPaths = sortedWorksheetPaths(source)
-  return sheetNames.flatMap((name, index) => {
-    const relationshipId = sheetRelationshipsByName.get(name)
-    const relationshipPath = relationshipId ? worksheetRelationshipsById.get(relationshipId) : undefined
-    if (relationshipPath) {
-      return [{ name, index, path: relationshipPath }]
-    }
-    if (sheetRelationshipsByName.size > 0) {
-      return []
-    }
-    const fallbackPath = fallbackPaths[index]
-    return fallbackPath ? [{ name, index, path: fallbackPath }] : []
-  })
+  return coreWorkbookSheetPathEntriesFromSource(source, sheetNames)
+}
+
+function sortedRawWorksheetPaths(zip: XlsxZipSource): string[] {
+  return Object.keys(readXlsxZipEntries(zip))
+    .filter((path) => /^xl\/worksheets\/[^/]+\.xml$/u.test(path))
+    .toSorted((left, right) => {
+      const leftIndex = Number(/^xl\/worksheets\/sheet([0-9]+)\.xml$/u.exec(left)?.[1] ?? Number.MAX_SAFE_INTEGER)
+      const rightIndex = Number(/^xl\/worksheets\/sheet([0-9]+)\.xml$/u.exec(right)?.[1] ?? Number.MAX_SAFE_INTEGER)
+      return leftIndex - rightIndex || left.localeCompare(right)
+    })
 }
