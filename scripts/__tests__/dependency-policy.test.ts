@@ -641,6 +641,21 @@ describe('repository dependency policy', () => {
     expect(mcpXlsxFile).not.toContain('importXlsx(new Uint8Array')
   })
 
+  it('keeps formula clinic large-file mode on native preflight before WorkPaper import', () => {
+    const formulaClinic = readFileSync(join(repoRoot, 'packages/headless/src/formula-clinic-cli.ts'), 'utf8')
+    const largeFileGuardIndex = formulaClinic.indexOf('fileSizeBytes > formulaClinicLegacyWorkPaperBytesApiLimit')
+    const readBytesIndex = formulaClinic.indexOf('new Uint8Array(readFileSync(filePath))')
+    const workPaperIndex = formulaClinic.indexOf('WorkPaper.buildFromSnapshot')
+
+    expect(formulaClinic).toContain('const formulaClinicLegacyWorkPaperBytesApiLimit = 1_000_000')
+    expect(formulaClinic).toContain("from '@bilig/xlsx/workbook-compatibility-report'")
+    expect(formulaClinic).toContain('buildWorkbookCompatibilityReportFromFile(input.filePath')
+    expect(formulaClinic).toContain("status: 'native-preflight'")
+    expect(largeFileGuardIndex).toBeGreaterThan(-1)
+    expect(readBytesIndex).toBeGreaterThan(largeFileGuardIndex)
+    expect(workPaperIndex).toBeGreaterThan(readBytesIndex)
+  })
+
   it('keeps WorkPaper evaluator doors owned by WorkPaper packages', () => {
     const xlsxEvaluator = readFileSync(join(repoRoot, 'packages/xlsx-formula-recalc/src/evaluator-cli.ts'), 'utf8')
     const unscopedWorkPaperBin = readFileSync(join(repoRoot, 'packages/bilig/bin/bilig-evaluate.js'), 'utf8')

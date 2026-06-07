@@ -3,6 +3,11 @@ import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import type { WorkbookSnapshot } from '@bilig/protocol'
+import {
+  buildWorkbookCompatibilityReportFromFile,
+  type WorkbookCompatibilityReport,
+  type WorkbookCompatibilityReportFileOptions,
+} from '@bilig/xlsx/workbook-compatibility-report'
 import { WorkPaper } from './work-paper.js'
 
 export interface FormulaClinicCellRef {
@@ -34,6 +39,10 @@ export interface FormulaClinicCliOptions {
 
 export interface FormulaClinicCliHost {
   readonly argv: readonly string[]
+  readonly buildWorkbookCompatibilityReportFromFile?: (
+    inputPath: string,
+    options?: WorkbookCompatibilityReportFileOptions,
+  ) => WorkbookCompatibilityReport
   readonly importXlsx: FormulaClinicImportXlsx
   readonly packageVersion?: string
   readonly readFile?: (path: string) => Uint8Array
@@ -48,13 +57,27 @@ interface FormulaClinicReport {
   readonly fileSizeBytes: number
   readonly formulaCellCount: number
   readonly formulaSamples: readonly FormulaClinicFormulaSample[]
+  readonly nativePreflight?: FormulaClinicNativePreflight | null
   readonly nonEmptyCellCount: number
   readonly packageVersion: string
   readonly readback: readonly string[]
   readonly sheetNames: readonly string[]
-  readonly status: 'failed' | 'imported'
+  readonly status: 'failed' | 'imported' | 'native-preflight'
   readonly warningMessages: readonly string[]
 }
+
+interface FormulaClinicNativePreflight {
+  readonly engineMode: 'streaming-native'
+  readonly externalLinkCount: number
+  readonly fallbackUsed: false
+  readonly inspectedFormulaCellCount: number
+  readonly riskLevel: string
+  readonly riskReasons: readonly string[]
+  readonly uninspectedFormulaCellCount: number
+  readonly unsupportedFunctionCount: number
+}
+
+const formulaClinicLegacyWorkPaperBytesApiLimit = 1_000_000
 
 export function runFormulaClinicCli(host: FormulaClinicCliHost): number {
   const writeStdout = host.writeStdout ?? ((text: string) => process.stdout.write(text))
@@ -82,11 +105,9 @@ export function runFormulaClinicCli(host: FormulaClinicCliHost): number {
   const filePath = options.filePath
   const fileName = basename(filePath)
   let fileSizeBytes = 0
-  let bytes: Uint8Array
 
   try {
     fileSizeBytes = host.statFileSizeBytes?.(filePath) ?? statSync(filePath).size
-    bytes = host.readFile?.(filePath) ?? new Uint8Array(readFileSync(filePath))
   } catch (error) {
     writeStdout(
       renderFormulaClinicReport({
@@ -106,7 +127,20 @@ export function runFormulaClinicCli(host: FormulaClinicCliHost): number {
     return 1
   }
 
+  if (fileSizeBytes > formulaClinicLegacyWorkPaperBytesApiLimit) {
+    return runNativeFormulaClinicPreflight({
+      buildWorkbookCompatibilityReportFromFile: host.buildWorkbookCompatibilityReportFromFile ?? buildWorkbookCompatibilityReportFromFile,
+      fileName,
+      filePath,
+      fileSizeBytes,
+      options,
+      packageVersion,
+      writeStdout,
+    })
+  }
+
   try {
+    const bytes = host.readFile?.(filePath) ?? new Uint8Array(readFileSync(filePath))
     const imported = host.importXlsx(bytes, fileName)
     const formulaSamples = collectFormulaSamples(imported.snapshot.sheets, options.maxFormulaSamples)
     const formulaCellCount = imported.snapshot.sheets.reduce(
@@ -158,6 +192,83 @@ export function runFormulaClinicCli(host: FormulaClinicCliHost): number {
     )
     return 1
   }
+}
+
+function runNativeFormulaClinicPreflight(input: {
+  readonly buildWorkbookCompatibilityReportFromFile: (
+    inputPath: string,
+    options?: WorkbookCompatibilityReportFileOptions,
+  ) => WorkbookCompatibilityReport
+  readonly fileName: string
+  readonly filePath: string
+  readonly fileSizeBytes: number
+  readonly options: FormulaClinicCliOptions
+  readonly packageVersion: string
+  readonly writeStdout: (text: string) => void
+}): number {
+  try {
+    const compatibilityReport = input.buildWorkbookCompatibilityReportFromFile(input.filePath, {
+      fileName: input.fileName,
+      inspectLimit: input.options.maxFormulaSamples,
+    })
+    input.writeStdout(
+      renderFormulaClinicReport({
+        status: 'native-preflight',
+        packageVersion: input.packageVersion,
+        fileName: input.fileName,
+        fileSizeBytes: input.fileSizeBytes,
+        sheetNames: compatibilityReport.workbook.sheetNames,
+        warningMessages: compatibilityReport.findings.warnings,
+        formulaCellCount: compatibilityReport.workbook.formulaCellCount,
+        nonEmptyCellCount: compatibilityReport.workbook.nonEmptyCellCount,
+        formulaSamples: [],
+        nativePreflight: nativePreflightFromCompatibilityReport(compatibilityReport),
+        readback: nativePreflightReadbackMessages(input.options.cells),
+        error: null,
+      }),
+    )
+    return 0
+  } catch (error) {
+    input.writeStdout(
+      renderFormulaClinicReport({
+        status: 'failed',
+        packageVersion: input.packageVersion,
+        fileName: input.fileName,
+        fileSizeBytes: input.fileSizeBytes,
+        sheetNames: [],
+        warningMessages: [],
+        formulaCellCount: 0,
+        nonEmptyCellCount: 0,
+        formulaSamples: [],
+        readback: [],
+        error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+      }),
+    )
+    return 1
+  }
+}
+
+function nativePreflightFromCompatibilityReport(report: WorkbookCompatibilityReport): FormulaClinicNativePreflight {
+  return {
+    engineMode: 'streaming-native',
+    fallbackUsed: false,
+    riskLevel: report.risk.level,
+    riskReasons: report.risk.reasons,
+    inspectedFormulaCellCount: report.cacheInspection.inspectedFormulaCellCount,
+    uninspectedFormulaCellCount: report.cacheInspection.uninspectedFormulaCellCount,
+    unsupportedFunctionCount: report.findings.unsupportedFunctions.reduce((sum, entry) => sum + entry.count, 0),
+    externalLinkCount: report.findings.externalLinks.count,
+  }
+}
+
+function nativePreflightReadbackMessages(cells: readonly FormulaClinicCellRef[]): readonly string[] {
+  if (cells.length === 0) {
+    return []
+  }
+  return cells.map((cell) => {
+    const target = cell.sheetName === null ? cell.a1 : `${cell.sheetName}!${cell.a1}`
+    return `\`${target}\`: skipped WorkPaper readback because this workbook is above the small-workbook clinic limit; use file-backed native XLSX recalc or cache inspection for large-workbook readback.`
+  })
 }
 
 export function parseFormulaClinicCliArgs(args: readonly string[]): FormulaClinicCliOptions {
@@ -222,7 +333,8 @@ export function formulaClinicHelpText(): string {
     '  --timeout-ms <ms>           WorkPaper evaluation timeout. Default: 30000.',
     '  -h, --help                  Print this help text.',
     '',
-    'The command reads the workbook locally and prints a Markdown issue body.',
+    'The command reads reduced workbooks locally and prints a Markdown issue body.',
+    'Large workbooks use native file-backed XLSX preflight instead of WorkPaper import.',
     'It does not upload files or send workbook contents anywhere.',
     '',
   ].join('\n')
@@ -253,6 +365,10 @@ ${
     : '- No formula samples captured'
 }
 
+## Native XLSX preflight
+
+${renderNativePreflight(report.nativePreflight ?? null)}
+
 ## Requested readback
 
 ${report.readback.length > 0 ? report.readback.map((line) => `- ${line}`).join('\n') : '- No cells requested. Re-run with `--cells "Sheet1!A1,Summary!B7"` if readback matters.'}
@@ -277,6 +393,22 @@ Paste what is wrong: stale cached value, wrong shared-formula expansion, unsuppo
 
 Privacy note: do not paste confidential workbook contents, customer data, financial models, or files that cannot be redistributed.
 `
+}
+
+function renderNativePreflight(preflight: FormulaClinicNativePreflight | null): string {
+  if (!preflight) {
+    return '- Not used; workbook stayed within the small-workbook WorkPaper clinic limit.'
+  }
+  return [
+    `- Engine mode: \`${preflight.engineMode}\``,
+    `- Fallback used: \`${String(preflight.fallbackUsed)}\``,
+    `- Risk: \`${preflight.riskLevel}\``,
+    `- Risk reasons: ${preflight.riskReasons.length > 0 ? preflight.riskReasons.join('; ') : 'none'}`,
+    `- Inspected formula cells: ${preflight.inspectedFormulaCellCount.toString()}`,
+    `- Uninspected formula cells: ${preflight.uninspectedFormulaCellCount.toString()}`,
+    `- Unsupported function references: ${preflight.unsupportedFunctionCount.toString()}`,
+    `- External links: ${preflight.externalLinkCount.toString()}`,
+  ].join('\n')
 }
 
 function readRequestedCell(
