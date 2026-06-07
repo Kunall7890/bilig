@@ -599,6 +599,9 @@ importers:
 
   packages/xlsx:
     dependencies:
+      '@bilig/formula':
+        specifier: workspace:*
+        version: link:../formula
       fflate-stream:
         specifier: npm:fflate@0.8.3
         version: fflate@0.8.3

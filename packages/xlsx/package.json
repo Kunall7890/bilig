@@ -1,7 +1,7 @@
 {
   "name": "@bilig/xlsx",
   "version": "0.163.0",
-  "description": "@bilig/xlsx ZIP, address, and source-preserving patch primitives for Bilig.",
+  "description": "@bilig/xlsx ZIP, address, streaming formula-cache, and source-preserving patch primitives for Bilig.",
   "keywords": [
     "bilig",
     "source-preserving",
@@ -44,6 +44,11 @@
       "import": "./dist/file-source.js",
       "default": "./dist/file-source.js"
     },
+    "./formula-cache-reader": {
+      "types": "./dist/formula-cache-reader.d.ts",
+      "import": "./dist/formula-cache-reader.js",
+      "default": "./dist/formula-cache-reader.js"
+    },
     "./source-preserving-zip": {
       "types": "./dist/source-preserving-zip.d.ts",
       "import": "./dist/source-preserving-zip.js",
@@ -82,6 +87,7 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@bilig/formula": "workspace:*",
     "fflate-stream": "npm:fflate@0.8.3"
   },
   "engines": {

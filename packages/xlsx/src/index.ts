@@ -1,5 +1,6 @@
 export * from './address.js'
 export * from './file-source.js'
+export * from './formula-cache-reader.js'
 export * from './source-preserving-literal-patches.js'
 export * from './source-preserving-zip.js'
 export * from './simple-workbook-writer.js'

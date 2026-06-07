@@ -55,6 +55,7 @@
       ],
       "@bilig/xlsx/address": ["./packages/xlsx/src/address.ts"],
       "@bilig/xlsx/file-source": ["./packages/xlsx/src/file-source.ts"],
+      "@bilig/xlsx/formula-cache-reader": ["./packages/xlsx/src/formula-cache-reader.ts"],
       "@bilig/xlsx/simple-workbook-writer": ["./packages/xlsx/src/simple-workbook-writer.ts"],
       "@bilig/xlsx/source-preserving-literal-patches": ["./packages/xlsx/src/source-preserving-literal-patches.ts"],
       "@bilig/xlsx/source-preserving-zip": ["./packages/xlsx/src/source-preserving-zip.ts"],

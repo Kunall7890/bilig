@@ -199,6 +199,14 @@
     "packageDir": "packages/xlsx",
     "sourceEntry": "packages/xlsx/src/address.ts"
   },
+  "@bilig/xlsx/file-source": {
+    "packageDir": "packages/xlsx",
+    "sourceEntry": "packages/xlsx/src/file-source.ts"
+  },
+  "@bilig/xlsx/formula-cache-reader": {
+    "packageDir": "packages/xlsx",
+    "sourceEntry": "packages/xlsx/src/formula-cache-reader.ts"
+  },
   "@bilig/xlsx/simple-workbook-writer": {
     "packageDir": "packages/xlsx",
     "sourceEntry": "packages/xlsx/src/simple-workbook-writer.ts"

@@ -1,18 +1,13 @@
 import { statSync } from 'node:fs'
 
-import { translateFormulaReferences } from '@bilig/formula'
 import { ErrorCode, ValueTag, type CellValue, type LiteralInput } from '@bilig/protocol'
 import {
-  createFileXlsxSourceReader,
-  decodeCellAddress,
-  encodeCellAddress,
-  forEachInflatedXlsxZipEntryChunk,
-  readXmlAttribute,
-  readXlsxZipEntriesLazyFromByteSource,
-  workbookSheetPathEntriesForSource,
-  worksheetCellElementPattern,
-  worksheetCellOpeningTagPattern,
-  type XlsxZipEntries,
+  normalizeXlsxFormulaCacheInspectionLimit,
+  readXlsxFormulaCacheCellsFromFile,
+  XlsxFormulaCacheReadError,
+  type XlsxFormulaCacheCell,
+  type XlsxFormulaCacheInspectionLimit,
+  type XlsxFormulaCacheLiteral,
 } from '@bilig/xlsx'
 
 import {
@@ -24,7 +19,7 @@ import {
 
 export type StreamingNativeXlsxCacheInspectionLimit = number | 'all'
 export type StreamingNativeXlsxCacheStatus = 'fresh' | 'stale' | 'missing-cache' | 'unsupported-recalculation'
-export type StreamingNativeXlsxCacheLiteral = string | number | boolean | null
+export type StreamingNativeXlsxCacheLiteral = XlsxFormulaCacheLiteral
 
 export interface StreamingNativeXlsxCacheStatusSummary {
   readonly inspected: number
@@ -61,45 +56,6 @@ export interface StreamingNativeXlsxCacheInspectionResult {
   readonly excelParity: 'not_proven'
 }
 
-interface FormulaInfo {
-  readonly formula: string | null
-  readonly sharedFormulaIndex: string | null
-}
-
-interface SharedFormulaMaster {
-  readonly formula: string
-  readonly row: number
-  readonly col: number
-}
-
-interface SharedStringReference {
-  readonly kind: 'shared-string'
-  readonly index: number
-}
-
-type PendingCellValue = CellValue | SharedStringReference
-
-interface NativeFormulaCacheCell {
-  readonly target: string
-  readonly formula: string
-  readonly cachedValue?: StreamingNativeXlsxCacheLiteral
-}
-
-interface PendingNativeFormulaCacheCell {
-  readonly target: string
-  readonly formula: string
-  readonly cachedValue?: PendingCellValue
-}
-
-interface NativeFormulaCacheCells {
-  readonly formulaCellCount: number
-  readonly cells: readonly NativeFormulaCacheCell[]
-}
-
-const emptyCellValue: CellValue = Object.freeze({ tag: ValueTag.Empty })
-const textDecoder = new TextDecoder()
-const formulaElementPattern = /<((?:[A-Za-z_][\w.-]*:)?f)\b(?:[^>"']|"[^"]*"|'[^']*')*(?:\/>|>[\s\S]*?<\/\1>)/u
-
 export async function inspectXlsxCacheFileStreamingNative(
   inputPath: string,
   options: {
@@ -123,31 +79,28 @@ export async function inspectXlsxCacheFileStreamingNative(
     }
   }
 
-  const source = createFileXlsxSourceReader(inputPath)
   let sheetNames: readonly string[] = []
-  let formulaCacheScan: NativeFormulaCacheCells = { formulaCellCount: 0, cells: [] }
+  let formulaCacheScan: { readonly formulaCellCount: number; readonly cells: readonly XlsxFormulaCacheCell[] } = {
+    formulaCellCount: 0,
+    cells: [],
+  }
   try {
-    recordPhase('inspect-open-source')
-    const zip = readXlsxZipEntriesLazyFromByteSource(source)
-    if (!zip) {
-      throw streamingInspectionError('streaming-native inspection requires a ZIP central directory it can read lazily', phaseRssPeaks, {
-        inputBytes,
+    const scan = readXlsxFormulaCacheCellsFromFile(inputPath, {
+      ...(options.inspectLimit === undefined ? {} : { inspectLimit: options.inspectLimit }),
+      onPhase: (phase) => recordPhase(`inspect-${phase}`),
+    })
+    sheetNames = scan.sheetNames
+    formulaCacheScan = scan
+  } catch (error) {
+    if (error instanceof XlsxFormulaCacheReadError) {
+      throw streamingInspectionError(error.message, phaseRssPeaks, {
+        inputBytes: error.inputBytes,
         maxObservedRssBytes,
         ...(options.maxRssBytes === undefined ? {} : { maxRssBytes: options.maxRssBytes }),
-        unsupportedReason: 'invalid-or-zip64-xlsx',
+        unsupportedReason: error.reason,
       })
     }
-    const sheetEntries = workbookSheetPathEntriesForSource(zip)
-    sheetNames = sheetEntries.map((sheet) => sheet.name)
-    recordPhase('inspect-workbook-metadata')
-    formulaCacheScan = collectNativeFormulaCacheCells(
-      zip,
-      sheetEntries,
-      normalizeStreamingNativeInspectionLimit(options.inspectLimit ?? 'all'),
-    )
-    recordPhase('inspect-formula-cache-scan')
-  } finally {
-    source.release?.()
+    throw error
   }
 
   const inspectionLimit = normalizeStreamingNativeInspectionLimit(options.inspectLimit ?? 'all')
@@ -247,230 +200,6 @@ export async function inspectXlsxCacheFileStreamingNative(
   }
 }
 
-function collectNativeFormulaCacheCells(
-  zip: XlsxZipEntries,
-  sheetEntries: readonly { readonly name: string; readonly path: string }[],
-  inspectionLimit: StreamingNativeXlsxCacheInspectionLimit,
-): NativeFormulaCacheCells {
-  const pendingCells: PendingNativeFormulaCacheCell[] = []
-  const sharedStringIndexes = new Set<number>()
-  let formulaCellCount = 0
-  let collectedCellCount = 0
-  const shouldCollect = (): boolean => inspectionLimit === 'all' || collectedCellCount < inspectionLimit
-  const markCollected = (): void => {
-    collectedCellCount += 1
-  }
-  for (const sheet of sheetEntries) {
-    const scan = collectNativeFormulaCacheCellsForSheet(zip, sheet.name, sheet.path, shouldCollect, markCollected, sharedStringIndexes)
-    formulaCellCount += scan.formulaCellCount
-    pendingCells.push(...scan.cells)
-  }
-  const sharedStrings = readTargetSharedStrings(zip, sharedStringIndexes)
-  return {
-    formulaCellCount,
-    cells: pendingCells.map((cell) => {
-      const output: {
-        target: string
-        formula: string
-        cachedValue?: StreamingNativeXlsxCacheLiteral
-      } = {
-        target: cell.target,
-        formula: cell.formula,
-      }
-      if (cell.cachedValue !== undefined) {
-        output.cachedValue = literalValueForPendingCacheInspection(cell.cachedValue, sharedStrings)
-      }
-      return output
-    }),
-  }
-}
-
-function collectNativeFormulaCacheCellsForSheet(
-  zip: XlsxZipEntries,
-  sheetName: string,
-  sheetPath: string,
-  shouldCollect: () => boolean,
-  markCollected: () => void,
-  sharedStringIndexes: Set<number>,
-): { readonly formulaCellCount: number; readonly cells: readonly PendingNativeFormulaCacheCell[] } {
-  const sharedFormulaMasters = new Map<string, SharedFormulaMaster>()
-  const cells: PendingNativeFormulaCacheCell[] = []
-  let formulaCellCount = 0
-  let buffer = ''
-  const processBuffer = (final: boolean): void => {
-    const safeEnd = final ? buffer.length : lastWorksheetCellStartIndex(buffer)
-    if (safeEnd === 0 && !final) {
-      return
-    }
-    const safeXml = buffer.slice(0, safeEnd)
-    for (const match of safeXml.matchAll(new RegExp(worksheetCellElementPattern.source, 'gu'))) {
-      const cellXml = match[0]
-      const openingTag = worksheetCellOpeningTagPattern.exec(cellXml)?.[0]
-      const addressText = openingTag ? readXmlAttribute(openingTag, 'r') : null
-      if (!openingTag || !addressText) {
-        continue
-      }
-      let decodedAddress
-      try {
-        decodedAddress = decodeCellAddress(addressText)
-      } catch {
-        continue
-      }
-      const formula = readFormulaInfo(cellXml)
-      if (!formula) {
-        continue
-      }
-      formulaCellCount += 1
-      if (formula.sharedFormulaIndex && formula.formula) {
-        sharedFormulaMasters.set(formula.sharedFormulaIndex, {
-          formula: formula.formula,
-          row: decodedAddress.r,
-          col: decodedAddress.c,
-        })
-      }
-      if (!shouldCollect()) {
-        continue
-      }
-      const formulaText = formulaSourceForCacheInspection(formula, sharedFormulaMasters, decodedAddress.r, decodedAddress.c)
-      const cachedValue = cachedValueForFormulaCacheInspection(cellXml, openingTag, sharedStringIndexes)
-      cells.push({
-        target: formatNativeQualifiedTarget(sheetName, encodeCellAddress(decodedAddress)),
-        formula: formulaText.startsWith('=') ? formulaText : `=${formulaText}`,
-        ...(cachedValue === undefined ? {} : { cachedValue }),
-      })
-      markCollected()
-    }
-    buffer = buffer.slice(safeEnd)
-  }
-  const streamed = forEachInflatedXlsxZipEntryChunk(
-    zip,
-    sheetPath,
-    (chunk) => {
-      buffer += textDecoder.decode(chunk, { stream: true })
-      processBuffer(false)
-    },
-    { chunkSize: 64 * 1024, forceStreamingInflate: true },
-  )
-  if (!streamed) {
-    throw new Error(`Unable to stream worksheet XML for ${sheetName}`)
-  }
-  buffer += textDecoder.decode()
-  processBuffer(true)
-  return { formulaCellCount, cells }
-}
-
-function readFormulaInfo(cellXml: string): FormulaInfo | null {
-  const formulaXml = formulaElementPattern.exec(cellXml)?.[0]
-  if (!formulaXml) {
-    return null
-  }
-  const openingEnd = formulaXml.indexOf('>')
-  const openingTag = openingEnd >= 0 ? formulaXml.slice(0, openingEnd + 1) : formulaXml
-  const sharedFormulaIndex = readXmlAttribute(openingTag, 'si')
-  const formula =
-    formulaXml.endsWith('/>') || openingEnd < 0
-      ? null
-      : decodeXmlText(formulaXml.slice(openingEnd + 1, formulaXml.replace(/<\/(?:[A-Za-z_][\w.-]*:)?f>\s*$/u, '').length))
-  return {
-    formula: formula && formula.trim().length > 0 ? formula : null,
-    sharedFormulaIndex,
-  }
-}
-
-function formulaSourceForCacheInspection(
-  formula: FormulaInfo,
-  sharedFormulaMasters: ReadonlyMap<string, SharedFormulaMaster>,
-  row: number,
-  col: number,
-): string {
-  if (formula.formula) {
-    return formula.formula
-  }
-  if (!formula.sharedFormulaIndex) {
-    return ''
-  }
-  const master = sharedFormulaMasters.get(formula.sharedFormulaIndex)
-  return master ? translateFormulaReferences(master.formula, row - master.row, col - master.col) : ''
-}
-
-function cachedValueForFormulaCacheInspection(
-  cellXml: string,
-  openingTag: string,
-  sharedStringIndexes: Set<number>,
-): PendingCellValue | undefined {
-  if (readElementText(cellXml, 'v') === null && readXmlAttribute(openingTag, 't') !== 'inlineStr') {
-    return undefined
-  }
-  const value = readCellValue(cellXml, openingTag)
-  if (isSharedStringReference(value)) {
-    sharedStringIndexes.add(value.index)
-  }
-  return value
-}
-
-function readCellValue(cellXml: string, openingTag: string): PendingCellValue {
-  const type = readXmlAttribute(openingTag, 't')
-  if (type === 'inlineStr') {
-    return stringCellValue(readTextRuns(cellXml))
-  }
-  const rawValue = readElementText(cellXml, 'v')
-  if (rawValue === null) {
-    return emptyCellValue
-  }
-  if (type === 's') {
-    const index = Number(rawValue)
-    return Number.isSafeInteger(index) && index >= 0 ? { kind: 'shared-string', index } : emptyCellValue
-  }
-  if (type === 'str') {
-    return stringCellValue(decodeXmlText(rawValue))
-  }
-  if (type === 'b') {
-    return { tag: ValueTag.Boolean, value: rawValue === '1' || rawValue.toLowerCase() === 'true' }
-  }
-  if (type === 'e') {
-    return { tag: ValueTag.Error, code: errorCodeForText(decodeXmlText(rawValue)) }
-  }
-  const numeric = Number(rawValue)
-  return Number.isFinite(numeric) ? { tag: ValueTag.Number, value: numeric } : stringCellValue(decodeXmlText(rawValue))
-}
-
-function errorCodeForText(value: string): ErrorCode {
-  switch (value.toUpperCase()) {
-    case '#DIV/0!':
-      return ErrorCode.Div0
-    case '#REF!':
-      return ErrorCode.Ref
-    case '#VALUE!':
-      return ErrorCode.Value
-    case '#NAME?':
-      return ErrorCode.Name
-    case '#N/A':
-      return ErrorCode.NA
-    case '#NUM!':
-      return ErrorCode.Num
-    case '#FIELD!':
-      return ErrorCode.Field
-    case '#NULL!':
-      return ErrorCode.Null
-    default:
-      return ErrorCode.Value
-  }
-}
-
-function stringCellValue(value: string): CellValue {
-  return { tag: ValueTag.String, value, stringId: 0 }
-}
-
-function literalValueForPendingCacheInspection(
-  value: PendingCellValue,
-  sharedStrings: ReadonlyMap<number, string>,
-): StreamingNativeXlsxCacheLiteral {
-  if (isSharedStringReference(value)) {
-    return sharedStrings.get(value.index) ?? ''
-  }
-  return literalValueForCacheInspection(value) ?? null
-}
-
 function literalValueForCacheInspection(value: CellValue | undefined): StreamingNativeXlsxCacheLiteral | undefined {
   if (value === undefined) {
     return undefined
@@ -494,57 +223,6 @@ function literalInputForFormulaCache(value: CellValue): LiteralInput | undefined
     case ValueTag.Error:
       return undefined
   }
-}
-
-function readTargetSharedStrings(zip: XlsxZipEntries, targetIndexes: ReadonlySet<number>): ReadonlyMap<number, string> {
-  const values = new Map<number, string>()
-  if (targetIndexes.size === 0) {
-    return values
-  }
-  let buffer = ''
-  let index = 0
-  const processBuffer = (final: boolean): boolean => {
-    const safeEnd = final ? buffer.length : Math.max(0, buffer.lastIndexOf('<si'))
-    if (safeEnd === 0 && !final) {
-      return true
-    }
-    const safeXml = buffer.slice(0, safeEnd)
-    for (const match of safeXml.matchAll(/<((?:[A-Za-z_][\w.-]*:)?si)\b(?:[^>"']|"[^"]*"|'[^']*')*>[\s\S]*?<\/\1>/gu)) {
-      if (targetIndexes.has(index)) {
-        values.set(index, readTextRuns(match[0]))
-      }
-      index += 1
-    }
-    buffer = buffer.slice(safeEnd)
-    return values.size < targetIndexes.size
-  }
-  const streamed = forEachInflatedXlsxZipEntryChunk(
-    zip,
-    'xl/sharedStrings.xml',
-    (chunk) => {
-      buffer += textDecoder.decode(chunk, { stream: true })
-      return processBuffer(false)
-    },
-    { chunkSize: 64 * 1024, forceStreamingInflate: true },
-  )
-  if (!streamed) {
-    return values
-  }
-  buffer += textDecoder.decode()
-  processBuffer(true)
-  return values
-}
-
-function isSharedStringReference(value: PendingCellValue): value is SharedStringReference {
-  return typeof value === 'object' && value !== null && 'kind' in value && value.kind === 'shared-string'
-}
-
-function lastWorksheetCellStartIndex(xml: string): number {
-  let index = -1
-  for (const match of xml.matchAll(/<(?:(?:[A-Za-z_][\w.-]*):)?c\b/gu)) {
-    index = match.index ?? index
-  }
-  return Math.max(0, index)
 }
 
 function streamingNativeCacheStatus(
@@ -585,13 +263,7 @@ function streamingNativeCacheStatusSummary(
 }
 
 function normalizeStreamingNativeInspectionLimit(limit: StreamingNativeXlsxCacheInspectionLimit): StreamingNativeXlsxCacheInspectionLimit {
-  if (limit === 'all') {
-    return limit
-  }
-  if (Number.isInteger(limit) && limit > 0) {
-    return limit
-  }
-  throw new Error(`Expected inspectLimit to be "all" or a positive integer, received: ${String(limit)}`)
+  return normalizeXlsxFormulaCacheInspectionLimit(limit as XlsxFormulaCacheInspectionLimit) as StreamingNativeXlsxCacheInspectionLimit
 }
 
 function inspectionDiagnostics(args: {
@@ -660,14 +332,6 @@ function mergeInspectionRecalcDiagnostics(args: {
   }
 }
 
-function formatNativeQualifiedTarget(sheetName: string, address: string): string {
-  return `${quoteNativeSheetName(sheetName)}!${address}`
-}
-
-function quoteNativeSheetName(sheetName: string): string {
-  return /^[A-Za-z_][A-Za-z0-9_]*$/u.test(sheetName) ? sheetName : `'${sheetName.replaceAll("'", "''")}'`
-}
-
 function errorTextForCode(code: ErrorCode): string {
   switch (code) {
     case ErrorCode.Div0:
@@ -692,32 +356,6 @@ function errorTextForCode(code: ErrorCode): string {
     case ErrorCode.Blocked:
       return '#VALUE!'
   }
-}
-
-function readTextRuns(xml: string): string {
-  const runs = [...xml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?t\b(?:[^>"']|"[^"]*"|'[^']*')*>([\s\S]*?)<\/(?:[A-Za-z_][\w.-]*:)?t>/gu)].map(
-    (match) => decodeXmlText(match[1] ?? ''),
-  )
-  return runs.length > 0 ? runs.join('') : ''
-}
-
-function readElementText(xml: string, name: string): string | null {
-  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
-  return (
-    new RegExp(
-      `<(?:[A-Za-z_][\\w.-]*:)?${escapedName}\\b(?:[^>"']|"[^"]*"|'[^']*')*>([\\s\\S]*?)<\\/(?:[A-Za-z_][\\w.-]*:)?${escapedName}>`,
-      'u',
-    ).exec(xml)?.[1] ?? null
-  )
-}
-
-function decodeXmlText(value: string): string {
-  return value
-    .replace(/&quot;/gu, '"')
-    .replace(/&apos;/gu, "'")
-    .replace(/&lt;/gu, '<')
-    .replace(/&gt;/gu, '>')
-    .replace(/&amp;/gu, '&')
 }
 
 function streamingInspectionError(
