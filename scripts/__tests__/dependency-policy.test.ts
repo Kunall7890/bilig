@@ -53,6 +53,19 @@ const nativeXlsxExcelImportFixtureTests = [
   'packages/excel-import/src/__tests__/xlsx-worksheet-dimensions-roundtrip.test.ts',
 ] as const
 const nativeXlsxFormulaRecalcPackages = ['packages/xlsx-formula-recalc', 'packages/bilig-xlsx-formula-recalc'] as const
+const publishedNativeXlsxRuntimePackages = [
+  'packages/xlsx',
+  'packages/excel-import',
+  'packages/headless',
+  'packages/bilig',
+  'packages/workpaper',
+  'packages/xlsx-formula-recalc',
+  'packages/bilig-xlsx-formula-recalc',
+  'packages/exceljs-formula-recalc',
+  'packages/bilig-exceljs-formula-recalc',
+  'packages/sheetjs-formula-recalc',
+  'packages/bilig-sheetjs-formula-recalc',
+] as const
 const fileBackedXlsxFormulaRecalcCliEntrypoints = [
   'packages/xlsx-formula-recalc/src/cli.ts',
   'packages/xlsx-formula-recalc/src/cache-doctor-cli.ts',
@@ -186,6 +199,14 @@ describe('repository dependency policy', () => {
     const importViolations = nativeXlsxFormulaRecalcPackages.flatMap((path) => sourceImportViolations(path, ['xlsx', 'fflate']))
 
     expect([...dependencyViolations, ...importViolations]).toEqual([])
+  })
+
+  it('keeps published Bilig XLSX runtime packages free of SheetJS xlsx dependencies', () => {
+    const violations = publishedNativeXlsxRuntimePackages.flatMap((path) =>
+      packageDependencyViolations(path, ['xlsx', 'xlsx-js-style', '@sheetjs/xlsx']),
+    )
+
+    expect(violations).toEqual([])
   })
 
   it('keeps published XLSX formula recalculation CLI entrypoints on the file-backed async recalc path', () => {

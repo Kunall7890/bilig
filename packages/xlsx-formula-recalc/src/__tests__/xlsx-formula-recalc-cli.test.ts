@@ -1,6 +1,8 @@
+import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
@@ -88,6 +90,69 @@ describe('xlsx-recalc CLI', () => {
       expect(summary.reads['Sheet1!B2']?.value).toBe(20)
       expect(summary.diagnostics.engineMode).toBe('streaming-native')
       expect(readCachedFormulaValue(readFileSync(outputPath), 'xl/worksheets/sheet1.xml', 'B2')).toBe('20')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  it('does not load SheetJS xlsx for streaming-native file-to-file recalculation', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-formula-recalc-cli-native-no-sheetjs-'))
+    try {
+      const inputPath = join(tempDir, 'native.xlsx')
+      const outputPath = join(tempDir, 'native.recalculated.xlsx')
+      writeFileSync(inputPath, buildStaleFormulaCacheWorkbook())
+      const cliApiUrl = pathToFileURL(join(process.cwd(), 'packages/xlsx-formula-recalc/src/cli-api.ts')).href
+      const script = `
+void (async () => {
+const { createRequire } = require('node:module')
+const requireForCache = createRequire(process.cwd() + '/package.json')
+const loadedXlsxModules = () =>
+  Object.keys(requireForCache.cache).filter((path) => /(?:^|[\\\\/])xlsx(?:[\\\\/]|$)|[\\\\/]\\.pnpm[\\\\/]xlsx@/u.test(path))
+const before = loadedXlsxModules()
+const { runXlsxFormulaRecalcCliAsync } = await import(${JSON.stringify(cliApiUrl)})
+let stdout = ''
+let stderr = ''
+const exitCode = await runXlsxFormulaRecalcCliAsync(
+  [
+    ${JSON.stringify(inputPath)},
+    '--out',
+    ${JSON.stringify(outputPath)},
+    '--read',
+    'Sheet1!B2',
+    '--engine',
+    'streaming-native',
+    '--fallback-policy',
+    'error',
+    '--json',
+  ],
+  {
+    stdout: (text) => {
+      stdout += text
+    },
+    stderr: (text) => {
+      stderr += text
+    },
+  },
+)
+process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXlsxModules(), summary: JSON.parse(stdout) }) + '\\n')
+})().catch((error) => {
+  console.error(error)
+  process.exit(1)
+})
+`
+      const result = spawnSync('pnpm', ['exec', 'tsx', '--eval', script], {
+        cwd: process.cwd(),
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
+
+      expect(result.status, result.stderr).toBe(0)
+      const output = readNoSheetJsChildOutput(result.stdout)
+      expect(output.exitCode, output.stderr).toBe(0)
+      expect(output.before).toEqual([])
+      expect(output.after).toEqual([])
+      expect(output.summary.diagnostics?.engineMode).toBe('streaming-native')
+      expect(output.summary.reads['Sheet1!B2']?.value).toBe(20)
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
     }
@@ -732,6 +797,14 @@ interface CliSummary {
   readonly excelParity: 'not_proven'
 }
 
+interface NoSheetJsChildOutput {
+  readonly exitCode: number
+  readonly stderr: string
+  readonly before: readonly string[]
+  readonly after: readonly string[]
+  readonly summary: CliSummary
+}
+
 interface CliInspectionSummary {
   readonly mode: string
   readonly schemaVersion: 'xlsx-cache-doctor.v1'
@@ -820,6 +893,18 @@ function readCliSummary(stdout: string): CliSummary {
     ...(readNumericRecord(expectedReadback) ? { expectedReadback: readNumericRecord(expectedReadback) } : {}),
     ...(typeof expectedValueMatched === 'boolean' ? { expectedValueMatched } : {}),
     excelParity: excelParity === 'not_proven' ? excelParity : 'not_proven',
+  }
+}
+
+function readNoSheetJsChildOutput(stdout: string): NoSheetJsChildOutput {
+  const parsed: unknown = JSON.parse(stdout)
+  const record = requireRecord(parsed)
+  return {
+    exitCode: requireNumber(record['exitCode']),
+    stderr: requireString(record['stderr']),
+    before: requireStringArray(record['before']),
+    after: requireStringArray(record['after']),
+    summary: readCliSummary(JSON.stringify(record['summary'])),
   }
 }
 
@@ -936,6 +1021,13 @@ function requireRecord(value: unknown): Record<string, unknown> {
 function requireString(value: unknown): string {
   if (typeof value !== 'string') {
     throw new Error(`Expected string, received ${typeof value}`)
+  }
+  return value
+}
+
+function requireStringArray(value: unknown): readonly string[] {
+  if (!Array.isArray(value) || !value.every((entry) => typeof entry === 'string')) {
+    throw new Error(`Expected string array, received ${typeof value}`)
   }
   return value
 }
