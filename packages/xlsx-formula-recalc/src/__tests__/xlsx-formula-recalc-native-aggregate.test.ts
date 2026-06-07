@@ -262,6 +262,8 @@ describe('xlsx-formula-recalc native aggregates', () => {
       expect(result.diagnostics?.formulaCounts.evaluatedFormulaCellCount).toBe(1)
       expect(result.diagnostics?.formulaCounts.unsupportedFormulaCellCount).toBe(0)
       expect(result.diagnostics?.formulaCounts.patchedFormulaCacheCount).toBe(1)
+      expect(result.diagnostics?.formulaCounts.nativeKernelFormulaCellCount).toBe(1)
+      expect(result.diagnostics?.formulaCounts.nativeKernelBatchCount).toBe(1)
       const outputBytes = readFileSync(outputPath)
       const sheetXml = strFromU8(unzipSync(outputBytes)['xl/worksheets/sheet2.xml'] ?? new Uint8Array())
       expect(sheetXml).toContain('<c r="D3"><f>VLOOKUP(B2,\'Lookup Table\'!$B$9:$D$10,2,FALSE)</f><v>250</v></c>')

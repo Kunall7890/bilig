@@ -4,6 +4,7 @@ import { createKernelSync } from '@bilig/wasm-kernel'
 
 import { decodeCellAddress } from './address.js'
 import type { XlsxSourceLiteralPatch } from './source-preserving-literal-patches.js'
+import { evaluateStreamingNativeWasmLookups } from './streaming-native-lookup-wasm.js'
 import type { NativeFormulaCell, NativeTable, PendingCellValue, SheetScanState } from './streaming-native-recalc.js'
 
 export interface StreamingNativeWasmRowChainResult {
@@ -235,19 +236,31 @@ export function evaluateStreamingNativeWasmFormulas(args: {
     ...args,
     skippedCells: new Set([...rowChains.processedCells, ...directScalars.processedCells, ...rangeAggregates.processedCells]),
   })
+  const lookups = evaluateStreamingNativeWasmLookups({
+    sheetScans: args.sheetScans,
+    resolveFormulaSource: args.resolveFormulaSource,
+    skippedCells: new Set([
+      ...rowChains.processedCells,
+      ...directScalars.processedCells,
+      ...rangeAggregates.processedCells,
+      ...conditionals.processedCells,
+    ]),
+  })
   return {
-    batchCount: rowChains.batchCount + directScalars.batchCount + rangeAggregates.batchCount + conditionals.batchCount,
+    batchCount: rowChains.batchCount + directScalars.batchCount + rangeAggregates.batchCount + conditionals.batchCount + lookups.batchCount,
     evaluatedFormulaCellCount:
       rowChains.evaluatedFormulaCellCount +
       directScalars.evaluatedFormulaCellCount +
       rangeAggregates.evaluatedFormulaCellCount +
-      conditionals.evaluatedFormulaCellCount,
-    patches: [...rowChains.patches, ...directScalars.patches, ...rangeAggregates.patches, ...conditionals.patches],
+      conditionals.evaluatedFormulaCellCount +
+      lookups.evaluatedFormulaCellCount,
+    patches: [...rowChains.patches, ...directScalars.patches, ...rangeAggregates.patches, ...conditionals.patches, ...lookups.patches],
     processedCells: new Set([
       ...rowChains.processedCells,
       ...directScalars.processedCells,
       ...rangeAggregates.processedCells,
       ...conditionals.processedCells,
+      ...lookups.processedCells,
     ]),
   }
 }
