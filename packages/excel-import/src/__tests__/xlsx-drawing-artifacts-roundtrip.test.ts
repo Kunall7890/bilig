@@ -1,6 +1,6 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import type { WorkbookPreservedPackagePartSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import { exportXlsx, importXlsx } from '../index.js'
@@ -176,11 +176,20 @@ function relationshipsWithType(xml: string, relationshipType: string): string[] 
 }
 
 function buildWorkbookWithEmbeddedImageAndShape(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['logo']]), 'Cover')
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['connector']]), 'Flows')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Cover',
+          cells: [{ address: 'A1', row: 0, col: 0, value: 'logo' }],
+        },
+        {
+          name: 'Flows',
+          cells: [{ address: 'A1', row: 0, col: 0, value: 'connector' }],
+        },
+      ],
+    }),
+  )
   addWorksheetDrawing(zip, {
     sheetIndex: 1,
     relationshipId: 'rIdDrawing1',

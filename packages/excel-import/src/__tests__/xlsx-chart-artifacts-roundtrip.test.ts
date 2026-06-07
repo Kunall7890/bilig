@@ -1,6 +1,6 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import { exportXlsx, importXlsx } from '../index.js'
@@ -220,19 +220,27 @@ describe('xlsx chart artifacts roundtrip', () => {
 })
 
 function buildWorkbookWithChartSheet(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(
-    workbook,
-    XLSX.utils.aoa_to_sheet([
-      ['Quarter', 'Revenue'],
-      ['Q1', 10],
-      ['Q2', 14],
-    ]),
-    'Data',
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Data',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Quarter' },
+            { address: 'B1', row: 0, col: 1, value: 'Revenue' },
+            { address: 'A2', row: 1, col: 0, value: 'Q1' },
+            { address: 'B2', row: 1, col: 1, value: 10 },
+            { address: 'A3', row: 2, col: 0, value: 'Q2' },
+            { address: 'B3', row: 2, col: 1, value: 14 },
+          ],
+        },
+        {
+          name: 'Revenue Chart',
+          cells: [{ address: 'A1', row: 0, col: 0, value: 'chart placeholder' }],
+        },
+      ],
+    }),
   )
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['chart placeholder']]), 'Revenue Chart')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
   zip['xl/_rels/workbook.xml.rels'] = strToU8(
     readZipTextFromZip(zip, 'xl/_rels/workbook.xml.rels').replace(/<Relationship\b([^>]*)\/>/gu, (relationshipXml, attributes: string) =>
       readXmlAttribute(attributes, 'Target') === 'worksheets/sheet2.xml'
@@ -272,18 +280,23 @@ function buildWorkbookWithChartSheet(): Uint8Array {
 }
 
 function buildWorkbookWithUnsupportedWorksheetChart(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(
-    workbook,
-    XLSX.utils.aoa_to_sheet([
-      ['Quarter', 'Revenue'],
-      ['Q1', 10],
-      ['Q2', 14],
-    ]),
-    'Data',
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Data',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Quarter' },
+            { address: 'B1', row: 0, col: 1, value: 'Revenue' },
+            { address: 'A2', row: 1, col: 0, value: 'Q1' },
+            { address: 'B2', row: 1, col: 1, value: 10 },
+            { address: 'A3', row: 2, col: 0, value: 'Q2' },
+            { address: 'B3', row: 2, col: 1, value: 14 },
+          ],
+        },
+      ],
+    }),
   )
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
   zip['xl/worksheets/sheet1.xml'] = strToU8(addWorksheetDrawing(readZipTextFromZip(zip, 'xl/worksheets/sheet1.xml'), 'rId1'))
   zip['xl/worksheets/_rels/sheet1.xml.rels'] = strToU8(
     relationshipsXml([{ id: 'rId1', type: drawingRelationshipType, target: '../drawings/drawing1.xml' }]),
