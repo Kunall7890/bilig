@@ -8,9 +8,9 @@ import {
   runMacosExcelStructuralOperationOracle,
   type NormalizedFormulaValue,
 } from '@bilig/excel-fixtures'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
 
 import { WorkPaper } from '../index.js'
 import { createExcelAccessibleTempDir, removeMacosExcelTestDir } from './macos-excel-oracle-test-utils.js'
@@ -494,31 +494,38 @@ function decodeXmlText(value: string): string {
 }
 
 function buildAdvancedConditionalFormattingWorkbook(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    [10, 20, 30, null],
-    [20, 40, 60, null],
-    [30, 60, 90, null],
-  ])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Dashboard')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = baseConditionalFormattingZip()
   zip['xl/worksheets/sheet1.xml'] = strToU8(advancedConditionalFormattingWorksheetXml)
   return zipSync(zip)
 }
 
 function buildPrefixedConditionalFormattingWorkbook(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    [10, 20, 30, null],
-    [20, 40, 60, null],
-    [30, 60, 90, null],
-  ])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Dashboard')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = baseConditionalFormattingZip()
   zip['xl/worksheets/sheet1.xml'] = strToU8(prefixedAdvancedConditionalFormattingWorksheetXml)
   return zipSync(zip)
+}
+
+function baseConditionalFormattingZip(): Record<string, Uint8Array> {
+  return unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Dashboard',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 10 },
+            { address: 'B1', row: 0, col: 1, value: 20 },
+            { address: 'C1', row: 0, col: 2, value: 30 },
+            { address: 'A2', row: 1, col: 0, value: 20 },
+            { address: 'B2', row: 1, col: 1, value: 40 },
+            { address: 'C2', row: 1, col: 2, value: 60 },
+            { address: 'A3', row: 2, col: 0, value: 30 },
+            { address: 'B3', row: 2, col: 1, value: 60 },
+            { address: 'C3', row: 2, col: 2, value: 90 },
+          ],
+        },
+      ],
+    }),
+  )
 }
 
 function buildFormulaConditionalFormattingWorkbook(): Uint8Array {

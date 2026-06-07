@@ -3,9 +3,9 @@ import { join } from 'node:path'
 
 import { exportXlsx, importXlsx } from '@bilig/excel-import'
 import { isMacosExcelInstalled, runMacosExcelInspectionOracle, runMacosExcelStructuralOperationOracle } from '@bilig/excel-fixtures'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
 
 import { WorkPaper } from '../index.js'
 import { createExcelAccessibleTempDir, removeMacosExcelTestDir } from './macos-excel-oracle-test-utils.js'
@@ -256,9 +256,19 @@ describe('macOS Desktop Excel threaded comment structural oracle', () => {
 })
 
 function threadedCommentWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['Assumption'], ['Needs review']]), 'Review')
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Review',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Assumption' },
+            { address: 'A2', row: 1, col: 0, value: 'Needs review' },
+          ],
+        },
+      ],
+    }),
+  )
 
   zip['xl/threadedComments/threadedComment1.xml'] = strToU8(
     [
