@@ -1,6 +1,6 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import { importXlsx } from '../index.js'
 
@@ -129,17 +129,40 @@ describe('worksheet relationship path import', () => {
 const sparklineExtensionUri = '{05C60535-1F16-4fd2-B633-F4F36F0B64E0}'
 const x14Namespace = 'http://schemas.microsoft.com/office/spreadsheetml/2009/9/main'
 const xmNamespace = 'http://schemas.microsoft.com/office/excel/2006/main'
+const commentsRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments'
+const commentsContentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml'
+const vmlDrawingRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing'
+const vmlDrawingContentType = 'application/vnd.openxmlformats-officedocument.vmlDrawing'
 
 function buildReorderedWorksheetPathWorkbook(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const summarySheet = XLSX.utils.aoa_to_sheet([['summary', 'metadata', 1, 2, 3], ['001']])
-  const detailSheet = XLSX.utils.aoa_to_sheet([['detail', 'metadata', 1, 2, 3], ['002']])
-  addCellComment(summarySheet, 'A2', 'SummaryAudit', 'Summary relationship note')
-  addCellComment(detailSheet, 'A2', 'DetailAudit', 'Detail relationship note')
-  XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary')
-  XLSX.utils.book_append_sheet(workbook, detailSheet, 'Detail')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Summary',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'summary' },
+            { address: 'B1', row: 0, col: 1, value: 'metadata' },
+            { address: 'C1', row: 0, col: 2, value: 1 },
+            { address: 'D1', row: 0, col: 3, value: 2 },
+            { address: 'E1', row: 0, col: 4, value: 3 },
+            { address: 'A2', row: 1, col: 0, value: '001' },
+          ],
+        },
+        {
+          name: 'Detail',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'detail' },
+            { address: 'B1', row: 0, col: 1, value: 'metadata' },
+            { address: 'C1', row: 0, col: 2, value: 1 },
+            { address: 'D1', row: 0, col: 3, value: 2 },
+            { address: 'E1', row: 0, col: 4, value: 3 },
+            { address: 'A2', row: 1, col: 0, value: '002' },
+          ],
+        },
+      ],
+    }),
+  )
   updateWorksheet(zip, 1, {
     sheetPr: '<sheetPr codeName="SummaryCode"><tabColor rgb="FFFF0000"/><outlinePr summaryRight="0"/></sheetPr>',
     sheetViews:
@@ -180,6 +203,22 @@ function buildReorderedWorksheetPathWorkbook(): Uint8Array {
       ['D1', '<c r="D1"><f t="dataTable" ref="D1:E2" r1="A1"/><v>2</v></c>'],
     ]),
   })
+  addWorksheetLegacyComment(zip, 1, {
+    author: 'SummaryAudit',
+    body: 'Summary relationship note',
+    commentsPath: 'xl/comments1.xml',
+    ref: 'A2',
+    relationshipId: 'rIdSummaryCommentVml',
+    vmlPath: 'xl/drawings/vmlDrawing1.vml',
+  })
+  addWorksheetLegacyComment(zip, 2, {
+    author: 'DetailAudit',
+    body: 'Detail relationship note',
+    commentsPath: 'xl/comments2.xml',
+    ref: 'A2',
+    relationshipId: 'rIdDetailCommentVml',
+    vmlPath: 'xl/drawings/vmlDrawing2.vml',
+  })
   addWorksheetTable(zip, 1, {
     columns: ['summary', 'metadata'],
     name: 'SummaryTable',
@@ -199,14 +238,6 @@ function buildReorderedWorksheetPathWorkbook(): Uint8Array {
 
   reorderWorkbookSheets(zip, ['Detail', 'Summary'])
   return zipSync(zip)
-}
-
-function addCellComment(sheet: XLSX.WorkSheet, address: string, author: string, body: string): void {
-  const cell = sheet[address]
-  if (!cell) {
-    throw new Error(`Missing fixture cell ${address}`)
-  }
-  cell.c = [{ a: author, t: body }]
 }
 
 function updateWorksheet(
@@ -251,6 +282,89 @@ function updateWorksheet(
     xml = replaceCellXml(xml, address, cellXml)
   }
   zip[path] = strToU8(xml)
+}
+
+function addWorksheetLegacyComment(
+  zip: Record<string, Uint8Array>,
+  sheetIndex: number,
+  input: {
+    readonly author: string
+    readonly body: string
+    readonly commentsPath: string
+    readonly ref: string
+    readonly relationshipId: string
+    readonly vmlPath: string
+  },
+): void {
+  const sheetPath = `xl/worksheets/sheet${String(sheetIndex)}.xml`
+  const relationshipsPath = `xl/worksheets/_rels/sheet${String(sheetIndex)}.xml.rels`
+  const commentsRelationshipId = `${input.relationshipId}Comments`
+  zip[sheetPath] = strToU8(insertLegacyDrawing(strFromU8(zip[sheetPath] ?? new Uint8Array()), input.relationshipId))
+  zip[relationshipsPath] = strToU8(
+    appendRelationship(
+      appendRelationship(strFromU8(zip[relationshipsPath] ?? new Uint8Array()), {
+        id: input.relationshipId,
+        target: `../drawings/${input.vmlPath.slice(input.vmlPath.lastIndexOf('/') + 1)}`,
+        type: vmlDrawingRelationshipType,
+      }),
+      {
+        id: commentsRelationshipId,
+        target: `../${input.commentsPath.slice(input.commentsPath.lastIndexOf('/') + 1)}`,
+        type: commentsRelationshipType,
+      },
+    ),
+  )
+  zip[input.commentsPath] = strToU8(legacyCommentsXml(input.ref, input.author, input.body))
+  zip[input.vmlPath] = strToU8(legacyCommentVmlXml(sheetIndex, input.ref))
+  zip['[Content_Types].xml'] = strToU8(
+    appendContentTypeDefault(
+      appendContentTypeOverride(strFromU8(zip['[Content_Types].xml'] ?? new Uint8Array()), `/${input.commentsPath}`, commentsContentType),
+      'vml',
+      vmlDrawingContentType,
+    ),
+  )
+}
+
+function insertLegacyDrawing(sheetXml: string, relationshipId: string): string {
+  const legacyDrawingXml = `<legacyDrawing r:id="${relationshipId}"/>`
+  const withNamespace = ensureRelationshipNamespace(sheetXml)
+  const insertIndex = withNamespace.search(/<tableParts\b|<extLst\b|<\/worksheet>/u)
+  if (insertIndex < 0) {
+    return withNamespace
+  }
+  return `${withNamespace.slice(0, insertIndex)}${legacyDrawingXml}${withNamespace.slice(insertIndex)}`
+}
+
+function legacyCommentsXml(ref: string, author: string, body: string): string {
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<comments xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    `<authors><author>${escapeXmlText(author)}</author></authors>`,
+    `<commentList><comment ref="${ref}" authorId="0"><text><t>${escapeXmlText(body)}</t></text></comment></commentList>`,
+    '</comments>',
+  ].join('')
+}
+
+function legacyCommentVmlXml(sheetIndex: number, ref: string): string {
+  const row = Number(/(\d+)$/u.exec(ref)?.[1] ?? '1') - 1
+  const column = Math.max(0, (ref.codePointAt(0) ?? 65) - 65)
+  return [
+    '<xml xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">',
+    '<o:shapelayout v:ext="edit"><o:idmap v:ext="edit" data="1"/></o:shapelayout>',
+    '<v:shapetype id="_x0000_t202" coordsize="21600,21600" o:spt="202" path="m,l,21600r21600,l21600,xe">',
+    '<v:stroke joinstyle="miter"/><v:path gradientshapeok="t" o:connecttype="rect"/>',
+    '</v:shapetype>',
+    `<v:shape id="_x0000_s${String(1030 + sheetIndex)}" type="#_x0000_t202" style="position:absolute;margin-left:59.25pt;margin-top:1.5pt;width:180pt;height:90pt;z-index:1;visibility:hidden" fillcolor="#ffffe1" o:insetmode="auto">`,
+    '<v:fill color2="#ffffe1"/><v:shadow on="t" color="black" obscured="t"/>',
+    '<v:path o:connecttype="none"/><v:textbox style="mso-direction-alt:auto"><div style="text-align:left"/></v:textbox>',
+    '<x:ClientData ObjectType="Note">',
+    '<x:Anchor>1, 15, 2, 4, 4, 48, 6, 12</x:Anchor>',
+    `<x:Row>${String(row)}</x:Row>`,
+    `<x:Column>${String(column)}</x:Column>`,
+    '</x:ClientData>',
+    '</v:shape>',
+    '</xml>',
+  ].join('')
 }
 
 function sparklineExtensionXml(formula: string, sqref: string): string {
@@ -339,6 +453,13 @@ function appendContentTypeOverride(contentTypesXml: string, partName: string, co
     return contentTypesXml
   }
   return contentTypesXml.replace('</Types>', `<Override PartName="${partName}" ContentType="${contentType}"/></Types>`)
+}
+
+function appendContentTypeDefault(contentTypesXml: string, extension: string, contentType: string): string {
+  if (contentTypesXml.includes(`Extension="${extension}"`)) {
+    return contentTypesXml
+  }
+  return contentTypesXml.replace('</Types>', `<Default Extension="${extension}" ContentType="${contentType}"/></Types>`)
 }
 
 function tableXml(input: { readonly columns: readonly string[]; readonly name: string; readonly ref: string }): string {
@@ -432,4 +553,8 @@ function readXmlAttribute(xml: string, name: string): string | undefined {
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+}
+
+function escapeXmlText(value: string): string {
+  return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
 }

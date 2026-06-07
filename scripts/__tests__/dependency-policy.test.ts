@@ -69,6 +69,7 @@ const nativeXlsxExcelImportFixtureTests = [
   'packages/excel-import/src/__tests__/xlsx-threaded-comments-roundtrip.test.ts',
   'packages/excel-import/src/__tests__/xlsx-view-state-roundtrip.test.ts',
   'packages/excel-import/src/__tests__/xlsx-workbook-sheet-paths.test.ts',
+  'packages/excel-import/src/__tests__/xlsx-worksheet-relationship-path-import.test.ts',
   'packages/excel-import/src/__tests__/xlsx-worksheet-dimensions-roundtrip.test.ts',
 ] as const
 const nativeXlsxFormulaRecalcPackages = ['packages/xlsx-formula-recalc', 'packages/bilig-xlsx-formula-recalc'] as const
