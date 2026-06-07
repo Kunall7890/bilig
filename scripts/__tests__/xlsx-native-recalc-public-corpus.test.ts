@@ -310,7 +310,15 @@ describe('xlsx native recalc public corpus runner', () => {
   it('exposes the public corpus runner as a package script', () => {
     const packageJson = asRecord(JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')))
     const scripts = asRecord(packageJson['scripts'])
+    const script = String(scripts['xlsx-native-recalc:public-corpus'])
 
-    expect(scripts['xlsx-native-recalc:public-corpus']).toBe('bun scripts/xlsx-native-recalc-public-corpus.ts')
+    expect(script).toContain('bun scripts/xlsx-native-recalc-public-corpus.ts')
+    expect(script).toContain('--limit 50')
+    expect(script).toContain('--max-rss-mb 350')
+    expect(script).toContain('--require-formula-workbook-count 50')
+    expect(script).toContain('--require-passed-formula-workbook-count 50')
+    expect(script).toContain('--require-passed')
+    expect(script).toContain('--corpus .cache/public-workbook-corpus/manifest.json .cache/public-workbook-corpus')
+    expect(script).toContain('--corpus .cache/public-workbook-corpus-financial/manifest.json .cache/public-workbook-corpus-financial')
   })
 })
