@@ -4,8 +4,8 @@ import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import * as XLSX from 'xlsx'
 
 import {
   createEmptyPublicWorkbookManifest,
@@ -639,17 +639,19 @@ function workbookArtifact(source: PublicWorkbookSource): PublicWorkbookArtifact 
 }
 
 function buildWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ['Name', 'Amount'],
-    ['Revenue', 10],
-  ])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Summary')
-  const bytes: unknown = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
-  if (!(bytes instanceof Uint8Array)) {
-    throw new Error('Expected XLSX writer to return workbook bytes')
-  }
-  return bytes
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Summary',
+        cells: [
+          { address: 'A1', row: 0, col: 0, value: 'Name' },
+          { address: 'B1', row: 0, col: 1, value: 'Amount' },
+          { address: 'A2', row: 1, col: 0, value: 'Revenue' },
+          { address: 'B2', row: 1, col: 1, value: 10 },
+        ],
+      },
+    ],
+  })
 }
 
 function corpusScriptPath(): string {
