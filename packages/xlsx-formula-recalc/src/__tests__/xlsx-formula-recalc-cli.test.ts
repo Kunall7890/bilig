@@ -116,6 +116,27 @@ describe('xlsx-recalc CLI', () => {
     }
   })
 
+  it('refuses synchronous file inspection so callers use the file-backed native inspector', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-formula-recalc-cli-sync-inspect-'))
+    try {
+      const inputPath = join(tempDir, 'native.xlsx')
+      writeFileSync(inputPath, buildStaleFormulaCacheWorkbook())
+      let stderr = ''
+
+      const exitCode = runXlsxFormulaRecalcCli([inputPath, '--inspect', '--json'], {
+        stderr: (text) => {
+          stderr += text
+        },
+      })
+
+      expect(exitCode).toBe(1)
+      expect(stderr).toContain('runXlsxFormulaRecalcCliAsync')
+      expect(stderr).toContain('file-backed streaming-native inspector')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
   it('documents the formula evaluation timeout option', () => {
     let stdout = ''
 
@@ -129,14 +150,14 @@ describe('xlsx-recalc CLI', () => {
     expect(stdout).toContain('--timeout-ms <n>')
   })
 
-  it('inspects workbook formula cells and stale cached formula values before writing an output file', () => {
+  it('inspects workbook formula cells through streaming-native before writing an output file', async () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-formula-recalc-cli-inspect-'))
     try {
       const inputPath = join(tempDir, 'stale-cache.xlsx')
       writeFileSync(inputPath, buildStaleFormulaCacheWorkbook())
       let stdout = ''
 
-      const exitCode = runXlsxFormulaRecalcCli([inputPath, '--inspect', '--json'], {
+      const exitCode = await runXlsxFormulaRecalcCliAsync([inputPath, '--inspect', '--json'], {
         stdout: (text) => {
           stdout += text
         },
@@ -172,20 +193,21 @@ describe('xlsx-recalc CLI', () => {
         cacheStatus: 'stale',
         staleCachedValue: true,
       })
+      expect(JSON.parse(stdout).diagnostics.engineMode).toBe('streaming-native')
       expect(JSON.parse(stdout)).not.toHaveProperty('nextStep')
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
     }
   })
 
-  it('runs xlsx-cache-doctor as the default inspection command', () => {
+  it('runs xlsx-cache-doctor as the default streaming-native inspection command', async () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-cache-doctor-cli-'))
     try {
       const inputPath = join(tempDir, 'stale-cache.xlsx')
       writeFileSync(inputPath, buildStaleFormulaCacheWorkbook())
       let stdout = ''
 
-      const exitCode = runXlsxFormulaRecalcCli([inputPath, '--json'], {
+      const exitCode = await runXlsxFormulaRecalcCliAsync([inputPath, '--json'], {
         commandName: 'xlsx-cache-doctor',
         stdout: (text) => {
           stdout += text
@@ -202,6 +224,7 @@ describe('xlsx-recalc CLI', () => {
       expect(summary.cacheStatusSummary.stale).toBe(1)
       expect(summary.uninspectedFormulaCellCount).toBe(0)
       expect(summary.suggestedReads).toEqual(['Sheet1!B2'])
+      expect(JSON.parse(stdout).diagnostics.engineMode).toBe('streaming-native')
       expect(JSON.parse(stdout)).not.toHaveProperty('nextStep')
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
@@ -328,14 +351,14 @@ describe('xlsx-recalc CLI', () => {
     expect(report.risk.reasons).toContain('uninspected formula cells: 10')
   })
 
-  it('separates missing cached formula values from stale cached values', () => {
+  it('separates missing cached formula values from stale cached values', async () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-cache-doctor-missing-cache-'))
     try {
       const inputPath = join(tempDir, 'missing-cache.xlsx')
       writeFileSync(inputPath, buildMissingFormulaCacheWorkbook())
       let stdout = ''
 
-      const exitCode = runXlsxFormulaRecalcCli([inputPath, '--json'], {
+      const exitCode = await runXlsxFormulaRecalcCliAsync([inputPath, '--json'], {
         commandName: 'xlsx-cache-doctor',
         stdout: (text) => {
           stdout += text
@@ -512,14 +535,14 @@ describe('xlsx-recalc CLI', () => {
     }
   })
 
-  it('checks every formula by default so stale caches after the old sample cutoff fail inspection', () => {
+  it('checks every formula by default so stale caches after the old sample cutoff fail inspection', async () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-cache-doctor-all-formulas-'))
     try {
       const inputPath = join(tempDir, 'many-formulas.xlsx')
       writeFileSync(inputPath, buildManyFormulaCacheWorkbook())
       let stdout = ''
 
-      const exitCode = runXlsxFormulaRecalcCli([inputPath, '--json'], {
+      const exitCode = await runXlsxFormulaRecalcCliAsync([inputPath, '--json'], {
         commandName: 'xlsx-cache-doctor',
         stdout: (text) => {
           stdout += text
@@ -547,14 +570,14 @@ describe('xlsx-recalc CLI', () => {
     }
   })
 
-  it('reports uninspected formulas when a caller sets an explicit inspection limit', () => {
+  it('reports uninspected formulas when a caller sets an explicit inspection limit', async () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-cache-doctor-limited-formulas-'))
     try {
       const inputPath = join(tempDir, 'many-formulas.xlsx')
       writeFileSync(inputPath, buildManyFormulaCacheWorkbook())
       let stdout = ''
 
-      const exitCode = runXlsxFormulaRecalcCli([inputPath, '--inspect-limit', '50', '--json'], {
+      const exitCode = await runXlsxFormulaRecalcCliAsync([inputPath, '--inspect-limit', '50', '--json'], {
         commandName: 'xlsx-cache-doctor',
         stdout: (text) => {
           stdout += text

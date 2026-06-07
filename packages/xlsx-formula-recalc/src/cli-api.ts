@@ -8,6 +8,7 @@ import { ValueTag } from '@bilig/protocol'
 import { replaceXlsxWorksheetCellXml } from '@bilig/xlsx'
 import {
   exportXlsx,
+  inspectXlsxCacheFileStreamingNative,
   inspectXlsxCache,
   recalculateXlsxFileToFile,
   recalculateXlsxToFile,
@@ -87,6 +88,11 @@ export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFo
         : basename(requireInputPath(options))
     const externalWorkbooks = readExternalWorkbookInputs(options.externalWorkbooks)
     if (options.inspect) {
+      if (options.mode === 'file') {
+        throw new Error(
+          'File-mode XLSX inspection requires runXlsxFormulaRecalcCliAsync so the file-backed streaming-native inspector is used.',
+        )
+      }
       const input = inputBytesForCli(options, commandName)
       printInspectionSummary({ input, inputName, externalWorkbooks, options, writeStdout })
       return 0
@@ -172,8 +178,7 @@ export async function runXlsxFormulaRecalcCliAsync(args: readonly string[], cont
         : basename(requireInputPath(options))
     const externalWorkbooks = readExternalWorkbookInputs(options.externalWorkbooks)
     if (options.inspect) {
-      const input = inputBytesForCli(options, commandName)
-      printInspectionSummary({ input, inputName, externalWorkbooks, options, writeStdout })
+      await printInspectionSummaryAsync({ inputName, externalWorkbooks, options, writeStdout, commandName })
       return 0
     }
     const result =
@@ -540,6 +545,63 @@ interface PrintInspectionSummaryInput {
   readonly writeStdout: (text: string) => void
 }
 
+interface PrintInspectionSummaryAsyncInput {
+  readonly inputName: string
+  readonly externalWorkbooks: readonly XlsxExternalWorkbookInput[]
+  readonly options: CliOptions
+  readonly writeStdout: (text: string) => void
+  readonly commandName: string
+}
+
+interface PrintableInspectionSummary {
+  readonly schemaVersion: string
+  readonly sheetNames: readonly string[]
+  readonly formulaCellCount: number
+  readonly inspectedFormulaCellCount: number
+  readonly uninspectedFormulaCellCount: number
+  readonly inspectionLimit: CliOptions['inspectLimit']
+  readonly staleCachedFormulaCount: number
+  readonly cacheStatusSummary: {
+    readonly inspected: number
+    readonly stale: number
+    readonly fresh: number
+    readonly missingCache: number
+    readonly unsupportedRecalculation: number
+  }
+  readonly suggestedReads: readonly string[]
+  readonly formulas: readonly unknown[]
+  readonly warnings: readonly string[]
+  readonly diagnostics?: unknown
+  readonly inspectionCompleted: true
+  readonly recalculationCompleted: boolean
+  readonly excelParity: 'not_proven'
+}
+
+async function printInspectionSummaryAsync(args: PrintInspectionSummaryAsyncInput): Promise<void> {
+  if (args.options.mode === 'file' && args.options.engine !== 'workpaper') {
+    try {
+      if (args.externalWorkbooks.length > 0) {
+        throw new Error('streaming-native inspection does not support external workbook companions')
+      }
+      if (args.options.timeoutMs !== undefined) {
+        throw new Error('streaming-native inspection does not support WorkPaper timeout options')
+      }
+      const inspection = await inspectXlsxCacheFileStreamingNative(requireInputPath(args.options), {
+        inspectLimit: args.options.inspectLimit,
+        ...(args.options.maxRssBytes === undefined ? {} : { maxRssBytes: args.options.maxRssBytes }),
+      })
+      writeInspectionSummary(inspection, args)
+      return
+    } catch (error) {
+      if (args.options.fallbackPolicy !== 'workpaper') {
+        throw error
+      }
+    }
+  }
+  const input = inputBytesForCli(args.options, args.commandName)
+  printInspectionSummary({ ...args, input })
+}
+
 function printInspectionSummary(args: PrintInspectionSummaryInput): void {
   const inspection = inspectXlsxCache(args.input, {
     fileName: args.inputName,
@@ -548,6 +610,13 @@ function printInspectionSummary(args: PrintInspectionSummaryInput): void {
     inspectLimit: args.options.inspectLimit,
     ...(args.options.timeoutMs === undefined ? {} : { config: { evaluationTimeoutMs: args.options.timeoutMs } }),
   })
+  writeInspectionSummary(inspection, args)
+}
+
+function writeInspectionSummary(
+  inspection: PrintableInspectionSummary,
+  args: Pick<PrintInspectionSummaryInput, 'options' | 'writeStdout' | 'externalWorkbooks'>,
+): void {
   const summary = {
     schemaVersion: inspection.schemaVersion,
     mode: args.options.mode,

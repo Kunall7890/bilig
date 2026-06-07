@@ -66,6 +66,7 @@ export interface StreamingNativeXlsxFormulaRecalcOptions {
   readonly edits?: readonly { readonly target: string; readonly value: LiteralInput }[]
   readonly reads?: readonly string[]
   readonly maxRssBytes?: number
+  readonly dryRun?: boolean
 }
 
 export interface StreamingNativeXlsxFormulaRecalcResult {
@@ -176,6 +177,9 @@ export async function recalculateXlsxFileToFileStreamingNative(
   inputPath: string,
   options: StreamingNativeXlsxFormulaRecalcOptions,
 ): Promise<StreamingNativeXlsxFormulaRecalcResult> {
+  if (!options.dryRun && options.outputPath.length === 0) {
+    throw new Error('streaming-native outputPath is required unless dryRun is enabled')
+  }
   const inputBytes = statSync(inputPath).size
   const phaseRssPeaks: XlsxFormulaRecalcPhaseRss[] = []
   let maxObservedRssBytes = 0
@@ -301,13 +305,18 @@ export async function recalculateXlsxFileToFileStreamingNative(
     targetRowsBySheet.clear()
     sheetPathsByName.clear()
 
-    const output = await exportXlsxSourceLiteralPatchesToFileAsync({
-      source,
-      patches,
-      sheetNames: patchedSheetNames,
-      outputPath: options.outputPath,
-    })
-    recordPhase('write-output')
+    const bytesWritten = options.dryRun
+      ? 0
+      : (
+          await exportXlsxSourceLiteralPatchesToFileAsync({
+            source,
+            patches,
+            sheetNames: patchedSheetNames,
+            outputPath: options.outputPath,
+          })
+        ).bytesWritten
+    patches.length = 0
+    recordPhase(options.dryRun ? 'dry-run-output' : 'write-output')
 
     const diagnostics: XlsxFormulaRecalcNativeDiagnostics = {
       engineMode: 'streaming-native',
@@ -323,7 +332,7 @@ export async function recalculateXlsxFileToFileStreamingNative(
       patchedCacheCount: formulaCounts.patchedFormulaCacheCount,
     }
     return {
-      bytesWritten: output.bytesWritten,
+      bytesWritten,
       warnings: [],
       sheetNames,
       reads: readValues,

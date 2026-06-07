@@ -22,6 +22,15 @@ export {
   type XlsxFormulaRecalcNativeDiagnostics,
   type XlsxFormulaRecalcPhaseRss,
 } from './streaming-native-recalc.js'
+export {
+  inspectXlsxCacheFileStreamingNative,
+  type StreamingNativeXlsxCacheFormulaInspection,
+  type StreamingNativeXlsxCacheInspectionLimit,
+  type StreamingNativeXlsxCacheInspectionResult,
+  type StreamingNativeXlsxCacheLiteral,
+  type StreamingNativeXlsxCacheStatus,
+  type StreamingNativeXlsxCacheStatusSummary,
+} from './streaming-native-inspect.js'
 
 type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSnapshot>
 type WorkbookSnapshot = Parameters<typeof WorkPaper.buildFromSnapshot>[0]
