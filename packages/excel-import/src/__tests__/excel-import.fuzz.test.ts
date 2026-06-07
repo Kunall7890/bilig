@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import * as fc from 'fast-check'
-import * as XLSX from 'xlsx'
 import { formatAddress } from '@bilig/formula'
 import { runProperty } from '@bilig/test-fuzz'
+import { writeSimpleXlsxWorkbook, type SimpleXlsxCell } from '@bilig/xlsx'
 import { importCsv, importXlsx } from '../index.js'
 
 type CsvCellSpec =
@@ -84,51 +84,46 @@ describe('excel import fuzz', () => {
         ),
       }),
       predicate: async ({ fileStem, sheets }) => {
-        const workbook = XLSX.utils.book_new()
         const expectedSheets = sheets.map((sheet, order) => {
-          const rowCount = sheet.cells.length
           const colCount = Math.max(...sheet.cells.map((row) => row.length))
           const matrix = sheet.cells.map((row) => [
             ...row,
             ...Array.from({ length: colCount - row.length }, () => ({ kind: 'empty' }) as const),
           ])
-          const aoa = matrix.map((row) =>
-            row.map((cell) => {
-              switch (cell.kind) {
-                case 'empty':
-                case 'formula':
-                  return undefined
-                case 'number':
-                case 'boolean':
-                case 'text':
-                  return cell.value
-              }
-            }),
-          )
-          const worksheet = XLSX.utils.aoa_to_sheet(aoa)
-          worksheet['!ref'] = `${formatAddress(0, 0)}:${formatAddress(rowCount - 1, colCount - 1)}`
-          const expectedCells = matrix.flatMap((row, rowIndex) =>
-            row.flatMap((cell, colIndex) => {
+          const expectedCells: Array<{ address: string; value?: unknown; formula?: string }> = []
+          const simpleCells: SimpleXlsxCell[] = []
+          matrix.forEach((row, rowIndex) => {
+            row.forEach((cell, colIndex) => {
               const address = formatAddress(rowIndex, colIndex)
               if (cell.kind === 'formula') {
-                worksheet[address] = { t: 'n', f: cell.formula }
-                return [{ address, formula: cell.formula }]
+                expectedCells.push({ address, formula: cell.formula })
+                simpleCells.push({ address, row: rowIndex, col: colIndex, formula: cell.formula })
+                return
               }
               if (cell.kind === 'empty') {
-                return []
+                return
               }
-              return [{ address, value: cell.value }]
-            }),
-          )
-          XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name)
+              expectedCells.push({ address, value: cell.value })
+              simpleCells.push({ address, row: rowIndex, col: colIndex, value: cell.value })
+            })
+          })
           return {
             name: sheet.name,
             order,
             expectedCells,
+            simpleCells,
           }
         })
 
-        const imported = importXlsx(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }), `${fileStem}.xlsx`)
+        const imported = importXlsx(
+          writeSimpleXlsxWorkbook({
+            sheets: expectedSheets.map((sheet) => ({
+              name: sheet.name,
+              cells: sheet.simpleCells,
+            })),
+          }),
+          `${fileStem}.xlsx`,
+        )
 
         expect(imported.workbookName).toBe(fileStem)
         expect(imported.sheetNames).toEqual(expectedSheets.map((sheet) => sheet.name))

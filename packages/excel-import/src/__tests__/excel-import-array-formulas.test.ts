@@ -1,25 +1,40 @@
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 
 import { SpreadsheetEngine } from '@bilig/core'
 import { ErrorCode, ValueTag } from '@bilig/protocol'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import { importXlsx } from '../index.js'
 
 function buildArrayFormulaWorkbook(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    [1, 0, null, 1, null, null, null, null],
-    [0, 1, null, 2, null, null, null, null],
-  ])
-
-  sheet.F1 = { t: 'n', f: 'MMULT(MINVERSE(A1:B2),D1:D2)', F: 'F1:F2', v: 1 }
-  sheet.F2 = { t: 'n', F: 'F1:F2', v: 2 }
-  sheet.H1 = { t: 'n', f: 'INDEX(MMULT(MINVERSE(A1:B2),D1:D2),1,1)' }
-  sheet.H2 = { t: 'n', f: 'INDEX(MMULT(MINVERSE(A1:B2),D1:D2),2,1)' }
-  sheet['!ref'] = 'A1:H2'
-
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Sheet1')
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Sheet1',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 1 },
+            { address: 'B1', row: 0, col: 1, value: 0 },
+            { address: 'D1', row: 0, col: 3, value: 1 },
+            { address: 'F1', row: 0, col: 5, formula: 'MMULT(MINVERSE(A1:B2),D1:D2)', value: 1 },
+            { address: 'H1', row: 0, col: 7, formula: 'INDEX(MMULT(MINVERSE(A1:B2),D1:D2),1,1)' },
+            { address: 'A2', row: 1, col: 0, value: 0 },
+            { address: 'B2', row: 1, col: 1, value: 1 },
+            { address: 'D2', row: 1, col: 3, value: 2 },
+            { address: 'F2', row: 1, col: 5, value: 2 },
+            { address: 'H2', row: 1, col: 7, formula: 'INDEX(MMULT(MINVERSE(A1:B2),D1:D2),2,1)' },
+          ],
+        },
+      ],
+    }),
+  )
+  zip['xl/worksheets/sheet1.xml'] = strToU8(
+    strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array()).replace(
+      '<f>MMULT(MINVERSE(A1:B2),D1:D2)</f>',
+      '<f t="array" ref="F1:F2">MMULT(MINVERSE(A1:B2),D1:D2)</f>',
+    ),
+  )
+  return zipSync(zip)
 }
 
 describe('excel import array formulas', () => {

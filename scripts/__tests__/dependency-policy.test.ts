@@ -31,6 +31,8 @@ const nativeXlsxExampleScripts = [
   'examples/recalc-bridge-workflows/stackoverflow-sheetjs-63085785.mjs',
 ] as const
 const nativeXlsxExcelImportFixtureTests = [
+  'packages/excel-import/src/__tests__/excel-import-array-formulas.test.ts',
+  'packages/excel-import/src/__tests__/excel-import.fuzz.test.ts',
   'packages/excel-import/src/__tests__/xlsx-alignment-roundtrip.test.ts',
   'packages/excel-import/src/__tests__/xlsx-byte-source-import.test.ts',
   'packages/excel-import/src/__tests__/xlsx-calculation-properties-roundtrip.test.ts',
