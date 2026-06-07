@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -12,7 +13,11 @@ import {
   validateExternalXlsxStressPlan,
   type ExternalXlsxStressPlan,
 } from '../external-xlsx-memory-stress.ts'
-import { shouldSummarizeFileBackedHeadlessInspect, summarizeExternalXlsxImportedWorkbook } from '../external-xlsx-memory-stress-worker.ts'
+import {
+  assertExternalXlsxStressPublicImportWithinSmallWorkbookLimit,
+  shouldSummarizeFileBackedHeadlessInspect,
+  summarizeExternalXlsxImportedWorkbook,
+} from '../external-xlsx-memory-stress-worker.ts'
 import { asRecord } from '../public-workbook-corpus-json.ts'
 
 describe('external XLSX memory stress plan', () => {
@@ -306,6 +311,23 @@ describe('external XLSX memory stress plan', () => {
         221 * 1024 * 1024,
       ),
     ).toBe(true)
+  })
+
+  it('keeps explicit public-import stress mode small-workbook only', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'bilig-external-xlsx-stress-'))
+    try {
+      const smallPath = join(tempDir, 'small.xlsx')
+      const largePath = join(tempDir, 'large.xlsx')
+      writeFileSync(smallPath, Buffer.alloc(1_000_000))
+      writeFileSync(largePath, Buffer.alloc(1_000_001))
+
+      expect(() => assertExternalXlsxStressPublicImportWithinSmallWorkbookLimit(smallPath)).not.toThrow()
+      expect(() => assertExternalXlsxStressPublicImportWithinSmallWorkbookLimit(largePath)).toThrow(
+        /--public-import is small-workbook only/u,
+      )
+    } finally {
+      rmSync(tempDir, { force: true, recursive: true })
+    }
   })
 })
 

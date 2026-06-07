@@ -54,6 +54,7 @@ const headlessInspectCellThreshold = 1_000_000
 const headlessInspectFormulaFreeCellThreshold = 10_000
 const headlessInspectFormulaFreeByteThreshold = 100 * 1024 * 1024
 const headlessInspectMetadataRichKeyThreshold = 4
+const externalXlsxStressPublicImportBytesLimit = 1_000_000
 const headlessInspectMetadataRichKeys = new Set([
   'cellMetadataRefs',
   'drawingArtifacts',
@@ -72,10 +73,24 @@ export async function runExternalXlsxStressWorker(): Promise<void> {
   const fileName = readStringArg('--file-name', basename(filePath))
   const usePublicImport = readFlagArg('--public-import')
   const summary = usePublicImport
-    ? summarizeExternalXlsxImportedWorkbook(importPublicXlsx(readFileSync(filePath), fileName))
+    ? summarizeExternalXlsxImportedWorkbook(importPublicXlsx(readExternalXlsxStressPublicImportBytes(filePath), fileName))
     : await summarizeFileBackedXlsx(filePath, fileName)
   collectGarbage()
   process.stdout.write(`${JSON.stringify(summary)}\n`)
+}
+
+export function assertExternalXlsxStressPublicImportWithinSmallWorkbookLimit(filePath: string): void {
+  const fileSizeBytes = statSync(filePath).size
+  if (fileSizeBytes <= externalXlsxStressPublicImportBytesLimit) {
+    return
+  }
+  throw new Error(
+    [
+      `external XLSX stress --public-import is small-workbook only: ${filePath} is ${fileSizeBytes} bytes`,
+      `limit is ${externalXlsxStressPublicImportBytesLimit} bytes`,
+      'Use default file-backed external XLSX stress mode for large workbook memory gates.',
+    ].join('; '),
+  )
 }
 
 export function summarizeExternalXlsxImportedWorkbook(imported: ImportedWorkbook): ExternalXlsxStressWorkerSummary {
@@ -174,6 +189,11 @@ async function inspectFileBackedXlsxHeadless(filePath: string, fileName: string)
 function importPublicXlsx(bytes: Uint8Array, fileName: string): ImportedWorkbook {
   const importer = readPublicXlsxImportModule(requireModule('../packages/excel-import/src/index.js'))
   return importer.importXlsx(bytes, fileName)
+}
+
+function readExternalXlsxStressPublicImportBytes(filePath: string): Uint8Array {
+  assertExternalXlsxStressPublicImportWithinSmallWorkbookLimit(filePath)
+  return readFileSync(filePath)
 }
 
 function importFileBackedXlsx(filePath: string, fileName: string): ImportedWorkbook {

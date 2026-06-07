@@ -672,6 +672,17 @@ describe('repository dependency policy', () => {
     expect(footprintReadIndex).toBeGreaterThan(fallbackGuardIndex)
   })
 
+  it('keeps external XLSX stress public import small-workbook only before materialized reads', () => {
+    const stressWorker = readFileSync(join(repoRoot, 'scripts/external-xlsx-memory-stress-worker.ts'), 'utf8')
+    const guardIndex = stressWorker.indexOf('assertExternalXlsxStressPublicImportWithinSmallWorkbookLimit(filePath)')
+    const readIndex = stressWorker.indexOf('return readFileSync(filePath)')
+
+    expect(stressWorker).toContain('const externalXlsxStressPublicImportBytesLimit = 1_000_000')
+    expect(stressWorker).toContain('Use default file-backed external XLSX stress mode for large workbook memory gates.')
+    expect(guardIndex).toBeGreaterThan(-1)
+    expect(readIndex).toBeGreaterThan(guardIndex)
+  })
+
   it('keeps WorkPaper evaluator doors owned by WorkPaper packages', () => {
     const xlsxEvaluator = readFileSync(join(repoRoot, 'packages/xlsx-formula-recalc/src/evaluator-cli.ts'), 'utf8')
     const unscopedWorkPaperBin = readFileSync(join(repoRoot, 'packages/bilig/bin/bilig-evaluate.js'), 'utf8')
