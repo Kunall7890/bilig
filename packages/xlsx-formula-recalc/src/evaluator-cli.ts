@@ -2,20 +2,11 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { WorkPaper } from '@bilig/headless'
-import {
-  buildAgentWorkbookChallengeProof,
-  buildMcpChallengeProof,
-  buildMcpProviderBackedChallengeProof,
-  buildMcpRevenuePlanChallengeProof,
-} from '@bilig/headless/cli'
 import { runXlsxFormulaRecalcCli } from './cli-api.js'
-import {
-  buildWorkbookCompatibilityDemoBytes,
-  buildWorkbookCompatibilityReport,
-  type WorkbookCompatibilityNamedCount,
-  type WorkbookCompatibilityReport,
-  type WorkbookCompatibilityRiskLevel,
+import type {
+  WorkbookCompatibilityNamedCount,
+  WorkbookCompatibilityReport,
+  WorkbookCompatibilityRiskLevel,
 } from './workbook-compatibility-report.js'
 
 export const biligEvaluatorSchemaVersion = 'bilig-evaluator.v1'
@@ -153,16 +144,15 @@ export function listBiligEvaluatorDoors(): readonly BiligEvaluatorDoorSummary[] 
 export function buildBiligEvaluatorProof(
   door: BiligEvaluatorDoor,
   options: { readonly scenario?: BiligEvaluatorScenario } = {},
-): BiligEvaluatorProof {
+): Promise<BiligEvaluatorProof> {
   const startedAt = Date.now()
-  const proof = buildDoorProof(door, options.scenario ?? 'default')
-  return {
+  return buildDoorProof(door, options.scenario ?? 'default').then((proof) => ({
     ...proof,
     durationMs: Math.max(0, Date.now() - startedAt),
-  }
+  }))
 }
 
-export function runBiligEvaluatorCli(args: readonly string[], context: BiligEvaluatorCliContext = {}): number {
+export async function runBiligEvaluatorCli(args: readonly string[], context: BiligEvaluatorCliContext = {}): Promise<number> {
   const writeStdout = context.stdout ?? ((text: string) => process.stdout.write(text))
   const writeStderr = context.stderr ?? ((text: string) => process.stderr.write(text))
 
@@ -184,7 +174,7 @@ export function runBiligEvaluatorCli(args: readonly string[], context: BiligEval
       throw new Error('Expected --door xlsx-cache, --door workbook-compatibility, --door workpaper-service, or --door agent-mcp.')
     }
 
-    const proof = buildBiligEvaluatorProof(parsed.door, { scenario: parsed.scenario })
+    const proof = await buildBiligEvaluatorProof(parsed.door, { scenario: parsed.scenario })
     writeStdout(parsed.markdown ? renderProofMarkdown(proof) : `${JSON.stringify(proof, null, 2)}\n`)
     return proof.verified ? 0 : 1
   } catch (error) {
@@ -193,7 +183,10 @@ export function runBiligEvaluatorCli(args: readonly string[], context: BiligEval
   }
 }
 
-function buildDoorProof(door: BiligEvaluatorDoor, scenario: BiligEvaluatorScenario): Omit<BiligEvaluatorProof, 'durationMs'> {
+async function buildDoorProof(
+  door: BiligEvaluatorDoor,
+  scenario: BiligEvaluatorScenario,
+): Promise<Omit<BiligEvaluatorProof, 'durationMs'>> {
   if (scenario !== 'default' && door !== 'agent-mcp') {
     throw new Error(`Scenario "${scenario}" is only available for --door agent-mcp.`)
   }
@@ -201,11 +194,11 @@ function buildDoorProof(door: BiligEvaluatorDoor, scenario: BiligEvaluatorScenar
     case 'xlsx-cache':
       return buildXlsxCacheEvaluatorProof()
     case 'workbook-compatibility':
-      return buildWorkbookCompatibilityEvaluatorProof()
+      return await buildWorkbookCompatibilityEvaluatorProof()
     case 'workpaper-service':
-      return buildWorkpaperServiceEvaluatorProof()
+      return await buildWorkpaperServiceEvaluatorProof()
     case 'agent-mcp':
-      return buildAgentMcpEvaluatorProof(scenario)
+      return await buildAgentMcpEvaluatorProof(scenario)
   }
 }
 
@@ -229,7 +222,6 @@ function buildXlsxCacheEvaluatorProof(): Omit<BiligEvaluatorProof, 'durationMs'>
     command: summary.command,
     packageVersions: {
       'xlsx-formula-recalc': readLocalPackageVersion(),
-      '@bilig/workpaper-runtime': WorkPaper.version,
     },
     evidence: {
       target: firstFormula?.target,
@@ -252,7 +244,11 @@ function buildXlsxCacheEvaluatorProof(): Omit<BiligEvaluatorProof, 'durationMs'>
   }
 }
 
-function buildWorkbookCompatibilityEvaluatorProof(): Omit<BiligEvaluatorProof, 'durationMs'> {
+async function buildWorkbookCompatibilityEvaluatorProof(): Promise<Omit<BiligEvaluatorProof, 'durationMs'>> {
+  const [{ WorkPaper }, { buildWorkbookCompatibilityDemoBytes, buildWorkbookCompatibilityReport }] = await Promise.all([
+    import('@bilig/headless'),
+    import('./workbook-compatibility-report.js'),
+  ])
   const sourceProof = buildWorkbookCompatibilityReport(buildWorkbookCompatibilityDemoBytes(), {
     fileName: 'bilig-workbook-compatibility-demo.xlsx',
     inspectLimit: 'all',
@@ -300,7 +296,11 @@ function buildWorkbookCompatibilityEvaluatorProof(): Omit<BiligEvaluatorProof, '
   }
 }
 
-function buildWorkpaperServiceEvaluatorProof(): Omit<BiligEvaluatorProof, 'durationMs'> {
+async function buildWorkpaperServiceEvaluatorProof(): Promise<Omit<BiligEvaluatorProof, 'durationMs'>> {
+  const [{ WorkPaper }, { buildAgentWorkbookChallengeProof }] = await Promise.all([
+    import('@bilig/headless'),
+    import('@bilig/headless/cli'),
+  ])
   const sourceProof = buildAgentWorkbookChallengeProof()
   const checks = normalizeBooleanRecord(recordValue(sourceProof, 'checks'))
   const summary = requireDoorSummary('workpaper-service')
@@ -333,13 +333,14 @@ function buildWorkpaperServiceEvaluatorProof(): Omit<BiligEvaluatorProof, 'durat
   }
 }
 
-function buildAgentMcpEvaluatorProof(scenario: BiligEvaluatorScenario): Omit<BiligEvaluatorProof, 'durationMs'> {
+async function buildAgentMcpEvaluatorProof(scenario: BiligEvaluatorScenario): Promise<Omit<BiligEvaluatorProof, 'durationMs'>> {
+  const [{ WorkPaper }, headlessCli] = await Promise.all([import('@bilig/headless'), import('@bilig/headless/cli')])
   const sourceProof =
     scenario === 'revenue-plan'
-      ? buildMcpRevenuePlanChallengeProof()
+      ? headlessCli.buildMcpRevenuePlanChallengeProof()
       : scenario === 'provider-backed'
-        ? buildMcpProviderBackedChallengeProof()
-        : buildMcpChallengeProof()
+        ? headlessCli.buildMcpProviderBackedChallengeProof()
+        : headlessCli.buildMcpChallengeProof()
   const checks = normalizeBooleanRecord(recordValue(sourceProof, 'checks'))
   const tools = stringArrayValue(sourceProof, 'tools')
   const summary = requireDoorSummary('agent-mcp')

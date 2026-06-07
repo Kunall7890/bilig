@@ -12,10 +12,10 @@ describe('bilig-evaluate CLI', () => {
     ])
   })
 
-  it('prints a verified XLSX stale-cache proof', () => {
+  it('prints a verified XLSX stale-cache proof', async () => {
     let stdout = ''
 
-    const exitCode = runBiligEvaluatorCli(['--door', 'xlsx-cache', '--json'], {
+    const exitCode = await runBiligEvaluatorCli(['--door', 'xlsx-cache', '--json'], {
       stdout: (text) => {
         stdout += text
       },
@@ -42,10 +42,10 @@ describe('bilig-evaluate CLI', () => {
     })
   })
 
-  it('prints a verified workbook compatibility proof without a compatibility score', () => {
+  it('prints a verified workbook compatibility proof without a compatibility score', async () => {
     let stdout = ''
 
-    const exitCode = runBiligEvaluatorCli(['--door', 'workbook-compatibility', '--json'], {
+    const exitCode = await runBiligEvaluatorCli(['--door', 'workbook-compatibility', '--json'], {
       stdout: (text) => {
         stdout += text
       },
@@ -74,8 +74,8 @@ describe('bilig-evaluate CLI', () => {
     expect(stdout).not.toMatch(/compatibilityScore|excelCompatibilityPercent/u)
   })
 
-  it('prints a verified WorkPaper service proof', () => {
-    const proof = buildBiligEvaluatorProof('workpaper-service')
+  it('prints a verified WorkPaper service proof', async () => {
+    const proof = await buildBiligEvaluatorProof('workpaper-service')
 
     expect(proof.verified).toBe(true)
     expect(proof.evidence).toMatchObject({
@@ -92,8 +92,8 @@ describe('bilig-evaluate CLI', () => {
     })
   })
 
-  it('prints a verified agent MCP proof', () => {
-    const proof = buildBiligEvaluatorProof('agent-mcp')
+  it('prints a verified agent MCP proof', async () => {
+    const proof = await buildBiligEvaluatorProof('agent-mcp')
 
     expect(proof.verified).toBe(true)
     expect(proof.evidence).toMatchObject({
@@ -111,10 +111,10 @@ describe('bilig-evaluate CLI', () => {
     expect(proof.evidence.tools).toContain('read_cell')
   })
 
-  it('prints a verified revenue-plan agent MCP proof', () => {
+  it('prints a verified revenue-plan agent MCP proof', async () => {
     let stdout = ''
 
-    const exitCode = runBiligEvaluatorCli(['--door', 'agent-mcp', '--scenario', 'revenue-plan', '--json'], {
+    const exitCode = await runBiligEvaluatorCli(['--door', 'agent-mcp', '--scenario', 'revenue-plan', '--json'], {
       stdout: (text) => {
         stdout += text
       },
@@ -162,10 +162,10 @@ describe('bilig-evaluate CLI', () => {
     })
   })
 
-  it('prints a verified provider-backed agent MCP proof', () => {
+  it('prints a verified provider-backed agent MCP proof', async () => {
     let stdout = ''
 
-    const exitCode = runBiligEvaluatorCli(['--door', 'agent-mcp', '--scenario', 'provider-backed', '--json'], {
+    const exitCode = await runBiligEvaluatorCli(['--door', 'agent-mcp', '--scenario', 'provider-backed', '--json'], {
       stdout: (text) => {
         stdout += text
       },
@@ -212,10 +212,10 @@ describe('bilig-evaluate CLI', () => {
     })
   })
 
-  it('rejects unsupported door and scenario combinations', () => {
+  it('rejects unsupported door and scenario combinations', async () => {
     let stderr = ''
 
-    const exitCode = runBiligEvaluatorCli(['--door', 'workpaper-service', '--scenario', 'provider-backed'], {
+    const exitCode = await runBiligEvaluatorCli(['--door', 'workpaper-service', '--scenario', 'provider-backed'], {
       stderr: (text) => {
         stderr += text
       },
@@ -225,10 +225,10 @@ describe('bilig-evaluate CLI', () => {
     expect(stderr).toContain('Scenario "provider-backed" is only available for --door agent-mcp.')
   })
 
-  it('rejects unknown doors with a focused error', () => {
+  it('rejects unknown doors with a focused error', async () => {
     let stderr = ''
 
-    const exitCode = runBiligEvaluatorCli(['--door', 'screenshots'], {
+    const exitCode = await runBiligEvaluatorCli(['--door', 'screenshots'], {
       stderr: (text) => {
         stderr += text
       },

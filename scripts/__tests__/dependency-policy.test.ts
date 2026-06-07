@@ -91,6 +91,8 @@ const legacyFormulaRecalcStreamingNativeSources = [
 const nativeXlsxFormulaRecalcPathBoundarySources = [
   'packages/xlsx-formula-recalc/src/index.ts',
   'packages/xlsx-formula-recalc/src/cli-api.ts',
+  'packages/xlsx-formula-recalc/src/evaluator-bin.ts',
+  'packages/xlsx-formula-recalc/src/evaluator-cli.ts',
   'packages/xlsx-formula-recalc/src/file-recalc.ts',
   'packages/xlsx-formula-recalc/src/types.ts',
 ] as const
