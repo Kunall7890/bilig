@@ -2,8 +2,9 @@ import { EventEmitter } from 'node:events'
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { writeSimpleXlsxWorkbook, type SimpleXlsxCell } from '@bilig/xlsx'
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import * as XLSX from 'xlsx'
 
 import {
   externalWorkbookReferencesWarning,
@@ -2473,62 +2474,67 @@ async function buildSingleWorkbookScorecard(args: {
 }
 
 function buildWorkbookBytes(summarySheetName = 'Summary'): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const summary = XLSX.utils.aoa_to_sheet([
-    ['Metric', 'Value'],
-    ['Revenue', 12],
-    ['Cost', 5],
-    ['Profit', null],
-  ])
-  summary.B4 = { t: 'n', f: 'B2-B3', v: 7 }
-  summary['!ref'] = 'A1:B4'
-  summary['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }]
-  const assumptions = XLSX.utils.aoa_to_sheet([['TaxRate'], [0.21]])
-  XLSX.utils.book_append_sheet(workbook, summary, summarySheetName)
-  XLSX.utils.book_append_sheet(workbook, assumptions, 'Assumptions')
-  workbook.Workbook = {
-    Names: [{ Name: 'ProfitCell', Ref: `${summarySheetName}!$B$4` }],
-  }
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  return writeSimpleXlsxWorkbook({
+    definedNames: [{ name: 'ProfitCell', formula: `${summarySheetName}!$B$4` }],
+    sheets: [
+      {
+        name: summarySheetName,
+        merges: [{ startAddress: 'A1', endAddress: 'B1' }],
+        cells: [
+          textCell('A1', 0, 0, 'Metric'),
+          textCell('B1', 0, 1, 'Value'),
+          textCell('A2', 1, 0, 'Revenue'),
+          { address: 'B2', row: 1, col: 1, value: 12 },
+          textCell('A3', 2, 0, 'Cost'),
+          { address: 'B3', row: 2, col: 1, value: 5 },
+          textCell('A4', 3, 0, 'Profit'),
+          { address: 'B4', row: 3, col: 1, formula: 'B2-B3', value: 7 },
+        ],
+      },
+      {
+        name: 'Assumptions',
+        cells: [textCell('A1', 0, 0, 'TaxRate'), { address: 'A2', row: 1, col: 0, value: 0.21 }],
+      },
+    ],
+  })
 }
 
 function buildExternalWorkbookReferenceBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ['Key', 'Value'],
-    ['A', null],
-  ])
-  sheet.B2 = { t: 'n', f: "VLOOKUP(A2,'[1]Lookup'!$A$1:$B$2,2,FALSE)", v: 12 }
-  sheet['!ref'] = 'A1:B2'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Summary')
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Summary',
+        cells: [
+          textCell('A1', 0, 0, 'Key'),
+          textCell('B1', 0, 1, 'Value'),
+          textCell('A2', 1, 0, 'A'),
+          { address: 'B2', row: 1, col: 1, formula: "VLOOKUP(A2,'[1]Lookup'!$A$1:$B$2,2,FALSE)", value: 12 },
+        ],
+      },
+    ],
+  })
 }
 
 function buildMixedExternalAndLocalFormulaBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ['Key', 'External', 'Local'],
-    ['A', null, null],
-  ])
-  sheet.B2 = { t: 'n', f: "VLOOKUP(A2,'[1]Lookup'!$A$1:$B$2,2,FALSE)", v: 12 }
-  sheet.C2 = { t: 'n', f: '10+5', v: 15 }
-  sheet['!ref'] = 'A1:C2'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Summary')
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Summary',
+        cells: [
+          textCell('A1', 0, 0, 'Key'),
+          textCell('B1', 0, 1, 'External'),
+          textCell('C1', 0, 2, 'Local'),
+          textCell('A2', 1, 0, 'A'),
+          { address: 'B2', row: 1, col: 1, formula: "VLOOKUP(A2,'[1]Lookup'!$A$1:$B$2,2,FALSE)", value: 12 },
+          { address: 'C2', row: 1, col: 2, formula: '10+5', value: 15 },
+        ],
+      },
+    ],
+  })
 }
 
 function buildManualCalculationWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ['Input', 'Value'],
-    ['A', 1],
-    ['B', 2],
-    ['Total', null],
-  ])
-  sheet.B4 = { t: 'n', f: 'B2+B3', v: 99 }
-  sheet['!ref'] = 'A1:B4'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Summary')
-  return addExportCalculationSettingsToXlsxBytes(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }), {
+  return addExportCalculationSettingsToXlsxBytes(buildCalculationModeWorkbookBytes('B2+B3', 99), {
     version: 1,
     workbook: {
       name: 'manual-calculation',
@@ -2539,17 +2545,7 @@ function buildManualCalculationWorkbookBytes(): Uint8Array {
 }
 
 function buildPrecisionAsDisplayedFormulaWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ['Input', 'Value'],
-    ['A', 1],
-    ['B', 2],
-    ['Total', null],
-  ])
-  sheet.B4 = { t: 'n', f: 'B2+B3', v: 3 }
-  sheet['!ref'] = 'A1:B4'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Summary')
-  return addExportCalculationSettingsToXlsxBytes(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }), {
+  return addExportCalculationSettingsToXlsxBytes(buildCalculationModeWorkbookBytes('B2+B3', 3), {
     version: 1,
     workbook: {
       name: 'precision-displayed',
@@ -2560,78 +2556,132 @@ function buildPrecisionAsDisplayedFormulaWorkbookBytes(): Uint8Array {
 }
 
 function buildVolatileFormulaWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ['Metric', 'Value'],
-    ['Report Date', null],
-  ])
-  sheet.B2 = { t: 'n', f: 'TODAY()', v: 43073 }
-  sheet['!ref'] = 'A1:B2'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Summary')
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Summary',
+        cells: [
+          textCell('A1', 0, 0, 'Metric'),
+          textCell('B1', 0, 1, 'Value'),
+          textCell('A2', 1, 0, 'Report Date'),
+          { address: 'B2', row: 1, col: 1, formula: 'TODAY()', value: 43073 },
+        ],
+      },
+    ],
+  })
 }
 
 function buildMacroEnabledWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ['Input', 'Value'],
-    ['A', 1],
-    ['B', 2],
-    ['Total', null],
-  ])
-  sheet.B4 = { t: 'n', f: 'B2+B3', v: 99 }
-  sheet['!ref'] = 'A1:B4'
-  workbook.vbaraw = new Uint8Array([1, 2, 3, 4])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Summary')
-  return XLSX.write(workbook, { bookType: 'xlsm', type: 'buffer', bookVBA: true })
+  return writeSimpleXlsxWorkbook({
+    macro: { vbaProject: new Uint8Array([1, 2, 3, 4]) },
+    sheets: [
+      {
+        name: 'Summary',
+        cells: [
+          textCell('A1', 0, 0, 'Input'),
+          textCell('B1', 0, 1, 'Value'),
+          textCell('A2', 1, 0, 'A'),
+          { address: 'B2', row: 1, col: 1, value: 1 },
+          textCell('A3', 2, 0, 'B'),
+          { address: 'B3', row: 2, col: 1, value: 2 },
+          textCell('A4', 3, 0, 'Total'),
+          { address: 'B4', row: 3, col: 1, formula: 'B2+B3', value: 99 },
+        ],
+      },
+    ],
+  })
 }
 
 function buildStaleFormulaCacheWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ['Text', 'Word Count'],
-    ['one two three four five six seven eight nine', null],
-  ])
-  sheet.B2 = { t: 'n', f: 'LEN(TRIM(A2))-LEN(SUBSTITUTE(A2," ",""))+1', v: 6 }
-  sheet['!ref'] = 'A1:B2'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Summary')
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Summary',
+        cells: [
+          textCell('A1', 0, 0, 'Text'),
+          textCell('B1', 0, 1, 'Word Count'),
+          textCell('A2', 1, 0, 'one two three four five six seven eight nine'),
+          { address: 'B2', row: 1, col: 1, formula: 'LEN(TRIM(A2))-LEN(SUBSTITUTE(A2," ",""))+1', value: 6 },
+        ],
+      },
+    ],
+  })
 }
 
 function buildLocaleDecimalCommaTextFormulaWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ['Base', 'Locale Text', 'Result'],
-    [26335, '27,269', null],
-  ])
-  sheet.C2 = { t: 'n', f: '(((B2/A2)^0.25)-1)*100', v: -82.061588914166 }
-  sheet['!ref'] = 'A1:C2'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Summary')
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Summary',
+        cells: [
+          textCell('A1', 0, 0, 'Base'),
+          textCell('B1', 0, 1, 'Locale Text'),
+          textCell('C1', 0, 2, 'Result'),
+          { address: 'A2', row: 1, col: 0, value: 26335 },
+          textCell('B2', 1, 1, '27,269'),
+          { address: 'C2', row: 1, col: 2, formula: '(((B2/A2)^0.25)-1)*100', value: -82.061588914166 },
+        ],
+      },
+    ],
+  })
 }
 
 function buildUnconfirmedFormulaCacheWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ['Value', 'Result'],
-    [42, null],
-  ])
-  sheet.B2 = { t: 'n', f: 'UNKNOWNFUNC(A2)', v: 99 }
-  sheet['!ref'] = 'A1:B2'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Summary')
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Summary',
+        cells: [
+          textCell('A1', 0, 0, 'Value'),
+          textCell('B1', 0, 1, 'Result'),
+          { address: 'A2', row: 1, col: 0, value: 42 },
+          { address: 'B2', row: 1, col: 1, formula: 'UNKNOWNFUNC(A2)', value: 99 },
+        ],
+      },
+    ],
+  })
 }
 
 function buildTrailingSpaceWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
   const sheetName = 'Table 2.1.2  '
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ['Header', 'Value'],
-    ['Amount', 12],
-  ])
-  sheet['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }]
-  XLSX.utils.book_append_sheet(workbook, sheet, sheetName)
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: sheetName,
+        merges: [{ startAddress: 'A1', endAddress: 'B1' }],
+        cells: [
+          textCell('A1', 0, 0, 'Header'),
+          textCell('B1', 0, 1, 'Value'),
+          textCell('A2', 1, 0, 'Amount'),
+          { address: 'B2', row: 1, col: 1, value: 12 },
+        ],
+      },
+    ],
+  })
+}
+
+function buildCalculationModeWorkbookBytes(formula: string, cachedValue: number): Uint8Array {
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Summary',
+        cells: [
+          textCell('A1', 0, 0, 'Input'),
+          textCell('B1', 0, 1, 'Value'),
+          textCell('A2', 1, 0, 'A'),
+          { address: 'B2', row: 1, col: 1, value: 1 },
+          textCell('A3', 2, 0, 'B'),
+          { address: 'B3', row: 2, col: 1, value: 2 },
+          textCell('A4', 3, 0, 'Total'),
+          { address: 'B4', row: 3, col: 1, formula, value: cachedValue },
+        ],
+      },
+    ],
+  })
+}
+
+function textCell(address: string, row: number, col: number, value: string): SimpleXlsxCell {
+  return { address, row, col, value }
 }
 
 function buildInteriorStyledSnapshot(startAddress: string, endAddress: string, backgroundColor = '#ffcc00'): WorkbookSnapshot {
@@ -2725,29 +2775,57 @@ function buildChartOrientationSnapshot(seriesOrientation?: 'columns' | 'rows'): 
 }
 
 function buildProtectedFirstWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const protectedSheet = XLSX.utils.aoa_to_sheet([
-    ['Locked', 'Value'],
-    ['Amount', 12],
-  ])
-  protectedSheet['!protect'] = {}
-  const mutableSheet = XLSX.utils.aoa_to_sheet([
-    ['Open', 'Value'],
-    ['Amount', 7],
-  ])
-  XLSX.utils.book_append_sheet(workbook, protectedSheet, 'Locked')
-  XLSX.utils.book_append_sheet(workbook, mutableSheet, 'Open')
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  return protectFirstWorksheet(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Locked',
+          cells: [
+            textCell('A1', 0, 0, 'Locked'),
+            textCell('B1', 0, 1, 'Value'),
+            textCell('A2', 1, 0, 'Amount'),
+            { address: 'B2', row: 1, col: 1, value: 12 },
+          ],
+        },
+        {
+          name: 'Open',
+          cells: [
+            textCell('A1', 0, 0, 'Open'),
+            textCell('B1', 0, 1, 'Value'),
+            textCell('A2', 1, 0, 'Amount'),
+            { address: 'B2', row: 1, col: 1, value: 7 },
+          ],
+        },
+      ],
+    }),
+  )
 }
 
 function buildProtectedFirstSheetWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const locked = XLSX.utils.aoa_to_sheet([['Locked'], [1]])
-  locked['!protect'] = {}
-  const open = XLSX.utils.aoa_to_sheet([['Open'], [2]])
-  XLSX.utils.book_append_sheet(workbook, locked, 'Locked')
-  XLSX.utils.book_append_sheet(workbook, open, 'Open')
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  return protectFirstWorksheet(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Locked',
+          cells: [textCell('A1', 0, 0, 'Locked'), { address: 'A2', row: 1, col: 0, value: 1 }],
+        },
+        {
+          name: 'Open',
+          cells: [textCell('A1', 0, 0, 'Open'), { address: 'A2', row: 1, col: 0, value: 2 }],
+        },
+      ],
+    }),
+  )
+}
+
+function protectFirstWorksheet(bytes: Uint8Array): Uint8Array {
+  const zip = unzipSync(bytes)
+  const sheetPath = 'xl/worksheets/sheet1.xml'
+  const sheetXml = strFromU8(zip[sheetPath] ?? new Uint8Array())
+  if (!sheetXml.includes('<sheetProtection ')) {
+    zip[sheetPath] = strToU8(sheetXml.replace('<sheetData>', '<sheetProtection sheet="1"/><sheetData>'))
+  }
+  return zipSync(zip)
 }
 
 function createIsolatedVerificationFixture(): {

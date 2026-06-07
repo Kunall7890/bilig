@@ -32,6 +32,7 @@ const nativeXlsxCorpusProofTests = [
 ] as const
 const nativeXlsxPublicWorkbookCorpusTests = [
   'scripts/__tests__/public-workbook-corpus-links.test.ts',
+  'scripts/__tests__/public-workbook-corpus.test.ts',
   'scripts/__tests__/public-workbook-corpus-workbook.test.ts',
 ] as const
 const nativeXlsxExampleScripts = [
