@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -10,6 +11,7 @@ import { XLSX_CONTENT_TYPE } from '../../packages/excel-import/src/workbook-impo
 import {
   buildExternalXlsxStressPlan,
   externalXlsxStressSources,
+  hashExternalXlsxStressWorkbookFileSha256,
   validateExternalXlsxStressPlan,
   type ExternalXlsxStressPlan,
 } from '../external-xlsx-memory-stress.ts'
@@ -86,6 +88,19 @@ describe('external XLSX memory stress plan', () => {
 
     expect(scripts['external-xlsx-memory-stress:plan']).toBe('bun scripts/external-xlsx-memory-stress.ts plan')
     expect(scripts['external-xlsx-memory-stress']).toBe('bun scripts/external-xlsx-memory-stress.ts run')
+  })
+
+  it('hashes resolved stress workbook files from chunks', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'bilig-external-xlsx-stress-hash-'))
+    try {
+      const workbookPath = join(tempDir, 'large.xlsx')
+      const bytes = Buffer.alloc(1_000_001, 7)
+      writeFileSync(workbookPath, bytes)
+
+      expect(hashExternalXlsxStressWorkbookFileSha256(workbookPath)).toBe(createHash('sha256').update(bytes).digest('hex'))
+    } finally {
+      rmSync(tempDir, { force: true, recursive: true })
+    }
   })
 
   it('summarizes large-simple imports from stats without materializing lazy cells', () => {

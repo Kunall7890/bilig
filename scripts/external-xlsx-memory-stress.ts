@@ -2,7 +2,7 @@
 
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, statSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -467,10 +467,11 @@ async function ensureExternalXlsxStressSource(
 ): Promise<ResolvedWorkbook[]> {
   mkdirSync(args.cacheDir, { recursive: true })
   const sourceCachePath = join(args.cacheDir, source.fileName)
-  const sourceBytes = await readOrFetchSourceBytes(source, sourceCachePath, args)
   if (source.fileName.toLowerCase().endsWith('.zip')) {
+    const sourceBytes = await readOrFetchSourceBytes(source, sourceCachePath, args)
     return await extractWorkbookEntries(source, sourceBytes, args.cacheDir)
   }
+  await ensureSourceFileCached(source, sourceCachePath, args)
   const workbook = source.workbooks[0]
   if (!workbook) {
     return []
@@ -519,6 +520,36 @@ async function readOrFetchSourceBytes(
   return bytes
 }
 
+async function ensureSourceFileCached(
+  source: ExternalXlsxStressSource,
+  sourceCachePath: string,
+  args: {
+    readonly fetchTimeoutMs: number
+    readonly maxDownloadBytes: number
+  },
+): Promise<void> {
+  if (existsSync(sourceCachePath)) {
+    return
+  }
+  const { fetchBodyBytesWithTimeout } = await import('./public-workbook-corpus-http.ts')
+  const { bytes } = await fetchBodyBytesWithTimeout(
+    source.downloadUrl,
+    {},
+    {
+      timeoutMs: args.fetchTimeoutMs,
+      maxBytes: args.maxDownloadBytes,
+      maxBytesLabel: source.fileName,
+      validateResponse: (response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to fetch ${source.fileName}: HTTP ${String(response.status)}`)
+        }
+      },
+    },
+  )
+  mkdirSync(dirname(sourceCachePath), { recursive: true })
+  writeFileSync(sourceCachePath, bytes)
+}
+
 async function extractWorkbookEntries(
   source: ExternalXlsxStressSource,
   sourceBytes: Uint8Array,
@@ -535,7 +566,7 @@ async function extractWorkbookEntries(
       throw new Error(`Archive ${source.fileName} is missing workbook entry ${entryPath}`)
     }
     const outputPath = join(sourceDir, workbook.fileName)
-    if (!existsSync(outputPath) || readFileSync(outputPath).byteLength !== bytes.byteLength) {
+    if (!existsSync(outputPath) || statSync(outputPath).size !== bytes.byteLength) {
       writeFileSync(outputPath, bytes)
     }
     return assertResolvedWorkbook({
@@ -551,20 +582,36 @@ async function extractWorkbookEntries(
 }
 
 function assertResolvedWorkbook(input: { readonly fixture: ExternalXlsxStressWorkbook; readonly path: string }): ResolvedWorkbook {
-  const bytes = readFileSync(input.path)
-  if (bytes.byteLength < input.fixture.expectedMinBytes) {
+  const byteSize = statSync(input.path).size
+  if (byteSize < input.fixture.expectedMinBytes) {
     throw new Error(
-      `${input.fixture.fileName} is smaller than expected: ${formatByteSize(bytes.byteLength)} < ${formatByteSize(
-        input.fixture.expectedMinBytes,
-      )}`,
+      `${input.fixture.fileName} is smaller than expected: ${formatByteSize(byteSize)} < ${formatByteSize(input.fixture.expectedMinBytes)}`,
     )
   }
   return {
     fixture: input.fixture,
     path: input.path,
-    byteSize: bytes.byteLength,
-    sha256: createHash('sha256').update(bytes).digest('hex'),
+    byteSize,
+    sha256: hashExternalXlsxStressWorkbookFileSha256(input.path),
   }
+}
+
+export function hashExternalXlsxStressWorkbookFileSha256(path: string): string {
+  const hash = createHash('sha256')
+  const fd = openSync(path, 'r')
+  const buffer = new Uint8Array(1024 * 1024)
+  try {
+    let bytesRead = 1
+    while (bytesRead > 0) {
+      bytesRead = readSync(fd, buffer, 0, buffer.byteLength, null)
+      if (bytesRead > 0) {
+        hash.update(buffer.subarray(0, bytesRead))
+      }
+    }
+  } finally {
+    closeSync(fd)
+  }
+  return hash.digest('hex')
 }
 
 function buildStressResultBase(

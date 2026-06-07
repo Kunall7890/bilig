@@ -704,6 +704,21 @@ describe('repository dependency policy', () => {
     expect(readIndex).toBeGreaterThan(guardIndex)
   })
 
+  it('keeps external XLSX stress source resolution file-backed for cached workbooks', () => {
+    const stress = readFileSync(join(repoRoot, 'scripts/external-xlsx-memory-stress.ts'), 'utf8')
+    const zipBranchIndex = stress.indexOf("if (source.fileName.toLowerCase().endsWith('.zip'))")
+    const zipReadBytesIndex = stress.indexOf('const sourceBytes = await readOrFetchSourceBytes(source, sourceCachePath, args)')
+
+    expect(stress).toContain('async function ensureSourceFileCached(')
+    expect(stress).toContain('statSync(input.path).size')
+    expect(stress).toContain('hashExternalXlsxStressWorkbookFileSha256(input.path)')
+    expect(stress).toContain('statSync(outputPath).size !== bytes.byteLength')
+    expect(stress).not.toContain('const bytes = readFileSync(input.path)')
+    expect(stress).not.toContain('readFileSync(outputPath).byteLength')
+    expect(zipBranchIndex).toBeGreaterThan(-1)
+    expect(zipReadBytesIndex).toBeGreaterThan(zipBranchIndex)
+  })
+
   it('keeps WorkPaper evaluator doors owned by WorkPaper packages', () => {
     const xlsxEvaluator = readFileSync(join(repoRoot, 'packages/xlsx-formula-recalc/src/evaluator-cli.ts'), 'utf8')
     const unscopedWorkPaperBin = readFileSync(join(repoRoot, 'packages/bilig/bin/bilig-evaluate.js'), 'utf8')
