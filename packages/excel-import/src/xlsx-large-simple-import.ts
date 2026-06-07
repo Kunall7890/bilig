@@ -1,3 +1,4 @@
+import { workbookSheetPathEntriesForSource } from '@bilig/xlsx'
 import type { CellStyleRecord, WorkbookRichTextCellSnapshot, WorkbookSnapshot, WorkbookTableSnapshot } from '@bilig/protocol'
 import { normalizeWorkbookName } from './workbook-import-helpers.js'
 import {
@@ -69,7 +70,7 @@ import {
 import { mergeWorkbookRichTextCells } from './xlsx-large-simple-lazy-rich-text-cells.js'
 import { hasExternalLargeSimplePivotCaches } from './xlsx-large-simple-pivot-warnings.js'
 import { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
-import { readWorkbookSheets, readWorksheetPathsByRelationshipId } from './xlsx-large-simple-workbook-metadata.js'
+import { readWorkbookSheets } from './xlsx-large-simple-workbook-metadata.js'
 import type { ImportedWorksheetCellScan } from './xlsx-large-simple-arena.js'
 import {
   largeSimpleControlArtifactSheetSources,
@@ -139,15 +140,14 @@ export function tryImportLargeSimpleXlsx(
   }
 
   const workbookXml = getZipText(zip, importConstants.workbookPath)
-  const workbookRelationshipsXml = getZipText(zip, importConstants.workbookRelationshipsPath)
-  if (!workbookXml || !workbookRelationshipsXml) {
+  if (!workbookXml) {
     return null
   }
 
   const stringPool = new ImportedWorkbookStringPool()
   const workbookSheets = readWorkbookSheets(workbookXml, stringPool)
-  const worksheetPathsByRelationshipId = readWorksheetPathsByRelationshipId(workbookRelationshipsXml)
-  if (workbookSheets.length === 0 || worksheetPathsByRelationshipId.size === 0) {
+  const worksheetEntriesByName = new Map(workbookSheetPathEntriesForSource(zip).map((entry) => [entry.name, entry]))
+  if (workbookSheets.length === 0 || worksheetEntriesByName.size === 0) {
     return null
   }
   const workbookDefinedNames = readWorkbookDefinedNames(
@@ -155,8 +155,8 @@ export function tryImportLargeSimpleXlsx(
     workbookSheets.map((entry) => entry.name),
   )
   const worksheetEntries = workbookSheets.flatMap((entry) => {
-    const path = worksheetPathsByRelationshipId.get(entry.relationshipId)
-    return path ? [{ name: entry.name, relationshipId: entry.relationshipId, path }] : []
+    const sheetPathEntry = worksheetEntriesByName.get(entry.name)
+    return sheetPathEntry ? [{ name: entry.name, path: sheetPathEntry.path }] : []
   })
   if (worksheetEntries.length !== workbookSheets.length) {
     return null
@@ -201,6 +201,7 @@ export function tryImportLargeSimpleXlsx(
       path.startsWith('xl/slicers/') ||
       /^xl\/tables\/_rels\/table[1-9][0-9]*\.xml\.rels$/u.test(path),
   )
+  const workbookRelationshipsXmlForArtifacts = hasSlicerConnectionParts ? getZipText(zip, importConstants.workbookRelationshipsPath) : null
   phaseRecorder.finish('zip-setup', zipSetupStart)
   let ownedSourceReleasedForReplacement = false
   if (options.releaseZipSource === true && options.replacementZipSource) {
@@ -782,7 +783,7 @@ export function tryImportLargeSimpleXlsx(
           largeSimpleSlicerConnectionSheetSources(scannedWorksheets, worksheetEntries),
           {
             workbookXml,
-            workbookRelationshipsXml,
+            ...(workbookRelationshipsXmlForArtifacts ? { workbookRelationshipsXml: workbookRelationshipsXmlForArtifacts } : {}),
           },
         )
       : undefined

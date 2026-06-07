@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto'
 import { createRequire } from 'node:module'
 
+import { workbookSheetPathEntriesForSource } from '@bilig/xlsx'
 import { importXlsx, type ImportedWorkbook } from '../packages/excel-import/src/index.js'
 import { readImportedExternalWorkbookReferences } from '../packages/excel-import/src/xlsx-external-references.js'
-import { readWorkbookSheets, readWorksheetPathsByRelationshipId } from '../packages/excel-import/src/xlsx-large-simple-workbook-metadata.js'
+import { readWorkbookSheets } from '../packages/excel-import/src/xlsx-large-simple-workbook-metadata.js'
 import { decodeCellAddress, encodeCellAddress } from '../packages/excel-import/src/xlsx-large-simple-xml-byte-utils.js'
 import { decodeXmlText, normalizeWorksheetText } from '../packages/excel-import/src/xlsx-large-simple-worksheet-stream-text.js'
 import {
@@ -362,19 +363,18 @@ export function extractFormulaOraclesFromXlsxByteSource(source: XlsxZipByteSourc
   }
   try {
     const workbookXml = getZipText(zip, 'xl/workbook.xml')
-    const workbookRelationshipsXml = getZipText(zip, 'xl/_rels/workbook.xml.rels')
-    if (!workbookXml || !workbookRelationshipsXml) {
+    if (!workbookXml) {
       return null
     }
     const workbookSheets = readWorkbookSheets(workbookXml)
-    const worksheetPathsByRelationshipId = readWorksheetPathsByRelationshipId(workbookRelationshipsXml)
-    if (workbookSheets.length === 0 || worksheetPathsByRelationshipId.size === 0) {
+    const worksheetEntriesByName = new Map(workbookSheetPathEntriesForSource(zip).map((entry) => [entry.name, entry]))
+    if (workbookSheets.length === 0 || worksheetEntriesByName.size === 0) {
       return null
     }
     releaseInflatedLazyXlsxZipEntries(zip)
     const oracles: FormulaOracle[] = []
     for (const sheet of workbookSheets) {
-      const worksheetPath = worksheetPathsByRelationshipId.get(sheet.relationshipId)
+      const worksheetPath = worksheetEntriesByName.get(sheet.name)?.path
       if (!worksheetPath) {
         return null
       }

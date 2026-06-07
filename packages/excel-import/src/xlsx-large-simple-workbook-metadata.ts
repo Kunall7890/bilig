@@ -1,20 +1,11 @@
 import type { WorkbookDefinedNameSnapshot, WorkbookDefinedNameValueSnapshot } from '@bilig/protocol'
 import type { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
-import { normalizeZipPath } from './xlsx-zip.js'
 
 interface WorkbookSheetEntry {
   readonly name: string
   readonly relationshipId: string
 }
 
-interface WorkbookRelationship {
-  readonly id: string
-  readonly type: string
-  readonly target: string
-}
-
-const workbookPath = 'xl/workbook.xml'
-const worksheetRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet'
 const definedNameElementPattern =
   /<(?:[A-Za-z_][\w.-]*:)?definedName\b(?:[^>"']|"[^"]*"|'[^']*')*\/>|<((?:[A-Za-z_][\w.-]*:)?definedName)\b(?:[^>"']|"[^"]*"|'[^']*')*>[\s\S]*?<\/\1>/gu
 
@@ -28,27 +19,6 @@ export function readWorkbookSheets(workbookXml: string, stringPool?: ImportedWor
     }
     const decodedName = decodeXmlText(name)
     return [{ name: stringPool?.intern(decodedName) ?? decodedName, relationshipId }]
-  })
-}
-
-export function readWorksheetPathsByRelationshipId(workbookRelationshipsXml: string): Map<string, string> {
-  return new Map(
-    readRelationships(workbookRelationshipsXml).flatMap((relationship) => {
-      if (relationship.type !== worksheetRelationshipType && !relationship.target.includes('worksheets/')) {
-        return []
-      }
-      return [[relationship.id, normalizeZipPath(resolveTargetPath(workbookPath, relationship.target))]]
-    }),
-  )
-}
-
-function readRelationships(relationshipsXml: string): WorkbookRelationship[] {
-  return [...relationshipsXml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?Relationship\b(?:[^>"']|"[^"]*"|'[^']*')*\/?>/gu)].flatMap((match) => {
-    const tag = match[0]
-    const id = readXmlAttribute(tag, 'Id')
-    const type = readXmlAttribute(tag, 'Type')
-    const target = readXmlAttribute(tag, 'Target')
-    return id && type && target ? [{ id, type, target }] : []
   })
 }
 
@@ -275,20 +245,4 @@ function decodeCellAddress(address: string): { readonly row: number; readonly co
     return null
   }
   return { row: row - 1, column: column - 1 }
-}
-
-function resolveTargetPath(basePath: string, target: string): string {
-  if (target.startsWith('/')) {
-    return target.slice(1)
-  }
-  const parts = basePath.split('/')
-  parts.pop()
-  for (const segment of target.split('/')) {
-    if (segment === '..') {
-      parts.pop()
-    } else if (segment !== '.' && segment.length > 0) {
-      parts.push(segment)
-    }
-  }
-  return parts.join('/')
 }

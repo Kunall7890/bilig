@@ -468,6 +468,24 @@ describe('repository dependency policy', () => {
     expect(streamingFileSource).toContain('tryPrepareStreamingPatchedWorksheetEntryFile')
   })
 
+  it('keeps large XLSX import preflight on @bilig/xlsx workbook path resolution', () => {
+    const largeSimpleImport = readFileSync(join(repoRoot, 'packages/excel-import/src/xlsx-large-simple-import.ts'), 'utf8')
+    const largeSimpleInspect = readFileSync(join(repoRoot, 'packages/excel-import/src/xlsx-large-simple-headless-inspect.ts'), 'utf8')
+    const largeSimpleWorkbookMetadata = readFileSync(
+      join(repoRoot, 'packages/excel-import/src/xlsx-large-simple-workbook-metadata.ts'),
+      'utf8',
+    )
+
+    expect(largeSimpleImport).toContain("from '@bilig/xlsx'")
+    expect(largeSimpleImport).toContain('workbookSheetPathEntriesForSource(zip)')
+    expect(largeSimpleImport).not.toContain('readWorksheetPathsByRelationshipId')
+    expect(largeSimpleInspect).toContain("from '@bilig/xlsx'")
+    expect(largeSimpleInspect).toContain('workbookSheetPathEntriesForSource(zip)')
+    expect(largeSimpleInspect).not.toContain('readWorksheetPathsByRelationshipId')
+    expect(largeSimpleWorkbookMetadata).not.toContain('readWorksheetPathsByRelationshipId')
+    expect(largeSimpleWorkbookMetadata).not.toContain('worksheetRelationshipType')
+  })
+
   it('keeps large XLSX file-mode wrappers off materialized workbook and hidden fallback paths', () => {
     const reportSource = readFileSync(join(repoRoot, 'packages/xlsx/src/workbook-compatibility-report.ts'), 'utf8')
     const reportFileStart = reportSource.indexOf('export function buildWorkbookCompatibilityReportFromFile')

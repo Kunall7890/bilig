@@ -1,3 +1,4 @@
+import { workbookSheetPathEntriesForSource } from '@bilig/xlsx'
 import { normalizeWorkbookName } from './workbook-import-helpers.js'
 import { externalPivotCachesWarning, externalWorkbookReferencesWarning, unsupportedCellStylesWarning } from './xlsx-import-warnings.js'
 import { isDataModelPackagePartPath } from './xlsx-data-model-artifacts.js'
@@ -56,7 +57,6 @@ const workbookPath = 'xl/workbook.xml'
 const workbookRelationshipsPath = 'xl/_rels/workbook.xml.rels'
 const sharedStringsPath = 'xl/sharedStrings.xml'
 const stylesPath = 'xl/styles.xml'
-const worksheetRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet'
 const printerSettingsRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/printerSettings'
 const pivotTableRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotTable'
 const headlessZipEntryChunkSize = 8 * 1024
@@ -93,22 +93,21 @@ export function tryInspectLargeSimpleXlsxHeadless(
     return null
   }
   const workbookXml = getZipText(zip, workbookPath)
-  const workbookRelationshipsXml = getZipText(zip, workbookRelationshipsPath)
-  if (!workbookXml || !workbookRelationshipsXml) {
+  if (!workbookXml) {
     return null
   }
   const workbookSheets = readWorkbookSheets(workbookXml)
-  const worksheetPathsByRelationshipId = readWorksheetPathsByRelationshipId(workbookRelationshipsXml)
+  const worksheetEntriesByName = new Map(workbookSheetPathEntriesForSource(zip).map((entry) => [entry.name, entry]))
   const definedNames = inspectWorkbookDefinedNames(
     workbookXml,
     workbookSheets.map((entry) => entry.name),
   )
-  if (workbookSheets.length === 0 || worksheetPathsByRelationshipId.size === 0) {
+  if (workbookSheets.length === 0 || worksheetEntriesByName.size === 0) {
     return null
   }
   const worksheetEntries = workbookSheets.flatMap((entry) => {
-    const path = worksheetPathsByRelationshipId.get(entry.relationshipId)
-    return path ? [{ name: entry.name, path }] : []
+    const sheetPathEntry = worksheetEntriesByName.get(entry.name)
+    return sheetPathEntry ? [{ name: entry.name, path: sheetPathEntry.path }] : []
   })
   if (worksheetEntries.length !== workbookSheets.length) {
     return null
@@ -285,22 +284,21 @@ export async function tryInspectLargeSimpleXlsxHeadlessAsync(
     return null
   }
   const workbookXml = getZipText(zip, workbookPath)
-  const workbookRelationshipsXml = getZipText(zip, workbookRelationshipsPath)
-  if (!workbookXml || !workbookRelationshipsXml) {
+  if (!workbookXml) {
     return null
   }
   const workbookSheets = readWorkbookSheets(workbookXml)
-  const worksheetPathsByRelationshipId = readWorksheetPathsByRelationshipId(workbookRelationshipsXml)
+  const worksheetEntriesByName = new Map(workbookSheetPathEntriesForSource(zip).map((entry) => [entry.name, entry]))
   const definedNames = inspectWorkbookDefinedNames(
     workbookXml,
     workbookSheets.map((entry) => entry.name),
   )
-  if (workbookSheets.length === 0 || worksheetPathsByRelationshipId.size === 0) {
+  if (workbookSheets.length === 0 || worksheetEntriesByName.size === 0) {
     return null
   }
   const worksheetEntries = workbookSheets.flatMap((entry) => {
-    const path = worksheetPathsByRelationshipId.get(entry.relationshipId)
-    return path ? [{ name: entry.name, path }] : []
+    const sheetPathEntry = worksheetEntriesByName.get(entry.name)
+    return sheetPathEntry ? [{ name: entry.name, path: sheetPathEntry.path }] : []
   })
   if (worksheetEntries.length !== workbookSheets.length) {
     return null
@@ -484,17 +482,6 @@ function readWorkbookSheets(workbookXml: string): WorkbookSheetEntry[] {
   })
 }
 
-function readWorksheetPathsByRelationshipId(workbookRelationshipsXml: string): Map<string, string> {
-  return new Map(
-    readRelationships(workbookRelationshipsXml).flatMap((relationship) => {
-      if (relationship.type !== worksheetRelationshipType && !relationship.target.includes('worksheets/')) {
-        return []
-      }
-      return [[relationship.id, normalizeZipPath(resolveTargetPath(workbookPath, relationship.target))]]
-    }),
-  )
-}
-
 function readRelationships(relationshipsXml: string): WorkbookRelationship[] {
   return [...relationshipsXml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?Relationship\b(?:[^>"']|"[^"]*"|'[^']*')*\/?>/gu)].flatMap((match) => {
     const tag = match[0]
@@ -642,20 +629,4 @@ function decodeXmlText(value: string): string {
 
 function isValidXmlCodePoint(value: number): boolean {
   return Number.isInteger(value) && value >= 0 && value <= 0x10ffff
-}
-
-function resolveTargetPath(basePath: string, target: string): string {
-  if (target.startsWith('/')) {
-    return target.slice(1)
-  }
-  const parts = basePath.split('/')
-  parts.pop()
-  for (const segment of target.split('/')) {
-    if (segment === '..') {
-      parts.pop()
-    } else if (segment !== '.' && segment.length > 0) {
-      parts.push(segment)
-    }
-  }
-  return parts.join('/')
 }
