@@ -1,11 +1,18 @@
 import { parseFormula, type FormulaNode } from '@bilig/formula'
-import { ValueTag, type CellValue } from '@bilig/protocol'
+import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import { createKernelSync } from '@bilig/wasm-kernel'
 import { decodeCellAddress, type XlsxSourceLiteralPatch } from '@bilig/xlsx'
 
 import type { NativeFormulaCell, NativeTable, PendingCellValue, SheetScanState } from './streaming-native-recalc.js'
 
 export interface StreamingNativeWasmRowChainResult {
+  readonly batchCount: number
+  readonly evaluatedFormulaCellCount: number
+  readonly patches: readonly XlsxSourceLiteralPatch[]
+  readonly processedCells: ReadonlySet<string>
+}
+
+export interface StreamingNativeWasmDirectScalarResult {
   readonly batchCount: number
   readonly evaluatedFormulaCellCount: number
   readonly patches: readonly XlsxSourceLiteralPatch[]
@@ -30,6 +37,14 @@ interface AffineRowChainCandidate extends RowChainCandidate {
 interface DivideRowChainCandidate extends RowChainCandidate {
   readonly secondKind: 'divide'
   readonly denominatorValue: number
+}
+
+interface DirectScalarCandidate {
+  readonly cell: NativeFormulaCell
+  readonly operatorCode: number
+  readonly leftValue: number
+  readonly rightValue: number
+  readonly rowValues: Map<number, PendingCellValue>
 }
 
 interface NumericSource {
@@ -132,6 +147,53 @@ export function evaluateStreamingNativeWasmRowChains(args: {
   }
 }
 
+export function evaluateStreamingNativeWasmDirectScalars(args: {
+  readonly sheetScans: ReadonlyMap<string, SheetScanState>
+  readonly tablesBySheet: ReadonlyMap<string, readonly NativeTable[]>
+  readonly resolveFormulaSource: (scan: SheetScanState, cell: NativeFormulaCell) => string
+  readonly skippedCells: ReadonlySet<string>
+}): StreamingNativeWasmDirectScalarResult {
+  const candidates = collectDirectScalarCandidates(args)
+  if (candidates.length === 0) {
+    return emptyResult()
+  }
+  const kernel = createKernelSync()
+  kernel.init(candidates.length, 1, 1, 1, 1)
+  kernel.evalDirectScalarStoreTargetBatch(
+    Uint32Array.from(candidates.map((_candidate, index) => index)),
+    Uint8Array.from(candidates.map((candidate) => candidate.operatorCode)),
+    Uint32Array.from(candidates.map(() => 0xffffffff)),
+    Uint8Array.from(candidates.map(() => ValueTag.Number)),
+    Float64Array.from(candidates.map((candidate) => candidate.leftValue)),
+    Uint16Array.from(candidates.map(() => ErrorCode.None)),
+    Uint32Array.from(candidates.map(() => 0xffffffff)),
+    Uint8Array.from(candidates.map(() => ValueTag.Number)),
+    Float64Array.from(candidates.map((candidate) => candidate.rightValue)),
+    Uint16Array.from(candidates.map(() => ErrorCode.None)),
+    Float64Array.from(candidates.map(() => 0)),
+  )
+  const tags = kernel.readTags()
+  const numbers = kernel.readNumbers()
+  const patches: XlsxSourceLiteralPatch[] = []
+  const processedCells = new Set<string>()
+  for (let index = 0; index < candidates.length; index += 1) {
+    const candidate = candidates[index]!
+    const value = numbers[index]!
+    if (tags[index] !== ValueTag.Number || !Number.isFinite(value)) {
+      continue
+    }
+    candidate.rowValues.set(candidate.cell.col, { tag: ValueTag.Number, value })
+    patches.push(formulaPatch(candidate.cell, value))
+    processedCells.add(cellKey(candidate.cell))
+  }
+  return {
+    batchCount: patches.length > 0 ? 1 : 0,
+    evaluatedFormulaCellCount: processedCells.size,
+    patches,
+    processedCells,
+  }
+}
+
 function collectRowChainCandidates(args: {
   readonly sheetScans: ReadonlyMap<string, SheetScanState>
   readonly tablesBySheet: ReadonlyMap<string, readonly NativeTable[]>
@@ -190,6 +252,44 @@ function collectRowChainCandidates(args: {
           rowValues,
         })
       }
+    }
+  }
+  return candidates
+}
+
+function collectDirectScalarCandidates(args: {
+  readonly sheetScans: ReadonlyMap<string, SheetScanState>
+  readonly tablesBySheet: ReadonlyMap<string, readonly NativeTable[]>
+  readonly resolveFormulaSource: (scan: SheetScanState, cell: NativeFormulaCell) => string
+  readonly skippedCells: ReadonlySet<string>
+}): DirectScalarCandidate[] {
+  const candidates: DirectScalarCandidate[] = []
+  for (const scan of args.sheetScans.values()) {
+    for (const cell of scan.formulaCells) {
+      if (args.skippedCells.has(cellKey(cell))) {
+        continue
+      }
+      const rowValues = scan.rows.get(cell.row)
+      if (!rowValues) {
+        continue
+      }
+      const firstPlan = tryCompileFirstFormula(scan, cell, args)
+      const operatorCode = firstPlan ? directScalarOperatorCode(firstPlan.operatorCode) : undefined
+      if (!firstPlan || operatorCode === undefined) {
+        continue
+      }
+      const leftValue = readNumericSource(rowValues, firstPlan.left)
+      const rightValue = readNumericSource(rowValues, firstPlan.right)
+      if (leftValue === null || rightValue === null || (firstPlan.operatorCode === 5 && rightValue === 0)) {
+        continue
+      }
+      candidates.push({
+        cell,
+        operatorCode,
+        leftValue,
+        rightValue,
+        rowValues,
+      })
     }
   }
   return candidates
@@ -317,6 +417,21 @@ function rowPairOperatorCode(operator: string): number | undefined {
       return 4
     case '/':
       return 5
+    default:
+      return undefined
+  }
+}
+
+function directScalarOperatorCode(rowPairCode: number): number | undefined {
+  switch (rowPairCode) {
+    case 1:
+      return 1
+    case 2:
+      return 2
+    case 4:
+      return 3
+    case 5:
+      return 4
     default:
       return undefined
   }

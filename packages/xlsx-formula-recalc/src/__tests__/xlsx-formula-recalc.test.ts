@@ -188,6 +188,32 @@ describe('xlsx-formula-recalc', () => {
     }
   })
 
+  it('recalculates public-corpus direct scalar formulas through the native kernel', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-native-direct-scalar-'))
+    try {
+      const sourcePath = join(tempDir, 'public-direct-scalar.xlsx')
+      const outputPath = join(tempDir, 'public-direct-scalar.recalculated.xlsx')
+      writeFileSync(sourcePath, buildPublicDirectScalarWorkbook())
+
+      const result = await recalculateXlsxFileToFile(sourcePath, {
+        outputPath,
+        engine: 'streaming-native',
+        reads: ["'Tableau 12'!D5"],
+      })
+
+      expect(readNumber(result.reads["'Tableau 12'!D5"])).toBe(0.8603058823529411)
+      expect(result.diagnostics?.engineMode).toBe('streaming-native')
+      expect(result.diagnostics?.formulaCounts.evaluatedFormulaCellCount).toBe(1)
+      expect(result.diagnostics?.formulaCounts.nativeKernelFormulaCellCount).toBe(1)
+      expect(result.diagnostics?.formulaCounts.nativeKernelBatchCount).toBe(1)
+      const outputBytes = readFileSync(outputPath)
+      const sheetXml = strFromU8(unzipSync(outputBytes)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+      expect(sheetXml).toContain('<c r="D5"><f>C5/B5</f><v>0.8603058823529411</v></c>')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
   it('recalculates public-corpus inline ratio row chains through the native kernel', async () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-native-inline-ratio-chain-'))
     try {
@@ -636,6 +662,25 @@ function buildPublicRatioChainWorkbook(): Uint8Array {
         '<sheetData>',
         '<row r="1"><c r="C1" t="inlineStr"><is><t>Investors</t></is></c><c r="E1" t="inlineStr"><is><t>Other</t></is></c><c r="F1" t="inlineStr"><is><t>Primary</t></is></c><c r="G1" t="inlineStr"><is><t>Total</t></is></c><c r="H1" t="inlineStr"><is><t>Ratio</t></is></c></row>',
         '<row r="5"><c r="C5"><v>4</v></c><c r="E5"><v>300</v></c><c r="F5"><v>900</v></c><c r="G5"><f>F5+E5</f><v>0</v></c><c r="H5"><f>G5/C5</f><v>0</v></c></row>',
+        '</sheetData>',
+        '</worksheet>',
+      ].join(''),
+    },
+  ])
+}
+
+function buildPublicDirectScalarWorkbook(): Uint8Array {
+  return buildIndependentWorkbook([
+    {
+      name: 'Tableau 12',
+      path: 'xl/worksheets/sheet1.xml',
+      xml: [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+        '<dimension ref="A1:D5"/>',
+        '<sheetData>',
+        '<row r="1"><c r="B1" t="inlineStr"><is><t>Capital</t></is></c><c r="C1" t="inlineStr"><is><t>Value</t></is></c><c r="D1" t="inlineStr"><is><t>Ratio</t></is></c></row>',
+        '<row r="5"><c r="B5"><v>42500000</v></c><c r="C5"><v>36563000</v></c><c r="D5"><f>C5/B5</f><v>0</v></c></row>',
         '</sheetData>',
         '</worksheet>',
       ].join(''),

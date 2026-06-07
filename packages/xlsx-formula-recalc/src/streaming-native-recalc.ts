@@ -21,7 +21,7 @@ import {
   type XlsxZipEntries,
 } from '@bilig/xlsx'
 
-import { evaluateStreamingNativeWasmRowChains } from './streaming-native-row-chain-wasm.js'
+import { evaluateStreamingNativeWasmDirectScalars, evaluateStreamingNativeWasmRowChains } from './streaming-native-row-chain-wasm.js'
 
 export type XlsxFormulaRecalcEngineMode = 'streaming-native' | 'workpaper'
 export type XlsxFormulaRecalcEngine = 'auto' | XlsxFormulaRecalcEngineMode
@@ -783,10 +783,18 @@ function evaluateFormulaCells(
     tablesBySheet,
     resolveFormulaSource,
   })
-  let evaluatedFormulaCellCount = nativeRowChains.evaluatedFormulaCellCount
-  let patchedFormulaCacheCount = nativeRowChains.patches.length
+  const nativeDirectScalars = evaluateStreamingNativeWasmDirectScalars({
+    sheetScans,
+    tablesBySheet,
+    resolveFormulaSource,
+    skippedCells: nativeRowChains.processedCells,
+  })
+  const nativeProcessedCells = new Set([...nativeRowChains.processedCells, ...nativeDirectScalars.processedCells])
+  let evaluatedFormulaCellCount = nativeRowChains.evaluatedFormulaCellCount + nativeDirectScalars.evaluatedFormulaCellCount
+  let patchedFormulaCacheCount = nativeRowChains.patches.length + nativeDirectScalars.patches.length
   let unsupportedFormulaCellCount = 0
   patches.push(...nativeRowChains.patches)
+  patches.push(...nativeDirectScalars.patches)
   for (const scan of sheetScans.values()) {
     const formulaCells = scan.formulaCells.toSorted((left, right) => left.row - right.row || left.col - right.col)
     const formulaPatches = new Map<string, XlsxSourceLiteralPatch>()
@@ -795,7 +803,7 @@ function evaluateFormulaCells(
     for (let pass = 0; pass < maxPasses; pass += 1) {
       let changed = false
       for (const cell of formulaCells) {
-        if (nativeRowChains.processedCells.has(`${cell.sheetName}!${cell.address}`)) {
+        if (nativeProcessedCells.has(`${cell.sheetName}!${cell.address}`)) {
           continue
         }
         const rowValues = scan.rows.get(cell.row)
@@ -847,8 +855,8 @@ function evaluateFormulaCells(
     evaluatedFormulaCellCount,
     patchedFormulaCacheCount,
     unsupportedFormulaCellCount,
-    nativeKernelFormulaCellCount: nativeRowChains.evaluatedFormulaCellCount,
-    nativeKernelBatchCount: nativeRowChains.batchCount,
+    nativeKernelFormulaCellCount: nativeRowChains.evaluatedFormulaCellCount + nativeDirectScalars.evaluatedFormulaCellCount,
+    nativeKernelBatchCount: nativeRowChains.batchCount + nativeDirectScalars.batchCount,
   }
 }
 
