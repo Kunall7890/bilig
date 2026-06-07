@@ -7,6 +7,11 @@ import { decodeCellAddress, decodeCellRange, encodeCellAddress, type XlsxCellRan
 import { createFileXlsxSourceReader } from './file-source.js'
 import type { XlsxExternalWorkbookHydrationDiagnostics } from './external-workbook-types.js'
 import { exportXlsxSourceLiteralPatchesToFileAsync, type XlsxSourceLiteralPatch } from './source-preserving-literal-patches.js'
+import {
+  isStreamingNativeExternalReferenceAlias,
+  normalizeExternalWorkbookReferences,
+  readStreamingNativeExternalCachedRowsByAlias,
+} from './streaming-native-external-cache.js'
 import { evaluateStreamingNativeWasmFormulas, expandStreamingNativeFormulaDependencyRows } from './streaming-native-row-chain-wasm.js'
 import { readXmlAttribute, worksheetCellElementPattern, worksheetCellOpeningTagPattern } from './xml.js'
 import { workbookSheetPathEntriesForSource } from './workbook-sheet-paths.js'
@@ -132,6 +137,7 @@ interface EvaluationContext {
   readonly rowValues: Map<number, PendingCellValue>
   readonly sheetRows: ReadonlyMap<number, Map<number, PendingCellValue>>
   readonly sheetRowsByName: ReadonlyMap<string, ReadonlyMap<number, Map<number, PendingCellValue>>>
+  readonly externalCachedRowsByAlias: ReadonlyMap<string, ReadonlyMap<number, Map<number, PendingCellValue>>>
   readonly tablesBySheet: ReadonlyMap<string, readonly NativeTable[]>
 }
 
@@ -221,9 +227,11 @@ export async function recalculateXlsxFileToFileStreamingNative(
     }
     recordPhase('worksheet-scan')
 
+    const resolveParserFormulaSource = (scan: SheetScanState, cell: NativeFormulaCell): string =>
+      normalizeExternalWorkbookReferences(resolveFormulaSource(scan, cell))
     const expandedDependencySheets = expandStreamingNativeFormulaDependencyRows({
       sheetScans,
-      resolveFormulaSource,
+      resolveFormulaSource: resolveParserFormulaSource,
       targetRowsForSheet: (sheetName) => {
         if (!sheetPathsByName.has(sheetName)) {
           return undefined
@@ -251,7 +259,7 @@ export async function recalculateXlsxFileToFileStreamingNative(
 
     const expandedHydratedDependencySheets = expandStreamingNativeFormulaDependencyRows({
       sheetScans,
-      resolveFormulaSource,
+      resolveFormulaSource: resolveParserFormulaSource,
       targetRowsForSheet: (sheetName) => {
         if (!sheetPathsByName.has(sheetName)) {
           return undefined
@@ -280,10 +288,14 @@ export async function recalculateXlsxFileToFileStreamingNative(
 
     const tablesBySheet = readNativeTablesBySheet(zip, sheetScans)
     recordPhase('table-metadata')
+    const externalCachedRowsByAlias = readStreamingNativeExternalCachedRowsByAlias(zip, sheetScans, resolveFormulaSource)
+    if (externalCachedRowsByAlias.size > 0) {
+      recordPhase('external-link-cache')
+    }
 
     const patches: XlsxSourceLiteralPatch[] = []
     applyEdits(edits, sheetScans, patches)
-    const formulaCounts = evaluateFormulaCells(sheetScans, tablesBySheet, patches)
+    const formulaCounts = evaluateFormulaCells(sheetScans, tablesBySheet, externalCachedRowsByAlias, patches)
     const readValues = readTargets(reads, sheetScans)
     const targetRowCount = [...targetRowsBySheet.values()].reduce((sum, rows) => sum + rows.size, 0)
     const editCount = edits.length
@@ -849,12 +861,13 @@ function cellValueFromLiteralInput(value: LiteralInput): CellValue {
 function evaluateFormulaCells(
   sheetScans: ReadonlyMap<string, SheetScanState>,
   tablesBySheet: ReadonlyMap<string, readonly NativeTable[]>,
+  externalCachedRowsByAlias: ReadonlyMap<string, ReadonlyMap<number, Map<number, PendingCellValue>>>,
   patches: XlsxSourceLiteralPatch[],
 ): StreamingNativeFormulaCounts {
   const nativeFormulaCells = evaluateStreamingNativeWasmFormulas({
     sheetScans,
     tablesBySheet,
-    resolveFormulaSource,
+    resolveFormulaSource: (scan, cell) => normalizeExternalWorkbookReferences(resolveFormulaSource(scan, cell)),
   })
   let evaluatedFormulaCellCount = nativeFormulaCells.evaluatedFormulaCellCount
   let patchedFormulaCacheCount = nativeFormulaCells.patches.length
@@ -886,6 +899,7 @@ function evaluateFormulaCells(
             rowValues,
             sheetRows: scan.rows,
             sheetRowsByName,
+            externalCachedRowsByAlias,
             tablesBySheet,
           })
           changed = changed || !cellValuesEqual(resolvedCellValue(rowValues.get(cell.col)), value)
@@ -968,10 +982,7 @@ function resolveFormulaSource(scan: SheetScanState, cell: NativeFormulaCell): st
 }
 
 function parseStreamingNativeFormula(formula: string): FormulaNode {
-  if (/\[[^\]]+\][^!]+!/u.test(formula)) {
-    throw new UnsupportedStreamingNativeFormulaError('external workbook references are not supported')
-  }
-  return parseFormula(formula)
+  return parseFormula(normalizeExternalWorkbookReferences(formula))
 }
 
 function evaluateFormulaAst(node: FormulaNode, context: EvaluationContext): CellValue {
@@ -1019,6 +1030,17 @@ function readCellReference(node: Extract<FormulaNode, { readonly kind: 'CellRef'
 }
 
 function readScannedCell(sheetName: string, row: number, col: number, context: EvaluationContext): CellValue {
+  const externalRows = context.externalCachedRowsByAlias.get(sheetName)
+  if (externalRows) {
+    const rowValues = externalRows.get(row)
+    if (!rowValues) {
+      throw new UnsupportedStreamingNativeFormulaError(`external workbook cache row is missing for ${sheetName}!${String(row + 1)}`)
+    }
+    return resolvedCellValue(rowValues.get(col))
+  }
+  if (isStreamingNativeExternalReferenceAlias(sheetName)) {
+    throw new UnsupportedStreamingNativeFormulaError(`external workbook cache sheet is missing for ${sheetName}`)
+  }
   const sheetRows = sheetName === context.sheetName ? context.sheetRows : context.sheetRowsByName.get(sheetName)
   if (!sheetRows) {
     throw new UnsupportedStreamingNativeFormulaError(`sheet was not scanned for direct reference: ${sheetName}`)
@@ -1184,6 +1206,9 @@ function evaluateSum(node: Extract<FormulaNode, { readonly kind: 'CallExpr' }>, 
   }
   let total = 0
   for (const argument of node.args) {
+    if (argument.kind === 'OmittedArgument') {
+      continue
+    }
     if (argument.kind === 'RangeRef') {
       for (const value of readScannedCellRange(argument, context)) {
         if (value.tag === ValueTag.Error) {

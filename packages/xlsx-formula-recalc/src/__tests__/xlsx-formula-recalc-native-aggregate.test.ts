@@ -324,7 +324,7 @@ describe('xlsx-formula-recalc native aggregates', () => {
     }
   })
 
-  it('fails closed with diagnostics for external workbook references', async () => {
+  it('fails closed when external workbook references have no cached values', async () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-native-external-reference-'))
     try {
       const sourcePath = join(tempDir, 'external-reference.xlsx')
@@ -340,9 +340,40 @@ describe('xlsx-formula-recalc native aggregates', () => {
       ).rejects.toMatchObject({
         diagnostics: expect.objectContaining({
           engineMode: 'streaming-native',
-          unsupportedReason: 'external workbook references are not supported',
+          unsupportedReason: expect.stringContaining('external workbook cache sheet is missing'),
         }),
       })
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  it('evaluates external workbook references from cached external-link values', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-native-cached-external-reference-'))
+    try {
+      const sourcePath = join(tempDir, 'cached-external-reference.xlsx')
+      const outputPath = join(tempDir, 'cached-external-reference.recalculated.xlsx')
+      writeFileSync(sourcePath, buildCachedExternalReferenceWorkbook())
+
+      const result = await recalculateXlsxFileToFile(sourcePath, {
+        outputPath,
+        engine: 'streaming-native',
+        reads: ['Budget!B2', 'Budget!C2', 'Budget!D2', 'Budget!E2'],
+      })
+
+      expect(readNumber(result.reads['Budget!B2'])).toBeCloseTo(1460.21607666, 9)
+      expect(readNumber(result.reads['Budget!C2'])).toBeCloseTo(99.81585952, 9)
+      expect(readNumber(result.reads['Budget!D2'])).toBe(2021)
+      expect(readNumber(result.reads['Budget!E2'])).toBeCloseTo(1460.59744118, 9)
+      expect(result.diagnostics?.engineMode).toBe('streaming-native')
+      expect(result.diagnostics?.formulaCounts.evaluatedFormulaCellCount).toBe(4)
+      expect(result.diagnostics?.formulaCounts.unsupportedFormulaCellCount).toBe(0)
+      expect(result.diagnostics?.formulaCounts.patchedFormulaCacheCount).toBe(4)
+      const outputBytes = readFileSync(outputPath)
+      const sheetXml = strFromU8(unzipSync(outputBytes)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+      expect(sheetXml).toContain('<f>[1]QTR_detailed!$B130/10^6</f>')
+      expect(sheetXml).toContain("<f>+'[1]BS &amp; Op Stat'!$D$5</f>")
+      expect(sheetXml).toContain('<v>2021</v>')
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
     }
@@ -853,6 +884,73 @@ function buildExternalReferenceWorkbook(): Uint8Array {
   <dimension ref="B2"/>
   <sheetData>
     <row r="2"><c r="B2"><f>[1]QTR_detailed!$B130/10^6</f><v>0</v></c></row>
+  </sheetData>
+</worksheet>`),
+  })
+}
+
+function buildCachedExternalReferenceWorkbook(): Uint8Array {
+  return zipSync({
+    'xl/workbook.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${officeRelationshipNamespace}">
+  <sheets><sheet name="Budget" sheetId="1" r:id="rId1"/></sheets>
+  <externalReferences><externalReference r:id="rId2"/></externalReferences>
+</workbook>`),
+    'xl/_rels/workbook.xml.rels': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="${officeRelationshipNamespace}/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="${officeRelationshipNamespace}/externalLink" Target="externalLinks/externalLink1.xml"/>
+</Relationships>`),
+    '[Content_Types].xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/externalLinks/externalLink1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.externalLink+xml"/>
+</Types>`),
+    '_rels/.rels': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rIdWorkbook" Type="${officeRelationshipNamespace}/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`),
+    'xl/externalLinks/externalLink1.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<externalLink xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${officeRelationshipNamespace}">
+  <externalBook r:id="rId1">
+    <sheetNames>
+      <sheetName val="Unused"/>
+      <sheetName val="QTR_detailed"/>
+      <sheetName val="BS &amp; Op Stat"/>
+    </sheetNames>
+    <sheetDataSet>
+      <sheetData sheetId="0"/>
+      <sheetData sheetId="1">
+        <row r="130">
+          <cell r="B130"><v>1460216076.6600001</v></cell>
+          <cell r="R130"><v>99434495</v></cell>
+          <cell r="S130"><v>0</v></cell>
+          <cell r="T130"><v>381364.52</v></cell>
+        </row>
+      </sheetData>
+      <sheetData sheetId="2">
+        <row r="5"><cell r="D5"><v>2021</v></cell></row>
+      </sheetData>
+    </sheetDataSet>
+  </externalBook>
+</externalLink>`),
+    'xl/externalLinks/_rels/externalLink1.xml.rels': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="${officeRelationshipNamespace}/externalLinkPath" Target="file:///tmp/source.xlsx" TargetMode="External"/>
+</Relationships>`),
+    'xl/worksheets/sheet1.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <dimension ref="B2:E2"/>
+  <sheetData>
+    <row r="2">
+      <c r="B2"><f>[1]QTR_detailed!$B130/10^6</f><v>0</v></c>
+      <c r="C2"><f>SUM([1]QTR_detailed!$R130:$T130)/10^6</f><v>0</v></c>
+      <c r="D2"><f>+'[1]BS &amp; Op Stat'!$D$5</f><v>0</v></c>
+      <c r="E2"><f>SUM([1]QTR_detailed!$B130,[1]QTR_detailed!$T130,)/10^6</f><v>0</v></c>
+    </row>
   </sheetData>
 </worksheet>`),
   })
