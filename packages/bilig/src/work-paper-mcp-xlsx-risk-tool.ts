@@ -8,6 +8,8 @@ type JsonRpcId = string | number | null
 type WorkPaperMcpJsonRpcResponse = ReturnType<WorkPaperMcpToolServer['handleJsonRpc']>
 type XlsxRiskInspectLimit = number | 'all'
 
+const defaultXlsxWorkbookRiskInspectLimit = 2000
+
 const xlsxWorkbookRiskToolDefinition = {
   name: 'analyze_workbook_risk',
   title: 'Analyze XLSX Workbook Risk',
@@ -18,8 +20,8 @@ const xlsxWorkbookRiskToolDefinition = {
     properties: {
       inspectLimit: {
         type: 'string',
-        default: 'all',
-        description: 'Formula cells to recompute during inspection. Use all or a positive integer string.',
+        default: defaultXlsxWorkbookRiskInspectLimit.toString(),
+        description: 'Formula cells to inspect with the native file-backed scanner. Use all only for explicit deep diagnostics.',
       },
     },
     additionalProperties: false,
@@ -87,7 +89,7 @@ function withXlsxWorkbookRiskTool(
           const args = isRecord(params['arguments']) ? params['arguments'] : {}
           const report = buildWorkbookCompatibilityReportFromFile(xlsxPath, {
             fileName: basename(xlsxPath),
-            inspectLimit: parseInspectLimit(args['inspectLimit'] ?? 'all'),
+            inspectLimit: parseInspectLimit(args['inspectLimit'] ?? defaultXlsxWorkbookRiskInspectLimit),
           })
           return {
             jsonrpc: '2.0',

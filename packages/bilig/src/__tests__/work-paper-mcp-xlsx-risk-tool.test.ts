@@ -55,7 +55,7 @@ describe('bilig-workpaper MCP XLSX risk tool', () => {
         verified: true,
         input: {
           fileName: 'pricing.xlsx',
-          inspectLimit: 'all',
+          inspectLimit: 2000,
         },
         workbook: {
           formulaCellCount: 1,
@@ -63,6 +63,47 @@ describe('bilig-workpaper MCP XLSX risk tool', () => {
         excelParity: 'not_proven',
       })
       expect(responses[2]?.result?.content?.[0]?.text).toContain('Workbook risk level:')
+    } finally {
+      source.dispose()
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  it('starts from XLSX without a WorkPaper JSON and still exposes native risk preflight', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'bilig-workpaper-mcp-risk-direct-'))
+    const xlsxPath = join(tempDir, 'pricing.xlsx')
+    const source = WorkPaper.buildFromSheets({
+      Inputs: [
+        ['Metric', 'Value'],
+        ['Units', 7],
+      ],
+      Summary: [
+        ['Metric', 'Value'],
+        ['Units', '=Inputs!B2'],
+      ],
+    })
+
+    try {
+      writeFileSync(xlsxPath, exportXlsx(source.exportSnapshot()))
+      const responses = await runMcpBin(fileURLToPath(new URL('../work-paper-mcp-stdio-bin.ts', import.meta.url)), [
+        '--from-xlsx',
+        xlsxPath,
+      ])
+
+      const toolNames = responses[1]?.result?.tools?.map((tool) => tool.name)
+      expect(toolNames).toContain('analyze_workbook_risk')
+      expect(toolNames).toContain('read_cell')
+      expect(responses[2]?.result?.structuredContent).toMatchObject({
+        schemaVersion: 'bilig-workbook-compatibility-report.v1',
+        verified: true,
+        input: {
+          fileName: 'pricing.xlsx',
+          inspectLimit: 2000,
+        },
+        workbook: {
+          formulaCellCount: 1,
+        },
+      })
     } finally {
       source.dispose()
       rmSync(tempDir, { recursive: true, force: true })

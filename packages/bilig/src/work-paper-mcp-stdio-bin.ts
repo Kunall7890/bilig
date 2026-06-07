@@ -4,6 +4,7 @@ import {
   createFileBackedWorkPaperMcpToolServer,
   createFileBackedWorkPaperMcpToolServerFromFile,
   createFileBackedWorkPaperMcpToolServerFromXlsxFile,
+  createWorkPaperMcpToolServerFromXlsxFile,
   parseWorkPaperMcpStdioCliArgs,
   runDemoWorkPaperMcpStdioServer,
   workPaperMcpStdioHelpText,
@@ -24,20 +25,23 @@ if (cliOptions.demoWorkPaperTools) {
       writable: false,
     }),
   })
+} else if (cliOptions.fromXlsxPath !== undefined) {
+  const server =
+    cliOptions.workpaperPath === undefined
+      ? createWorkPaperMcpToolServerFromXlsxFile({
+          fromXlsxPath: cliOptions.fromXlsxPath,
+        })
+      : createFileBackedWorkPaperMcpToolServerFromXlsxFile({
+          fromXlsxPath: cliOptions.fromXlsxPath,
+          overwriteWorkPaper: cliOptions.overwriteWorkPaper,
+          workpaperPath: cliOptions.workpaperPath,
+          writable: cliOptions.writable,
+        })
+  runDemoWorkPaperMcpStdioServer({
+    server: withXlsxWorkbookRiskTool(server, { xlsxPath: cliOptions.fromXlsxPath }),
+  })
 } else if (cliOptions.workpaperPath === undefined) {
   runDemoWorkPaperMcpStdioServer()
-} else if (cliOptions.fromXlsxPath !== undefined) {
-  runDemoWorkPaperMcpStdioServer({
-    server: withXlsxWorkbookRiskTool(
-      createFileBackedWorkPaperMcpToolServerFromXlsxFile({
-        fromXlsxPath: cliOptions.fromXlsxPath,
-        overwriteWorkPaper: cliOptions.overwriteWorkPaper,
-        workpaperPath: cliOptions.workpaperPath,
-        writable: cliOptions.writable,
-      }),
-      { xlsxPath: cliOptions.fromXlsxPath },
-    ),
-  })
 } else {
   runDemoWorkPaperMcpStdioServer({
     server: createFileBackedWorkPaperMcpToolServerFromFile({
