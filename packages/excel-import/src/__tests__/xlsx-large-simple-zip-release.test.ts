@@ -1,6 +1,5 @@
 import { strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
 
 import { importXlsx } from '../index.js'
 import { exportXlsx } from '../xlsx-export.js'
@@ -161,7 +160,7 @@ describe('large simple XLSX import ZIP ownership', () => {
   }, 30_000)
 
   it('spools large SheetJS fallback source bytes as a reader for unchanged export', () => {
-    const bytes = buildSheetJsFallbackWorkbook({
+    const bytes = buildFallbackWorkbook({
       'docProps/padding.bin': deterministicBytes(9_000_000),
       'xl/threadedComments/threadedComment1.xml': strToU8(
         '<threadedComments xmlns="http://schemas.microsoft.com/office/spreadsheetml/2018/threadedcomments"/>',
@@ -235,17 +234,24 @@ describe('large simple XLSX import ZIP ownership', () => {
   })
 })
 
-function buildSheetJsFallbackWorkbook(extraEntries: Readonly<Record<string, Uint8Array>>): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['Alpha', 'Beta']]), 'Data')
-  return zipSync({
-    ...unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })),
-    ...extraEntries,
-  })
+function buildFallbackWorkbook(extraEntries: Readonly<Record<string, Uint8Array>>): Uint8Array {
+  return buildSharedStringWorkbook(extraEntries)
 }
 
 function buildSharedStringWorkbook(extraEntries: Readonly<Record<string, Uint8Array>> = {}): Uint8Array {
   return zipSync({
+    '[Content_Types].xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>
+</Types>`),
+    '_rels/.rels': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`),
     'xl/workbook.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <sheets><sheet name="Data" sheetId="1" r:id="rId1"/></sheets>
