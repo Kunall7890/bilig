@@ -622,6 +622,16 @@ describe('repository dependency policy', () => {
     expect(publicXlsxBarrel).toContain('recalculateXlsxFileToFile')
   })
 
+  it('keeps bilig-workpaper legacy bytes recalc small-workbook only', () => {
+    const legacyWorkPaper = readFileSync(join(repoRoot, 'packages/bilig/src/xlsx-recalc.ts'), 'utf8')
+
+    expect(legacyWorkPaper).toContain('const legacyWorkPaperBytesApiLimit = 1_000_000')
+    expect(legacyWorkPaper).toContain("assertLegacyWorkPaperBytesApiWithinLimit(bytes, 'recalculateXlsx')")
+    expect(legacyWorkPaper).toContain("assertLegacyWorkPaperBytesApiWithinLimit(bytes, 'recalculateXlsxToFile')")
+    expect(legacyWorkPaper).toContain("assertLegacyWorkPaperBytesApiWithinLimit(bytes, 'inspectXlsxCache')")
+    expect(legacyWorkPaper).toContain('Use recalculateXlsxFileToFile() for file-backed streaming-native XLSX jobs')
+  })
+
   it('keeps headless MCP XLSX file import on the file-backed importer boundary', () => {
     const mcpXlsxFile = readFileSync(join(repoRoot, 'packages/headless/src/work-paper-mcp-xlsx-file.ts'), 'utf8')
 

@@ -52,6 +52,7 @@ interface FormulaErrorCache {
 const sourcePreservingOutputCalculationSettings = Symbol.for('bilig.sourcePreservingXlsxOutputCalculationSettings')
 const importedXlsxSourceBytes = Symbol.for('bilig.importedXlsxSourceBytes')
 const importedXlsxSourceCellPatches = Symbol.for('bilig.importedXlsxSourceCellPatches')
+const legacyWorkPaperBytesApiLimit = 1_000_000
 
 interface ImportedXlsxSourceCellPatch {
   readonly kind: 'literal'
@@ -159,7 +160,9 @@ export interface XlsxFormulaRecalcFileToFileOptions {
 
 export function recalculateXlsx(input: Uint8Array | ArrayBuffer | Buffer, options: XlsxFormulaRecalcOptions = {}): XlsxFormulaRecalcResult {
   assertBytesApiEngine((options as { readonly engine?: string }).engine)
-  return withPreparedRecalculatedXlsxOutput(input, options, (prepared) => {
+  const bytes = toUint8Array(input)
+  assertLegacyWorkPaperBytesApiWithinLimit(bytes, 'recalculateXlsx')
+  return withPreparedRecalculatedXlsxOutput(bytes, options, (prepared) => {
     const exportedXlsx = toUint8Array(exportXlsx(prepared.outputSnapshot))
     return {
       xlsx: addFormulaErrorCachesToXlsxBytes(exportedXlsx, prepared.outputSnapshot, prepared.errorCaches),
@@ -204,7 +207,9 @@ export function recalculateXlsxToFile(
   options: XlsxFormulaRecalcFileOptions,
 ): XlsxFormulaRecalcFileResult {
   assertBytesApiEngine(options.engine)
-  return withPreparedRecalculatedXlsxOutput(input, options, (prepared) => {
+  const bytes = toUint8Array(input)
+  assertLegacyWorkPaperBytesApiWithinLimit(bytes, 'recalculateXlsxToFile')
+  return withPreparedRecalculatedXlsxOutput(bytes, options, (prepared) => {
     if (prepared.errorCaches.length === 0) {
       const exported = exportXlsxToFile(prepared.outputSnapshot, options.outputPath)
       return {
@@ -237,6 +242,16 @@ function assertBytesApiEngine(engine: string | undefined): void {
   if (engine === 'streaming-native') {
     throw new Error('streaming-native engine requires recalculateXlsxFileToFile() with file-backed input and output paths')
   }
+}
+
+function assertLegacyWorkPaperBytesApiWithinLimit(input: Uint8Array, apiName: string): void {
+  if (input.byteLength <= legacyWorkPaperBytesApiLimit) {
+    return
+  }
+  throw new Error(
+    `${apiName} legacy bytes API is small-workbook only (${input.byteLength.toLocaleString('en-US')} bytes > ` +
+      `${legacyWorkPaperBytesApiLimit.toLocaleString('en-US')} bytes). Use recalculateXlsxFileToFile() for file-backed streaming-native XLSX jobs.`,
+  )
 }
 
 function nativeLiteralEdits(edits: readonly XlsxFormulaRecalcEdit[]): readonly { readonly target: string; readonly value: LiteralInput }[] {
@@ -546,17 +561,15 @@ export function inspectXlsxCache(
   input: Uint8Array | ArrayBuffer | Buffer,
   options: XlsxCacheInspectionOptions = {},
 ): XlsxCacheInspectionResult {
-  const imported = importXlsx(
-    toUint8Array(input),
-    options.fileName ?? 'workbook.xlsx',
-    xlsxFormulaRecalcImportOptions(options.externalWorkbooks),
-  )
+  const bytes = toUint8Array(input)
+  assertLegacyWorkPaperBytesApiWithinLimit(bytes, 'inspectXlsxCache')
+  const imported = importXlsx(bytes, options.fileName ?? 'workbook.xlsx', xlsxFormulaRecalcImportOptions(options.externalWorkbooks))
   const formulaCells = collectXlsxCacheFormulaCells(imported.snapshot)
   const inspectionLimit = normalizeXlsxCacheInspectionLimit(options.inspectLimit ?? 'all')
   const inspectedFormulaCells = inspectionLimit === 'all' ? formulaCells : formulaCells.slice(0, inspectionLimit)
   const uninspectedFormulaCellCount = formulaCells.length - inspectedFormulaCells.length
   const suggestedReads = inspectedFormulaCells.map((cell) => cell.target)
-  const recalculated = recalculateXlsx(input, {
+  const recalculated = recalculateXlsx(bytes, {
     ...(options.externalWorkbooks ? { externalWorkbooks: options.externalWorkbooks } : {}),
     ...(options.fileName ? { fileName: options.fileName } : {}),
     ...(options.edits ? { edits: options.edits } : {}),

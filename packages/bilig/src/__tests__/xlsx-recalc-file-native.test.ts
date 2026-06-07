@@ -6,7 +6,7 @@ import { ValueTag } from '@bilig/protocol'
 import { decodeCellAddress, readXlsxFormulaCacheCellsFromFile, writeSimpleXlsxWorkbook, type SimpleXlsxCell } from '@bilig/xlsx'
 import { describe, expect, it } from 'vitest'
 
-import { recalculateXlsx, recalculateXlsxFileToFile } from '../xlsx.js'
+import { inspectXlsxCache, recalculateXlsx, recalculateXlsxFileToFile, recalculateXlsxToFile } from '../xlsx.js'
 
 describe('bilig-workpaper/xlsx native file-to-file recalc', () => {
   it('keeps the public large-workbook path on streaming-native while preserving legacy bytes API exports', async () => {
@@ -47,6 +47,24 @@ describe('bilig-workpaper/xlsx native file-to-file recalc', () => {
         }),
       ).rejects.toThrow(/legacy bytes APIs/u)
       expect(existsSync(fallbackOutputPath)).toBe(false)
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  it('rejects oversized legacy bytes APIs before WorkPaper materialization', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'bilig-workpaper-large-bytes-recalc-'))
+    const oversizedInput = new Uint8Array(1_000_001)
+
+    try {
+      expect(() => recalculateXlsx(oversizedInput, { fileName: 'large.xlsx' })).toThrow(/legacy bytes API is small-workbook only/u)
+      expect(() =>
+        recalculateXlsxToFile(oversizedInput, {
+          outputPath: join(tempDir, 'large.recalculated.xlsx'),
+          fileName: 'large.xlsx',
+        }),
+      ).toThrow(/Use recalculateXlsxFileToFile\(\)/u)
+      expect(() => inspectXlsxCache(oversizedInput, { fileName: 'large.xlsx' })).toThrow(/legacy bytes API is small-workbook only/u)
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
     }
