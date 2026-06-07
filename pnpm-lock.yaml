@@ -614,6 +614,9 @@ importers:
       '@bilig/protocol':
         specifier: workspace:*
         version: link:../protocol
+      '@bilig/wasm-kernel':
+        specifier: workspace:*
+        version: link:../wasm-kernel
       '@bilig/xlsx':
         specifier: workspace:*
         version: link:../xlsx

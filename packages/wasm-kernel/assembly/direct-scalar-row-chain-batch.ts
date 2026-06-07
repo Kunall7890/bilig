@@ -5,6 +5,7 @@ const ROW_PAIR_LEFT_PLUS_RIGHT: u8 = 1
 const ROW_PAIR_LEFT_MINUS_RIGHT: u8 = 2
 const ROW_PAIR_RIGHT_MINUS_LEFT: u8 = 3
 const ROW_PAIR_LEFT_TIMES_RIGHT: u8 = 4
+const ROW_PAIR_LEFT_DIV_RIGHT: u8 = 5
 
 function evalRowPairCode(code: u8, leftValue: f64, rightValue: f64): f64 {
   if (code == ROW_PAIR_LEFT_PLUS_RIGHT) {
@@ -18,6 +19,9 @@ function evalRowPairCode(code: u8, leftValue: f64, rightValue: f64): f64 {
   }
   if (code == ROW_PAIR_LEFT_TIMES_RIGHT) {
     return leftValue * rightValue
+  }
+  if (code == ROW_PAIR_LEFT_DIV_RIGHT) {
+    return leftValue / rightValue
   }
   return NaN
 }

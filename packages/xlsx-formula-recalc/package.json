@@ -85,7 +85,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "pnpm --dir ../.. --filter @bilig/xlsx build && pnpm --dir ../.. --filter @bilig/headless build && rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json",
+    "build": "pnpm --dir ../.. --filter @bilig/wasm-kernel build && pnpm --dir ../.. --filter @bilig/xlsx build && pnpm --dir ../.. --filter @bilig/headless build && rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json",
     "test:excel-oracle": "tsx ../../scripts/run-vitest.ts --root ../.. --run src/__tests__/macos-desktop-excel-*.test.ts --maxWorkers=1 --pool forks --configLoader runner --reporter=verbose",
     "test:excel-oracle:live": "BILIG_EXCEL_ORACLE_RUN=1 tsx ../../scripts/run-vitest.ts --root ../.. --run src/__tests__/macos-desktop-excel-*.test.ts --maxWorkers=1 --pool forks --configLoader runner --reporter=verbose",
     "smoke": "node ./dist/cli.js --help"
@@ -94,6 +94,7 @@
     "@bilig/formula": "workspace:*",
     "@bilig/headless": "workspace:*",
     "@bilig/protocol": "workspace:*",
+    "@bilig/wasm-kernel": "workspace:*",
     "@bilig/xlsx": "workspace:*",
     "fflate": "0.3.11"
   },

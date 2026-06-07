@@ -21,6 +21,8 @@ import {
   type XlsxZipEntries,
 } from '@bilig/xlsx'
 
+import { evaluateStreamingNativeWasmRowChains } from './streaming-native-row-chain-wasm.js'
+
 export type XlsxFormulaRecalcEngineMode = 'streaming-native' | 'workpaper'
 export type XlsxFormulaRecalcEngine = 'auto' | XlsxFormulaRecalcEngineMode
 export type XlsxFormulaRecalcFallbackPolicy = 'error' | 'workpaper'
@@ -36,6 +38,8 @@ export interface StreamingNativeFormulaCounts {
   readonly evaluatedFormulaCellCount: number
   readonly patchedFormulaCacheCount: number
   readonly unsupportedFormulaCellCount: number
+  readonly nativeKernelFormulaCellCount: number
+  readonly nativeKernelBatchCount: number
 }
 
 export interface XlsxFormulaRecalcNativeDiagnostics {
@@ -85,7 +89,7 @@ interface QualifiedEdit extends QualifiedTarget {
   readonly value: LiteralInput
 }
 
-interface SheetScanState {
+export interface SheetScanState {
   readonly sheetName: string
   readonly sheetPath: string
   readonly targetRows: ReadonlySet<number>
@@ -96,7 +100,7 @@ interface SheetScanState {
   scannedFormulaCellCount: number
 }
 
-interface NativeFormulaCell {
+export interface NativeFormulaCell {
   readonly sheetName: string
   readonly address: string
   readonly row: number
@@ -117,7 +121,7 @@ interface FormulaInfo {
   readonly sharedFormulaRef: string | null
 }
 
-interface NativeTable {
+export interface NativeTable {
   readonly name: string
   readonly displayName: string
   readonly sheetName: string
@@ -140,7 +144,7 @@ interface SharedStringReference {
   readonly index: number
 }
 
-type PendingCellValue = CellValue | SharedStringReference
+export type PendingCellValue = CellValue | SharedStringReference
 
 class UnsupportedStreamingNativeFormulaError extends Error {
   constructor(message: string) {
@@ -302,6 +306,8 @@ function streamingError(
       evaluatedFormulaCellCount: 0,
       patchedFormulaCacheCount: 0,
       unsupportedFormulaCellCount: args.unsupportedReason ? 1 : 0,
+      nativeKernelFormulaCellCount: 0,
+      nativeKernelBatchCount: 0,
     },
     patchedCacheCount: 0,
     ...(args.unsupportedReason === undefined ? {} : { unsupportedReason: args.unsupportedReason }),
@@ -772,9 +778,15 @@ function evaluateFormulaCells(
   tablesBySheet: ReadonlyMap<string, readonly NativeTable[]>,
   patches: XlsxSourceLiteralPatch[],
 ): StreamingNativeFormulaCounts {
-  let evaluatedFormulaCellCount = 0
-  let patchedFormulaCacheCount = 0
+  const nativeRowChains = evaluateStreamingNativeWasmRowChains({
+    sheetScans,
+    tablesBySheet,
+    resolveFormulaSource,
+  })
+  let evaluatedFormulaCellCount = nativeRowChains.evaluatedFormulaCellCount
+  let patchedFormulaCacheCount = nativeRowChains.patches.length
   let unsupportedFormulaCellCount = 0
+  patches.push(...nativeRowChains.patches)
   for (const scan of sheetScans.values()) {
     const formulaCells = scan.formulaCells.toSorted((left, right) => left.row - right.row || left.col - right.col)
     const formulaPatches = new Map<string, XlsxSourceLiteralPatch>()
@@ -783,6 +795,9 @@ function evaluateFormulaCells(
     for (let pass = 0; pass < maxPasses; pass += 1) {
       let changed = false
       for (const cell of formulaCells) {
+        if (nativeRowChains.processedCells.has(`${cell.sheetName}!${cell.address}`)) {
+          continue
+        }
         const rowValues = scan.rows.get(cell.row)
         if (!rowValues) {
           continue
@@ -832,6 +847,8 @@ function evaluateFormulaCells(
     evaluatedFormulaCellCount,
     patchedFormulaCacheCount,
     unsupportedFormulaCellCount,
+    nativeKernelFormulaCellCount: nativeRowChains.evaluatedFormulaCellCount,
+    nativeKernelBatchCount: nativeRowChains.batchCount,
   }
 }
 

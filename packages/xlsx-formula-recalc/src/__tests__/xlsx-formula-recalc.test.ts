@@ -149,6 +149,8 @@ describe('xlsx-formula-recalc', () => {
       expect(readNumber(result.reads['Data!V57152'])).toBe(28.125)
       expect(result.diagnostics?.engineMode).toBe('streaming-native')
       expect(result.diagnostics?.formulaCounts.evaluatedFormulaCellCount).toBe(2)
+      expect(result.diagnostics?.formulaCounts.nativeKernelFormulaCellCount).toBe(2)
+      expect(result.diagnostics?.formulaCounts.nativeKernelBatchCount).toBe(1)
       const outputBytes = readFileSync(outputPath)
       const sheetXml = strFromU8(unzipSync(outputBytes)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
       expect(sheetXml).toContain('<f>DataTable[[#This Row],[V Households]]*6</f><v>168.75</v>')

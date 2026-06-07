@@ -9,6 +9,9 @@
       "path": "../formula"
     },
     {
+      "path": "../wasm-kernel"
+    },
+    {
       "path": "../xlsx"
     },
     {

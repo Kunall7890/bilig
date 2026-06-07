@@ -43,6 +43,7 @@ export interface NativeRecalcMemoryGateResult {
   readonly peakRssBytes: number | null
   readonly diagnosticsMaxObservedRssBytes?: number
   readonly patchedCacheCount?: number
+  readonly nativeKernelFormulaCellCount?: number
   readonly values?: Readonly<Record<string, unknown>>
   readonly reason?: string
 }
@@ -214,6 +215,9 @@ export async function runNativeRecalcGateTarget(
         values,
       )
     }
+    if ((diagnostics.nativeKernelFormulaCellCount ?? 0) <= 0) {
+      return failedRuntimeResult(target, peakRssBytes, 'streaming-native did not report native kernel formula evaluation', values)
+    }
     return {
       id: target.id,
       label: target.label,
@@ -223,6 +227,7 @@ export async function runNativeRecalcGateTarget(
       values,
       diagnosticsMaxObservedRssBytes: diagnostics.maxObservedRssBytes,
       patchedCacheCount: diagnostics.patchedCacheCount,
+      nativeKernelFormulaCellCount: diagnostics.nativeKernelFormulaCellCount,
     }
   } catch (error) {
     return failedRuntimeResult(
@@ -395,12 +400,17 @@ function readDiagnostics(summary: Readonly<Record<string, unknown>>): {
   readonly engineMode?: string
   readonly maxObservedRssBytes?: number
   readonly patchedCacheCount?: number
+  readonly nativeKernelFormulaCellCount?: number
 } {
   const diagnostics = asRecord(summary['diagnostics'])
+  const formulaCounts = asRecord(diagnostics['formulaCounts'])
   return {
     ...(typeof diagnostics['engineMode'] === 'string' ? { engineMode: diagnostics['engineMode'] } : {}),
     ...(typeof diagnostics['maxObservedRssBytes'] === 'number' ? { maxObservedRssBytes: diagnostics['maxObservedRssBytes'] } : {}),
     ...(typeof diagnostics['patchedCacheCount'] === 'number' ? { patchedCacheCount: diagnostics['patchedCacheCount'] } : {}),
+    ...(typeof formulaCounts['nativeKernelFormulaCellCount'] === 'number'
+      ? { nativeKernelFormulaCellCount: formulaCounts['nativeKernelFormulaCellCount'] }
+      : {}),
   }
 }
 
