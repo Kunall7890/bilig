@@ -13,11 +13,13 @@ export const largeSimpleInMemoryUntouchedExportSourceLimit = 8 * 1024 * 1024
 export const largeSimpleLazyPackageArtifactMaterializationLimit = 8 * 1024 * 1024
 
 export interface XlsxImportLimits {
+  maxMaterializedSourceBytes?: number
   maxMaterializedCells?: number
   maxMaterializedFormulaCells?: number
 }
 
 const defaultSheetJsFallbackImportLimits: Required<XlsxImportLimits> = {
+  maxMaterializedSourceBytes: denseSheetJsByteThreshold,
   maxMaterializedCells: denseSheetJsByteThreshold,
   maxMaterializedFormulaCells: largeCalcChainStreamingFormulaThreshold,
 }
@@ -87,25 +89,39 @@ export interface XlsxImportRoutePlan {
 
 export class XlsxImportSizeLimitExceededError extends Error {
   readonly limits: Required<XlsxImportLimits>
-  readonly stats: LargeSimpleXlsxHeadlessInspectResult['stats']
-  readonly reason: 'cell-count' | 'formula-cell-count'
+  readonly stats: LargeSimpleXlsxHeadlessInspectResult['stats'] | undefined
+  readonly sourceByteLength: number | undefined
+  readonly reason: 'source-byte-count' | 'cell-count' | 'formula-cell-count'
 
   constructor(args: {
-    reason: 'cell-count' | 'formula-cell-count'
+    reason: 'source-byte-count' | 'cell-count' | 'formula-cell-count'
     limits: Required<XlsxImportLimits>
-    stats: LargeSimpleXlsxHeadlessInspectResult['stats']
+    stats?: LargeSimpleXlsxHeadlessInspectResult['stats']
+    sourceByteLength?: number
   }) {
-    const observed = args.reason === 'cell-count' ? args.stats.cellCount : args.stats.formulaCellCount
-    const limit = args.reason === 'cell-count' ? args.limits.maxMaterializedCells : args.limits.maxMaterializedFormulaCells
+    const observed =
+      args.reason === 'source-byte-count'
+        ? (args.sourceByteLength ?? 0)
+        : args.reason === 'cell-count'
+          ? (args.stats?.cellCount ?? 0)
+          : (args.stats?.formulaCellCount ?? 0)
+    const limit =
+      args.reason === 'source-byte-count'
+        ? args.limits.maxMaterializedSourceBytes
+        : args.reason === 'cell-count'
+          ? args.limits.maxMaterializedCells
+          : args.limits.maxMaterializedFormulaCells
+    const label = args.reason === 'source-byte-count' ? 'source byte' : args.reason === 'cell-count' ? 'cell' : 'formula cell'
     super(
-      `XLSX import exceeds the materialized ${args.reason === 'cell-count' ? 'cell' : 'formula cell'} limit ` +
+      `XLSX import exceeds the materialized ${label} limit ` +
         `(${observed.toLocaleString('en-US')} > ${limit.toLocaleString('en-US')}). ` +
-        'Use inspectXlsx() for bounded metadata, raise importXlsx limits explicitly, or split the workbook before materializing it.',
+        'Use a file-backed native XLSX import path, inspectXlsx() for bounded metadata, raise importXlsx limits explicitly, or split the workbook before materializing it.',
     )
     this.name = 'XlsxImportSizeLimitExceededError'
     this.reason = args.reason
     this.limits = args.limits
     this.stats = args.stats
+    this.sourceByteLength = args.sourceByteLength
   }
 }
 
@@ -114,9 +130,17 @@ export function resolveXlsxImportLimits(options: XlsxImportOptions): Required<Xl
     return null
   }
   return {
+    maxMaterializedSourceBytes: options.limits.maxMaterializedSourceBytes ?? Number.POSITIVE_INFINITY,
     maxMaterializedCells: options.limits.maxMaterializedCells ?? Number.POSITIVE_INFINITY,
     maxMaterializedFormulaCells: options.limits.maxMaterializedFormulaCells ?? Number.POSITIVE_INFINITY,
   }
+}
+
+export function assertXlsxSourceWithinMaterializationLimits(sourceByteLength: number, limits: Required<XlsxImportLimits> | null): void {
+  if (!limits || sourceByteLength <= limits.maxMaterializedSourceBytes) {
+    return
+  }
+  throw new XlsxImportSizeLimitExceededError({ reason: 'source-byte-count', limits, sourceByteLength })
 }
 
 export function assertXlsxInspectionWithinMaterializationLimits(
@@ -137,8 +161,11 @@ export function assertXlsxInspectionWithinMaterializationLimits(
 export function assertXlsxSheetJsFallbackWithinMaterializationLimits(
   inspection: LargeSimpleXlsxHeadlessInspectResult | null,
   options: XlsxImportOptions,
+  sourceByteLength: number,
 ): void {
-  assertXlsxInspectionWithinMaterializationLimits(inspection, resolveXlsxSheetJsFallbackLimits(options))
+  const limits = resolveXlsxSheetJsFallbackLimits(options)
+  assertXlsxSourceWithinMaterializationLimits(sourceByteLength, limits)
+  assertXlsxInspectionWithinMaterializationLimits(inspection, limits)
 }
 
 export function planXlsxImportRoute(args: {
@@ -172,7 +199,9 @@ export function planXlsxImportRoute(args: {
     bypassLargeSimpleByteThreshold,
     hasExternalWorkbookCompanions,
     inspectionOptions:
-      hasMaterializationLimits || bypassLargeSimpleByteThreshold || preferNativeSimpleImport || nativeOnly ? { minByteLength: 0 } : undefined,
+      hasMaterializationLimits || bypassLargeSimpleByteThreshold || preferNativeSimpleImport || nativeOnly
+        ? { minByteLength: 0 }
+        : undefined,
     shouldInspectBeforeLargeSimpleRouting: hasMaterializationLimits || needsCalcChainFormulaCountInspection,
     shouldInspectBeforeSheetJsFallback: args.options.limits !== false && args.sourceByteLength >= denseSheetJsByteThreshold,
     shouldTryLargeSimpleImport,

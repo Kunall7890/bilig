@@ -121,7 +121,7 @@ export function importXlsxFromZipByteSource(
   if (!inspection && route.shouldInspectBeforeSheetJsFallback) {
     inspection = inspectLargeSimpleXlsxSource(source, fileName, route.inspectionOptions)
   }
-  assertXlsxSheetJsFallbackWithinMaterializationLimits(inspection, options)
+  assertXlsxSheetJsFallbackWithinMaterializationLimits(inspection, options, sourceByteLength)
   if (options.attachSourceReaderForUntouchedExport === false && !route.hasExternalWorkbookCompanions) {
     const preparedFallback = importXlsxFromPreparedByteSourceFallback(source, fileName)
     if (preparedFallback) {

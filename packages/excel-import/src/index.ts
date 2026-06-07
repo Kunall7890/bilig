@@ -555,7 +555,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string, op
       ? inspectLargeSimpleXlsxByteSource(spooledUntouchedExportSource, fileName, route.inspectionOptions)
       : inspectLargeSimpleXlsxSource(ownedSource.bytes, fileName, route.inspectionOptions)
   }
-  assertXlsxSheetJsFallbackWithinMaterializationLimits(inspection, options)
+  assertXlsxSheetJsFallbackWithinMaterializationLimits(inspection, options, sourceByteLength)
   const fallbackData =
     ownedSource.bytes.byteLength > 0
       ? ownedSource.bytes

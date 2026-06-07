@@ -515,6 +515,40 @@ describe('repository dependency policy', () => {
     expect(largeSimpleWorkbookMetadata).not.toContain('worksheetRelationshipType')
   })
 
+  it('keeps SheetJS fallback import bounded before source-byte materialization', () => {
+    const limitsSource = readFileSync(join(repoRoot, 'packages/excel-import/src/xlsx-import-limits.ts'), 'utf8')
+    const publicImportSource = readFileSync(join(repoRoot, 'packages/excel-import/src/index.ts'), 'utf8')
+    const byteSourceImportSource = readFileSync(join(repoRoot, 'packages/excel-import/src/xlsx-byte-source-import.ts'), 'utf8')
+    const publicImportStart = publicImportSource.indexOf('export function importXlsx(')
+    const publicImportEnd = publicImportSource.indexOf('export function importXlsm(')
+    const publicImport = publicImportSource.slice(publicImportStart, publicImportEnd)
+    const publicGuardIndex = publicImport.indexOf(
+      'assertXlsxSheetJsFallbackWithinMaterializationLimits(inspection, options, sourceByteLength)',
+    )
+    const publicReaderMaterializationIndex = publicImport.indexOf('spooledUntouchedExportSource.readBytes()')
+    const publicZipSourceMaterializationIndex = publicImport.indexOf('readLazyXlsxZipSource(workbookZip)')
+    const byteSourceGuardIndex = byteSourceImportSource.indexOf(
+      'assertXlsxSheetJsFallbackWithinMaterializationLimits(inspection, options, sourceByteLength)',
+    )
+    const byteSourceFallbackIndex = byteSourceImportSource.indexOf(
+      'return importXlsxFromMaterializedSource(source, fileName, options)',
+      byteSourceGuardIndex,
+    )
+    const byteSourceReadIndex = byteSourceImportSource.indexOf('const data = readAllSourceBytes(source)')
+
+    expect(publicImportStart).toBeGreaterThan(-1)
+    expect(publicImportEnd).toBeGreaterThan(publicImportStart)
+    expect(limitsSource).toContain('maxMaterializedSourceBytes: denseSheetJsByteThreshold')
+    expect(limitsSource).toContain("reason: 'source-byte-count'")
+    expect(limitsSource).toContain('assertXlsxSourceWithinMaterializationLimits(sourceByteLength, limits)')
+    expect(publicGuardIndex).toBeGreaterThan(-1)
+    expect(publicReaderMaterializationIndex).toBeGreaterThan(publicGuardIndex)
+    expect(publicZipSourceMaterializationIndex).toBeGreaterThan(publicGuardIndex)
+    expect(byteSourceGuardIndex).toBeGreaterThan(-1)
+    expect(byteSourceFallbackIndex).toBeGreaterThan(byteSourceGuardIndex)
+    expect(byteSourceReadIndex).toBeGreaterThan(byteSourceGuardIndex)
+  })
+
   it('keeps the native recalc public corpus script as a hard 50-workbook gate', () => {
     const manifest = packageManifest('.')
     const scripts = objectField(manifest, 'scripts')
