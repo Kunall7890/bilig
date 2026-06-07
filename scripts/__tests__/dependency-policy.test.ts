@@ -149,7 +149,10 @@ const nativeXlsxFormulaRecalcPathBoundarySources = [
 ] as const
 const nativeXlsxLargeFileModeBoundarySources = [
   'packages/xlsx-formula-recalc/src/file-recalc.ts',
+  'packages/xlsx/src/formula-cache-reader.ts',
+  'packages/xlsx/src/streaming-native-recalc.ts',
   'packages/xlsx/src/streaming-native-inspect.ts',
+  'packages/xlsx/src/streaming-native-workbook-core.ts',
 ] as const
 
 type JsonRecord = { readonly [key: string]: unknown }
