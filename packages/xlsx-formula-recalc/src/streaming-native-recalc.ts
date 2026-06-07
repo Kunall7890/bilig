@@ -1127,7 +1127,66 @@ function evaluateCallExpr(node: Extract<FormulaNode, { readonly kind: 'CallExpr'
   if (callee === 'VLOOKUP') {
     return evaluateVlookup(node, context)
   }
+  if (callee === 'SUM') {
+    return evaluateSum(node, context)
+  }
+  if (callee === 'COUNTA') {
+    return evaluateCounta(node, context)
+  }
   throw new UnsupportedStreamingNativeFormulaError(`unsupported function: ${node.callee}`)
+}
+
+function evaluateSum(node: Extract<FormulaNode, { readonly kind: 'CallExpr' }>, context: EvaluationContext): CellValue {
+  if (node.args.length < 1) {
+    throw new UnsupportedStreamingNativeFormulaError('SUM requires at least 1 argument')
+  }
+  let total = 0
+  for (const argument of node.args) {
+    if (argument.kind === 'RangeRef') {
+      for (const value of readScannedCellRange(argument, context)) {
+        if (value.tag === ValueTag.Error) {
+          throw new UnsupportedStreamingNativeFormulaError(`cannot sum error: ${String(value.code)}`)
+        }
+        if (value.tag === ValueTag.Number) {
+          total += value.value
+        }
+      }
+      continue
+    }
+    total += coerceNumber(evaluateFormulaAst(argument, context))
+  }
+  return { tag: ValueTag.Number, value: total }
+}
+
+function evaluateCounta(node: Extract<FormulaNode, { readonly kind: 'CallExpr' }>, context: EvaluationContext): CellValue {
+  if (node.args.length < 1) {
+    throw new UnsupportedStreamingNativeFormulaError('COUNTA requires at least 1 argument')
+  }
+  let count = 0
+  for (const argument of node.args) {
+    const values = argument.kind === 'RangeRef' ? readScannedCellRange(argument, context) : [evaluateFormulaAst(argument, context)]
+    for (const value of values) {
+      if (value.tag !== ValueTag.Empty) {
+        count += 1
+      }
+    }
+  }
+  return { tag: ValueTag.Number, value: count }
+}
+
+function readScannedCellRange(
+  rangeNode: Extract<FormulaNode, { readonly kind: 'RangeRef' }>,
+  context: EvaluationContext,
+): readonly CellValue[] {
+  const range = decodeFormulaCellRange(rangeNode, context.sheetName)
+  const values: CellValue[] = []
+  const endCol = range.startCol + range.width - 1
+  for (let row = range.startRow; row <= range.endRow; row += 1) {
+    for (let col = range.startCol; col <= endCol; col += 1) {
+      values.push(readScannedCell(range.sheetName, row, col, context))
+    }
+  }
+  return values
 }
 
 function evaluateVlookup(node: Extract<FormulaNode, { readonly kind: 'CallExpr' }>, context: EvaluationContext): CellValue {

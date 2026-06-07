@@ -606,8 +606,30 @@ function collectScalarDependencyRowsFromNode(
     case 'SpillRef':
     case 'RowRef':
     case 'ColumnRef':
-    case 'RangeRef':
       return
+    case 'RangeRef':
+      collectCellRangeDependencyRows(node, sheetName, formulaRow, rows)
+      return
+  }
+}
+
+function collectCellRangeDependencyRows(
+  range: Extract<FormulaNode, { readonly kind: 'RangeRef' }>,
+  currentSheetName: string,
+  formulaRow: number,
+  rows: Map<string, Set<number>>,
+): void {
+  const dependencyRange = decodeVlookupTableDependencyRange(range, currentSheetName)
+  if (!dependencyRange || dependencyRange.cellCount > maxNativeSumRangeCellCount) {
+    return
+  }
+  for (let row = dependencyRange.startRow; row <= dependencyRange.endRow; row += 1) {
+    if (dependencyRange.sheetName === currentSheetName && row === formulaRow) {
+      continue
+    }
+    const sheetRows = rows.get(dependencyRange.sheetName) ?? new Set<number>()
+    sheetRows.add(row)
+    rows.set(dependencyRange.sheetName, sheetRows)
   }
 }
 
