@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -169,6 +169,36 @@ describe('xlsx-formula-recalc', () => {
       expect(sheetXml).toContain(
         '<f>_xlfn.IFS(A57152=&quot;January&quot;,&quot;Jan&quot;,A57152=&quot;February&quot;,&quot;Feb&quot;,A57152=&quot;March&quot;,&quot;Mar&quot;)</f><v>Mar</v>',
       )
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  it('refuses WorkPaper fallback from the primary file-to-file API', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-native-primary-no-workpaper-'))
+    try {
+      const sourcePath = join(tempDir, 'source.xlsx')
+      const engineOutputPath = join(tempDir, 'engine.recalculated.xlsx')
+      const fallbackOutputPath = join(tempDir, 'fallback.recalculated.xlsx')
+      writeFileSync(sourcePath, buildNativeTableFormulaWorkbook())
+
+      await expect(
+        recalculateXlsxFileToFile(sourcePath, {
+          outputPath: engineOutputPath,
+          engine: 'workpaper',
+          reads: ['Data!U57152'],
+        }),
+      ).rejects.toThrow(/legacy-workpaper/u)
+      expect(existsSync(engineOutputPath)).toBe(false)
+
+      await expect(
+        recalculateXlsxFileToFile(sourcePath, {
+          outputPath: fallbackOutputPath,
+          fallbackPolicy: 'workpaper',
+          reads: ['Data!U57152'],
+        }),
+      ).rejects.toThrow(/legacy-workpaper/u)
+      expect(existsSync(fallbackOutputPath)).toBe(false)
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
     }

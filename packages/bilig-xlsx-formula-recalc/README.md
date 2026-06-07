@@ -312,27 +312,31 @@ const result = await recalculateXlsxFileToFile('pricing.xlsx', {
 console.log(result.reads['Summary!B7'])
 ```
 
-External companion workbooks require explicit WorkPaper fallback:
+External companion workbooks stay on the native file-to-file path:
 
 ```ts
-import { recalculateXlsx } from '@bilig/xlsx-formula-recalc/legacy-workpaper'
+import { readFile } from 'node:fs/promises'
 
-const result = recalculateXlsx(await fs.promises.readFile('model.xlsx'), {
+import { recalculateXlsxFileToFile } from '@bilig/xlsx-formula-recalc'
+
+const result = await recalculateXlsxFileToFile('model.xlsx', {
+  outputPath: 'model.recalculated.xlsx',
   externalWorkbooks: [
     {
-      bytes: await fs.promises.readFile('rates.xlsx'),
+      bytes: await readFile('rates.xlsx'),
       fileName: 'rates.xlsx',
       target: 'file:///tmp/rates.xlsx',
     },
   ],
   reads: ['Model!C1'],
+  engine: 'streaming-native',
 })
 
 console.log(result.diagnostics?.externalWorkbookHydration)
 ```
 
-If another library already produced the workbook bytes, pass those bytes
-directly:
+If another library already produced workbook bytes instead of a file path, use
+the explicit legacy compatibility import:
 
 ```ts
 import { recalculateXlsx } from '@bilig/xlsx-formula-recalc/legacy-workpaper'

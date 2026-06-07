@@ -202,6 +202,68 @@ process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXls
     }
   })
 
+  it('refuses WorkPaper engine selection on the primary async file CLI', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-formula-recalc-cli-workpaper-engine-'))
+    try {
+      const inputPath = join(tempDir, 'native.xlsx')
+      const outputPath = join(tempDir, 'native.recalculated.xlsx')
+      writeFileSync(inputPath, buildStaleFormulaCacheWorkbook())
+      let stdout = ''
+      let stderr = ''
+
+      const exitCode = await runXlsxFormulaRecalcCliAsync([inputPath, '--out', outputPath, '--engine', 'workpaper', '--json'], {
+        stdout: (text) => {
+          stdout += text
+        },
+        stderr: (text) => {
+          stderr += text
+        },
+      })
+
+      expect(exitCode).toBe(1)
+      expect(stderr).toBe('')
+      expect(existsSync(outputPath)).toBe(false)
+      const summary = readCliErrorSummary(stdout)
+      expect(summary.commandSucceeded).toBe(false)
+      expect(summary.recalculationCompleted).toBe(false)
+      expect(summary.error).toContain('no longer loads WorkPaper')
+      expect(summary.error).toContain('legacy-workpaper')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  it('refuses WorkPaper fallback policy on the primary async file CLI', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-formula-recalc-cli-workpaper-fallback-'))
+    try {
+      const inputPath = join(tempDir, 'native.xlsx')
+      const outputPath = join(tempDir, 'native.recalculated.xlsx')
+      writeFileSync(inputPath, buildStaleFormulaCacheWorkbook())
+      let stdout = ''
+      let stderr = ''
+
+      const exitCode = await runXlsxFormulaRecalcCliAsync([inputPath, '--out', outputPath, '--fallback-policy', 'workpaper', '--json'], {
+        stdout: (text) => {
+          stdout += text
+        },
+        stderr: (text) => {
+          stderr += text
+        },
+      })
+
+      expect(exitCode).toBe(1)
+      expect(stderr).toBe('')
+      expect(existsSync(outputPath)).toBe(false)
+      const summary = readCliErrorSummary(stdout)
+      expect(summary.commandSucceeded).toBe(false)
+      expect(summary.recalculationCompleted).toBe(false)
+      expect(summary.error).toContain('no longer loads WorkPaper')
+      expect(summary.error).toContain('legacy-workpaper')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
   it('documents the formula evaluation timeout option', () => {
     let stdout = ''
 
@@ -668,13 +730,13 @@ process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXls
     }
   })
 
-  it('hydrates external-link caches from companion workbook paths with explicit WorkPaper fallback', async () => {
+  it('hydrates external-link caches from companion workbook paths through streaming-native', async () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-formula-recalc-cli-external-'))
     try {
       const inputPath = join(tempDir, 'model.xlsx')
       const companionPath = join(tempDir, 'uploaded-rates.xlsx')
       const outputPath = join(tempDir, 'model.recalculated.xlsx')
-      writeFileSync(inputPath, buildExternalLinkRangeCacheWorkbook('file:///tmp/rates.xlsx'))
+      writeFileSync(inputPath, buildExternalLinkRangeCacheWorkbook('file:///tmp/rates.xlsx', { lookupFormulas: false }))
       writeFileSync(companionPath, buildExternalSourceWorkbook([20, 30, 40]))
       let stdout = ''
 
@@ -684,12 +746,8 @@ process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXls
           '--external-workbook-target',
           companionPath,
           'file:///tmp/rates.xlsx',
-          '--fallback-policy',
-          'workpaper',
           '--read',
           'Model!C1',
-          '--read',
-          'Model!C2',
           '--out',
           outputPath,
           '--json',
@@ -706,11 +764,10 @@ process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXls
       const summary = readCliSummary(stdout)
       expect(summary.externalWorkbooks).toBe(1)
       expect(summary.reads['Model!C1']?.value).toBe(180)
-      expect(summary.reads['Model!C2']?.value).toBe(60)
       expect(summary.diagnostics?.externalWorkbookHydration).toMatchObject({
         externalWorkbookCount: 1,
         refreshedBookIndices: [1],
-        refreshedCellCount: 6,
+        refreshedCellCount: 3,
         references: [
           expect.objectContaining({
             status: 'refreshed',
@@ -727,7 +784,7 @@ process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXls
     }
   })
 
-  it('preserves cached external-link values when CLI companion workbook paths are ambiguous with explicit WorkPaper fallback', async () => {
+  it('preserves cached external-link values when CLI companion workbook paths are ambiguous through streaming-native', async () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-formula-recalc-cli-ambiguous-'))
     try {
       const inputPath = join(tempDir, 'model.xlsx')
@@ -736,7 +793,7 @@ process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXls
       const outputPath = join(tempDir, 'model.recalculated.xlsx')
       mkdirSync(join(tempDir, 'one'))
       mkdirSync(join(tempDir, 'two'))
-      writeFileSync(inputPath, buildExternalLinkRangeCacheWorkbook('file:///tmp/rates.xlsx'))
+      writeFileSync(inputPath, buildExternalLinkRangeCacheWorkbook('file:///tmp/rates.xlsx', { lookupFormulas: false }))
       writeFileSync(firstCompanionPath, buildExternalSourceWorkbook([20, 30, 40]))
       writeFileSync(secondCompanionPath, buildExternalSourceWorkbook([200, 300, 400]))
       let stdout = ''
@@ -748,8 +805,6 @@ process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXls
           firstCompanionPath,
           '--external-workbook',
           secondCompanionPath,
-          '--fallback-policy',
-          'workpaper',
           '--read',
           'Model!C1',
           '--out',
@@ -808,6 +863,12 @@ interface NoSheetJsChildOutput {
   readonly before: readonly string[]
   readonly after: readonly string[]
   readonly summary: CliSummary
+}
+
+interface CliErrorSummary {
+  readonly commandSucceeded: false
+  readonly recalculationCompleted: false
+  readonly error: string
 }
 
 interface CliInspectionSummary {
@@ -912,6 +973,15 @@ function readNoSheetJsChildOutput(stdout: string): NoSheetJsChildOutput {
     before: requireStringArray(record['before']),
     after: requireStringArray(record['after']),
     summary: readCliSummary(JSON.stringify(record['summary'])),
+  }
+}
+
+function readCliErrorSummary(stdout: string): CliErrorSummary {
+  const record = requireRecord(JSON.parse(stdout))
+  return {
+    commandSucceeded: requireFalse(record['commandSucceeded']),
+    recalculationCompleted: requireFalse(record['recalculationCompleted']),
+    error: requireString(record['error']),
   }
 }
 
@@ -1037,6 +1107,13 @@ function requireString(value: unknown): string {
 function requireStringArray(value: unknown): readonly string[] {
   if (!Array.isArray(value) || !value.every((entry) => typeof entry === 'string')) {
     throw new Error(`Expected string array, received ${typeof value}`)
+  }
+  return value
+}
+
+function requireFalse(value: unknown): false {
+  if (value !== false) {
+    throw new Error(`Expected false, received ${typeof value}`)
   }
   return value
 }
@@ -1245,7 +1322,7 @@ function replaceWorksheetCellXml(bytes: Uint8Array, path: string, address: strin
   return zipSync(zip)
 }
 
-function buildExternalLinkRangeCacheWorkbook(target: string): Uint8Array {
+function buildExternalLinkRangeCacheWorkbook(target: string, options: { readonly lookupFormulas?: boolean } = {}): Uint8Array {
   const workbook = WorkPaper.buildFromSheets({
     Model: [
       [null, 2, 120],
@@ -1254,13 +1331,17 @@ function buildExternalLinkRangeCacheWorkbook(target: string): Uint8Array {
   })
   try {
     const zip = unzipSync(exportXlsx(workbook.exportSnapshot()))
+    const sheetXml = strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array()).replace(
+      /<c\b[^>]*\br=(["'])C1\1[^>]*>[\s\S]*?<\/c>/u,
+      '<c r="C1"><f>SUM(\'[1]Rates\'!$B$2:$B$4)*B1</f><v>120</v></c>',
+    )
     zip['xl/worksheets/sheet1.xml'] = strToU8(
-      strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
-        .replace(/<c\b[^>]*\br=(["'])C1\1[^>]*>[\s\S]*?<\/c>/u, '<c r="C1"><f>SUM(\'[1]Rates\'!$B$2:$B$4)*B1</f><v>120</v></c>')
-        .replace(
-          /<c\b[^>]*\br=(["'])C2\1[^>]*>[\s\S]*?<\/c>/u,
-          "<c r=\"C2\"><f>_xlfn.XLOOKUP(&quot;B&quot;,'[1]Rates'!$A$2:$A$4,'[1]Rates'!$B$2:$B$4)*B1</f><v>40</v></c>",
-        ),
+      options.lookupFormulas === false
+        ? sheetXml
+        : sheetXml.replace(
+            /<c\b[^>]*\br=(["'])C2\1[^>]*>[\s\S]*?<\/c>/u,
+            "<c r=\"C2\"><f>_xlfn.XLOOKUP(&quot;B&quot;,'[1]Rates'!$A$2:$A$4,'[1]Rates'!$B$2:$B$4)*B1</f><v>40</v></c>",
+          ),
     )
     zip['xl/workbook.xml'] = strToU8(
       ensureRelationshipNamespace(strFromU8(zip['xl/workbook.xml'] ?? new Uint8Array())).replace(

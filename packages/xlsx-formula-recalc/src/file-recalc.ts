@@ -9,26 +9,22 @@ export async function recalculateXlsxFileToFile(
 ): Promise<XlsxFormulaRecalcFileResult> {
   const engine = options.engine ?? 'auto'
   if (engine === 'workpaper') {
-    return await recalculateXlsxToFileWithWorkPaper(inputPath, options)
+    throw legacyWorkPaperPathError('engine')
   }
-  try {
-    if (options.config !== undefined) {
-      throw new Error('streaming-native does not support WorkPaper config options')
-    }
-    const edits = nativeLiteralEdits(options.edits)
-    return await recalculateXlsxFileToFileStreamingNative(inputPath, {
-      outputPath: options.outputPath,
-      ...(edits === undefined ? {} : { edits }),
-      ...(options.reads === undefined ? {} : { reads: options.reads }),
-      ...(options.externalWorkbooks === undefined ? {} : { externalWorkbooks: options.externalWorkbooks }),
-      ...(options.maxRssBytes === undefined ? {} : { maxRssBytes: options.maxRssBytes }),
-    })
-  } catch (error) {
-    if (options.fallbackPolicy === 'workpaper') {
-      return await recalculateXlsxToFileWithWorkPaper(inputPath, options)
-    }
-    throw error
+  if (options.fallbackPolicy === 'workpaper') {
+    throw legacyWorkPaperPathError('fallbackPolicy')
   }
+  if (options.config !== undefined) {
+    throw new Error('streaming-native does not support WorkPaper config options')
+  }
+  const edits = nativeLiteralEdits(options.edits)
+  return await recalculateXlsxFileToFileStreamingNative(inputPath, {
+    outputPath: options.outputPath,
+    ...(edits === undefined ? {} : { edits }),
+    ...(options.reads === undefined ? {} : { reads: options.reads }),
+    ...(options.externalWorkbooks === undefined ? {} : { externalWorkbooks: options.externalWorkbooks }),
+    ...(options.maxRssBytes === undefined ? {} : { maxRssBytes: options.maxRssBytes }),
+  })
 }
 
 function nativeLiteralEdits(
@@ -46,10 +42,8 @@ function nativeLiteralEdits(
   })
 }
 
-async function recalculateXlsxToFileWithWorkPaper(
-  inputPath: string,
-  options: XlsxFormulaRecalcFileOptions,
-): Promise<XlsxFormulaRecalcFileResult> {
-  const [{ readFileSync }, { recalculateXlsxToFile }] = await Promise.all([import('node:fs'), import('./legacy-workpaper.js')])
-  return recalculateXlsxToFile(readFileSync(inputPath), { ...options, engine: 'workpaper', fileName: options.fileName ?? inputPath })
+function legacyWorkPaperPathError(optionName: 'engine' | 'fallbackPolicy'): Error {
+  return new Error(
+    `The primary @bilig/xlsx-formula-recalc file API no longer loads WorkPaper through ${optionName}; import @bilig/xlsx-formula-recalc/legacy-workpaper explicitly for the legacy bytes-in/bytes-out compatibility path.`,
+  )
 }

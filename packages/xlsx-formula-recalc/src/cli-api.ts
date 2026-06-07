@@ -17,7 +17,6 @@ import type {
   XlsxFormulaRecalcEdit,
   XlsxFormulaRecalcEngine,
   XlsxFormulaRecalcFallbackPolicy,
-  XlsxFormulaRecalcFileOptions,
 } from './types.js'
 
 interface CliExternalWorkbook {
@@ -183,17 +182,7 @@ export async function runXlsxFormulaRecalcCliAsync(args: readonly string[], cont
             ...(options.fallbackPolicy === undefined ? {} : { fallbackPolicy: options.fallbackPolicy }),
             outputPath: options.outputPath,
           })
-        : await recalculateXlsxToFileWithWorkPaper(inputBytesForCli(options, commandName), {
-            fileName: inputName,
-            ...(externalWorkbooks.length > 0 ? { externalWorkbooks } : {}),
-            edits: options.edits,
-            reads: options.reads,
-            ...(options.timeoutMs === undefined ? {} : { config: { evaluationTimeoutMs: options.timeoutMs } }),
-            ...(options.engine === undefined ? {} : { engine: options.engine }),
-            ...(options.maxRssBytes === undefined ? {} : { maxRssBytes: options.maxRssBytes }),
-            ...(options.fallbackPolicy === undefined ? {} : { fallbackPolicy: options.fallbackPolicy }),
-            outputPath: options.outputPath,
-          })
+        : recalculateDemoXlsxToFile(options)
 
     const summary = {
       mode: options.mode,
@@ -228,19 +217,8 @@ export async function runXlsxFormulaRecalcCliAsync(args: readonly string[], cont
     }
     return 0
   } catch (error) {
-    if (args.includes('--json') && error instanceof StreamingNativeXlsxRecalcError) {
-      writeStdout(
-        `${JSON.stringify(
-          {
-            commandSucceeded: false,
-            recalculationCompleted: false,
-            error: error.message,
-            diagnostics: error.diagnostics,
-          },
-          null,
-          2,
-        )}\n`,
-      )
+    if (args.includes('--json')) {
+      writeStdout(`${JSON.stringify(cliErrorSummary(error), null, 2)}\n`)
     } else {
       writeStderr(`${error instanceof Error ? error.message : String(error)}\n`)
     }
@@ -567,48 +545,35 @@ interface PrintableInspectionSummary {
 }
 
 async function printInspectionSummaryAsync(args: PrintInspectionSummaryAsyncInput): Promise<void> {
-  if (args.options.mode === 'file' && args.options.engine !== 'workpaper') {
-    try {
-      if (args.externalWorkbooks.length > 0) {
-        throw new Error('streaming-native inspection does not support external workbook companions')
-      }
-      if (args.options.timeoutMs !== undefined) {
-        throw new Error('streaming-native inspection does not support WorkPaper timeout options')
-      }
-      const inspection = await inspectXlsxCacheFileStreamingNative(requireInputPath(args.options), {
-        inspectLimit: args.options.inspectLimit,
-        ...(args.options.maxRssBytes === undefined ? {} : { maxRssBytes: args.options.maxRssBytes }),
-      })
-      writeInspectionSummary(inspection, args)
-      return
-    } catch (error) {
-      if (args.options.fallbackPolicy !== 'workpaper') {
-        throw error
-      }
+  if (args.options.mode === 'file') {
+    if (args.options.engine === 'workpaper') {
+      throw legacyWorkPaperCliPathError('engine')
     }
+    if (args.options.fallbackPolicy === 'workpaper') {
+      throw legacyWorkPaperCliPathError('fallbackPolicy')
+    }
+    if (args.externalWorkbooks.length > 0) {
+      throw new Error('streaming-native inspection does not support external workbook companions')
+    }
+    if (args.options.timeoutMs !== undefined) {
+      throw new Error('streaming-native inspection does not support WorkPaper timeout options')
+    }
+    const inspection = await inspectXlsxCacheFileStreamingNative(requireInputPath(args.options), {
+      inspectLimit: args.options.inspectLimit,
+      ...(args.options.maxRssBytes === undefined ? {} : { maxRssBytes: args.options.maxRssBytes }),
+    })
+    writeInspectionSummary(inspection, args)
+    return
   }
   if (args.options.mode === 'demo') {
     printInspectionSummary({ ...args, input: inputBytesForCli(args.options, args.commandName) })
     return
   }
-  const input = inputBytesForCli(args.options, args.commandName)
-  await printInspectionSummaryWithWorkPaper({ ...args, input })
+  throw new Error('Unexpected XLSX inspection mode')
 }
 
 function printInspectionSummary(args: PrintInspectionSummaryInput): void {
   const inspection = buildDemoInspectionSummary(args.options)
-  writeInspectionSummary(inspection, args)
-}
-
-async function printInspectionSummaryWithWorkPaper(args: PrintInspectionSummaryInput): Promise<void> {
-  const { inspectXlsxCache } = await import('./legacy-workpaper.js')
-  const inspection = inspectXlsxCache(args.input, {
-    fileName: args.inputName,
-    ...(args.externalWorkbooks.length > 0 ? { externalWorkbooks: args.externalWorkbooks } : {}),
-    edits: args.options.edits,
-    inspectLimit: args.options.inspectLimit,
-    ...(args.options.timeoutMs === undefined ? {} : { config: { evaluationTimeoutMs: args.options.timeoutMs } }),
-  })
   writeInspectionSummary(inspection, args)
 }
 
@@ -850,21 +815,6 @@ function demoReadValue(
   }
 }
 
-async function recalculateXlsxToFileWithWorkPaper(
-  input: Uint8Array | Buffer,
-  options: XlsxFormulaRecalcFileOptions,
-): Promise<{
-  readonly bytesWritten: number
-  readonly warnings: readonly string[]
-  readonly sheetNames: readonly string[]
-  readonly reads: Readonly<Record<string, XlsxFormulaRecalcCellValue>>
-  readonly changes: readonly unknown[]
-  readonly diagnostics?: unknown
-}> {
-  const { recalculateXlsxToFile } = await import('./legacy-workpaper.js')
-  return recalculateXlsxToFile(input, options)
-}
-
 function demoDefaultEdits(enabled: boolean): readonly XlsxFormulaRecalcEdit[] {
   return enabled
     ? [
@@ -925,17 +875,23 @@ function parsePositiveIntegerOption(raw: string, option: string): number {
 }
 
 function parseEngineOption(raw: string): XlsxFormulaRecalcEngine {
-  if (raw === 'auto' || raw === 'streaming-native' || raw === 'workpaper') {
+  if (raw === 'auto' || raw === 'streaming-native') {
     return raw
   }
-  throw new Error(`Expected --engine to be "auto", "streaming-native", or "workpaper", received: ${raw}`)
+  if (raw === 'workpaper') {
+    throw legacyWorkPaperCliPathError('engine')
+  }
+  throw new Error(`Expected --engine to be "auto" or "streaming-native", received: ${raw}`)
 }
 
 function parseFallbackPolicyOption(raw: string): XlsxFormulaRecalcFallbackPolicy {
-  if (raw === 'error' || raw === 'workpaper') {
+  if (raw === 'error') {
     return raw
   }
-  throw new Error(`Expected --fallback-policy to be "error" or "workpaper", received: ${raw}`)
+  if (raw === 'workpaper') {
+    throw legacyWorkPaperCliPathError('fallbackPolicy')
+  }
+  throw new Error(`Expected --fallback-policy to be "error", received: ${raw}`)
 }
 
 function requireNextArg(args: readonly string[], index: number, option: string): string {
@@ -978,10 +934,10 @@ Options:
   --set <Sheet!A1=value>  Edit an input cell before diagnosis. Repeatable.
   --inspect-limit <all|n> Formula cells to recompute during inspection. Defaults to ${defaultInspectFormulaLimit}.
   --timeout-ms <n>        Formula evaluation timeout in milliseconds.
-  --engine <auto|streaming-native|workpaper>
+  --engine <auto|streaming-native>
                           Select the recalculation engine. File-to-file CLI defaults to auto, which tries streaming-native.
-  --fallback-policy <error|workpaper>
-                          Decide whether unsupported streaming-native jobs fail or explicitly fall back to WorkPaper.
+  --fallback-policy <error>
+                          Decide whether unsupported streaming-native jobs fail. WorkPaper requires the explicit legacy-workpaper import.
   --max-rss-mb <n>        Fail streaming-native if resident memory exceeds this cap.
   --fail-on-stale <true|false>
                           With ${printGithubActionOption}, decide whether the generated workflow fails pull requests. Defaults to false.
@@ -1013,10 +969,10 @@ Options:
   --inspect               Inspect formula cells, stale cached values, and suggested --read targets.
   --inspect-limit <all|n> Formula cells to recompute during inspection. Defaults to ${defaultInspectFormulaLimit}.
   --timeout-ms <n>        Formula evaluation timeout in milliseconds.
-  --engine <auto|streaming-native|workpaper>
+  --engine <auto|streaming-native>
                           Select the recalculation engine. File-to-file CLI defaults to auto, which tries streaming-native.
-  --fallback-policy <error|workpaper>
-                          Decide whether unsupported streaming-native jobs fail or explicitly fall back to WorkPaper.
+  --fallback-policy <error>
+                          Decide whether unsupported streaming-native jobs fail. WorkPaper requires the explicit legacy-workpaper import.
   --max-rss-mb <n>        Fail streaming-native if resident memory exceeds this cap.
   --external-workbook <path>
                           Supply a companion XLSX for external-link cache refresh. Repeatable.
@@ -1026,4 +982,19 @@ Options:
   --json                  Print a JSON summary.
   --help, -h              Show this help.
 `)
+}
+
+function cliErrorSummary(error: unknown): Record<string, unknown> {
+  return {
+    commandSucceeded: false,
+    recalculationCompleted: false,
+    error: error instanceof Error ? error.message : String(error),
+    ...(error instanceof StreamingNativeXlsxRecalcError ? { diagnostics: error.diagnostics } : {}),
+  }
+}
+
+function legacyWorkPaperCliPathError(optionName: 'engine' | 'fallbackPolicy'): Error {
+  return new Error(
+    `The primary xlsx-recalc file CLI no longer loads WorkPaper through ${optionName}; import @bilig/xlsx-formula-recalc/legacy-workpaper explicitly for the legacy bytes-in/bytes-out compatibility path.`,
+  )
 }
