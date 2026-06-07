@@ -802,6 +802,16 @@ describe('repository dependency policy', () => {
   it('keeps public corpus workers on native file-backed scanners before materialized fallback', () => {
     const workerCommands = readFileSync(join(repoRoot, 'scripts/public-workbook-corpus-worker-commands.ts'), 'utf8')
     const workbookHelpers = readFileSync(join(repoRoot, 'scripts/public-workbook-corpus-workbook.ts'), 'utf8')
+    const publicCorpusProofHelpers = [
+      'scripts/public-workbook-corpus-large-simple-compact.ts',
+      'scripts/public-workbook-corpus-verify.ts',
+      'scripts/public-workbook-corpus-verify-worker.ts',
+      'scripts/public-workbook-corpus-worker-commands.ts',
+      'scripts/public-workbook-corpus-workbook.ts',
+      'scripts/public-workbook-corpus-xlsx-byte-source.ts',
+      'scripts/public-workbook-corpus-xlsx-footprint.ts',
+      'scripts/public-workbook-corpus-xlsx-worksheet-footprint.ts',
+    ]
     const fallbackGuardIndex = workerCommands.indexOf('assertMaterializedWorkbookFallbackWithinLimit(filePath')
     const fingerprintReadIndex = workerCommands.indexOf('fingerprintWorkbookBytes(readFileSync(filePath)')
     const footprintReadIndex = workerCommands.indexOf('const bytes = filePath ? readFileSync(filePath) : readFileSync(0)')
@@ -809,6 +819,8 @@ describe('repository dependency policy', () => {
     expect(workerCommands).toContain('const publicWorkbookCorpusWorkerMaterializedBytesFallbackLimit = 1_000_000')
     expect(workerCommands).toContain("from '@bilig/xlsx/formula-cache-reader'")
     expect(workerCommands).toContain("from '@bilig/xlsx/workbook-compatibility-report'")
+    expect(workerCommands).toContain("from '@bilig/xlsx/zip-reader'")
+    expect(workbookHelpers).toContain("from '@bilig/xlsx/zip-reader'")
     expect(workerCommands).toContain('tryFingerprintFormulaWorkbookFromFile(filePath, fileName)')
     expect(workerCommands).toContain('tryInspectNativeCompatibilityFootprintFromFile(filePath, fileName)')
     expect(fallbackGuardIndex).toBeGreaterThan(-1)
@@ -819,6 +831,9 @@ describe('repository dependency policy', () => {
     expect(workbookHelpers).not.toContain('createRequire(import.meta.url)')
     expect(workbookHelpers).not.toContain("requireModule('xlsx')")
     expect(workbookHelpers).not.toContain('loadOptionalSheetJs')
+    for (const path of publicCorpusProofHelpers) {
+      expect(readFileSync(join(repoRoot, path), 'utf8')).not.toContain('../packages/excel-import/src/xlsx-zip.js')
+    }
   })
 
   it('keeps external XLSX stress public import small-workbook only before materialized reads', () => {
@@ -827,7 +842,9 @@ describe('repository dependency policy', () => {
     const readIndex = stressWorker.indexOf('return readFileSync(filePath)')
 
     expect(stressWorker).toContain('const externalXlsxStressPublicImportBytesLimit = 1_000_000')
+    expect(stressWorker).toContain("from '@bilig/xlsx/zip-reader'")
     expect(stressWorker).toContain('Use default file-backed external XLSX stress mode for large workbook memory gates.')
+    expect(stressWorker).not.toContain("requireModule('../packages/excel-import/src/xlsx-zip.js')")
     expect(guardIndex).toBeGreaterThan(-1)
     expect(readIndex).toBeGreaterThan(guardIndex)
   })

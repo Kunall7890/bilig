@@ -2,7 +2,7 @@ import { Buffer } from 'node:buffer'
 import { TextDecoder } from 'node:util'
 import { createInflateRaw } from 'node:zlib'
 
-import { forEachInflatedXlsxZipEntryChunk, type XlsxZipEntries } from '../packages/excel-import/src/xlsx-zip.js'
+import { forEachInflatedXlsxZipEntryChunk, type XlsxZipEntries } from '@bilig/xlsx/zip-reader'
 import { WorksheetDataValidationSupportScanner } from './public-workbook-corpus-xlsx-data-validation-footprint.ts'
 import type { WorkbookFootprint } from './public-workbook-corpus-workbook.ts'
 

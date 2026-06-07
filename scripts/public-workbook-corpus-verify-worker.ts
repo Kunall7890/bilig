@@ -6,11 +6,7 @@ import {
   type LargeSimpleXlsxHeadlessInspectResult,
 } from '../packages/excel-import/src/xlsx-large-simple-headless-inspect.js'
 import type { LargeSimpleXlsxImportStats } from '../packages/excel-import/src/xlsx-large-simple-import.js'
-import {
-  readXlsxZipEntryMetadata,
-  readXlsxZipEntriesLazyFromByteSource,
-  type XlsxZipByteSource,
-} from '../packages/excel-import/src/xlsx-zip.js'
+import { readXlsxZipEntryMetadata, readXlsxZipEntriesLazyFromByteSource, type XlsxZipByteSource } from '@bilig/xlsx/zip-reader'
 import type { PublicWorkbookArtifact, PublicWorkbookCorpusCase, PublicWorkbookFeatureCounts } from './public-workbook-corpus-types.ts'
 import { defaultSelfRssCheckIntervalMs, startSelfRssGuard } from './public-workbook-corpus-process.ts'
 import { largeSimpleImportPhaseTelemetryEvidence } from './public-workbook-corpus-large-simple-evidence.ts'

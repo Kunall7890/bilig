@@ -15,7 +15,7 @@ import {
 } from '../packages/excel-import/src/index.js'
 import { importXlsxFromZipByteSource } from '../packages/excel-import/src/xlsx-byte-source-import.js'
 import { detachImportedXlsxSourceBytes } from '../packages/excel-import/src/xlsx-source-bytes.js'
-import type { XlsxZipByteSource } from '../packages/excel-import/src/xlsx-zip.js'
+import type { XlsxZipByteSource } from '@bilig/xlsx/zip-reader'
 import { ValueTag } from '../packages/protocol/src/enums.js'
 import type { CellValue, LiteralInput, WorkbookSnapshot } from '../packages/protocol/src/types.js'
 import { validatePublicWorkbookManifest } from './public-workbook-corpus-json.ts'

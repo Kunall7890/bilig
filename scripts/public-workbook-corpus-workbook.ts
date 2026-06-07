@@ -1,17 +1,17 @@
 import { createHash } from 'node:crypto'
 
 import { workbookSheetPathEntriesForSource } from '@bilig/xlsx'
-import { importXlsx, type ImportedWorkbook } from '../packages/excel-import/src/index.js'
-import { readWorkbookSheets } from '../packages/excel-import/src/xlsx-large-simple-workbook-metadata.js'
-import { decodeCellAddress, encodeCellAddress } from '../packages/excel-import/src/xlsx-large-simple-xml-byte-utils.js'
-import { decodeXmlText, normalizeWorksheetText } from '../packages/excel-import/src/xlsx-large-simple-worksheet-stream-text.js'
 import {
   forEachInflatedXlsxZipEntryChunk,
   getZipText,
   readXlsxZipEntriesLazyFromByteSource,
   releaseInflatedLazyXlsxZipEntries,
   type XlsxZipByteSource,
-} from '../packages/excel-import/src/xlsx-zip.js'
+} from '@bilig/xlsx/zip-reader'
+import { importXlsx, type ImportedWorkbook } from '../packages/excel-import/src/index.js'
+import { readWorkbookSheets } from '../packages/excel-import/src/xlsx-large-simple-workbook-metadata.js'
+import { decodeCellAddress, encodeCellAddress } from '../packages/excel-import/src/xlsx-large-simple-xml-byte-utils.js'
+import { decodeXmlText, normalizeWorksheetText } from '../packages/excel-import/src/xlsx-large-simple-worksheet-stream-text.js'
 import { ErrorCode, ValueTag } from '../packages/protocol/src/enums.js'
 import type { CellValue, WorkbookExternalWorkbookReferenceSnapshot, WorkbookSnapshot } from '../packages/protocol/src/types.js'
 import type { FormulaOracle, PublicWorkbookCorpusCase, PublicWorkbookFeatureCounts } from './public-workbook-corpus-types.ts'

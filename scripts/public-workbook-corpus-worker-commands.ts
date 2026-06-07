@@ -3,9 +3,9 @@ import { resolve } from 'node:path'
 
 import { readXlsxFormulaCacheCellsFromFile } from '@bilig/xlsx/formula-cache-reader'
 import { buildWorkbookCompatibilityReportFromFile } from '@bilig/xlsx/workbook-compatibility-report'
+import { readXlsxZipEntriesLazyFromByteSource } from '@bilig/xlsx/zip-reader'
 import { tryInspectLargeSimpleXlsxHeadless } from '../packages/excel-import/src/xlsx-large-simple-headless-inspect.js'
 import type { LargeSimpleXlsxImportStats } from '../packages/excel-import/src/xlsx-large-simple-import.js'
-import { readXlsxZipEntriesLazyFromByteSource } from '../packages/excel-import/src/xlsx-zip.js'
 import { startSelfRssGuard } from './public-workbook-corpus-process.ts'
 import {
   fingerprintLargeSimpleDataOnlyWorkbookSource,

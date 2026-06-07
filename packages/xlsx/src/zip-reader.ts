@@ -222,6 +222,23 @@ export function releaseLazyXlsxZipSource(zip: XlsxZipEntries): boolean {
   return true
 }
 
+export function releaseInflatedLazyXlsxZipEntries(zip: XlsxZipEntries): number {
+  const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
+  if (!metadata?.source) {
+    return 0
+  }
+  let releasedByteLength = 0
+  for (const [path, entry] of metadata.entriesByPath) {
+    const descriptor = Object.getOwnPropertyDescriptor(zip, path)
+    if (!descriptor || !('value' in descriptor) || !(descriptor.value instanceof Uint8Array)) {
+      continue
+    }
+    releasedByteLength += descriptor.value.byteLength
+    defineLazyZipEntry(zip, metadata, entry)
+  }
+  return releasedByteLength
+}
+
 export function readLazyXlsxZipSourceByteLength(zip: XlsxZipEntries): number | undefined {
   const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
   return metadata ? (metadata.source?.byteLength ?? 0) : undefined
@@ -481,13 +498,7 @@ function emitInflatedChunks(chunk: Uint8Array, chunkSize: number, onChunk: XlsxZ
   return true
 }
 
-function forEachSourceChunk(
-  source: XlsxZipByteSource,
-  start: number,
-  end: number,
-  chunkSize: number,
-  onChunk: XlsxZipChunkConsumer,
-): void {
+function forEachSourceChunk(source: XlsxZipByteSource, start: number, end: number, chunkSize: number, onChunk: XlsxZipChunkConsumer): void {
   const normalizedChunkSize = Math.max(1, Math.trunc(chunkSize))
   const scratch = source.readRangeInto ? new Uint8Array(normalizedChunkSize) : undefined
   if (start === end) {

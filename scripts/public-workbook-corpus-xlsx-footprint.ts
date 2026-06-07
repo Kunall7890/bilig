@@ -8,7 +8,7 @@ import {
   releaseLazyXlsxZipSource,
   type XlsxZipByteSource,
   type XlsxZipEntryMetadata,
-} from '../packages/excel-import/src/xlsx-zip.js'
+} from '@bilig/xlsx/zip-reader'
 import type { WorkbookExternalWorkbookReferenceSnapshot } from '../packages/protocol/src/types.js'
 import {
   addWorksheetFootprint,

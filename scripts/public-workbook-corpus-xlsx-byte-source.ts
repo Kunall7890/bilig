@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { closeSync, createReadStream, fstatSync, openSync, readSync } from 'node:fs'
 import { createInflateRaw, inflateRawSync } from 'node:zlib'
 
-import type { XlsxZipByteSource, XlsxZipChunkConsumer } from '../packages/excel-import/src/xlsx-zip.js'
+import type { XlsxZipByteSource, XlsxZipChunkConsumer } from '@bilig/xlsx/zip-reader'
 
 export class FileBackedXlsxZipByteSource implements XlsxZipByteSource {
   readonly byteLength: number

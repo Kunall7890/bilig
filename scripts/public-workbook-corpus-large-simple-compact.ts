@@ -3,7 +3,7 @@ import {
   type LargeSimpleXlsxHeadlessInspectResult,
 } from '../packages/excel-import/src/xlsx-large-simple-headless-inspect.js'
 import type { LargeSimpleXlsxImportStats } from '../packages/excel-import/src/xlsx-large-simple-import.js'
-import { readXlsxZipEntriesLazyFromByteSource, type XlsxZipByteSource, type XlsxZipEntries } from '../packages/excel-import/src/xlsx-zip.js'
+import { readXlsxZipEntriesLazyFromByteSource, type XlsxZipByteSource, type XlsxZipEntries } from '@bilig/xlsx/zip-reader'
 import type { WorkbookSnapshot } from '../packages/protocol/src/types.js'
 import {
   publicWorkbookResourceLimitClassifierEvidence,
@@ -163,7 +163,7 @@ function tryInspectLargeSimpleHeadless(args: {
   }
 }
 
-function readLargeSimpleVerifierZipEntries(source: XlsxZipByteSource): XlsxZipEntries | null {
+function readLargeSimpleVerifierZipEntries(source: XlsxZipByteSource) {
   return isZipWorkbookSource(source) ? readXlsxZipEntriesLazyFromByteSource(borrowXlsxZipByteSource(source)) : null
 }
 
