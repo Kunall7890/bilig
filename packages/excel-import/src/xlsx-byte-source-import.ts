@@ -18,8 +18,12 @@ import {
   type ImportedXlsxSourceReference,
 } from './xlsx-source-bytes.js'
 import type { prepareSheetJsParserXlsxBytesFromZip } from './xlsx-style-only-blank-cells.js'
-import { readXlsxZipEntriesLazyFromByteSource, type XlsxZipByteSource, type XlsxZipEntries } from '@bilig/xlsx/zip-reader'
-import { readXlsxZipEntriesLazy } from './xlsx-zip.js'
+import {
+  readXlsxZipEntriesLazy,
+  readXlsxZipEntriesLazyFromByteSource,
+  type XlsxZipByteSource,
+  type XlsxZipEntries,
+} from '@bilig/xlsx/zip-reader'
 
 const sheetJsBlankStyleStripMinCellCount = 1_000
 const requireModule = createRequire(import.meta.url)
