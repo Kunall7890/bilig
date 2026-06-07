@@ -42,6 +42,7 @@ export interface NativeRecalcMemoryGateResult {
   readonly maxRssBytes: number
   readonly peakRssBytes: number | null
   readonly diagnosticsMaxObservedRssBytes?: number
+  readonly fallbackUsed?: boolean
   readonly patchedCacheCount?: number
   readonly nativeKernelFormulaCellCount?: number
   readonly values?: Readonly<Record<string, unknown>>
@@ -216,6 +217,9 @@ export async function runNativeRecalcGateTarget(
         values,
       )
     }
+    if (diagnostics.fallbackUsed !== false) {
+      return failedRuntimeResult(target, peakRssBytes, 'streaming-native diagnostics did not report fallbackUsed=false', values)
+    }
     if ((diagnostics.nativeKernelFormulaCellCount ?? 0) <= 0) {
       return failedRuntimeResult(target, peakRssBytes, 'streaming-native did not report native kernel formula evaluation', values)
     }
@@ -227,6 +231,7 @@ export async function runNativeRecalcGateTarget(
       peakRssBytes,
       values,
       diagnosticsMaxObservedRssBytes: diagnostics.maxObservedRssBytes,
+      fallbackUsed: diagnostics.fallbackUsed,
       patchedCacheCount: diagnostics.patchedCacheCount,
       nativeKernelFormulaCellCount: diagnostics.nativeKernelFormulaCellCount,
     }
@@ -399,6 +404,7 @@ function readSummaryValues(summary: Readonly<Record<string, unknown>>, reads: re
 
 function readDiagnostics(summary: Readonly<Record<string, unknown>>): {
   readonly engineMode?: string
+  readonly fallbackUsed?: boolean
   readonly maxObservedRssBytes?: number
   readonly patchedCacheCount?: number
   readonly nativeKernelFormulaCellCount?: number
@@ -407,6 +413,7 @@ function readDiagnostics(summary: Readonly<Record<string, unknown>>): {
   const formulaCounts = asRecord(diagnostics['formulaCounts'])
   return {
     ...(typeof diagnostics['engineMode'] === 'string' ? { engineMode: diagnostics['engineMode'] } : {}),
+    ...(typeof diagnostics['fallbackUsed'] === 'boolean' ? { fallbackUsed: diagnostics['fallbackUsed'] } : {}),
     ...(typeof diagnostics['maxObservedRssBytes'] === 'number' ? { maxObservedRssBytes: diagnostics['maxObservedRssBytes'] } : {}),
     ...(typeof diagnostics['patchedCacheCount'] === 'number' ? { patchedCacheCount: diagnostics['patchedCacheCount'] } : {}),
     ...(typeof formulaCounts['nativeKernelFormulaCellCount'] === 'number'

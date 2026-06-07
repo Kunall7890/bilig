@@ -56,6 +56,7 @@ export interface NativeRecalcPublicCorpusResult {
   readonly maxRssBytes: number
   readonly peakRssBytes: number | null
   readonly diagnosticsMaxObservedRssBytes?: number
+  readonly fallbackUsed?: boolean
   readonly patchedCacheCount?: number
   readonly nativeKernelFormulaCellCount?: number
   readonly unsupportedReason?: string
@@ -74,6 +75,7 @@ interface ChildRunResult {
 
 interface NativeRecalcPublicCorpusDiagnostics {
   readonly engineMode?: string
+  readonly fallbackUsed?: boolean
   readonly maxObservedRssBytes?: number
   readonly patchedCacheCount?: number
   readonly nativeKernelFormulaCellCount?: number
@@ -493,6 +495,9 @@ export async function runNativeRecalcPublicCorpusTarget(
       `expected streaming-native diagnostics, received ${diagnostics.engineMode ?? 'missing'}`,
     )
   }
+  if (diagnostics.fallbackUsed !== false) {
+    return failedRuntimeResult(target, peakRssBytes, 'streaming-native diagnostics did not report fallbackUsed=false')
+  }
   const mismatch = firstMismatchedRead(summary, target)
   if (mismatch) {
     return failedRuntimeResult(target, peakRssBytes, mismatch)
@@ -500,6 +505,7 @@ export async function runNativeRecalcPublicCorpusTarget(
   return {
     ...baseResult(target, 'passed', peakRssBytes),
     ...(diagnostics.maxObservedRssBytes === undefined ? {} : { diagnosticsMaxObservedRssBytes: diagnostics.maxObservedRssBytes }),
+    fallbackUsed: diagnostics.fallbackUsed,
     ...(diagnostics.patchedCacheCount === undefined ? {} : { patchedCacheCount: diagnostics.patchedCacheCount }),
     ...(diagnostics.nativeKernelFormulaCellCount === undefined
       ? {}
@@ -596,6 +602,7 @@ function readDiagnostics(summary: Readonly<Record<string, unknown>>): NativeReca
   const formulaCounts = asRecord(diagnostics['formulaCounts'])
   return {
     ...(typeof diagnostics['engineMode'] === 'string' ? { engineMode: diagnostics['engineMode'] } : {}),
+    ...(typeof diagnostics['fallbackUsed'] === 'boolean' ? { fallbackUsed: diagnostics['fallbackUsed'] } : {}),
     ...(typeof diagnostics['maxObservedRssBytes'] === 'number' ? { maxObservedRssBytes: diagnostics['maxObservedRssBytes'] } : {}),
     ...(typeof diagnostics['patchedCacheCount'] === 'number' ? { patchedCacheCount: diagnostics['patchedCacheCount'] } : {}),
     ...(typeof diagnostics['unsupportedReason'] === 'string' ? { unsupportedReason: diagnostics['unsupportedReason'] } : {}),
@@ -709,6 +716,7 @@ function unsupportedResult(
     ...baseResult(target, 'unsupported', peakRssBytes),
     unsupportedReason,
     ...(diagnostics.maxObservedRssBytes === undefined ? {} : { diagnosticsMaxObservedRssBytes: diagnostics.maxObservedRssBytes }),
+    ...(diagnostics.fallbackUsed === undefined ? {} : { fallbackUsed: diagnostics.fallbackUsed }),
     ...(diagnostics.patchedCacheCount === undefined ? {} : { patchedCacheCount: diagnostics.patchedCacheCount }),
     ...(diagnostics.nativeKernelFormulaCellCount === undefined
       ? {}
