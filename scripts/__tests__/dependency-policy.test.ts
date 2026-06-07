@@ -35,6 +35,7 @@ const nativeXlsxHeadlessFixtureTests = [
   'packages/headless/src/__tests__/macos-desktop-excel-conditional-format-artifacts-oracle.test.ts',
   'packages/headless/src/__tests__/macos-desktop-excel-external-link-cache.test.ts',
   'packages/headless/src/__tests__/macos-desktop-excel-hyperlink-structural-oracle.test.ts',
+  'packages/headless/src/__tests__/macos-desktop-excel-preserved-package-metadata-oracle.test.ts',
   'packages/headless/src/__tests__/macos-desktop-excel-protected-ranges-oracle.test.ts',
   'packages/headless/src/__tests__/macos-desktop-excel-threaded-comment-structural-oracle.test.ts',
   'packages/headless/src/__tests__/macos-desktop-excel-workbook-protection-oracle.test.ts',
