@@ -1,8 +1,7 @@
-import { readFileSync } from 'node:fs'
 import { basename, resolve } from 'node:path'
 
 import type { WorkPaperMcpToolServer } from '@bilig/headless/mcp'
-import { buildWorkbookCompatibilityReport, type WorkbookCompatibilityReport } from '@bilig/xlsx/workbook-compatibility-report'
+import { buildWorkbookCompatibilityReportFromFile, type WorkbookCompatibilityReport } from '@bilig/xlsx/workbook-compatibility-report'
 
 type JsonObject = Record<string, unknown>
 type JsonRpcId = string | number | null
@@ -86,7 +85,7 @@ function withXlsxWorkbookRiskTool(
         const params = isRecord(parsedRequest.params) ? parsedRequest.params : {}
         if (params['name'] === xlsxWorkbookRiskToolDefinition.name) {
           const args = isRecord(params['arguments']) ? params['arguments'] : {}
-          const report = buildWorkbookCompatibilityReport(readFileSync(xlsxPath), {
+          const report = buildWorkbookCompatibilityReportFromFile(xlsxPath, {
             fileName: basename(xlsxPath),
             inspectLimit: parseInspectLimit(args['inspectLimit'] ?? 'all'),
           })

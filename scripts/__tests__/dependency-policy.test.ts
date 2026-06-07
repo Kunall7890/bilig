@@ -640,6 +640,9 @@ describe('repository dependency policy', () => {
     expect(stringField(scripts, 'build')).not.toContain('@bilig/xlsx-formula-recalc')
     expect(sourceViolations).toEqual([])
     expect(xlsxRiskTool).toContain("from '@bilig/xlsx/workbook-compatibility-report'")
+    expect(xlsxRiskTool).toContain('buildWorkbookCompatibilityReportFromFile(xlsxPath')
+    expect(xlsxRiskTool).not.toContain('buildWorkbookCompatibilityReport(readFileSync')
+    expect(xlsxRiskTool).not.toContain('readFileSync(xlsxPath)')
     expect(xlsxRiskTool).not.toContain('@bilig/xlsx-formula-recalc')
   })
 
