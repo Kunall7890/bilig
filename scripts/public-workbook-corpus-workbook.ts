@@ -352,27 +352,6 @@ function countLargeSimpleHeadlessFingerprintFeatures(inspected: LargeSimpleXlsxH
   }
 }
 
-export function extractFormulaOracles(bytes: Uint8Array): FormulaOracle[] {
-  const workbook = loadOptionalSheetJs().read(bytes, { type: 'array', cellFormula: true, cellText: false, cellDates: false })
-  const oracles: FormulaOracle[] = []
-  for (const sheetName of workbook.SheetNames) {
-    const sheet = workbook.Sheets[sheetName]
-    if (!sheet?.['!ref']) {
-      continue
-    }
-    for (const { address, cell } of worksheetCellEntries(sheet)) {
-      if (typeof cell['f'] !== 'string' || cell['v'] === undefined) {
-        continue
-      }
-      const expected = cellValueFromXlsx(cell)
-      if (expected) {
-        oracles.push({ sheetName, address, expected })
-      }
-    }
-  }
-  return oracles
-}
-
 export function extractFormulaOraclesFromXlsxByteSource(source: XlsxZipByteSource, fileName: string): FormulaOracle[] | null {
   if (!isOpenXmlWorkbookFileName(fileName)) {
     return null
@@ -449,25 +428,6 @@ export function formatCellValue(value: CellValue): string {
       return value.value
     case ValueTag.Error:
       return `error:${String(value.code)}`
-  }
-}
-
-function cellValueFromXlsx(cell: Record<string, unknown>): CellValue | null {
-  const value = cell['v']
-  switch (cell['t']) {
-    case 'n':
-      return typeof value === 'number' && Number.isFinite(value) ? { tag: ValueTag.Number, value } : null
-    case 'b':
-      return typeof value === 'boolean' ? { tag: ValueTag.Boolean, value } : null
-    case 's':
-    case 'str':
-      return typeof value === 'string' ? { tag: ValueTag.String, value, stringId: 0 } : null
-    case 'd':
-    case 'e':
-    case 'z':
-      return null
-    default:
-      return null
   }
 }
 

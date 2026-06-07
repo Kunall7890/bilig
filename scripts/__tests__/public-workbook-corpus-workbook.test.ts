@@ -8,7 +8,6 @@ import { ValueTag } from '../../packages/protocol/src/enums.js'
 import type { WorkbookSnapshot } from '../../packages/protocol/src/types.js'
 import {
   countImportedWorkbookFeatures,
-  extractFormulaOracles,
   extractFormulaOraclesFromXlsxByteSource,
   extractFormulaOraclesFromWorksheetXmlChunks,
   importedWorkbookMetadata,
@@ -19,16 +18,13 @@ import {
 describe('public workbook corpus workbook helpers', () => {
   it('extracts formula oracles from broad sparse worksheet refs', () => {
     const bytes = buildBroadSparseWorkbookBytes()
-    const oracles = extractFormulaOracles(bytes)
-
-    expect(oracles).toEqual([
+    expect(extractFormulaOraclesFromXlsxByteSource(byteSourceFromBytes(bytes), 'sparse.xlsx')).toEqual([
       {
         sheetName: 'Sparse',
         address: 'XFD512',
         expected: { tag: ValueTag.Number, value: 42 },
       },
     ])
-    expect(extractFormulaOraclesFromXlsxByteSource(byteSourceFromBytes(bytes), 'sparse.xlsx')).toEqual(oracles)
   }, 15_000)
 
   it('extracts formula oracles from an XLSX byte source without reading the whole source', () => {
@@ -104,7 +100,7 @@ describe('public workbook corpus workbook helpers', () => {
     ])
   })
 
-  it('keeps unsupported formula cache encodings on the fallback path', () => {
+  it('fails closed when native formula cache extraction sees unsupported cache encodings', () => {
     expect(
       extractFormulaOraclesFromXlsxByteSource(byteSourceFromBytes(buildFormulaOracleWorkbookWithSharedStringCache()), 'shared.xlsx'),
     ).toBeNull()

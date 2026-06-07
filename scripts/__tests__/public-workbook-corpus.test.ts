@@ -44,6 +44,7 @@ import {
   mergeImportedAndFootprintFeatureCounts,
   rawPivotPartUnsupportedClassification,
   localeDecimalCommaFormulaOracleUnsupportedClassification,
+  nativeFormulaOracleUnavailableUnsupportedClassification,
   staleFormulaCacheUnsupportedClassification,
   verifyCachedWorkbookArtifact,
 } from '../public-workbook-corpus-verify.ts'
@@ -725,6 +726,28 @@ describe('public workbook corpus', () => {
     expect(scorecard.cases[0]?.evidence).toEqual(
       expect.arrayContaining([publicWorkbookFormulaOracleCacheClassifierEvidence, 'independent-recalc=Summary!B2 cached 6 recalculated 9']),
     )
+  })
+
+  it('fails closed without SheetJS when native formula cache extraction is unsupported', async () => {
+    const scorecard = await buildSingleWorkbookScorecard({
+      cacheDirPrefix: 'public-workbook-corpus-native-cache-unsupported-',
+      fileName: 'shared-cache-formula.xlsx',
+      sourceId: 'source-shared-cache-formula',
+      workbookBytes: buildUnsupportedNativeFormulaCacheWorkbookBytes(),
+    })
+
+    expect(scorecard.summary.allCachedWorkbooksPassed).toBe(true)
+    expect(scorecard.summary.formulaOracleComparisonCount).toBe(0)
+    expect(scorecard.cases[0]).toMatchObject({
+      status: 'unsupported',
+      passed: true,
+      validation: { formulaOraclePassed: true, formulaOracleComparisons: 0, formulaOracleMismatches: [], roundTripPassed: true },
+      unsupportedFeatureClassifications: [nativeFormulaOracleUnavailableUnsupportedClassification],
+      evidence: expect.arrayContaining([
+        'formula-oracle-native-cache-reader=unsupported',
+        'SheetJS formula oracle fallback is disabled for public corpus verification.',
+      ]),
+    })
   })
 
   it('classifies locale decimal-comma text coercion formula oracles as unsupported', async () => {
@@ -2606,6 +2629,28 @@ function buildStaleFormulaCacheWorkbookBytes(): Uint8Array {
       },
     ],
   })
+}
+
+function buildUnsupportedNativeFormulaCacheWorkbookBytes(): Uint8Array {
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Summary',
+          cells: [textCell('A1', 0, 0, 'Result'), { address: 'B2', row: 1, col: 1, formula: '"cached"', value: 'cached' }],
+        },
+      ],
+    }),
+  )
+  const sheetPath = 'xl/worksheets/sheet1.xml'
+  const sheetXml = strFromU8(zip[sheetPath] ?? new Uint8Array())
+  zip[sheetPath] = strToU8(
+    sheetXml.replace(
+      '<c r="B2" t="str"><f>&quot;cached&quot;</f><v>cached</v></c>',
+      '<c r="B2" t="s"><f>&quot;cached&quot;</f><v>0</v></c>',
+    ),
+  )
+  return zipSync(zip)
 }
 
 function buildLocaleDecimalCommaTextFormulaWorkbookBytes(): Uint8Array {

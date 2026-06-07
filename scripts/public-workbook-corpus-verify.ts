@@ -44,7 +44,6 @@ import {
   importResourceLimitPreflight,
   formulaOracleFormulaCountResourceLimitPreflight,
   formulaOracleResourceLimitPreflight,
-  formulaOracleSourceFallbackResourceLimitPreflight,
   type ResourceLimitPreflight,
   roundTripResourceLimitPreflight,
   structuralSmokeResourceLimitPreflight,
@@ -66,7 +65,6 @@ import {
   cellValuesMatchOracle,
   countImportedWorkbookFeatures,
   countWorkbookFeatures,
-  extractFormulaOracles,
   extractFormulaOraclesFromXlsxByteSource,
   formatCellValue,
   importedWorkbookMetadata,
@@ -112,11 +110,13 @@ export const externalPivotCacheUnsupportedClassification = 'xlsx.pivots.external
 export const staleFormulaCacheUnsupportedClassification = 'xlsx.publicCorpus.formulaOracleCache:independentRecalcMatched'
 export { localeDecimalCommaFormulaOracleUnsupportedClassification }
 export const externalLinkTransitiveFormulaUnsupportedClassification = 'xlsx.externalLinks.transitiveFormulaDependenciesUnsupported'
+export const nativeFormulaOracleUnavailableUnsupportedClassification = 'xlsx.publicCorpus.formulaOracle:nativeXmlCacheUnavailable'
 
 interface DetailedFormulaOracleValidationResult extends FormulaOracleValidationResult {
   readonly mismatchDetails: readonly FormulaOracleMismatchDetail[]
   readonly skippedUnsupportedFormulaCount: number
   readonly resourceLimit?: ResourceLimitPreflight
+  readonly unsupportedNativeFormulaOracle?: UnsupportedFormulaOracleCacheClassification
 }
 
 interface UnsupportedFormulaOracleCacheClassification {
@@ -290,6 +290,7 @@ export async function verifyCachedWorkbookArtifact(
       formulaOracleValidation,
       unsupportedFormulaOracleWarning,
       unsupportedFormulaOracleCache,
+      unsupportedNativeFormulaOracle,
       unsupportedExternalLinkFormulaOracle,
       formulaOracleSourceResourceLimit,
     } = formulaOracleResourceLimit
@@ -297,6 +298,7 @@ export async function verifyCachedWorkbookArtifact(
           formulaOracleValidation: emptyFormulaOracleValidation(),
           unsupportedFormulaOracleWarning: false,
           unsupportedFormulaOracleCache: emptyUnsupportedFormulaOracleCacheClassification(),
+          unsupportedNativeFormulaOracle: emptyUnsupportedFormulaOracleCacheClassification(),
           unsupportedExternalLinkFormulaOracle: emptyUnsupportedFormulaOracleCacheClassification(),
           formulaOracleSourceResourceLimit: null,
         }
@@ -318,6 +320,8 @@ export async function verifyCachedWorkbookArtifact(
           const nextUnsupportedFormulaOracleCache = nextUnsupportedFormulaOracleWarning
             ? emptyUnsupportedFormulaOracleCacheClassification()
             : await classifyUnsupportedFormulaOracleCache(imported.snapshot, nextFormulaOracleValidation)
+          const nextUnsupportedNativeFormulaOracle =
+            nextFormulaOracleValidation.unsupportedNativeFormulaOracle ?? emptyUnsupportedFormulaOracleCacheClassification()
           const nextUnsupportedExternalLinkFormulaOracle = classifyUnsupportedExternalLinkFormulaOracle(
             imported.snapshot,
             nextFormulaOracleValidation,
@@ -326,6 +330,7 @@ export async function verifyCachedWorkbookArtifact(
             formulaOracleValidation: nextFormulaOracleValidation,
             unsupportedFormulaOracleWarning: nextUnsupportedFormulaOracleWarning,
             unsupportedFormulaOracleCache: nextUnsupportedFormulaOracleCache,
+            unsupportedNativeFormulaOracle: nextUnsupportedNativeFormulaOracle,
             unsupportedExternalLinkFormulaOracle: nextUnsupportedExternalLinkFormulaOracle,
             formulaOracleSourceResourceLimit: nextFormulaOracleValidation.resourceLimit ?? null,
           }
@@ -353,6 +358,7 @@ export async function verifyCachedWorkbookArtifact(
       supportedImportWarnings: supportedFormulaOracleImportWarnings(imported.warnings, formulaOracleValidation),
       extraClassifications: [
         ...unsupportedFormulaOracleCache.classifications,
+        ...unsupportedNativeFormulaOracle.classifications,
         ...unsupportedExternalLinkFormulaOracle.classifications,
         ...unsupportedLocaleDecimalCommaFormulaOracle.classifications,
         ...phaseResourceLimitClassifications,
@@ -380,6 +386,7 @@ export async function verifyCachedWorkbookArtifact(
     const formulaOraclePassed =
       unsupportedFormulaOracleWarning ||
       unsupportedFormulaOracleCache.unsupported ||
+      unsupportedNativeFormulaOracle.unsupported ||
       unsupportedExternalLinkFormulaOracle.unsupported ||
       unsupportedLocaleDecimalCommaFormulaOracle.unsupported ||
       formulaOracleValidation.mismatches.length === 0
@@ -429,6 +436,7 @@ export async function verifyCachedWorkbookArtifact(
         ...(hasFormulaOracleCacheUnsupportedClassifications(unsupportedFeatureClassifications)
           ? [publicWorkbookFormulaOracleCacheClassifierEvidence, ...unsupportedFormulaOracleCache.evidence]
           : []),
+        ...unsupportedNativeFormulaOracle.evidence,
         ...unsupportedExternalLinkFormulaOracle.evidence,
         ...unsupportedLocaleDecimalCommaFormulaOracle.evidence,
         ...(roundTripSkipEvidence ? [roundTripSkipEvidence] : []),
@@ -461,15 +469,20 @@ async function validateFormulaOracles(
 ): Promise<DetailedFormulaOracleValidationResult> {
   try {
     const sourceFormulaOracles = extractFormulaOraclesFromXlsxByteSource(source, fileName)
-    const sourceFallbackResourceLimit =
-      sourceFormulaOracles === null ? formulaOracleSourceFallbackResourceLimitPreflight(source.byteLength) : null
-    if (sourceFallbackResourceLimit) {
+    if (sourceFormulaOracles === null) {
       return {
         ...emptyFormulaOracleValidation(),
-        resourceLimit: sourceFallbackResourceLimit,
+        unsupportedNativeFormulaOracle: {
+          unsupported: true,
+          classifications: [nativeFormulaOracleUnavailableUnsupportedClassification],
+          evidence: [
+            'formula-oracle-native-cache-reader=unsupported',
+            'SheetJS formula oracle fallback is disabled for public corpus verification.',
+          ],
+        },
       }
     }
-    const allFormulaOracles = sourceFormulaOracles ?? extractFormulaOracles(readAllSourceBytes(source))
+    const allFormulaOracles = sourceFormulaOracles
     const formulaOracles = allFormulaOracles.filter(
       (oracle) => !skippedFormulaKeys.has(formulaOracleCellKey(oracle.sheetName, oracle.address)),
     )

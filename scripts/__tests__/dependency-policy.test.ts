@@ -41,7 +41,6 @@ const nativeXlsxExampleScripts = [
 ] as const
 const nativeXlsxAppFixtureTests = ['apps/bilig/src/workbook-runtime/workbook-session-shared.test.ts'] as const
 const nativeXlsxExcelFixtureTests = ['packages/excel-fixtures/src/__tests__/macos-excel-oracle.test.ts'] as const
-const sheetJsExcelImportTestBoundarySources = ['packages/excel-import/src/__tests__/sheetjs-legacy-workbook-fixtures.ts'] as const
 const nativeXlsxHeadlessFixtureTests = [
   'packages/headless/src/__tests__/macos-desktop-excel-chart-deleted-sheet-oracle.test.ts',
   'packages/headless/src/__tests__/macos-desktop-excel-conditional-format-artifacts-oracle.test.ts',
@@ -330,12 +329,10 @@ describe('repository dependency policy', () => {
     expect(violations).toEqual([])
   })
 
-  it('keeps SheetJS excel-import test usage isolated to the named legacy boundary', () => {
-    const allowlist = new Set<string>(sheetJsExcelImportTestBoundarySources)
+  it('keeps excel-import tests free of static SheetJS imports', () => {
     const violations = allTypeScriptFiles(join(repoRoot, 'packages/excel-import/src/__tests__'))
       .map(relativePath)
       .filter((path) => hasRuntimeXlsxImport(readFileSync(join(repoRoot, path), 'utf8')))
-      .filter((path) => !allowlist.has(path))
 
     expect(violations).toEqual([])
   })

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 
 import {
   formulaOracleResourceLimitPreflight,
-  formulaOracleSourceFallbackResourceLimitPreflight,
   importResourceLimitPreflight,
   inspectFormulaOracleDependencyFootprint,
   unsupportedPreflightResourceLimitCaseForLimits,
@@ -58,19 +57,6 @@ describe('public workbook corpus resource limit preflights', () => {
       classification: 'xlsx.publicCorpus.resourceLimit:preflightFormulaOracleBudget>2000formulas',
       evidence: expect.arrayContaining(['rss-limit-phase=formula-oracle', 'formula-oracle-formula-count=2001']),
     })
-  })
-
-  it('skips SheetJS formula-oracle fallback for large source packages', () => {
-    const preflight = formulaOracleSourceFallbackResourceLimitPreflight(9 * 1024 * 1024)
-
-    expect(preflight).toMatchObject({
-      classification: 'xlsx.publicCorpus.resourceLimit:preflightFormulaOracleSourceBytes>8388608',
-      evidence: expect.arrayContaining(['rss-limit-phase=formula-oracle', 'formula-oracle-source-bytes=9437184']),
-    })
-  })
-
-  it('keeps SheetJS formula-oracle fallback available for small source packages', () => {
-    expect(formulaOracleSourceFallbackResourceLimitPreflight(8 * 1024 * 1024)).toBeNull()
   })
 
   it('allows large simple value-only XLSX imports through the product fast path budget', () => {
