@@ -1,6 +1,5 @@
-import { strToU8, unzipSync, zipSync } from 'fflate'
+import { strToU8, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
 
 import { tryImportLargeSimpleXlsx } from '../xlsx-large-simple-import.js'
 import { importXlsxFromZipByteSource } from '../xlsx-byte-source-import.js'
@@ -79,22 +78,32 @@ describe('large simple XLSX lazy package artifacts', () => {
 
   it('uses a prepared parser ZIP for verifier-only fallback imports with large package artifacts', () => {
     const modelBytes = deterministicBytes(512_000)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([[7]]), 'Data')
-    const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
-    zip['xl/_rels/workbook.xml.rels'] = strToU8(
-      new TextDecoder()
-        .decode(zip['xl/_rels/workbook.xml.rels'])
-        .replace(
-          '</Relationships>',
-          '<Relationship Id="rIdModel" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/powerPivotData" Target="model/item.data"/></Relationships>',
-        ),
-    )
-    zip['xl/model/item.data'] = modelBytes
-    zip['xl/threadedComments/threadedComment1.xml'] = strToU8(
-      '<threadedComments xmlns="http://schemas.microsoft.com/office/spreadsheetml/2018/threadedcomments"/>',
-    )
-    const bytes = zipSync(zip)
+    const bytes = buildWorkbook({
+      worksheetXml: [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+        '<dimension ref="A1"/>',
+        '<sheetData><row r="1"><c r="A1"><v>7</v></c></row></sheetData>',
+        '</worksheet>',
+      ].join(''),
+      workbookRelationshipsXml: relationshipXml([
+        {
+          id: 'rId1',
+          type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet',
+          target: 'worksheets/sheet1.xml',
+        },
+        {
+          id: 'rIdModel',
+          type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/powerPivotData',
+          target: 'model/item.data',
+        },
+      ]),
+      extraEntries: {
+        'xl/model/item.data': modelBytes,
+        'xl/threadedComments/threadedComment1.xml':
+          '<threadedComments xmlns="http://schemas.microsoft.com/office/spreadsheetml/2018/threadedcomments"/>',
+      },
+    })
     const source = new CountingXlsxZipByteSource(bytes)
 
     const imported = importXlsxFromZipByteSource(source, 'fallback-byte-source-data-model.xlsx', {
@@ -234,6 +243,23 @@ function buildWorkbook(input: {
   readonly extraEntries?: Readonly<Record<string, string | Uint8Array>>
 }): Uint8Array {
   return zipSync({
+    '[Content_Types].xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Default Extension="bin" ContentType="application/octet-stream"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+</Types>`),
+    '_rels/.rels': strToU8(
+      relationshipXml([
+        {
+          id: 'rIdWorkbook',
+          type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument',
+          target: 'xl/workbook.xml',
+        },
+      ]),
+    ),
     'xl/workbook.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <sheets><sheet name="Data" sheetId="1" r:id="rId1"/></sheets>

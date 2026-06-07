@@ -43,6 +43,7 @@ const nativeXlsxExcelImportFixtureTests = [
   'packages/excel-import/src/__tests__/xlsx-formula-cache-roundtrip.test.ts',
   'packages/excel-import/src/__tests__/xlsx-formula-cache-text-normalization.test.ts',
   'packages/excel-import/src/__tests__/xlsx-hyperlink-roundtrip.test.ts',
+  'packages/excel-import/src/__tests__/xlsx-large-simple-lazy-package-artifacts.test.ts',
   'packages/excel-import/src/__tests__/excel-import-sparse-range.test.ts',
   'packages/excel-import/src/__tests__/xlsx-axis-visibility-roundtrip.test.ts',
   'packages/excel-import/src/__tests__/xlsx-sheet-properties-roundtrip.test.ts',
