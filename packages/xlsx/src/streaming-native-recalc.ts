@@ -988,6 +988,9 @@ function evaluateFormulaAst(node: FormulaNode, context: EvaluationContext): Cell
       return readStructuredReference(node, context)
     case 'UnaryExpr': {
       const value = evaluateFormulaAst(node.argument, context)
+      if (node.operator === '+' && value.tag === ValueTag.String) {
+        return value
+      }
       const number = coerceNumber(value)
       return { tag: ValueTag.Number, value: node.operator === '-' ? -number : number }
     }
@@ -1072,6 +1075,10 @@ function rowIsInTableDataBody(table: NativeTable, row: number): boolean {
 }
 
 function evaluateBinaryExpr(operator: string, left: CellValue, right: CellValue): CellValue {
+  const error = binaryErrorValue(left, right)
+  if (error) {
+    return error
+  }
   switch (operator) {
     case '+':
       return { tag: ValueTag.Number, value: coerceNumber(left) + coerceNumber(right) }
@@ -1106,6 +1113,16 @@ function evaluateBinaryExpr(operator: string, left: CellValue, right: CellValue)
     default:
       throw new UnsupportedStreamingNativeFormulaError(`unknown binary operator: ${operator}`)
   }
+}
+
+function binaryErrorValue(left: CellValue, right: CellValue): CellValue | null {
+  if (left.tag === ValueTag.Error) {
+    return left
+  }
+  if (right.tag === ValueTag.Error) {
+    return right
+  }
+  return null
 }
 
 function evaluateCallExpr(node: Extract<FormulaNode, { readonly kind: 'CallExpr' }>, context: EvaluationContext): CellValue {

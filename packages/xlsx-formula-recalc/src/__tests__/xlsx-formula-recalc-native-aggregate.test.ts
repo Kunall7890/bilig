@@ -141,9 +141,11 @@ describe('xlsx-formula-recalc native aggregates', () => {
       expect(readString(result.reads['Data!A4'])).toBe('----')
       expect(readString(result.reads['Data!A5'])).toBe('Q1Q1Q1')
       expect(readErrorCode(result.reads['Data!A6'])).toBe(ErrorCode.Value)
+      expect(readString(result.reads['Data!A7'])).toBe('Carbon dioxide equivalent emissions ($/tonne)...')
+      expect(readErrorCode(result.reads['Data!A8'])).toBe(ErrorCode.Ref)
       expect(result.diagnostics?.engineMode).toBe('streaming-native')
       expect(result.diagnostics?.formulaCounts.unsupportedFormulaCellCount).toBe(0)
-      expect(result.diagnostics?.formulaCounts.patchedFormulaCacheCount).toBe(5)
+      expect(result.diagnostics?.formulaCounts.patchedFormulaCacheCount).toBe(7)
       const outputBytes = readFileSync(outputPath)
       const sheetXml = strFromU8(unzipSync(outputBytes)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
       expect(sheetXml).toContain('<c r="A2"><f>10^6</f><v>1000000</v></c>')
@@ -151,6 +153,10 @@ describe('xlsx-formula-recalc native aggregates', () => {
       expect(sheetXml).toContain('<c r="A4" t="str"><f>REPT(&quot;-&quot;,4)</f><v>----</v></c>')
       expect(sheetXml).toContain('<c r="A5" t="str"><f>REPT(B5,C5)</f><v>Q1Q1Q1</v></c>')
       expect(sheetXml).toContain('<c r="A6" t="e"><f>REPT(&quot;x&quot;,B6)</f><v>#VALUE!</v></c>')
+      expect(sheetXml).toContain(
+        '<c r="A7" t="str"><f>+&quot;Carbon dioxide equivalent emissions ($/tonne)&quot;&amp;REPT(&quot;.&quot;,3)</f><v>Carbon dioxide equivalent emissions ($/tonne)...</v></c>',
+      )
+      expect(sheetXml).toContain('<c r="A8" t="e"><f>B8*1000000/#REF!</f><v>#REF!</v></c>')
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
     }
@@ -552,13 +558,15 @@ function buildPublicExponentReptWorkbook(): Uint8Array {
 </sst>`),
     'xl/worksheets/sheet1.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <dimension ref="A2:C6"/>
+  <dimension ref="A2:C8"/>
   <sheetData>
     <row r="2"><c r="A2"><f>10^6</f><v>0</v></c></row>
     <row r="3"><c r="A3"><f>B3^C3</f><v>0</v></c><c r="B3"><v>2</v></c><c r="C3"><v>4</v></c></row>
     <row r="4"><c r="A4"><f>REPT(&quot;-&quot;,4)</f><v>stale</v></c></row>
     <row r="5"><c r="A5"><f>REPT(B5,C5)</f><v>stale</v></c><c r="B5" t="s"><v>0</v></c><c r="C5"><v>3</v></c></row>
     <row r="6"><c r="A6"><f>REPT(&quot;x&quot;,B6)</f><v>stale</v></c><c r="B6" t="s"><v>1</v></c></row>
+    <row r="7"><c r="A7"><f>+&quot;Carbon dioxide equivalent emissions ($/tonne)&quot;&amp;REPT(&quot;.&quot;,3)</f><v>stale</v></c></row>
+    <row r="8"><c r="A8"><f>B8*1000000/#REF!</f><v>stale</v></c><c r="B8"><v>2</v></c></row>
   </sheetData>
 </worksheet>`),
   })
