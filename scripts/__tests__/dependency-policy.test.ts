@@ -485,6 +485,20 @@ describe('repository dependency policy', () => {
     expect(streamingFileSource).toContain('tryPrepareStreamingPatchedWorksheetEntryFile')
   })
 
+  it('keeps file-backed XLSX source readBytes small-workbook only', () => {
+    const fileSource = readFileSync(join(repoRoot, 'packages/xlsx/src/file-source.ts'), 'utf8')
+    const readBytesStart = fileSource.indexOf('readBytes()')
+    const readBytesSource = fileSource.slice(readBytesStart)
+    const guardIndex = readBytesSource.indexOf('assertReadBytesWithinLimit()')
+    const materializeIndex = readBytesSource.indexOf('return readFileSync(path)')
+
+    expect(fileSource).toContain('export const defaultFileXlsxSourceReadBytesLimit = 1_000_000')
+    expect(fileSource).toContain('Use readRange/readRangeInto or a file-backed native XLSX API for large workbooks.')
+    expect(readBytesStart).toBeGreaterThan(-1)
+    expect(guardIndex).toBeGreaterThan(-1)
+    expect(materializeIndex).toBeGreaterThan(guardIndex)
+  })
+
   it('keeps excel-import source-preserving output as a shim over @bilig/xlsx', () => {
     const sourcePreservingExport = readFileSync(join(repoRoot, 'packages/excel-import/src/xlsx-source-preserving-export.ts'), 'utf8')
 

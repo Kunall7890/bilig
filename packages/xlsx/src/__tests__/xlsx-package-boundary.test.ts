@@ -12,6 +12,7 @@ import {
   encodeCellAddress,
   encodeCellRange,
   createFileXlsxSourceReader,
+  defaultFileXlsxSourceReadBytesLimit,
   getZipText,
   normalizeCellAddress,
   patchXlsxTextParts,
@@ -128,6 +129,24 @@ describe('@bilig/xlsx package boundary', () => {
         expect(source.readRangeInto(0, 2, scratch)).toEqual(workbook.subarray(0, 2))
         const zip = readXlsxZipEntries(source.readBytes())
         expect(textDecoder.decode(zip['xl/worksheets/sheet1.xml'])).toContain('<v>42</v>')
+      } finally {
+        source.release?.()
+      }
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  it('keeps file-backed full-byte reads small-workbook only', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'bilig-xlsx-file-source-'))
+    try {
+      const workbookPath = join(tempDir, 'large.xlsx')
+      const bytes = Buffer.alloc(defaultFileXlsxSourceReadBytesLimit + 1, 7)
+      writeFileSync(workbookPath, bytes)
+      const source = createFileXlsxSourceReader(workbookPath)
+      try {
+        expect([...source.readRange(0, 2)]).toEqual([...bytes.subarray(0, 2)])
+        expect(() => source.readBytes()).toThrow(/readBytes is small-workbook only/u)
       } finally {
         source.release?.()
       }

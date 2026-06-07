@@ -5,9 +5,16 @@ import type { XlsxZipByteSource } from './zip-reader.js'
 
 export type FileXlsxSourceReader = XlsxSourceReader & XlsxZipByteSource & { readonly path: string }
 
-export function createFileXlsxSourceReader(path: string): FileXlsxSourceReader {
+export interface FileXlsxSourceReaderOptions {
+  readonly maxReadBytes?: number | false
+}
+
+export const defaultFileXlsxSourceReadBytesLimit = 1_000_000
+
+export function createFileXlsxSourceReader(path: string, options: FileXlsxSourceReaderOptions = {}): FileXlsxSourceReader {
   const fd = openSync(path, 'r')
   const byteLength = statSync(path).size
+  const maxReadBytes = options.maxReadBytes ?? defaultFileXlsxSourceReadBytesLimit
   let closed = false
 
   const assertOpen = (): void => {
@@ -20,12 +27,25 @@ export function createFileXlsxSourceReader(path: string): FileXlsxSourceReader {
       throw new Error(`Invalid XLSX file byte range: ${String(start)}..${String(end)}`)
     }
   }
+  const assertReadBytesWithinLimit = (): void => {
+    if (maxReadBytes === false || byteLength <= maxReadBytes) {
+      return
+    }
+    throw new Error(
+      [
+        `XLSX file source readBytes is small-workbook only: ${path} is ${String(byteLength)} bytes`,
+        `limit is ${String(maxReadBytes)} bytes`,
+        'Use readRange/readRangeInto or a file-backed native XLSX API for large workbooks.',
+      ].join('; '),
+    )
+  }
 
   return {
     byteLength,
     path,
     readBytes() {
       assertOpen()
+      assertReadBytesWithinLimit()
       return readFileSync(path)
     },
     readRange(start, end) {
