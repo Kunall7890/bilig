@@ -4,9 +4,9 @@ import { join } from 'node:path'
 import { exportXlsx, importXlsx } from '@bilig/excel-import'
 import { isMacosExcelInstalled, runMacosExcelInspectionOracle, runMacosExcelStructuralOperationOracle } from '@bilig/excel-fixtures'
 import type { WorkbookSnapshot } from '@bilig/protocol'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
 
 import { WorkPaper } from '../index.js'
 import { createExcelAccessibleTempDir, removeMacosExcelTestDir } from './macos-excel-oracle-test-utils.js'
@@ -163,19 +163,7 @@ function chartFormulaRefs(snapshot: WorkbookSnapshot): string[] {
 }
 
 function buildUnsupportedChartSourceXlsx(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(
-    workbook,
-    XLSX.utils.aoa_to_sheet([
-      ['Quarter', 'Revenue'],
-      ['Q1', 10],
-      ['Q2', 14],
-    ]),
-    'Data',
-  )
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['dashboard']]), 'Dashboard')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(chartSourceBaseWorkbookBytes(true))
   zip['xl/worksheets/sheet2.xml'] = strToU8(addWorksheetDrawing(readZipTextFromZip(zip, 'xl/worksheets/sheet2.xml'), 'rIdChartDrawing'))
   zip['xl/worksheets/_rels/sheet2.xml.rels'] = strToU8(
     relationshipsXml([{ id: 'rIdChartDrawing', type: drawingRelationshipType, target: '../drawings/drawing1.xml' }]),
@@ -198,19 +186,7 @@ function buildUnsupportedChartSourceXlsx(): Uint8Array {
 }
 
 function buildChartSheetSourceXlsx(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(
-    workbook,
-    XLSX.utils.aoa_to_sheet([
-      ['Quarter', 'Revenue'],
-      ['Q1', 10],
-      ['Q2', 14],
-    ]),
-    'Data',
-  )
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['chart placeholder']]), 'Revenue Chart')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(chartSourceBaseWorkbookBytes(false))
   zip['xl/_rels/workbook.xml.rels'] = strToU8(
     readZipTextFromZip(zip, 'xl/_rels/workbook.xml.rels').replace(/<Relationship\b([^>]*)\/>/gu, (relationshipXml, attributes: string) =>
       readXmlAttribute(attributes, 'Target') === 'worksheets/sheet2.xml'
@@ -246,6 +222,33 @@ function buildChartSheetSourceXlsx(): Uint8Array {
     ),
   )
   return zipSync(zip)
+}
+
+function chartSourceBaseWorkbookBytes(includeDashboardSheet: boolean): Uint8Array {
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Data',
+        cells: [
+          { address: 'A1', row: 0, col: 0, value: 'Quarter' },
+          { address: 'B1', row: 0, col: 1, value: 'Revenue' },
+          { address: 'A2', row: 1, col: 0, value: 'Q1' },
+          { address: 'B2', row: 1, col: 1, value: 10 },
+          { address: 'A3', row: 2, col: 0, value: 'Q2' },
+          { address: 'B3', row: 2, col: 1, value: 14 },
+        ],
+      },
+      includeDashboardSheet
+        ? {
+            name: 'Dashboard',
+            cells: [{ address: 'A1', row: 0, col: 0, value: 'dashboard' }],
+          }
+        : {
+            name: 'Revenue Chart',
+            cells: [{ address: 'A1', row: 0, col: 0, value: 'chart placeholder' }],
+          },
+    ],
+  })
 }
 
 function chartSheetArtifactNames(snapshot: WorkbookSnapshot): string[] {
