@@ -3,10 +3,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
 
 import { SpreadsheetEngine } from '@bilig/core'
 import { exportXlsx, importXlsx } from '@bilig/excel-import'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import {
   isMacosExcelInstalled,
   runMacosExcelInspectionOracle,
@@ -114,18 +114,28 @@ describe('macOS Desktop Excel workbook structure protection oracle', () => {
 })
 
 function buildWorkbookStructureProtectionBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(
-    workbook,
-    XLSX.utils.aoa_to_sheet([
-      ['Revenue', 'Value'],
-      ['North', 100],
-    ]),
-    'Data',
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Data',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Revenue' },
+            { address: 'B1', row: 0, col: 1, value: 'Value' },
+            { address: 'A2', row: 1, col: 0, value: 'North' },
+            { address: 'B2', row: 1, col: 1, value: 100 },
+          ],
+        },
+        {
+          name: 'Report',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Summary' },
+            { address: 'A2', row: 1, col: 0, formula: 'SUM(Data!B2:B2)' },
+          ],
+        },
+      ],
+    }),
   )
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['Summary'], ['=SUM(Data!B2:B2)']]), 'Report')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
   const sourceWorkbookXml = strFromU8(zip['xl/workbook.xml'] ?? new Uint8Array())
   const workbookProtectionXml = '<workbookProtection lockStructure="1" workbookPassword="AF2B"/>'
   zip['xl/workbook.xml'] = strToU8(insertWorkbookProtection(sourceWorkbookXml, workbookProtectionXml))

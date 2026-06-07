@@ -4,9 +4,9 @@ import { join } from 'node:path'
 import { exportXlsx, importXlsx } from '@bilig/excel-import'
 import { isMacosExcelInstalled, runMacosExcelInspectionOracle } from '@bilig/excel-fixtures'
 import type { WorkbookSnapshot } from '@bilig/protocol'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
 
 import { WorkPaper } from '../index.js'
 import { createExcelAccessibleTempDir, removeMacosExcelTestDir } from './macos-excel-oracle-test-utils.js'
@@ -114,15 +114,26 @@ describe('macOS Desktop Excel protected ranges oracle', () => {
 })
 
 function buildProtectedEditableRangeSecurityBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ['Label', 'Input A', 'Input B'],
-    ['North', 10, 20],
-    ['South', 30, 40],
-  ])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Protected')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Protected',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Label' },
+            { address: 'B1', row: 0, col: 1, value: 'Input A' },
+            { address: 'C1', row: 0, col: 2, value: 'Input B' },
+            { address: 'A2', row: 1, col: 0, value: 'North' },
+            { address: 'B2', row: 1, col: 1, value: 10 },
+            { address: 'C2', row: 1, col: 2, value: 20 },
+            { address: 'A3', row: 2, col: 0, value: 'South' },
+            { address: 'B3', row: 2, col: 1, value: 30 },
+            { address: 'C3', row: 2, col: 2, value: 40 },
+          ],
+        },
+      ],
+    }),
+  )
   const sourceSheetXml = strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
   zip['xl/worksheets/sheet1.xml'] = strToU8(
     sourceSheetXml.replace(

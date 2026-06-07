@@ -30,7 +30,11 @@ const nativeXlsxExampleScripts = [
   'examples/recalc-bridge-workflows/smoke.mjs',
   'examples/recalc-bridge-workflows/stackoverflow-sheetjs-63085785.mjs',
 ] as const
-const nativeXlsxHeadlessFixtureTests = ['packages/headless/src/__tests__/work-paper-source-preserving-xlsx-export.test.ts'] as const
+const nativeXlsxHeadlessFixtureTests = [
+  'packages/headless/src/__tests__/macos-desktop-excel-protected-ranges-oracle.test.ts',
+  'packages/headless/src/__tests__/macos-desktop-excel-workbook-protection-oracle.test.ts',
+  'packages/headless/src/__tests__/work-paper-source-preserving-xlsx-export.test.ts',
+] as const
 const nativeXlsxExcelImportFixtureTests = [
   'packages/excel-import/src/__tests__/excel-import-array-formulas.test.ts',
   'packages/excel-import/src/__tests__/excel-import.fuzz.test.ts',
