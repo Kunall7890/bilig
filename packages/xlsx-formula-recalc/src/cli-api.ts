@@ -79,7 +79,6 @@ export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFo
     }
 
     const options = parseCliArgs(normalizeCliArgsForCommand(args, commandName), commandName)
-    const input = inputBytesForCli(options, commandName)
     const inputName =
       options.mode === 'demo'
         ? commandName === cacheDoctorCommandName
@@ -88,9 +87,16 @@ export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFo
         : basename(requireInputPath(options))
     const externalWorkbooks = readExternalWorkbookInputs(options.externalWorkbooks)
     if (options.inspect) {
+      const input = inputBytesForCli(options, commandName)
       printInspectionSummary({ input, inputName, externalWorkbooks, options, writeStdout })
       return 0
     }
+    if (options.mode === 'file') {
+      throw new Error(
+        'File-mode XLSX recalculation requires runXlsxFormulaRecalcCliAsync so the file-backed streaming-native engine is used.',
+      )
+    }
+    const input = inputBytesForCli(options, commandName)
     const result = recalculateXlsxToFile(input, {
       fileName: inputName,
       ...(externalWorkbooks.length > 0 ? { externalWorkbooks } : {}),

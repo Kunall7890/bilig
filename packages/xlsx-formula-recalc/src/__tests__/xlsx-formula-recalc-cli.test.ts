@@ -93,6 +93,29 @@ describe('xlsx-recalc CLI', () => {
     }
   })
 
+  it('refuses synchronous file-to-file recalculation so callers use the file-backed native path', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-formula-recalc-cli-sync-file-'))
+    try {
+      const inputPath = join(tempDir, 'native.xlsx')
+      const outputPath = join(tempDir, 'native.recalculated.xlsx')
+      writeFileSync(inputPath, buildStaleFormulaCacheWorkbook())
+      let stderr = ''
+
+      const exitCode = runXlsxFormulaRecalcCli([inputPath, '--out', outputPath, '--read', 'Sheet1!B2', '--json'], {
+        stderr: (text) => {
+          stderr += text
+        },
+      })
+
+      expect(exitCode).toBe(1)
+      expect(existsSync(outputPath)).toBe(false)
+      expect(stderr).toContain('runXlsxFormulaRecalcCliAsync')
+      expect(stderr).toContain('file-backed streaming-native engine')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
   it('documents the formula evaluation timeout option', () => {
     let stdout = ''
 
@@ -463,7 +486,7 @@ describe('xlsx-recalc CLI', () => {
     expect(stdout).toContain('fail-on-stale: "false"')
   })
 
-  it('keeps xlsx-cache-doctor in recalculation mode when readback output is explicit', () => {
+  it('keeps xlsx-cache-doctor in recalculation mode when readback output is explicit', async () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-cache-doctor-recalc-cli-'))
     try {
       const inputPath = join(tempDir, 'stale-cache.xlsx')
@@ -471,7 +494,7 @@ describe('xlsx-recalc CLI', () => {
       writeFileSync(inputPath, buildStaleFormulaCacheWorkbook())
       let stdout = ''
 
-      const exitCode = runXlsxFormulaRecalcCli([inputPath, '--read', 'Sheet1!B2', '--out', outputPath, '--json'], {
+      const exitCode = await runXlsxFormulaRecalcCliAsync([inputPath, '--read', 'Sheet1!B2', '--out', outputPath, '--json'], {
         commandName: 'xlsx-cache-doctor',
         stdout: (text) => {
           stdout += text
@@ -552,7 +575,7 @@ describe('xlsx-recalc CLI', () => {
     }
   })
 
-  it('hydrates external-link caches from companion workbook paths', () => {
+  it('hydrates external-link caches from companion workbook paths with explicit WorkPaper fallback', async () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-formula-recalc-cli-external-'))
     try {
       const inputPath = join(tempDir, 'model.xlsx')
@@ -562,12 +585,14 @@ describe('xlsx-recalc CLI', () => {
       writeFileSync(companionPath, buildExternalSourceWorkbook([20, 30, 40]))
       let stdout = ''
 
-      const exitCode = runXlsxFormulaRecalcCli(
+      const exitCode = await runXlsxFormulaRecalcCliAsync(
         [
           inputPath,
           '--external-workbook-target',
           companionPath,
           'file:///tmp/rates.xlsx',
+          '--fallback-policy',
+          'workpaper',
           '--read',
           'Model!C1',
           '--read',
@@ -609,7 +634,7 @@ describe('xlsx-recalc CLI', () => {
     }
   })
 
-  it('preserves cached external-link values when CLI companion workbook paths are ambiguous', () => {
+  it('preserves cached external-link values when CLI companion workbook paths are ambiguous with explicit WorkPaper fallback', async () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-formula-recalc-cli-ambiguous-'))
     try {
       const inputPath = join(tempDir, 'model.xlsx')
@@ -623,13 +648,15 @@ describe('xlsx-recalc CLI', () => {
       writeFileSync(secondCompanionPath, buildExternalSourceWorkbook([200, 300, 400]))
       let stdout = ''
 
-      const exitCode = runXlsxFormulaRecalcCli(
+      const exitCode = await runXlsxFormulaRecalcCliAsync(
         [
           inputPath,
           '--external-workbook',
           firstCompanionPath,
           '--external-workbook',
           secondCompanionPath,
+          '--fallback-policy',
+          'workpaper',
           '--read',
           'Model!C1',
           '--out',
