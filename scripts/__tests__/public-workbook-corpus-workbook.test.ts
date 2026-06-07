@@ -1,7 +1,7 @@
 import { deflateRawSync } from 'node:zlib'
 
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
 
 import { exportXlsx, XLSX_CONTENT_TYPE, type ImportedWorkbook } from '../../packages/excel-import/src/index.js'
 import { ValueTag } from '../../packages/protocol/src/enums.js'
@@ -366,13 +366,14 @@ describe('public workbook corpus workbook helpers', () => {
 })
 
 function buildBroadSparseWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet: XLSX.WorkSheet = {
-    XFD512: { t: 'n', f: '40+2', v: 42 },
-    '!ref': 'A1:XFD512',
-  }
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Sparse')
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Sparse',
+        cells: [{ address: 'XFD512', row: 511, col: 16_383, formula: '40+2', value: 42 }],
+      },
+    ],
+  })
 }
 
 class TrackingByteSource {
