@@ -1,8 +1,8 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import { describe, expect, it, vi } from 'vitest'
-import * as XLSX from 'xlsx'
 
 vi.mock('@bilig/excel-import', () => ({
   importXlsx: () => {
@@ -15,14 +15,24 @@ const { runWorkPaperXlsxCorpus } = await import('../check-workpaper-xlsx-corpus.
 describe('WorkPaper XLSX corpus verifier formula-free fast path', () => {
   it('does not attach an imported runtime snapshot when a workbook has no formulas', () => {
     withTempCorpus((corpusDir) => {
-      const workbook = XLSX.utils.book_new()
-      const sheet = XLSX.utils.aoa_to_sheet([
-        ['Account', 'Amount'],
-        ['Cash', 1200],
-        ['Revenue', 3400],
-      ])
-      XLSX.utils.book_append_sheet(workbook, sheet, 'Trial Balance')
-      writeFileSync(join(corpusDir, 'no-formulas.xlsx'), XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+      writeFileSync(
+        join(corpusDir, 'no-formulas.xlsx'),
+        writeSimpleXlsxWorkbook({
+          sheets: [
+            {
+              name: 'Trial Balance',
+              cells: [
+                { address: 'A1', row: 0, col: 0, value: 'Account' },
+                { address: 'B1', row: 0, col: 1, value: 'Amount' },
+                { address: 'A2', row: 1, col: 0, value: 'Cash' },
+                { address: 'B2', row: 1, col: 1, value: 1200 },
+                { address: 'A3', row: 2, col: 0, value: 'Revenue' },
+                { address: 'B3', row: 2, col: 1, value: 3400 },
+              ],
+            },
+          ],
+        }),
+      )
 
       const result = runWorkPaperXlsxCorpus([corpusDir])
 
