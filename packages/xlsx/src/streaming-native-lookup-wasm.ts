@@ -13,8 +13,9 @@ export interface StreamingNativeWasmLookupResult {
   readonly processedCells: ReadonlySet<string>
 }
 
-interface ExactUniformNumericVlookupCandidate {
+interface UniformNumericVlookupCandidate {
   readonly cell: NativeFormulaCell
+  readonly kind: number
   readonly lookupValue: number
   readonly tableSheetName: string
   readonly tableStartRow: number
@@ -35,6 +36,7 @@ interface VlookupTableRange {
 }
 
 const directLookupKindExactUniformNumeric = 1
+const directLookupKindApproximateUniformNumeric = 2
 const directLookupMatchModeAscending = 1
 const maxNativeLookupTableCellCount = 50_000
 
@@ -43,7 +45,7 @@ export function evaluateStreamingNativeWasmLookups(args: {
   readonly resolveFormulaSource: (scan: SheetScanState, cell: NativeFormulaCell) => string
   readonly skippedCells: ReadonlySet<string>
 }): StreamingNativeWasmLookupResult {
-  const candidates = collectExactUniformNumericVlookupCandidates(args)
+  const candidates = collectUniformNumericVlookupCandidates(args)
   if (candidates.length === 0) {
     return emptyResult()
   }
@@ -51,7 +53,7 @@ export function evaluateStreamingNativeWasmLookups(args: {
   const outNumbers = new Float64Array(candidates.length)
   const outErrors = new Uint16Array(candidates.length)
   createKernelSync().evalUniformNumericLookupBatch(
-    Uint8Array.from(candidates.map(() => directLookupKindExactUniformNumeric)),
+    Uint8Array.from(candidates.map((candidate) => candidate.kind)),
     Uint8Array.from(candidates.map(() => directLookupMatchModeAscending)),
     Float64Array.from(candidates.map((candidate) => candidate.start)),
     Float64Array.from(candidates.map((candidate) => candidate.step)),
@@ -93,12 +95,12 @@ export function evaluateStreamingNativeWasmLookups(args: {
   }
 }
 
-function collectExactUniformNumericVlookupCandidates(args: {
+function collectUniformNumericVlookupCandidates(args: {
   readonly sheetScans: ReadonlyMap<string, SheetScanState>
   readonly resolveFormulaSource: (scan: SheetScanState, cell: NativeFormulaCell) => string
   readonly skippedCells: ReadonlySet<string>
-}): ExactUniformNumericVlookupCandidate[] {
-  const candidates: ExactUniformNumericVlookupCandidate[] = []
+}): UniformNumericVlookupCandidate[] {
+  const candidates: UniformNumericVlookupCandidate[] = []
   for (const scan of args.sheetScans.values()) {
     for (const cell of scan.formulaCells) {
       if (args.skippedCells.has(cellKey(cell))) {
@@ -108,7 +110,7 @@ function collectExactUniformNumericVlookupCandidates(args: {
       if (!rowValues) {
         continue
       }
-      const candidate = tryCompileExactUniformNumericVlookupCandidate(scan, cell, rowValues, args)
+      const candidate = tryCompileUniformNumericVlookupCandidate(scan, cell, rowValues, args)
       if (candidate) {
         candidates.push(candidate)
       }
@@ -117,7 +119,7 @@ function collectExactUniformNumericVlookupCandidates(args: {
   return candidates
 }
 
-function tryCompileExactUniformNumericVlookupCandidate(
+function tryCompileUniformNumericVlookupCandidate(
   scan: SheetScanState,
   cell: NativeFormulaCell,
   rowValues: Map<number, PendingCellValue>,
@@ -125,7 +127,7 @@ function tryCompileExactUniformNumericVlookupCandidate(
     readonly sheetScans: ReadonlyMap<string, SheetScanState>
     readonly resolveFormulaSource: (scan: SheetScanState, cell: NativeFormulaCell) => string
   },
-): ExactUniformNumericVlookupCandidate | null {
+): UniformNumericVlookupCandidate | null {
   let node: FormulaNode
   try {
     node = parseFormula(args.resolveFormulaSource(scan, cell))
@@ -136,9 +138,12 @@ function tryCompileExactUniformNumericVlookupCandidate(
     node.kind !== 'CallExpr' ||
     normalizedFormulaFunctionName(node.callee) !== 'VLOOKUP' ||
     node.args.length < 3 ||
-    node.args.length > 4 ||
-    !isExactVlookupMatchModeLiteral(node.args[3])
+    node.args.length > 4
   ) {
+    return null
+  }
+  const kind = vlookupKernelKind(node.args[3])
+  if (kind === null) {
     return null
   }
   const tableRange = node.args[1]?.kind === 'RangeRef' ? decodeVlookupTableRange(node.args[1], scan.sheetName) : null
@@ -153,12 +158,16 @@ function tryCompileExactUniformNumericVlookupCandidate(
   if (lookupValue === null) {
     return null
   }
-  const lookupShape = exactUniformNumericLookupShape(args.sheetScans, tableRange)
+  const lookupShape = uniformNumericLookupShape(args.sheetScans, tableRange)
   if (!lookupShape) {
+    return null
+  }
+  if (kind === directLookupKindApproximateUniformNumeric && lookupShape.step <= 0) {
     return null
   }
   return {
     cell,
+    kind,
     lookupValue,
     tableSheetName: tableRange.sheetName,
     tableStartRow: tableRange.startRow,
@@ -170,8 +179,17 @@ function tryCompileExactUniformNumericVlookupCandidate(
   }
 }
 
-function isExactVlookupMatchModeLiteral(node: FormulaNode | undefined): boolean {
-  return (node?.kind === 'BooleanLiteral' && !node.value) || (node?.kind === 'NumberLiteral' && node.value === 0)
+function vlookupKernelKind(node: FormulaNode | undefined): number | null {
+  if (!node) {
+    return directLookupKindApproximateUniformNumeric
+  }
+  if ((node.kind === 'BooleanLiteral' && !node.value) || (node.kind === 'NumberLiteral' && node.value === 0)) {
+    return directLookupKindExactUniformNumeric
+  }
+  if ((node.kind === 'BooleanLiteral' && node.value) || (node.kind === 'NumberLiteral' && node.value === 1)) {
+    return directLookupKindApproximateUniformNumeric
+  }
+  return null
 }
 
 function numberLiteralValue(node: FormulaNode): number | null {
@@ -205,7 +223,7 @@ function compileNumericLookupValue(
   return value.tag === ValueTag.Number && Number.isFinite(value.value) ? value.value : null
 }
 
-function exactUniformNumericLookupShape(
+function uniformNumericLookupShape(
   sheetScans: ReadonlyMap<string, SheetScanState>,
   range: VlookupTableRange,
 ): { readonly start: number; readonly step: number; readonly length: number } | null {
