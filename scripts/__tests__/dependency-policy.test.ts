@@ -41,6 +41,7 @@ const nativeXlsxExampleScripts = [
 ] as const
 const nativeXlsxAppFixtureTests = ['apps/bilig/src/workbook-runtime/workbook-session-shared.test.ts'] as const
 const nativeXlsxExcelFixtureTests = ['packages/excel-fixtures/src/__tests__/macos-excel-oracle.test.ts'] as const
+const sheetJsExcelImportTestBoundarySources = ['packages/excel-import/src/__tests__/sheetjs-legacy-workbook-fixtures.ts'] as const
 const nativeXlsxHeadlessFixtureTests = [
   'packages/headless/src/__tests__/macos-desktop-excel-chart-deleted-sheet-oracle.test.ts',
   'packages/headless/src/__tests__/macos-desktop-excel-conditional-format-artifacts-oracle.test.ts',
@@ -53,6 +54,7 @@ const nativeXlsxHeadlessFixtureTests = [
   'packages/headless/src/__tests__/work-paper-source-preserving-xlsx-export.test.ts',
 ] as const
 const nativeXlsxExcelImportFixtureTests = [
+  'packages/excel-import/src/__tests__/excel-import.test.ts',
   'packages/excel-import/src/__tests__/excel-import-array-formulas.test.ts',
   'packages/excel-import/src/__tests__/excel-import.fuzz.test.ts',
   'packages/excel-import/src/__tests__/xlsx-alignment-roundtrip.test.ts',
@@ -93,6 +95,7 @@ const nativeXlsxExcelImportFixtureTests = [
   'packages/excel-import/src/__tests__/xlsx-threaded-comments-roundtrip.test.ts',
   'packages/excel-import/src/__tests__/xlsx-view-state-roundtrip.test.ts',
   'packages/excel-import/src/__tests__/xlsx-workbook-sheet-paths.test.ts',
+  'packages/excel-import/src/__tests__/xlsx-fallback-lazy-artifacts.test.ts',
   'packages/excel-import/src/__tests__/xlsx-worksheet-relationship-path-import.test.ts',
   'packages/excel-import/src/__tests__/xlsx-worksheet-dimensions-roundtrip.test.ts',
 ] as const
@@ -175,6 +178,16 @@ function sourceFiles(directory: string): string[] {
     const path = join(directory, entry.name)
     if (entry.isDirectory()) {
       return entry.name === '__tests__' ? [] : sourceFiles(path)
+    }
+    return entry.isFile() && entry.name.endsWith('.ts') ? [path] : []
+  })
+}
+
+function allTypeScriptFiles(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name)
+    if (entry.isDirectory()) {
+      return allTypeScriptFiles(path)
     }
     return entry.isFile() && entry.name.endsWith('.ts') ? [path] : []
   })
@@ -313,6 +326,16 @@ describe('repository dependency policy', () => {
 
   it('keeps simple excel-import fixture builders on @bilig/xlsx instead of SheetJS', () => {
     const violations = nativeXlsxExcelImportFixtureTests.filter((path) => hasRuntimeXlsxImport(readFileSync(join(repoRoot, path), 'utf8')))
+
+    expect(violations).toEqual([])
+  })
+
+  it('keeps SheetJS excel-import test usage isolated to the named legacy boundary', () => {
+    const allowlist = new Set<string>(sheetJsExcelImportTestBoundarySources)
+    const violations = allTypeScriptFiles(join(repoRoot, 'packages/excel-import/src/__tests__'))
+      .map(relativePath)
+      .filter((path) => hasRuntimeXlsxImport(readFileSync(join(repoRoot, path), 'utf8')))
+      .filter((path) => !allowlist.has(path))
 
     expect(violations).toEqual([])
   })

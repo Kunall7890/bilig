@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook, type SimpleXlsxCell, type SimpleXlsxSheet } from '@bilig/xlsx'
 
 import { ErrorCode, ValueTag, type WorkbookSnapshot } from '@bilig/protocol'
 import { projectWorkbookSemanticSnapshot as projectSupportedSnapshotSemantics, readRuntimeImage, SpreadsheetEngine } from '@bilig/core'
+import { buildBinaryWorkbook, buildLegacyWorkbook, buildNamespacedFormulaWorkbook } from './sheetjs-legacy-workbook-fixtures.js'
 import {
   CSV_CONTENT_TYPE,
   EXCEL_WORKBOOK_IMPORT_CONTENT_TYPES,
@@ -24,45 +25,65 @@ import {
   volatileFormulasWarning,
 } from '../index.js'
 
+const relationshipNamespace = 'http://schemas.openxmlformats.org/package/2006/relationships'
+const commentsRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments'
+const vmlDrawingRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing'
+const commentsContentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml'
+const vmlDrawingContentType = 'application/vnd.openxmlformats-officedocument.vmlDrawing'
+
 function buildWorkbook(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-
-  const sheet1 = XLSX.utils.aoa_to_sheet([
-    [1, 2],
-    [3, null],
-  ])
-  sheet1['C1'] = { t: 'n', f: 'A1+B1', z: '0.00' }
-  sheet1['!ref'] = 'A1:C2'
-  sheet1['!cols'] = [{ wpx: 120 }, { wch: 10 }, { wpx: 80 }]
-  sheet1['!rows'] = [{ hpx: 30 }, { hpt: 18 }]
-  sheet1['!merges'] = [{ s: { r: 3, c: 0 }, e: { r: 3, c: 1 } }]
-
-  const sheet2 = XLSX.utils.aoa_to_sheet([['hello'], [true]])
-  sheet2['A1'] = {
-    ...sheet2['A1'],
-    c: [{ a: 'Greg', t: 'comment' }],
-  }
-
-  XLSX.utils.book_append_sheet(workbook, sheet1, 'Sheet1')
-  XLSX.utils.book_append_sheet(workbook, sheet2, 'Sheet2')
-  workbook.Workbook = {
-    Names: [
-      { Name: 'InputValue', Ref: 'Sheet1!$A$1' },
-      { Name: 'InputBlock', Ref: 'Sheet1!$A$1:$B$2' },
-    ],
-  }
-
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      definedNames: [
+        { name: 'InputValue', formula: 'Sheet1!$A$1' },
+        { name: 'InputBlock', formula: 'Sheet1!$A$1:$B$2' },
+      ],
+      sheets: [
+        {
+          name: 'Sheet1',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 1 },
+            { address: 'B1', row: 0, col: 1, value: 2 },
+            { address: 'C1', row: 0, col: 2, formula: 'A1+B1', numberFormat: '0.00' },
+            { address: 'A2', row: 1, col: 0, value: 3 },
+          ],
+          columns: [
+            { index: 0, size: 120 },
+            { index: 1, size: 65 },
+            { index: 2, size: 80 },
+          ],
+          rows: [
+            { index: 0, size: 30 },
+            { index: 1, size: 18 },
+          ],
+          merges: [{ startAddress: 'A4', endAddress: 'B4' }],
+          dimension: { s: { r: 0, c: 0 }, e: { r: 1, c: 2 } },
+        },
+        {
+          name: 'Sheet2',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'hello' },
+            { address: 'A2', row: 1, col: 0, value: true },
+          ],
+        },
+      ],
+    }),
+  )
+  addLegacyCommentToSheet(zip, 2, { ref: 'A1', author: 'Greg', body: 'comment' })
+  return zipSync(zip)
 }
 
 function buildExternalLinkCacheWorkbook(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([[]])
-  sheet.A1 = { t: 'n', f: "'[1]External Data'!A1+'[1]External Data'!A2", v: 5 }
-  sheet['!ref'] = 'A1:A1'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Report')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Report',
+          cells: [{ address: 'A1', row: 0, col: 0, formula: "'[1]External Data'!A1+'[1]External Data'!A2", value: 5 }],
+        },
+      ],
+    }),
+  )
   zip['xl/workbook.xml'] = strToU8(
     strFromU8(zip['xl/workbook.xml'])
       .replace(/<workbook\b([^>]*)>/u, (match) =>
@@ -101,27 +122,39 @@ function buildExternalLinkCacheWorkbook(): Uint8Array {
 }
 
 function buildVolatileFormulaWorkbook(formula: string): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([[1]])
-  sheet.B1 = { t: 'n', f: formula, v: 1 }
-  sheet['!ref'] = 'A1:B1'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Model')
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Model',
+        cells: [
+          { address: 'A1', row: 0, col: 0, value: 1 },
+          { address: 'B1', row: 0, col: 1, formula, value: 1 },
+        ],
+      },
+    ],
+  })
 }
 
 function buildExternalLinkRangeCacheWorkbook(
   criteriaFormula = "SUMPRODUCT('[1]Rates'!$B$2:$B$4,--('[1]Rates'!$A$2:$A$4=\"C\"))*B1",
   target = 'file:///tmp/rates.xlsx',
 ): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([[null, 2]])
-  sheet.C1 = { t: 'n', f: "SUM('[1]Rates'!$B$2:$B$4)*B1", v: 120 }
-  sheet.C2 = { t: 'n', f: "_xlfn.XLOOKUP(\"B\",'[1]Rates'!$A$2:$A$4,'[1]Rates'!$B$2:$B$4)*B1", v: 40 }
-  sheet.C3 = { t: 'n', f: criteriaFormula, v: 60 }
-  sheet['!ref'] = 'A1:C3'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Model')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Model',
+          cells: [
+            { address: 'B1', row: 0, col: 1, value: 2 },
+            { address: 'C1', row: 0, col: 2, formula: "SUM('[1]Rates'!$B$2:$B$4)*B1", value: 120 },
+            { address: 'C2', row: 1, col: 2, formula: "_xlfn.XLOOKUP(\"B\",'[1]Rates'!$A$2:$A$4,'[1]Rates'!$B$2:$B$4)*B1", value: 40 },
+            { address: 'C3', row: 2, col: 2, formula: criteriaFormula, value: 60 },
+          ],
+          dimension: { s: { r: 0, c: 0 }, e: { r: 2, c: 2 } },
+        },
+      ],
+    }),
+  )
   zip['xl/workbook.xml'] = strToU8(
     strFromU8(zip['xl/workbook.xml'])
       .replace(/<workbook\b([^>]*)>/u, (match) =>
@@ -162,44 +195,60 @@ function buildExternalLinkRangeCacheWorkbook(
 }
 
 function buildRatesWorkbook(rates: readonly [number, number, number]): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ['SKU', 'Rate'],
-    ['A', rates[0]],
-    ['B', rates[1]],
-    ['C', rates[2]],
-  ])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Rates')
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Rates',
+        cells: cellsFromRows([
+          ['SKU', 'Rate'],
+          ['A', rates[0]],
+          ['B', rates[1]],
+          ['C', rates[2]],
+        ]),
+      },
+    ],
+  })
 }
 
 function buildSparseRatesWorkbook(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ['SKU', 'Rate'],
-    ['A', 20],
-    ['B', null],
-    ['C', 50],
-  ])
-  sheet.A5 = { t: 's', v: 'D' }
-  sheet.B5 = { t: 'e', v: 42, w: '#N/A' }
-  sheet.A6 = { t: 's', v: 'E' }
-  sheet.B6 = { t: 'e', v: 0, w: '#NULL!' }
-  sheet['!ref'] = 'A1:B6'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Rates')
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Rates',
+        cells: [
+          ...cellsFromRows([
+            ['SKU', 'Rate'],
+            ['A', 20],
+            ['B', null],
+            ['C', 50],
+          ]),
+          { address: 'A5', row: 4, col: 0, value: 'D' },
+          { address: 'B5', row: 4, col: 1, error: '#N/A' },
+          { address: 'A6', row: 5, col: 0, value: 'E' },
+          { address: 'B6', row: 5, col: 1, error: '#NULL!' },
+        ],
+      },
+    ],
+  })
 }
 
 function buildSparseExternalLinkRangeCacheWorkbook(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([[null, 1]])
-  sheet.C1 = { t: 'n', f: "SUM('[1]Rates'!$B$2:$B$4)*B1", v: 60 }
-  sheet.C2 = { t: 'n', f: "IFERROR(SUM('[1]Rates'!$B$2:$B$5),99)", v: 60 }
-  sheet.C3 = { t: 'n', f: "IFERROR(SUM('[1]Rates'!$B$6),88)", v: 60 }
-  sheet['!ref'] = 'A1:C3'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Model')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Model',
+          cells: [
+            { address: 'B1', row: 0, col: 1, value: 1 },
+            { address: 'C1', row: 0, col: 2, formula: "SUM('[1]Rates'!$B$2:$B$4)*B1", value: 60 },
+            { address: 'C2', row: 1, col: 2, formula: "IFERROR(SUM('[1]Rates'!$B$2:$B$5),99)", value: 60 },
+            { address: 'C3', row: 2, col: 2, formula: "IFERROR(SUM('[1]Rates'!$B$6),88)", value: 60 },
+          ],
+          dimension: { s: { r: 0, c: 0 }, e: { r: 2, c: 2 } },
+        },
+      ],
+    }),
+  )
   zip['xl/workbook.xml'] = strToU8(
     strFromU8(zip['xl/workbook.xml'])
       .replace(/<workbook\b([^>]*)>/u, (match) =>
@@ -257,17 +306,24 @@ function inflateXlsxForDenseSheetJsParse(bytes: Uint8Array): Uint8Array {
 }
 
 function buildExternalGetPivotDataLinkCacheWorkbook(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([[]])
-  sheet.A1 = {
-    t: 'n',
-    f: 'GETPIVOTDATA("Amount",\'[1]External Pivot\'!$G$3,"Region","East")',
-    v: 15,
-  }
-  sheet['!ref'] = 'A1:A1'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Report')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Report',
+          cells: [
+            {
+              address: 'A1',
+              row: 0,
+              col: 0,
+              formula: 'GETPIVOTDATA("Amount",\'[1]External Pivot\'!$G$3,"Region","East")',
+              value: 15,
+            },
+          ],
+        },
+      ],
+    }),
+  )
   zip['xl/workbook.xml'] = strToU8(
     strFromU8(zip['xl/workbook.xml'])
       .replace(/<workbook\b([^>]*)>/u, (match) =>
@@ -305,63 +361,241 @@ function buildExternalGetPivotDataLinkCacheWorkbook(): Uint8Array {
 }
 
 function buildUnsupportedFunctionCacheWorkbook(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([[]])
-  sheet.A1 = {
-    t: 'n',
-    f: '_xldudf_WISEPRICE(B1,"Shares Outstanding")',
-    v: 14935800000,
-  }
-  sheet.B1 = { t: 's', v: 'AAPL' }
-  sheet.C1 = { t: 's', f: '_FV(B1,"Ticker symbol",TRUE)', v: 'AAPL' }
-  sheet['!ref'] = 'A1:C1'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Model')
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
-}
-
-function buildBinaryWorkbook(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ['Name', 'Value'],
-    ['alpha', 12],
-  ])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Sheet1')
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['notes']]), 'Sheet2')
-  return XLSX.write(workbook, { bookType: 'xlsb', type: 'buffer' })
-}
-
-function buildLegacyWorkbook(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ['Department', 'Amount'],
-    ['Operations', 1250],
-    ['Finance', 1800],
-  ])
-  sheet.C2 = { t: 'n', f: 'B2+B3', v: 3050 }
-  sheet['!ref'] = 'A1:C3'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Salary')
-  return XLSX.write(workbook, { bookType: 'xls', type: 'buffer' })
-}
-
-function buildNamespacedFormulaWorkbook(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([[1], [2]])
-  sheet.A3 = { t: 'n', f: 'msoxl:=SUM(A1:A2)', v: 3 }
-  sheet.B3 = { t: 'n', f: 'of:=SUM(A1:A2)', v: 3 }
-  sheet['!ref'] = 'A1:B3'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Expenses')
-  return XLSX.write(workbook, { bookType: 'ods', type: 'buffer' })
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Model',
+        cells: [
+          { address: 'A1', row: 0, col: 0, formula: '_xldudf_WISEPRICE(B1,"Shares Outstanding")', value: 14935800000 },
+          { address: 'B1', row: 0, col: 1, value: 'AAPL' },
+          { address: 'C1', row: 0, col: 2, formula: '_FV(B1,"Ticker symbol",TRUE)', value: 'AAPL' },
+        ],
+      },
+    ],
+  })
 }
 
 function buildMacroEnabledWorkbook(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['safe value']]), 'Sheet1')
-  workbook.Workbook = {
-    WBProps: { CodeName: 'ThisWorkbook' },
-    Sheets: [{ name: 'Sheet1', CodeName: 'Sheet1' }],
+  return writeSimpleXlsxWorkbook({
+    macro: {
+      vbaProject: new Uint8Array([1, 2, 3, 4]),
+      workbookCodeName: 'ThisWorkbook',
+      sheetCodeNames: [{ sheetName: 'Sheet1', codeName: 'Sheet1' }],
+    },
+    sheets: [
+      {
+        name: 'Sheet1',
+        cells: [{ address: 'A1', row: 0, col: 0, value: 'safe value' }],
+      },
+    ],
+  })
+}
+
+function cellsFromRows(rows: readonly (readonly (string | number | boolean | null | undefined)[])[]): SimpleXlsxCell[] {
+  return rows.flatMap((row, rowIndex) =>
+    row.flatMap((value, colIndex) =>
+      value === null || value === undefined
+        ? []
+        : [
+            {
+              address: `${columnName(colIndex)}${String(rowIndex + 1)}`,
+              row: rowIndex,
+              col: colIndex,
+              value,
+            },
+          ],
+    ),
+  )
+}
+
+function axisSizes(sizes: readonly number[]): SimpleXlsxSheet['columns'] {
+  return sizes.map((size, index) => ({ index, size }))
+}
+
+function columnName(index: number): string {
+  let value = index + 1
+  let output = ''
+  while (value > 0) {
+    const remainder = (value - 1) % 26
+    output = String.fromCharCode(65 + remainder) + output
+    value = Math.floor((value - 1) / 26)
   }
-  workbook.vbaraw = new Uint8Array([1, 2, 3, 4])
-  return XLSX.write(workbook, { bookType: 'xlsm', type: 'buffer', bookVBA: true })
+  return output
+}
+
+function addLegacyCommentToSheet(
+  zip: Record<string, Uint8Array>,
+  sheetNumber: number,
+  comment: { readonly ref: string; readonly author: string; readonly body: string },
+): void {
+  const sheetPath = `xl/worksheets/sheet${String(sheetNumber)}.xml`
+  const relsPath = `xl/worksheets/_rels/sheet${String(sheetNumber)}.xml.rels`
+  zip[sheetPath] = strToU8(
+    strFromU8(zip[sheetPath] ?? new Uint8Array()).replace('</worksheet>', '<legacyDrawing r:id="rIdLegacyCommentVml1"/></worksheet>'),
+  )
+  zip[relsPath] = strToU8(
+    [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      `<Relationships xmlns="${relationshipNamespace}">`,
+      `<Relationship Id="rIdLegacyCommentVml1" Type="${vmlDrawingRelationshipType}" Target="../drawings/vmlDrawing1.vml"/>`,
+      `<Relationship Id="rIdLegacyComments1" Type="${commentsRelationshipType}" Target="../comments1.xml"/>`,
+      '</Relationships>',
+    ].join(''),
+  )
+  zip['xl/comments1.xml'] = strToU8(
+    [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<comments xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+      `<authors><author>${escapeXmlText(comment.author)}</author></authors>`,
+      '<commentList>',
+      `<comment ref="${escapeXmlAttribute(comment.ref)}" authorId="0"><text><t>${escapeXmlText(comment.body)}</t></text></comment>`,
+      '</commentList>',
+      '</comments>',
+    ].join(''),
+  )
+  zip['xl/drawings/vmlDrawing1.vml'] = strToU8(legacyCommentVmlXml(comment.ref))
+  zip['[Content_Types].xml'] = strToU8(
+    addContentTypeOverride(
+      addContentTypeDefault(strFromU8(zip['[Content_Types].xml'] ?? new Uint8Array()), 'vml', vmlDrawingContentType),
+      '/xl/comments1.xml',
+      commentsContentType,
+    ),
+  )
+}
+
+function legacyCommentVmlXml(ref: string): string {
+  const rowIndex = Math.max(0, Number(ref.replace(/^[A-Z]+/iu, '')) - 1)
+  const columnIndex =
+    ref
+      .replace(/[0-9]+$/u, '')
+      .toUpperCase()
+      .split('')
+      .reduce((column, character) => column * 26 + character.charCodeAt(0) - 64, 0) - 1
+  return [
+    '<xml xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">',
+    '<o:shapelayout v:ext="edit"><o:idmap v:ext="edit" data="1"/></o:shapelayout>',
+    '<v:shapetype id="_x0000_t202" coordsize="21600,21600" o:spt="202" path="m,l,21600r21600,l21600,xe">',
+    '<v:stroke joinstyle="miter"/><v:path gradientshapeok="t" o:connecttype="rect"/>',
+    '</v:shapetype>',
+    '<v:shape id="_x0000_s1025" type="#_x0000_t202" style="position:absolute;margin-left:59.25pt;margin-top:1.5pt;width:108pt;height:59.25pt;z-index:1;visibility:hidden" fillcolor="#ffffe1" o:insetmode="auto">',
+    '<v:fill color2="#ffffe1"/><v:shadow on="t" color="black" obscured="t"/>',
+    '<v:path o:connecttype="none"/><v:textbox style="mso-direction-alt:auto"><div style="text-align:left"/></v:textbox>',
+    '<x:ClientData ObjectType="Note">',
+    '<x:Anchor>1, 15, 0, 2, 3, 15, 4, 16</x:Anchor>',
+    `<x:Row>${String(rowIndex)}</x:Row>`,
+    `<x:Column>${String(columnIndex)}</x:Column>`,
+    '</x:ClientData>',
+    '</v:shape>',
+    '</xml>',
+  ].join('')
+}
+
+function buildSingleCellMergeWorkbook(): Uint8Array {
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Sheet1',
+        cells: cellsFromRows([['A', 'B']]),
+        merges: [
+          { startAddress: 'A1', endAddress: 'A1' },
+          { startAddress: 'A1', endAddress: 'B1' },
+        ],
+      },
+    ],
+  })
+}
+
+function buildZeroSizeMetadataWorkbook(): Uint8Array {
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [{ name: 'Sheet1', cells: cellsFromRows([['Value']]) }],
+    }),
+  )
+  zip['xl/worksheets/sheet1.xml'] = strToU8(
+    strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+      .replace('<sheetData>', '<cols><col min="1" max="1" width="0" customWidth="1"/></cols><sheetData>')
+      .replace('<row r="1">', '<row r="1" ht="0" customHeight="1">'),
+  )
+  return zipSync(zip)
+}
+
+function buildExternalDefinedNamesWorkbook(): Uint8Array {
+  return writeSimpleXlsxWorkbook({
+    definedNames: [
+      { name: 'ExternalRange', formula: '[1]Sheet1!$A$1:$A$2' },
+      { name: 'ExternalBrokenRef', formula: '[2]Sheet1!#REF!' },
+    ],
+    sheets: [{ name: 'Sheet1', cells: cellsFromRows([['local']]) }],
+  })
+}
+
+function buildScopedDefinedNamesWorkbook(): Uint8Array {
+  return writeSimpleXlsxWorkbook({
+    definedNames: [
+      { name: 'LocalBonus', formula: 'Global!$A$1' },
+      { name: 'LocalBonus', localSheetIndex: 1, formula: 'Local!$A$1' },
+      { name: 'LocalRevenue', localSheetIndex: 1, formula: 'Local!$B$1' },
+    ],
+    sheets: [
+      { name: 'Global', cells: cellsFromRows([[100]]) },
+      {
+        name: 'Local',
+        cells: [...cellsFromRows([[7, 10]]), { address: 'C1', row: 0, col: 2, formula: 'LocalBonus*LocalRevenue', value: 70 }],
+      },
+    ],
+  })
+}
+
+function buildWholeColumnDefinedNamesWorkbook(): Uint8Array {
+  return writeSimpleXlsxWorkbook({
+    definedNames: [
+      { name: 'Symbol', formula: 'Projectdata_NYSE!$A:$A' },
+      { name: 'Year_num', formula: 'Projectdata_NYSE!$B:$B' },
+      { name: 'Total_Revenue', formula: 'Projectdata_NYSE!$C:$C' },
+    ],
+    sheets: [
+      {
+        name: 'Projectdata_NYSE',
+        cells: cellsFromRows([
+          ['Symbol', 'Year', 'Revenue'],
+          ['AAA', 2020, 100],
+          ['BBB', 2021, 200],
+        ]),
+      },
+    ],
+  })
+}
+
+function addContentTypeDefault(contentTypesXml: string, extension: string, contentType: string): string {
+  if (new RegExp(`<Default\\b[^>]*\\bExtension=(["'])${escapeRegExp(extension)}\\1`, 'u').test(contentTypesXml)) {
+    return contentTypesXml
+  }
+  return contentTypesXml.replace(
+    '</Types>',
+    `<Default Extension="${escapeXmlAttribute(extension)}" ContentType="${escapeXmlAttribute(contentType)}"/></Types>`,
+  )
+}
+
+function addContentTypeOverride(contentTypesXml: string, partName: string, contentType: string): string {
+  if (new RegExp(`<Override\\b[^>]*\\bPartName=(["'])${escapeRegExp(partName)}\\1`, 'u').test(contentTypesXml)) {
+    return contentTypesXml
+  }
+  return contentTypesXml.replace(
+    '</Types>',
+    `<Override PartName="${escapeXmlAttribute(partName)}" ContentType="${escapeXmlAttribute(contentType)}"/></Types>`,
+  )
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+}
+
+function escapeXmlText(value: string): string {
+  return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+}
+
+function escapeXmlAttribute(value: string): string {
+  return escapeXmlText(value).replaceAll('"', '&quot;').replaceAll("'", '&apos;')
 }
 
 function readZipUint16(bytes: Uint8Array, offset: number): number {
@@ -388,94 +622,133 @@ function buildCorruptZipBackedWorkbook(): Uint8Array {
 }
 
 function buildGenericWorkflowWorkbookFixture(shape: 'multi-sheet-operations' | 'single-sheet-planning'): Uint8Array {
-  const workbook = XLSX.utils.book_new()
   if (shape === 'multi-sheet-operations') {
-    const dashboard = XLSX.utils.aoa_to_sheet([
-      ['OPERATIONS DASHBOARD', null, null, null],
-      [],
-      ['Metric', 'Value'],
-      ['Total budget'],
-      ['Open balance'],
-      ['Completion rate'],
-    ])
-    dashboard.B4 = { t: 'n', f: 'SUM(Ledger!F:F)' }
-    dashboard.B5 = { t: 'n', f: 'SUMIF(Ledger!H:H,"Open",Ledger!G:G)' }
-    dashboard.B6 = { t: 'n', f: 'IF(B4>0,1-B5/B4,0)' }
-    dashboard['!ref'] = 'A1:D6'
-    dashboard['!cols'] = [{ wpx: 180 }, { wpx: 118 }, { wpx: 96 }, { wpx: 96 }]
-    dashboard['!rows'] = [{ hpx: 30 }, {}, { hpx: 24 }]
-    dashboard['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }]
-
-    const ledger = XLSX.utils.aoa_to_sheet([
-      ['OPERATIONS LEDGER', null, null, null, null, null, null, null],
-      [],
-      ['ID', 'Date', 'Owner', 'Workstream', 'Category', 'Budget', 'Open Balance', 'Status'],
-      ['OP001', 45292, 'Facilities', 'Office refresh', 'Capital', 12000, null, 'Open'],
-      ['OP002', 45323, 'Engineering', 'Data migration', 'Platform', 18000, null, 'Open'],
-    ])
-    ledger.G4 = { t: 'n', f: 'F4-SUMIF(Rollforward!$B:$B,A4,Rollforward!$E:$E)' }
-    ledger.G5 = { t: 'n', f: 'F5-SUMIF(Rollforward!$B:$B,A5,Rollforward!$E:$E)' }
-    ledger['!ref'] = 'A1:H5'
-    ledger['!cols'] = [{ wpx: 132 }, { wpx: 96 }, { wpx: 142 }, { wpx: 210 }, { wpx: 138 }, { wpx: 118 }, { wpx: 138 }, { wpx: 92 }]
-    ledger['!rows'] = [{ hpx: 30 }, {}, { hpx: 24 }]
-    ledger['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }]
-
-    const rollforward = XLSX.utils.aoa_to_sheet([
-      ['ROLLFORWARD', null, null, null, null],
-      [],
-      ['Period', 'Item ID', 'Description', 'Monthly Change', 'Cumulative Change'],
-      ['Jan 2024', 'OP001', 'Office refresh'],
-      ['Feb 2024', 'OP001', 'Office refresh'],
-      ['Mar 2024', 'OP002', 'Data migration'],
-    ])
-    rollforward.D4 = { t: 'n', f: 'VLOOKUP(B4,Ledger!A:F,6,FALSE())/12' }
-    rollforward.E4 = { t: 'n', f: 'D4' }
-    rollforward.D5 = { t: 'n', f: 'VLOOKUP(B5,Ledger!A:F,6,FALSE())/12' }
-    rollforward.E5 = { t: 'n', f: 'IF(B5=B4,E4+D5,D5)' }
-    rollforward.D6 = { t: 'n', f: 'VLOOKUP(B6,Ledger!A:F,6,FALSE())/12' }
-    rollforward.E6 = { t: 'n', f: 'IF(B6=B5,E5+D6,D6)' }
-    rollforward['!ref'] = 'A1:E6'
-    rollforward['!cols'] = [{ wpx: 112 }, { wpx: 96 }, { wpx: 210 }, { wpx: 126 }, { wpx: 148 }]
-    rollforward['!rows'] = [{ hpx: 30 }, {}, { hpx: 24 }]
-    rollforward['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }]
-
-    XLSX.utils.book_append_sheet(workbook, dashboard, 'Dashboard')
-    XLSX.utils.book_append_sheet(workbook, ledger, 'Ledger')
-    XLSX.utils.book_append_sheet(workbook, rollforward, 'Rollforward')
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['Category'], ['Capital'], ['Platform']]), 'Lookups')
-    return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+    return writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Dashboard',
+          cells: [
+            ...cellsFromRows([
+              ['OPERATIONS DASHBOARD', null, null, null],
+              [],
+              ['Metric', 'Value'],
+              ['Total budget'],
+              ['Open balance'],
+              ['Completion rate'],
+            ]),
+            { address: 'B4', row: 3, col: 1, formula: 'SUM(Ledger!F:F)' },
+            { address: 'B5', row: 4, col: 1, formula: 'SUMIF(Ledger!H:H,"Open",Ledger!G:G)' },
+            { address: 'B6', row: 5, col: 1, formula: 'IF(B4>0,1-B5/B4,0)' },
+          ],
+          columns: axisSizes([180, 118, 96, 96]),
+          rows: [
+            { index: 0, size: 30 },
+            { index: 2, size: 24 },
+          ],
+          merges: [{ startAddress: 'A1', endAddress: 'D1' }],
+        },
+        {
+          name: 'Ledger',
+          cells: [
+            ...cellsFromRows([
+              ['OPERATIONS LEDGER', null, null, null, null, null, null, null],
+              [],
+              ['ID', 'Date', 'Owner', 'Workstream', 'Category', 'Budget', 'Open Balance', 'Status'],
+              ['OP001', 45292, 'Facilities', 'Office refresh', 'Capital', 12000, null, 'Open'],
+              ['OP002', 45323, 'Engineering', 'Data migration', 'Platform', 18000, null, 'Open'],
+            ]),
+            { address: 'G4', row: 3, col: 6, formula: 'F4-SUMIF(Rollforward!$B:$B,A4,Rollforward!$E:$E)' },
+            { address: 'G5', row: 4, col: 6, formula: 'F5-SUMIF(Rollforward!$B:$B,A5,Rollforward!$E:$E)' },
+          ],
+          columns: axisSizes([132, 96, 142, 210, 138, 118, 138, 92]),
+          rows: [
+            { index: 0, size: 30 },
+            { index: 2, size: 24 },
+          ],
+          merges: [{ startAddress: 'A1', endAddress: 'H1' }],
+        },
+        {
+          name: 'Rollforward',
+          cells: [
+            ...cellsFromRows([
+              ['ROLLFORWARD', null, null, null, null],
+              [],
+              ['Period', 'Item ID', 'Description', 'Monthly Change', 'Cumulative Change'],
+              ['Jan 2024', 'OP001', 'Office refresh'],
+              ['Feb 2024', 'OP001', 'Office refresh'],
+              ['Mar 2024', 'OP002', 'Data migration'],
+            ]),
+            { address: 'D4', row: 3, col: 3, formula: 'VLOOKUP(B4,Ledger!A:F,6,FALSE())/12' },
+            { address: 'E4', row: 3, col: 4, formula: 'D4' },
+            { address: 'D5', row: 4, col: 3, formula: 'VLOOKUP(B5,Ledger!A:F,6,FALSE())/12' },
+            { address: 'E5', row: 4, col: 4, formula: 'IF(B5=B4,E4+D5,D5)' },
+            { address: 'D6', row: 5, col: 3, formula: 'VLOOKUP(B6,Ledger!A:F,6,FALSE())/12' },
+            { address: 'E6', row: 5, col: 4, formula: 'IF(B6=B5,E5+D6,D6)' },
+          ],
+          columns: axisSizes([112, 96, 210, 126, 148]),
+          rows: [
+            { index: 0, size: 30 },
+            { index: 2, size: 24 },
+          ],
+          merges: [{ startAddress: 'A1', endAddress: 'E1' }],
+        },
+        {
+          name: 'Lookups',
+          cells: cellsFromRows([['Category'], ['Capital'], ['Platform']]),
+        },
+      ],
+    })
   }
 
-  const planning = XLSX.utils.aoa_to_sheet([
-    ['Monthly Planning Schedule', null, null, null, null, null, null, null, null],
-    ['Owner', 'Workstream', 'Start Date', 'End Date', 'Budget', 'Jan 2026', 'Feb 2026', 'Planned', 'Remaining'],
-    ['TenantWorks', 'Facilities platform', 46054, 46234, 6600],
-    ['Blue Harbor', 'Insurance binder', 46023, 46388, 12000],
-  ])
-  planning.F3 = { t: 'n', f: 'ROUND(IFERROR($E3*MAX(0,MIN($D3,EOMONTH(DATE(2026,1,1),0))-MAX($C3,DATE(2026,1,1))+1)/($D3-$C3+1),0),2)' }
-  planning.G3 = { t: 'n', f: 'ROUND(IFERROR($E3*MAX(0,MIN($D3,EOMONTH(DATE(2026,2,1),0))-MAX($C3,DATE(2026,2,1))+1)/($D3-$C3+1),0),2)' }
-  planning.H3 = { t: 'n', f: 'ROUND(SUM(F3:G3),2)' }
-  planning.I3 = { t: 'n', f: 'ROUND(E3-H3,2)' }
-  planning.F4 = { t: 'n', f: 'ROUND(IFERROR($E4*MAX(0,MIN($D4,EOMONTH(DATE(2026,1,1),0))-MAX($C4,DATE(2026,1,1))+1)/($D4-$C4+1),0),2)' }
-  planning.G4 = { t: 'n', f: 'ROUND(IFERROR($E4*MAX(0,MIN($D4,EOMONTH(DATE(2026,2,1),0))-MAX($C4,DATE(2026,2,1))+1)/($D4-$C4+1),0),2)' }
-  planning.H4 = { t: 'n', f: 'ROUND(SUM(F4:G4),2)' }
-  planning.I4 = { t: 'n', f: 'ROUND(E4-H4,2)' }
-  planning['!ref'] = 'A1:I4'
-  planning['!cols'] = [
-    { wpx: 168 },
-    { wpx: 190 },
-    { wpx: 104 },
-    { wpx: 104 },
-    { wpx: 118 },
-    { wpx: 96 },
-    { wpx: 96 },
-    { wpx: 134 },
-    { wpx: 138 },
-  ]
-  planning['!rows'] = [{ hpx: 30 }, { hpx: 24 }]
-  planning['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }]
-  XLSX.utils.book_append_sheet(workbook, planning, 'Monthly Plan')
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Monthly Plan',
+        cells: [
+          ...cellsFromRows([
+            ['Monthly Planning Schedule', null, null, null, null, null, null, null, null],
+            ['Owner', 'Workstream', 'Start Date', 'End Date', 'Budget', 'Jan 2026', 'Feb 2026', 'Planned', 'Remaining'],
+            ['TenantWorks', 'Facilities platform', 46054, 46234, 6600],
+            ['Blue Harbor', 'Insurance binder', 46023, 46388, 12000],
+          ]),
+          {
+            address: 'F3',
+            row: 2,
+            col: 5,
+            formula: 'ROUND(IFERROR($E3*MAX(0,MIN($D3,EOMONTH(DATE(2026,1,1),0))-MAX($C3,DATE(2026,1,1))+1)/($D3-$C3+1),0),2)',
+          },
+          {
+            address: 'G3',
+            row: 2,
+            col: 6,
+            formula: 'ROUND(IFERROR($E3*MAX(0,MIN($D3,EOMONTH(DATE(2026,2,1),0))-MAX($C3,DATE(2026,2,1))+1)/($D3-$C3+1),0),2)',
+          },
+          { address: 'H3', row: 2, col: 7, formula: 'ROUND(SUM(F3:G3),2)' },
+          { address: 'I3', row: 2, col: 8, formula: 'ROUND(E3-H3,2)' },
+          {
+            address: 'F4',
+            row: 3,
+            col: 5,
+            formula: 'ROUND(IFERROR($E4*MAX(0,MIN($D4,EOMONTH(DATE(2026,1,1),0))-MAX($C4,DATE(2026,1,1))+1)/($D4-$C4+1),0),2)',
+          },
+          {
+            address: 'G4',
+            row: 3,
+            col: 6,
+            formula: 'ROUND(IFERROR($E4*MAX(0,MIN($D4,EOMONTH(DATE(2026,2,1),0))-MAX($C4,DATE(2026,2,1))+1)/($D4-$C4+1),0),2)',
+          },
+          { address: 'H4', row: 3, col: 7, formula: 'ROUND(SUM(F4:G4),2)' },
+          { address: 'I4', row: 3, col: 8, formula: 'ROUND(E4-H4,2)' },
+        ],
+        columns: axisSizes([168, 190, 104, 104, 118, 96, 96, 134, 138]),
+        rows: [
+          { index: 0, size: 30 },
+          { index: 1, size: 24 },
+        ],
+        merges: [{ startAddress: 'A1', endAddress: 'I1' }],
+      },
+    ],
+  })
 }
 
 describe('excel import', () => {
@@ -989,15 +1262,7 @@ describe('excel import', () => {
   })
 
   it('drops degenerate single-cell merge records during import', async () => {
-    const workbook = XLSX.utils.book_new()
-    const sheet = XLSX.utils.aoa_to_sheet([['A', 'B']])
-    sheet['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 0 } },
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } },
-    ]
-    XLSX.utils.book_append_sheet(workbook, sheet, 'Sheet1')
-
-    const imported = importXlsx(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }), 'single-cell-merge.xlsx')
+    const imported = importXlsx(buildSingleCellMergeWorkbook(), 'single-cell-merge.xlsx')
 
     expect(imported.snapshot.sheets[0]?.metadata?.merges).toEqual([{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B1' }])
     const engine = new SpreadsheetEngine({ workbookName: 'single-cell-merge-import' })
@@ -1006,39 +1271,40 @@ describe('excel import', () => {
   })
 
   it('ignores zero-size row and column metadata during import', () => {
-    const workbook = XLSX.utils.book_new()
-    const sheet = XLSX.utils.aoa_to_sheet([['Value']])
-    sheet['!rows'] = [{ hpx: 0 }]
-    sheet['!cols'] = [{ wpx: 0 }]
-    XLSX.utils.book_append_sheet(workbook, sheet, 'Sheet1')
-
-    const imported = importXlsx(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }), 'zero-size.xlsx')
+    const imported = importXlsx(buildZeroSizeMetadataWorkbook(), 'zero-size.xlsx')
 
     expect(imported.snapshot.sheets[0]?.metadata?.rows).toBeUndefined()
     expect(imported.snapshot.sheets[0]?.metadata?.columns).toBeUndefined()
   })
 
   it('preserves hidden row metadata even when the row has no custom height', () => {
-    const workbook = XLSX.utils.book_new()
-    const sheet = XLSX.utils.aoa_to_sheet([
-      ['Header', 'Value'],
-      ['Visible', 10],
-      ['Hidden', 20],
-    ])
-    sheet['!rows'] = [undefined, undefined, { hidden: true }]
-    XLSX.utils.book_append_sheet(workbook, sheet, 'Table')
-
-    const imported = importXlsx(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }), 'hidden-row.xlsx')
+    const imported = importXlsx(
+      writeSimpleXlsxWorkbook({
+        sheets: [
+          {
+            name: 'Table',
+            cells: cellsFromRows([
+              ['Header', 'Value'],
+              ['Visible', 10],
+              ['Hidden', 20],
+            ]),
+            rows: [{ index: 2, hidden: true }],
+          },
+        ],
+      }),
+      'hidden-row.xlsx',
+    )
 
     expect(imported.snapshot.sheets[0]?.metadata?.rows).toEqual([{ id: 'row:2', index: 2, hidden: true }])
   })
 
   it('canonicalizes imported multiline text to LF line breaks', () => {
-    const workbook = XLSX.utils.book_new()
-    const sheet = XLSX.utils.aoa_to_sheet([['Line 1\r\nLine 2\rLine 3']])
-    XLSX.utils.book_append_sheet(workbook, sheet, 'Sheet1')
-
-    const imported = importXlsx(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }), 'multiline.xlsx')
+    const imported = importXlsx(
+      writeSimpleXlsxWorkbook({
+        sheets: [{ name: 'Sheet1', cells: cellsFromRows([['Line 1\r\nLine 2\rLine 3']]) }],
+      }),
+      'multiline.xlsx',
+    )
 
     expect(imported.snapshot.sheets[0]?.cells).toContainEqual({
       address: 'A1',
@@ -1049,16 +1315,7 @@ describe('excel import', () => {
   })
 
   it('preserves external workbook defined names as formulas across export round trips', () => {
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['local']]), 'Sheet1')
-    workbook.Workbook = {
-      Names: [
-        { Name: 'ExternalRange', Ref: '[1]Sheet1!$A$1:$A$2' },
-        { Name: 'ExternalBrokenRef', Ref: '[2]Sheet1!#REF!' },
-      ],
-    }
-
-    const imported = importXlsx(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }), 'external-defined-names.xlsx')
+    const imported = importXlsx(buildExternalDefinedNamesWorkbook(), 'external-defined-names.xlsx')
     expect(imported.snapshot.workbook.metadata?.definedNames).toEqual([
       { name: 'ExternalBrokenRef', value: { kind: 'formula', formula: '=[2]Sheet1!#REF!' } },
       { name: 'ExternalRange', value: { kind: 'formula', formula: '=[1]Sheet1!$A$1:$A$2' } },
@@ -1069,18 +1326,7 @@ describe('excel import', () => {
   })
 
   it('preserves sheet-scoped defined names across import and export round trips', () => {
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([[100]]), 'Global')
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([[7, 10, { f: 'LocalBonus*LocalRevenue', v: 70 }]]), 'Local')
-    workbook.Workbook = {
-      Names: [
-        { Name: 'LocalBonus', Ref: 'Global!$A$1' },
-        { Name: 'LocalBonus', Sheet: 1, Ref: 'Local!$A$1' },
-        { Name: 'LocalRevenue', Sheet: 1, Ref: 'Local!$B$1' },
-      ],
-    }
-
-    const imported = importXlsx(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }), 'scoped-defined-names.xlsx')
+    const imported = importXlsx(buildScopedDefinedNamesWorkbook(), 'scoped-defined-names.xlsx')
 
     expect(imported.warnings).toEqual([])
     expect(imported.snapshot.workbook.metadata?.definedNames).toEqual([
@@ -1190,16 +1436,14 @@ describe('excel import', () => {
     const exported = exportXlsx(imported.snapshot)
     const exportedZip = unzipSync(exported)
     const contentTypesXml = strFromU8(exportedZip['[Content_Types].xml'] ?? new Uint8Array())
-    const roundTripped = XLSX.read(exported, { type: 'array', bookVBA: true })
+    const roundTripped = importXlsx(exported, 'Macro Workbook.xlsm')
     expect(contentTypesXml).toContain('<Default Extension="bin" ContentType="application/vnd.ms-office.vbaProject"/>')
     expect(contentTypesXml).toContain(
       '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.ms-excel.sheet.macroEnabled.main+xml"/>',
     )
-    expect(Array.from(roundTripped.vbaraw ?? [])).toEqual([1, 2, 3, 4])
-    expect(roundTripped.SheetNames).toEqual(['Sheet1'])
-    expect(roundTripped.Workbook?.WBProps?.CodeName).toBe('ThisWorkbook')
-    expect(roundTripped.Workbook?.Sheets?.[0]?.CodeName).toBe('Sheet1')
-    expect(roundTripped.Sheets['Sheet1']?.['A1']?.v).toBe('safe value')
+    expect(roundTripped.sheetNames).toEqual(['Sheet1'])
+    expect(roundTripped.snapshot.workbook.metadata?.macroPayloads).toEqual(imported.snapshot.workbook.metadata?.macroPayloads)
+    expect(roundTripped.snapshot.sheets[0]?.cells).toEqual([expect.objectContaining({ address: 'A1', value: 'safe value' })])
   })
 
   it('maps imported xlsx styles into Bilig style records', () => {
@@ -1652,22 +1896,7 @@ describe('excel import', () => {
   })
 
   it('bounds whole-column defined names to the imported sheet extent', () => {
-    const workbook = XLSX.utils.book_new()
-    const sheet = XLSX.utils.aoa_to_sheet([
-      ['Symbol', 'Year', 'Revenue'],
-      ['AAA', 2020, 100],
-      ['BBB', 2021, 200],
-    ])
-    XLSX.utils.book_append_sheet(workbook, sheet, 'Projectdata_NYSE')
-    workbook.Workbook = {
-      Names: [
-        { Name: 'Symbol', Ref: 'Projectdata_NYSE!$A:$A' },
-        { Name: 'Year_num', Ref: 'Projectdata_NYSE!$B:$B' },
-        { Name: 'Total_Revenue', Ref: 'Projectdata_NYSE!$C:$C' },
-      ],
-    }
-
-    const imported = importXlsx(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }), 'nyse.xlsx')
+    const imported = importXlsx(buildWholeColumnDefinedNamesWorkbook(), 'nyse.xlsx')
 
     expect(imported.snapshot.workbook.metadata?.definedNames).toEqual([
       { name: 'Symbol', value: { kind: 'range-ref', sheetName: 'Projectdata_NYSE', startAddress: 'A1', endAddress: 'A3' } },
