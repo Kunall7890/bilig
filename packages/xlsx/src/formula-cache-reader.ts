@@ -1,16 +1,18 @@
-import { statSync } from 'node:fs'
-
 import { translateFormulaReferences } from '@bilig/formula'
 
 import { decodeCellAddress, encodeCellAddress } from './address.js'
-import { createFileXlsxSourceReader } from './file-source.js'
+import {
+  closeStreamingNativeWorkbookCore,
+  openStreamingNativeWorkbookCore,
+  StreamingNativeWorkbookOpenError,
+  type StreamingNativeWorkbookCore,
+} from './streaming-native-workbook-core.js'
 import { decodeXmlText, getXmlElementText, readXmlAttribute } from './xml.js'
-import { workbookSheetPathEntriesForSource } from './workbook-sheet-paths.js'
-import { forEachInflatedXlsxZipEntryChunk, readXlsxZipEntriesLazyFromByteSource, type XlsxZipEntries } from './zip-reader.js'
+import { forEachInflatedXlsxZipEntryChunk, type XlsxZipEntries } from './zip-reader.js'
 
 export type XlsxFormulaCacheInspectionLimit = number | 'all'
 export type XlsxFormulaCacheLiteral = string | number | boolean | null
-export type XlsxFormulaCacheReadPhase = 'open-source' | 'workbook-metadata' | 'formula-cache-scan'
+export type XlsxFormulaCacheReadPhase = 'open-source' | 'zip-central-directory' | 'workbook-metadata' | 'formula-cache-scan'
 export type XlsxFormulaCacheReadErrorReason = 'invalid-or-zip64-xlsx' | 'worksheet-stream-unavailable'
 
 export interface XlsxFormulaCacheCell {
@@ -80,35 +82,46 @@ export function readXlsxFormulaCacheCellsFromFile(
     readonly onPhase?: (phase: XlsxFormulaCacheReadPhase) => void
   } = {},
 ): XlsxFormulaCacheScanResult {
-  const inputBytes = statSync(inputPath).size
-  const source = createFileXlsxSourceReader(inputPath)
+  let core: StreamingNativeWorkbookCore
   try {
-    options.onPhase?.('open-source')
-    const zip = readXlsxZipEntriesLazyFromByteSource(source)
-    if (!zip) {
-      throw new XlsxFormulaCacheReadError(
-        'XLSX formula cache scan requires a ZIP central directory it can read lazily',
-        'invalid-or-zip64-xlsx',
-        inputBytes,
-      )
+    core = openStreamingNativeWorkbookCore(inputPath, {
+      onPhase: (phase) => options.onPhase?.(phase),
+    })
+  } catch (error) {
+    if (error instanceof StreamingNativeWorkbookOpenError) {
+      throw new XlsxFormulaCacheReadError(error.message, error.reason, error.inputBytes)
     }
-    const sheetEntries = workbookSheetPathEntriesForSource(zip)
-    options.onPhase?.('workbook-metadata')
-    const scan = collectXlsxFormulaCacheCells(
-      zip,
-      sheetEntries,
-      normalizeXlsxFormulaCacheInspectionLimit(options.inspectLimit ?? 'all'),
-      inputBytes,
-    )
+    throw error
+  }
+  try {
+    const scan =
+      options.inspectLimit === undefined
+        ? readXlsxFormulaCacheCellsFromWorkbookCore(core)
+        : readXlsxFormulaCacheCellsFromWorkbookCore(core, { inspectLimit: options.inspectLimit })
     options.onPhase?.('formula-cache-scan')
-    return {
-      inputBytes,
-      sheetNames: sheetEntries.map((sheet) => sheet.name),
-      formulaCellCount: scan.formulaCellCount,
-      cells: scan.cells,
-    }
+    return scan
   } finally {
-    source.release?.()
+    closeStreamingNativeWorkbookCore(core)
+  }
+}
+
+export function readXlsxFormulaCacheCellsFromWorkbookCore(
+  core: StreamingNativeWorkbookCore,
+  options: {
+    readonly inspectLimit?: XlsxFormulaCacheInspectionLimit
+  } = {},
+): XlsxFormulaCacheScanResult {
+  const scan = collectXlsxFormulaCacheCells(
+    core.zip,
+    core.sheetEntries,
+    normalizeXlsxFormulaCacheInspectionLimit(options.inspectLimit ?? 'all'),
+    core.inputBytes,
+  )
+  return {
+    inputBytes: core.inputBytes,
+    sheetNames: core.sheetNames,
+    formulaCellCount: scan.formulaCellCount,
+    cells: scan.cells,
   }
 }
 

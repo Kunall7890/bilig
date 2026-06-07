@@ -130,6 +130,7 @@ const xlsxOwnedStreamingNativeSources = [
   'packages/xlsx/src/streaming-native-inspect.ts',
   'packages/xlsx/src/streaming-native-recalc.ts',
   'packages/xlsx/src/streaming-native-row-chain-wasm.ts',
+  'packages/xlsx/src/streaming-native-workbook-core.ts',
 ] as const
 const legacyFormulaRecalcStreamingNativeSources = [
   'packages/xlsx-formula-recalc/src/streaming-native-inspect.ts',
@@ -388,8 +389,8 @@ describe('repository dependency policy', () => {
     expect(cliStart).toBeGreaterThan(-1)
     expect(cliEnd).toBeGreaterThan(cliStart)
     expect(reportSource).toContain('export function buildWorkbookCompatibilityReportFromFile')
-    expect(reportSource).toContain('createFileXlsxSourceReader')
-    expect(reportSource).toContain('readXlsxFormulaCacheCellsFromFile')
+    expect(reportSource).toContain('openStreamingNativeWorkbookCore')
+    expect(reportSource).toContain('readXlsxFormulaCacheCellsFromWorkbookCore')
     expect(reportSource).toContain('const defaultFileInspectLimit: XlsxCacheInspectionLimit = 2000')
     expect(cliSource).toContain('buildWorkbookCompatibilityReportFromFile')
     expect(cliSource).not.toContain('readFileSync(requireInputPath(options))')
@@ -408,6 +409,21 @@ describe('repository dependency policy', () => {
     )
     expect(nativeInspect).not.toContain("options.inspectLimit ?? 'all'")
     expect(reportSource).toContain('const defaultFileInspectLimit: XlsxCacheInspectionLimit = 2000')
+  })
+
+  it('keeps file-backed native inspection and reports on the unified workbook core', () => {
+    const formulaCacheReader = readFileSync(join(repoRoot, 'packages/xlsx/src/formula-cache-reader.ts'), 'utf8')
+    const reportSource = readFileSync(join(repoRoot, 'packages/xlsx/src/workbook-compatibility-report.ts'), 'utf8')
+    const nativeCore = readFileSync(join(repoRoot, 'packages/xlsx/src/streaming-native-workbook-core.ts'), 'utf8')
+
+    expect(formulaCacheReader).toContain("from './streaming-native-workbook-core.js'")
+    expect(formulaCacheReader).toContain('readXlsxFormulaCacheCellsFromWorkbookCore')
+    expect(reportSource).toContain("from './streaming-native-workbook-core.js'")
+    expect(reportSource).toContain('readXlsxFormulaCacheCellsFromWorkbookCore')
+    expect(reportSource).not.toContain('readXlsxFormulaCacheCellsFromFile(inputPath')
+    expect(nativeCore).toContain('createFileXlsxSourceReader')
+    expect(nativeCore).toContain('readXlsxZipEntriesLazyFromByteSource')
+    expect(nativeCore).toContain('workbookSheetPathEntriesForSource')
   })
 
   it('keeps large XLSX file-mode wrappers off materialized workbook and hidden fallback paths', () => {

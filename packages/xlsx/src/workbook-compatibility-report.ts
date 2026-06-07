@@ -3,18 +3,16 @@ import { basename } from 'node:path'
 
 import type { LiteralInput } from '@bilig/protocol'
 
-import { createFileXlsxSourceReader } from './file-source.js'
-import { readXlsxFormulaCacheCellsFromFile, type XlsxFormulaCacheScanResult } from './formula-cache-reader.js'
+import { readXlsxFormulaCacheCellsFromWorkbookCore, type XlsxFormulaCacheScanResult } from './formula-cache-reader.js'
 import type { ImportedWorkbookDiagnostics, XlsxExternalWorkbookInput } from './external-workbook-types.js'
 import { writeSimpleXlsxWorkbook } from './simple-workbook-writer.js'
+import { closeStreamingNativeWorkbookCore, openStreamingNativeWorkbookCore } from './streaming-native-workbook-core.js'
 import { readXlsxWorkbookCells, type XlsxWorkbookCells } from './workbook-cell-reader.js'
-import { workbookSheetPathEntriesForSource } from './workbook-sheet-paths.js'
+import type { WorkbookSheetPathEntry } from './workbook-sheet-paths.js'
 import {
   forEachInflatedXlsxZipEntryChunk,
   getZipText,
   readXlsxZipEntriesLazy,
-  readXlsxZipEntriesLazyFromByteSource,
-  readXlsxZipEntryMetadata,
   type XlsxZipEntries,
   type XlsxZipEntryMetadata,
 } from './zip-reader.js'
@@ -200,17 +198,12 @@ export function buildWorkbookCompatibilityReportFromFile(
   const fileName = options.fileName ?? basename(inputPath)
   const externalWorkbooks = options.externalWorkbooks ?? []
   const inspectLimit = options.inspectLimit ?? defaultFileInspectLimit
-  const source = createFileXlsxSourceReader(inputPath)
+  const core = openStreamingNativeWorkbookCore(inputPath)
   try {
-    const entryMetadata = readXlsxZipEntryMetadata(source)
-    const zip = readXlsxZipEntriesLazyFromByteSource(source)
-    if (!zip) {
-      throw new Error('Workbook compatibility report requires a ZIP central directory it can read lazily')
-    }
-    const workbook = scanWorkbookCellStats(zip)
-    const workbookParts = scanWorkbookPackageParts(zip, entryMetadata ?? undefined)
+    const workbook = scanWorkbookCellStats(core.zip, core.sheetEntries)
+    const workbookParts = scanWorkbookPackageParts(core.zip, core.entryMetadata)
     const cacheInspection = inspectWorkbookFormulaCacheScan(
-      readXlsxFormulaCacheCellsFromFile(inputPath, {
+      readXlsxFormulaCacheCellsFromWorkbookCore(core, {
         inspectLimit,
       }),
       inspectLimit,
@@ -223,7 +216,7 @@ export function buildWorkbookCompatibilityReportFromFile(
       cacheInspection,
     })
   } finally {
-    source.release?.()
+    closeStreamingNativeWorkbookCore(core)
   }
 }
 
@@ -512,8 +505,10 @@ function normalizeInspectLimit(limit: XlsxCacheInspectionLimit): XlsxCacheInspec
   return limit
 }
 
-function scanWorkbookCellStats(zip: XlsxZipEntries): { readonly sheetNames: readonly string[]; readonly nonEmptyCellCount: number } {
-  const sheets = workbookSheetPathEntriesForSource(zip)
+function scanWorkbookCellStats(
+  zip: XlsxZipEntries,
+  sheets: readonly WorkbookSheetPathEntry[],
+): { readonly sheetNames: readonly string[]; readonly nonEmptyCellCount: number } {
   let nonEmptyCellCount = 0
   for (const sheet of sheets) {
     nonEmptyCellCount += countWorksheetCellElements(zip, sheet.path)
