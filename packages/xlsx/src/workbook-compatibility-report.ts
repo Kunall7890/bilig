@@ -7,16 +7,15 @@ import { readXlsxFormulaCacheCellsFromWorkbookCore, type XlsxFormulaCacheScanRes
 import type { XlsxExternalWorkbookInput } from './external-workbook-types.js'
 import { writeSimpleXlsxWorkbook } from './simple-workbook-writer.js'
 import type { XlsxFormulaRecalcNativeDiagnostics, XlsxFormulaRecalcPhaseRss } from './streaming-native-recalc.js'
-import { closeStreamingNativeWorkbookCore, openStreamingNativeWorkbookCore } from './streaming-native-workbook-core.js'
 import { readXlsxWorkbookCells, type XlsxWorkbookCells } from './workbook-cell-reader.js'
-import type { WorkbookSheetPathEntry } from './workbook-sheet-paths.js'
 import {
-  forEachInflatedXlsxZipEntryChunk,
-  getZipText,
-  readXlsxZipEntriesLazy,
-  type XlsxZipEntries,
-  type XlsxZipEntryMetadata,
-} from './zip-reader.js'
+  closeStreamingNativeWorkbookCore,
+  openStreamingNativeWorkbookCore,
+  scanStreamingNativeWorkbookCellStats,
+  scanStreamingNativeWorkbookPackageParts,
+  type StreamingNativeWorkbookPackagePartStats,
+} from './streaming-native-workbook-core.js'
+import { readXlsxZipEntriesLazy } from './zip-reader.js'
 
 export const workbookCompatibilityReportSchemaVersion = 'bilig-workbook-compatibility-report.v1'
 
@@ -137,9 +136,6 @@ const defaultInspectLimit: XlsxCacheInspectionLimit = 'all'
 const defaultFileInspectLimit: XlsxCacheInspectionLimit = 2000
 const workbookCompatibilityReportBytesApiLimit = 1_000_000
 const docsUrl = 'https://proompteng.github.io/bilig/workbook-compatibility-report.html'
-const textDecoder = new TextDecoder()
-const worksheetCellStartTagPattern = /<(?:[A-Za-z_][\w.-]*:)?c\b/gu
-const worksheetCellStartCarryLength = 128
 const volatileFunctionNames = ['TODAY', 'NOW', 'RAND', 'RANDBETWEEN', 'RANDARRAY', 'OFFSET', 'INDIRECT', 'SUBTOTAL', 'AGGREGATE'] as const
 const knownUnsupportedRiskFunctions = new Set([
   'CALL',
@@ -185,7 +181,7 @@ export function buildWorkbookCompatibilityReport(
   rss.recordPhase('bytes-api:zip')
   const workbook = readXlsxWorkbookCells(zip)
   rss.recordPhase('bytes-api:cells')
-  const workbookParts = scanWorkbookPackageParts(zip)
+  const workbookParts = scanStreamingNativeWorkbookPackageParts({ zip })
   rss.recordPhase('bytes-api:package-parts')
   const cacheInspection = inspectWorkbookFormulaCaches(workbook, options.inspectLimit ?? defaultInspectLimit)
   rss.recordPhase('bytes-api:formula-cache')
@@ -220,9 +216,9 @@ export function buildWorkbookCompatibilityReportFromFile(
   const core = openStreamingNativeWorkbookCore(inputPath)
   try {
     rss.recordPhase('file-api:open-core')
-    const workbook = scanWorkbookCellStats(core.zip, core.sheetEntries)
+    const workbook = scanStreamingNativeWorkbookCellStats(core)
     rss.recordPhase('file-api:cell-stats')
-    const workbookParts = scanWorkbookPackageParts(core.zip, core.entryMetadata)
+    const workbookParts = scanStreamingNativeWorkbookPackageParts(core)
     rss.recordPhase('file-api:package-parts')
     const cacheInspection = inspectWorkbookFormulaCacheScan(
       readXlsxFormulaCacheCellsFromWorkbookCore(core, {
@@ -425,15 +421,7 @@ export function buildWorkbookCompatibilityDemoBytes(): Uint8Array {
   })
 }
 
-interface WorkbookPackagePartScan {
-  readonly definedNameCount: number
-  readonly tableCount: number
-  readonly pivotTableCount: number
-  readonly chartCount: number
-  readonly macroModuleCount: number
-  readonly macroByteLength: number
-  readonly externalLinkCount: number
-}
+type WorkbookPackagePartScan = StreamingNativeWorkbookPackagePartStats
 
 interface WorkbookFormulaCacheInspection {
   readonly formulaCellCount: number
@@ -629,68 +617,6 @@ function normalizeInspectLimit(limit: XlsxCacheInspectionLimit): XlsxCacheInspec
     return defaultInspectLimit
   }
   return limit
-}
-
-function scanWorkbookCellStats(
-  zip: XlsxZipEntries,
-  sheets: readonly WorkbookSheetPathEntry[],
-): { readonly sheetNames: readonly string[]; readonly nonEmptyCellCount: number } {
-  let nonEmptyCellCount = 0
-  for (const sheet of sheets) {
-    nonEmptyCellCount += countWorksheetCellElements(zip, sheet.path)
-  }
-  return {
-    sheetNames: sheets.map((sheet) => sheet.name),
-    nonEmptyCellCount,
-  }
-}
-
-function countWorksheetCellElements(zip: XlsxZipEntries, sheetPath: string): number {
-  let count = 0
-  let buffer = ''
-  const processBuffer = (final: boolean): void => {
-    const safeEnd = final ? buffer.length : Math.max(0, buffer.length - worksheetCellStartCarryLength)
-    if (safeEnd === 0 && !final) {
-      return
-    }
-    for (const _match of buffer.slice(0, safeEnd).matchAll(worksheetCellStartTagPattern)) {
-      count += 1
-    }
-    buffer = buffer.slice(safeEnd)
-  }
-  const streamed = forEachInflatedXlsxZipEntryChunk(
-    zip,
-    sheetPath,
-    (chunk) => {
-      buffer += textDecoder.decode(chunk, { stream: true })
-      processBuffer(false)
-    },
-    { chunkSize: 64 * 1024, forceStreamingInflate: true },
-  )
-  if (!streamed) {
-    return 0
-  }
-  buffer += textDecoder.decode()
-  processBuffer(true)
-  return count
-}
-
-function scanWorkbookPackageParts(zip: XlsxZipEntries, entryMetadata: readonly XlsxZipEntryMetadata[] = []): WorkbookPackagePartScan {
-  const paths = entryMetadata.length > 0 ? entryMetadata.map((entry) => entry.path) : Object.keys(zip)
-  const metadataByPath = new Map(entryMetadata.map((entry) => [entry.path, entry]))
-  const workbookXml = getZipText(zip, 'xl/workbook.xml') ?? ''
-  const externalReferenceCount = workbookXml.match(/<(?:[A-Za-z_][\w.-]*:)?externalReference\b/gu)?.length ?? 0
-  const externalLinkPartCount = paths.filter((path) => /^xl\/externalLinks\/externalLink[0-9]+\.xml$/u.test(path)).length
-  const macroPaths = paths.filter((path) => /(?:^|\/)vbaProject\.bin$/iu.test(path))
-  return {
-    definedNameCount: workbookXml.match(/<(?:[A-Za-z_][\w.-]*:)?definedName\b/gu)?.length ?? 0,
-    tableCount: paths.filter((path) => /^xl\/tables\/[^/]+\.xml$/u.test(path)).length,
-    pivotTableCount: paths.filter((path) => /^xl\/pivotTables\/[^/]+\.xml$/u.test(path)).length,
-    chartCount: paths.filter((path) => /^xl\/charts\/[^/]+\.xml$/u.test(path) || /^xl\/chartsheets\/[^/]+\.xml$/u.test(path)).length,
-    macroModuleCount: macroPaths.length,
-    macroByteLength: macroPaths.reduce((sum, path) => sum + (metadataByPath.get(path)?.uncompressedSize ?? zip[path]?.byteLength ?? 0), 0),
-    externalLinkCount: Math.max(externalReferenceCount, externalLinkPartCount),
-  }
 }
 
 function buildRisk(report: Omit<WorkbookCompatibilityReport, 'risk'>): WorkbookCompatibilityReport['risk'] {
