@@ -6,7 +6,7 @@ import { isMacosExcelInstalled, runMacosExcelInspectionOracle, runMacosExcelPack
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 
-import { WorkPaper, exportXlsx, importXlsx, recalculateXlsx } from '../index.js'
+import { WorkPaper, exportXlsx, importXlsx, recalculateXlsx } from '../legacy-workpaper.js'
 
 describe('macOS Desktop Excel manual-calc stale-cache oracle', () => {
   it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(

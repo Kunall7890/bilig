@@ -5,7 +5,7 @@ import { WorkPaper } from '@bilig/headless'
 import type { ImportedWorkbookDiagnostics, XlsxExternalWorkbookInput, XlsxImportOptions } from '@bilig/headless/xlsx'
 import { exportXlsx, importXlsx } from '@bilig/headless/xlsx'
 import { replaceXlsxWorksheetCellXml } from '@bilig/xlsx'
-import { inspectXlsxCache, type XlsxCacheInspectionLimit, type XlsxFormulaRecalcEdit } from './index.js'
+import { inspectXlsxCache, type XlsxCacheInspectionLimit, type XlsxFormulaRecalcEdit } from './legacy-workpaper.js'
 
 export const workbookCompatibilityReportSchemaVersion = 'bilig-workbook-compatibility-report.v1'
 

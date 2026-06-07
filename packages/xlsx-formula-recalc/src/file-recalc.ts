@@ -52,6 +52,6 @@ async function recalculateXlsxToFileWithWorkPaper(
   inputPath: string,
   options: XlsxFormulaRecalcFileOptions,
 ): Promise<XlsxFormulaRecalcFileResult> {
-  const [{ readFileSync }, { recalculateXlsxToFile }] = await Promise.all([import('node:fs'), import('./index.js')])
+  const [{ readFileSync }, { recalculateXlsxToFile }] = await Promise.all([import('node:fs'), import('./legacy-workpaper.js')])
   return recalculateXlsxToFile(readFileSync(inputPath), { ...options, engine: 'workpaper', fileName: options.fileName ?? inputPath })
 }

@@ -7,7 +7,7 @@ import { ErrorCode, ValueTag } from '@bilig/protocol'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 
-import { WorkPaper, exportXlsx, importXlsx, recalculateXlsx } from '../index.js'
+import { WorkPaper, exportXlsx, importXlsx, recalculateXlsx } from '../legacy-workpaper.js'
 
 const inspectedFormulaCells = ['B1', 'C1', 'D1', 'E1', 'F1', 'G1'] as const
 

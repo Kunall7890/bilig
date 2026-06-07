@@ -1,7 +1,7 @@
 import { statSync } from 'node:fs'
 
 import { parseFormula, translateFormulaReferences, type FormulaNode } from '@bilig/formula'
-import { ErrorCode, ValueTag, type CellValue, type LiteralInput } from '@bilig/protocol'
+import { ErrorCode, formatErrorCode, ValueTag, type CellValue, type LiteralInput } from '@bilig/protocol'
 
 import { decodeCellAddress, decodeCellRange, encodeCellAddress, type XlsxCellRange } from './address.js'
 import { createFileXlsxSourceReader } from './file-source.js'
@@ -1087,6 +1087,10 @@ function evaluateBinaryExpr(operator: string, left: CellValue, right: CellValue)
     }
     case '&':
       return stringCellValue(cellValueText(left) + cellValueText(right))
+    case '^': {
+      const value = Math.pow(coerceNumber(left), coerceNumber(right))
+      return Number.isFinite(value) ? { tag: ValueTag.Number, value } : { tag: ValueTag.Error, code: ErrorCode.Num }
+    }
     case '=':
       return { tag: ValueTag.Boolean, value: compareCellValues(left, right) === 0 }
     case '<>':
@@ -1099,7 +1103,6 @@ function evaluateBinaryExpr(operator: string, left: CellValue, right: CellValue)
       return { tag: ValueTag.Boolean, value: compareCellValues(left, right) < 0 }
     case '<=':
       return { tag: ValueTag.Boolean, value: compareCellValues(left, right) <= 0 }
-    case '^':
     case ':':
       throw new UnsupportedStreamingNativeFormulaError(`unsupported binary operator: ${operator}`)
     default:
@@ -1144,6 +1147,9 @@ function evaluateCallExpr(node: Extract<FormulaNode, { readonly kind: 'CallExpr'
   }
   if (callee === 'ROUND') {
     return evaluateRound(node, context)
+  }
+  if (callee === 'REPT') {
+    return evaluateRept(node, context)
   }
   if (callee === 'ISERROR') {
     return evaluateIsError(node, context)
@@ -1228,6 +1234,40 @@ function evaluateRound(node: Extract<FormulaNode, { readonly kind: 'CallExpr' }>
   const digits = Math.trunc(coerceNumber(evaluateFormulaAst(node.args[1]!, context)))
   const rounded = roundHalfAwayFromZero(value, digits)
   return Number.isFinite(rounded) ? { tag: ValueTag.Number, value: rounded } : { tag: ValueTag.Error, code: ErrorCode.Num }
+}
+
+function evaluateRept(node: Extract<FormulaNode, { readonly kind: 'CallExpr' }>, context: EvaluationContext): CellValue {
+  if (node.args.length !== 2) {
+    throw new UnsupportedStreamingNativeFormulaError('REPT requires 2 arguments')
+  }
+  const text = cellValueText(evaluateFormulaAst(node.args[0]!, context))
+  const count = repeatCountForRept(evaluateFormulaAst(node.args[1]!, context))
+  if (count === null || count < 0) {
+    return { tag: ValueTag.Error, code: ErrorCode.Value }
+  }
+  if (text.length * count > 32767) {
+    return { tag: ValueTag.Error, code: ErrorCode.Value }
+  }
+  return stringCellValue(text.repeat(count))
+}
+
+function repeatCountForRept(value: CellValue): number | null {
+  switch (value.tag) {
+    case ValueTag.Number:
+      return Number.isFinite(value.value) ? Math.trunc(value.value) : null
+    case ValueTag.Boolean:
+      return value.value ? 1 : 0
+    case ValueTag.Empty:
+      return 0
+    case ValueTag.String: {
+      const numeric = Number(value.value)
+      return Number.isFinite(numeric) ? Math.trunc(numeric) : null
+    }
+    case ValueTag.Error:
+      return null
+    default:
+      return null
+  }
 }
 
 function evaluateIsError(node: Extract<FormulaNode, { readonly kind: 'CallExpr' }>, context: EvaluationContext): CellValue {
@@ -1539,7 +1579,7 @@ function resolvedCellValue(value: PendingCellValue | undefined): CellValue {
   return value
 }
 
-function literalInputForFormulaCache(value: CellValue): LiteralInput | undefined {
+function literalInputForFormulaCache(value: CellValue): XlsxSourceLiteralPatch['value'] | undefined {
   switch (value.tag) {
     case ValueTag.Empty:
       return null
@@ -1550,7 +1590,7 @@ function literalInputForFormulaCache(value: CellValue): LiteralInput | undefined
     case ValueTag.String:
       return value.value
     case ValueTag.Error:
-      return undefined
+      return { kind: 'error', value: value.code === ErrorCode.Field ? '#VALUE!' : formatErrorCode(value.code) }
   }
 }
 

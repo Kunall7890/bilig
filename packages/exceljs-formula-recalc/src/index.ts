@@ -1,12 +1,24 @@
-import { parseQualifiedA1, recalculateXlsx, type XlsxFormulaRecalcOptions, type XlsxFormulaRecalcResult } from 'xlsx-formula-recalc'
+import {
+  parseQualifiedA1,
+  recalculateXlsx,
+  type XlsxFormulaRecalcOptions,
+  type XlsxFormulaRecalcResult,
+} from 'xlsx-formula-recalc/legacy-workpaper'
 
-export { WorkPaper, exportXlsx, importXlsx, parseQualifiedA1, parseQualifiedCellTarget, recalculateXlsx } from 'xlsx-formula-recalc'
+export {
+  WorkPaper,
+  exportXlsx,
+  importXlsx,
+  parseQualifiedA1,
+  parseQualifiedCellTarget,
+  recalculateXlsx,
+} from 'xlsx-formula-recalc/legacy-workpaper'
 export type {
   XlsxFormulaRecalcCellValue,
   XlsxFormulaRecalcEdit,
   XlsxFormulaRecalcOptions,
   XlsxFormulaRecalcResult,
-} from 'xlsx-formula-recalc'
+} from 'xlsx-formula-recalc/legacy-workpaper'
 
 export interface ExceljsWorkbookLike {
   readonly xlsx: {

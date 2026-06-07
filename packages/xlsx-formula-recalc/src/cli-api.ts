@@ -601,7 +601,7 @@ function printInspectionSummary(args: PrintInspectionSummaryInput): void {
 }
 
 async function printInspectionSummaryWithWorkPaper(args: PrintInspectionSummaryInput): Promise<void> {
-  const { inspectXlsxCache } = await import('./index.js')
+  const { inspectXlsxCache } = await import('./legacy-workpaper.js')
   const inspection = inspectXlsxCache(args.input, {
     fileName: args.inputName,
     ...(args.externalWorkbooks.length > 0 ? { externalWorkbooks: args.externalWorkbooks } : {}),
@@ -861,7 +861,7 @@ async function recalculateXlsxToFileWithWorkPaper(
   readonly changes: readonly unknown[]
   readonly diagnostics?: unknown
 }> {
-  const { recalculateXlsxToFile } = await import('./index.js')
+  const { recalculateXlsxToFile } = await import('./legacy-workpaper.js')
   return recalculateXlsxToFile(input, options)
 }
 

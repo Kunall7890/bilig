@@ -75,6 +75,11 @@
       "import": "./dist/evaluator-cli.js",
       "default": "./dist/evaluator-cli.js"
     },
+    "./legacy-workpaper": {
+      "types": "./dist/legacy-workpaper.d.ts",
+      "import": "./dist/legacy-workpaper.js",
+      "default": "./dist/legacy-workpaper.js"
+    },
     "./workbook-compatibility-report": {
       "types": "./dist/workbook-compatibility-report.d.ts",
       "import": "./dist/workbook-compatibility-report.js",

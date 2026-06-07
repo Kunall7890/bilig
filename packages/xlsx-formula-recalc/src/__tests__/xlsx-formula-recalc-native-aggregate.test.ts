@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+import { ErrorCode, ValueTag } from '@bilig/protocol'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 
@@ -117,6 +118,39 @@ describe('xlsx-formula-recalc native aggregates', () => {
       expect(sheetXml).toContain('<c r="A4"><f>ROUND(B8,-2)</f><v>1200</v></c>')
       expect(sheetXml).toContain('<c r="A5" t="b"><f>ISERROR(B9/B10)</f><v>1</v></c>')
       expect(sheetXml).toContain('<c r="A6"><f>IF(ISERROR(B9/B10),0,B9/B10)</f><v>0</v></c>')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  it('evaluates exponentiation and REPT formulas from public financial forecasts', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-native-exponent-rept-'))
+    try {
+      const sourcePath = join(tempDir, 'public-exponent-rept.xlsx')
+      const outputPath = join(tempDir, 'public-exponent-rept.recalculated.xlsx')
+      writeFileSync(sourcePath, buildPublicExponentReptWorkbook())
+
+      const result = await recalculateXlsxFileToFile(sourcePath, {
+        outputPath,
+        engine: 'streaming-native',
+        reads: ['Data!A2', 'Data!A3', 'Data!A4', 'Data!A5', 'Data!A6', 'Data!A7', 'Data!A8'],
+      })
+
+      expect(readNumber(result.reads['Data!A2'])).toBe(1_000_000)
+      expect(readNumber(result.reads['Data!A3'])).toBe(16)
+      expect(readString(result.reads['Data!A4'])).toBe('----')
+      expect(readString(result.reads['Data!A5'])).toBe('Q1Q1Q1')
+      expect(readErrorCode(result.reads['Data!A6'])).toBe(ErrorCode.Value)
+      expect(result.diagnostics?.engineMode).toBe('streaming-native')
+      expect(result.diagnostics?.formulaCounts.unsupportedFormulaCellCount).toBe(0)
+      expect(result.diagnostics?.formulaCounts.patchedFormulaCacheCount).toBe(5)
+      const outputBytes = readFileSync(outputPath)
+      const sheetXml = strFromU8(unzipSync(outputBytes)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+      expect(sheetXml).toContain('<c r="A2"><f>10^6</f><v>1000000</v></c>')
+      expect(sheetXml).toContain('<c r="A3"><f>B3^C3</f><v>16</v></c>')
+      expect(sheetXml).toContain('<c r="A4" t="str"><f>REPT(&quot;-&quot;,4)</f><v>----</v></c>')
+      expect(sheetXml).toContain('<c r="A5" t="str"><f>REPT(B5,C5)</f><v>Q1Q1Q1</v></c>')
+      expect(sheetXml).toContain('<c r="A6" t="e"><f>REPT(&quot;x&quot;,B6)</f><v>#VALUE!</v></c>')
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
     }
@@ -316,6 +350,27 @@ function readNumber(value: unknown): number {
   throw new Error(`Expected numeric cell value, received ${JSON.stringify(value)}`)
 }
 
+function readString(value: unknown): string {
+  if (typeof value === 'object' && value !== null && 'value' in value && typeof value.value === 'string') {
+    return value.value
+  }
+  throw new Error(`Expected string cell value, received ${JSON.stringify(value)}`)
+}
+
+function readErrorCode(value: unknown): ErrorCode {
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'tag' in value &&
+    value.tag === ValueTag.Error &&
+    'code' in value &&
+    typeof value.code === 'number'
+  ) {
+    return value.code
+  }
+  throw new Error(`Expected error cell value, received ${JSON.stringify(value)}`)
+}
+
 function readBoolean(value: unknown): boolean {
   if (typeof value === 'object' && value !== null && 'value' in value && typeof value.value === 'boolean') {
     return value.value
@@ -463,6 +518,47 @@ function buildPublicRoundAverageWorkbook(): Uint8Array {
     <row r="8"><c r="B8"><v>1234.56</v></c></row>
     <row r="9"><c r="B9"><v>10</v></c></row>
     <row r="10"><c r="B10"><v>0</v></c></row>
+  </sheetData>
+</worksheet>`),
+  })
+}
+
+function buildPublicExponentReptWorkbook(): Uint8Array {
+  return zipSync({
+    'xl/workbook.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${officeRelationshipNamespace}">
+  <sheets><sheet name="Data" sheetId="1" r:id="rId1"/></sheets>
+</workbook>`),
+    'xl/_rels/workbook.xml.rels': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="${officeRelationshipNamespace}/worksheet" Target="worksheets/sheet1.xml"/>
+</Relationships>`),
+    '[Content_Types].xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+</Types>`),
+    '_rels/.rels': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rIdWorkbook" Type="${officeRelationshipNamespace}/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`),
+    'xl/sharedStrings.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="2" uniqueCount="2">
+  <si><t>Q1</t></si>
+  <si><t>bad</t></si>
+</sst>`),
+    'xl/worksheets/sheet1.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <dimension ref="A2:C6"/>
+  <sheetData>
+    <row r="2"><c r="A2"><f>10^6</f><v>0</v></c></row>
+    <row r="3"><c r="A3"><f>B3^C3</f><v>0</v></c><c r="B3"><v>2</v></c><c r="C3"><v>4</v></c></row>
+    <row r="4"><c r="A4"><f>REPT(&quot;-&quot;,4)</f><v>stale</v></c></row>
+    <row r="5"><c r="A5"><f>REPT(B5,C5)</f><v>stale</v></c><c r="B5" t="s"><v>0</v></c><c r="C5"><v>3</v></c></row>
+    <row r="6"><c r="A6"><f>REPT(&quot;x&quot;,B6)</f><v>stale</v></c><c r="B6" t="s"><v>1</v></c></row>
   </sheetData>
 </worksheet>`),
   })

@@ -14,8 +14,8 @@ import {
   parseQualifiedA1,
   recalculateSheetjsWorkbook,
   recalculateXlsx,
-  recalculateXlsxFileToFile,
-} from '../index.js'
+} from '../legacy-workpaper.js'
+import { recalculateXlsxFileToFile } from '../index.js'
 
 const officeRelationshipNamespace = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
 

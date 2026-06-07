@@ -34,7 +34,12 @@ import {
   worksheetCellOpeningTagPattern,
 } from './xml.js'
 
-export type XlsxScalarPatchValue = string | number | boolean | null
+export interface XlsxScalarPatchErrorValue {
+  readonly kind: 'error'
+  readonly value: string
+}
+
+export type XlsxScalarPatchValue = string | number | boolean | null | XlsxScalarPatchErrorValue
 
 export interface XlsxSourceReader {
   readonly byteLength: number
@@ -132,9 +137,16 @@ function inlineStringBody(value: string): string {
   return `<is><t${preserveSpace}>${escapeXmlText(value)}</t></is>`
 }
 
+function isXlsxScalarPatchErrorValue(value: XlsxScalarPatchValue): value is XlsxScalarPatchErrorValue {
+  return typeof value === 'object' && value !== null && value.kind === 'error'
+}
+
 function literalCellBody(value: XlsxScalarPatchValue): { readonly type: string | null; readonly body: string } | null {
   if (value === null) {
     return { type: null, body: '' }
+  }
+  if (isXlsxScalarPatchErrorValue(value)) {
+    return { type: 'e', body: `<v>${escapeXmlText(value.value)}</v>` }
   }
   if (typeof value === 'number') {
     return Number.isFinite(value) ? { type: null, body: `<v>${String(value)}</v>` } : null
@@ -148,6 +160,9 @@ function literalCellBody(value: XlsxScalarPatchValue): { readonly type: string |
 function formulaCachedValue(value: XlsxScalarPatchValue): { readonly type: string | null; readonly valueXml: string } | null {
   if (value === null) {
     return { type: null, valueXml: '' }
+  }
+  if (isXlsxScalarPatchErrorValue(value)) {
+    return { type: 'e', valueXml: `<v>${escapeXmlText(value.value)}</v>` }
   }
   if (typeof value === 'number') {
     return Number.isFinite(value) ? { type: null, valueXml: `<v>${String(value)}</v>` } : null
