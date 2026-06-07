@@ -252,6 +252,35 @@ export async function recalculateXlsxFileToFileStreamingNative(
     hydrateSharedStringReferences(sheetScans, sharedStrings)
     recordPhase('shared-strings')
 
+    const expandedHydratedDependencySheets = expandStreamingNativeFormulaDependencyRows({
+      sheetScans,
+      resolveFormulaSource,
+      targetRowsForSheet: (sheetName) => {
+        if (!sheetPathsByName.has(sheetName)) {
+          return undefined
+        }
+        const targetRows = targetRowsBySheet.get(sheetName) ?? new Set<number>()
+        targetRowsBySheet.set(sheetName, targetRows)
+        return targetRows
+      },
+    })
+    for (const sheetName of expandedHydratedDependencySheets) {
+      const sheetPath = sheetPathsByName.get(sheetName)
+      const targetRows = targetRowsBySheet.get(sheetName)
+      if (!sheetPath || !targetRows || targetRows.size === 0) {
+        continue
+      }
+      const nextScan = scanWorksheet(zip, sheetName, sheetPath, targetRows)
+      nextScan.formulaCells.splice(0, nextScan.formulaCells.length, ...nextScan.formulaCells.filter((cell) => targetRows.has(cell.row)))
+      sheetScans.set(sheetName, nextScan)
+    }
+    if (expandedHydratedDependencySheets.size > 0) {
+      recordPhase('hydrated-dependency-row-scan')
+      const hydratedSharedStrings = readTargetSharedStrings(zip, collectSharedStringReferences(sheetScans))
+      hydrateSharedStringReferences(sheetScans, hydratedSharedStrings)
+      recordPhase('hydrated-dependency-shared-strings')
+    }
+
     const tablesBySheet = readNativeTablesBySheet(zip, sheetScans)
     recordPhase('table-metadata')
 
@@ -433,7 +462,7 @@ function scanWorksheet(zip: XlsxZipEntries, sheetName: string, sheetPath: string
   }
   let buffer = ''
   const processBuffer = (final: boolean): void => {
-    const safeEnd = final ? buffer.length : Math.max(0, buffer.lastIndexOf('<'))
+    const safeEnd = final ? buffer.length : lastWorksheetCellStartIndex(buffer)
     if (safeEnd === 0 && !final) {
       return
     }
@@ -464,6 +493,14 @@ function scanWorksheet(zip: XlsxZipEntries, sheetName: string, sheetPath: string
   buffer += textDecoder.decode()
   processBuffer(true)
   return state
+}
+
+function lastWorksheetCellStartIndex(xml: string): number {
+  let index = -1
+  for (const match of xml.matchAll(/<(?:(?:[A-Za-z_][\w.-]*):)?c\b/gu)) {
+    index = match.index ?? index
+  }
+  return Math.max(0, index)
 }
 
 function scanWorksheetCell(state: SheetScanState, cellXml: string): void {
@@ -610,14 +647,11 @@ function readTargetSharedStrings(zip: XlsxZipEntries, targetIndexes: ReadonlySet
     for (const match of safeXml.matchAll(/<((?:[A-Za-z_][\w.-]*:)?si)\b(?:[^>"']|"[^"]*"|'[^']*')*>[\s\S]*?<\/\1>/gu)) {
       if (targetIndexes.has(index)) {
         values.set(index, readTextRuns(match[0]))
-        if (values.size === targetIndexes.size) {
-          return false
-        }
       }
       index += 1
     }
     buffer = buffer.slice(safeEnd)
-    return true
+    return values.size < targetIndexes.size
   }
   const streamed = forEachInflatedXlsxZipEntryChunk(
     zip,
@@ -842,7 +876,7 @@ function evaluateFormulaCells(
         }
         try {
           const formula = resolveFormulaSource(scan, cell)
-          const ast = parseFormula(formula)
+          const ast = parseStreamingNativeFormula(formula)
           const value = evaluateFormulaAst(ast, {
             sheetName: cell.sheetName,
             row: cell.row,
@@ -856,7 +890,10 @@ function evaluateFormulaCells(
           rowValues.set(cell.col, value)
           const patchValue = literalInputForFormulaCache(value)
           if (patchValue === undefined) {
-            throw new UnsupportedStreamingNativeFormulaError(`unsupported formula result at ${cell.sheetName}!${cell.address}`)
+            const resultDetail = value.tag === ValueTag.Error ? ` error ${String(value.code)}` : ''
+            throw new UnsupportedStreamingNativeFormulaError(
+              `unsupported formula result${resultDetail} at ${cell.sheetName}!${cell.address}`,
+            )
           }
           formulaPatches.set(`${cell.sheetName}!${cell.address}`, {
             sheetName: cell.sheetName,
@@ -924,6 +961,13 @@ function resolveFormulaSource(scan: SheetScanState, cell: NativeFormulaCell): st
     )
   }
   return translateFormulaReferences(master.formula, cell.row - master.row, cell.col - master.col)
+}
+
+function parseStreamingNativeFormula(formula: string): FormulaNode {
+  if (/\[[^\]]+\][^!]+!/u.test(formula)) {
+    throw new UnsupportedStreamingNativeFormulaError('external workbook references are not supported')
+  }
+  return parseFormula(formula)
 }
 
 function evaluateFormulaAst(node: FormulaNode, context: EvaluationContext): CellValue {
@@ -1058,7 +1102,7 @@ function evaluateBinaryExpr(operator: string, left: CellValue, right: CellValue)
 }
 
 function evaluateCallExpr(node: Extract<FormulaNode, { readonly kind: 'CallExpr' }>, context: EvaluationContext): CellValue {
-  const callee = node.callee.toUpperCase().replace(/^_XLFN\./u, '')
+  const callee = normalizedFormulaFunctionName(node.callee)
   if (callee === 'IF') {
     if (node.args.length < 2 || node.args.length > 3) {
       throw new UnsupportedStreamingNativeFormulaError('IF requires 2 or 3 arguments')
@@ -1090,37 +1134,97 @@ function evaluateVlookup(node: Extract<FormulaNode, { readonly kind: 'CallExpr' 
   if (node.args.length < 3 || node.args.length > 4) {
     throw new UnsupportedStreamingNativeFormulaError('VLOOKUP requires 3 or 4 arguments')
   }
-  const tableRange = node.args[1]
-  if (!tableRange || tableRange.kind !== 'RangeRef' || tableRange.refKind !== 'cells' || tableRange.sheetEndName !== undefined) {
-    throw new UnsupportedStreamingNativeFormulaError('VLOOKUP table array must be a scalar cell range')
-  }
   const lookupValue = evaluateFormulaAst(node.args[0]!, context)
   const columnIndex = integerFromFormulaValue(evaluateFormulaAst(node.args[2]!, context))
   if (columnIndex < 1) {
     return { tag: ValueTag.Error, code: ErrorCode.Value }
   }
-  if (!vlookupRangeLookupIsExact(node.args[3], context)) {
-    throw new UnsupportedStreamingNativeFormulaError('VLOOKUP approximate match is not supported')
-  }
-  const range = decodeFormulaCellRange(tableRange, context.sheetName)
+  const matchMode = vlookupMatchMode(node.args[3], context)
+  const range = resolveVlookupTableRange(node.args[1], context)
   if (columnIndex > range.width) {
     return { tag: ValueTag.Error, code: ErrorCode.Ref }
   }
   const resultCol = range.startCol + columnIndex - 1
+  let approximateMatchRow: number | null = null
   for (let row = range.startRow; row <= range.endRow; row += 1) {
-    if (vlookupExactValuesEqual(readScannedCell(range.sheetName, row, range.startCol, context), lookupValue)) {
+    const candidate = readScannedCell(range.sheetName, row, range.startCol, context)
+    const comparison = compareVlookupValues(candidate, lookupValue)
+    if (comparison === 0) {
       return readScannedCell(range.sheetName, row, resultCol, context)
     }
+    if (matchMode === 'approximate' && comparison < 0) {
+      approximateMatchRow = row
+      continue
+    }
+    if (matchMode === 'approximate' && comparison > 0) {
+      break
+    }
+  }
+  if (approximateMatchRow !== null) {
+    return readScannedCell(range.sheetName, approximateMatchRow, resultCol, context)
   }
   return { tag: ValueTag.Error, code: ErrorCode.NA }
 }
 
-function vlookupRangeLookupIsExact(node: FormulaNode | undefined, context: EvaluationContext): boolean {
+function resolveVlookupTableRange(
+  node: FormulaNode | undefined,
+  context: EvaluationContext,
+): {
+  readonly sheetName: string
+  readonly startRow: number
+  readonly endRow: number
+  readonly startCol: number
+  readonly width: number
+} {
   if (!node) {
-    return false
+    throw new UnsupportedStreamingNativeFormulaError('VLOOKUP table array must be a scalar cell range')
+  }
+  if (node.kind === 'RangeRef') {
+    return decodeFormulaCellRange(node, context.sheetName)
+  }
+  if (node.kind === 'CallExpr' && normalizedFormulaFunctionName(node.callee) === 'INDIRECT') {
+    return decodeFormulaCellRange(resolveIndirectCellRange(node, context), context.sheetName)
+  }
+  throw new UnsupportedStreamingNativeFormulaError('VLOOKUP table array must be a scalar cell range')
+}
+
+function resolveIndirectCellRange(
+  node: Extract<FormulaNode, { readonly kind: 'CallExpr' }>,
+  context: EvaluationContext,
+): Extract<FormulaNode, { readonly kind: 'RangeRef' }> {
+  if (node.args.length < 1 || node.args.length > 2) {
+    throw new UnsupportedStreamingNativeFormulaError('INDIRECT requires 1 or 2 arguments')
+  }
+  if (node.args[1]) {
+    const a1Style = evaluateFormulaAst(node.args[1], context)
+    if (!coerceBoolean(a1Style)) {
+      throw new UnsupportedStreamingNativeFormulaError('INDIRECT R1C1 references are not supported')
+    }
+  }
+  const referenceText = cellValueText(evaluateFormulaAst(node.args[0]!, context))
+  const range = parseFormula(referenceText)
+  if (range.kind !== 'RangeRef' || range.refKind !== 'cells' || range.sheetEndName !== undefined) {
+    throw new UnsupportedStreamingNativeFormulaError('INDIRECT must resolve to a scalar cell range')
+  }
+  return range
+}
+
+function normalizedFormulaFunctionName(name: string): string {
+  return name.toUpperCase().replace(/^_XLFN\./u, '')
+}
+
+function vlookupMatchMode(node: FormulaNode | undefined, context: EvaluationContext): 'exact' | 'approximate' {
+  if (!node) {
+    return 'approximate'
   }
   const value = evaluateFormulaAst(node, context)
-  return (value.tag === ValueTag.Boolean && !value.value) || (value.tag === ValueTag.Number && value.value === 0)
+  if ((value.tag === ValueTag.Boolean && !value.value) || (value.tag === ValueTag.Number && value.value === 0)) {
+    return 'exact'
+  }
+  if ((value.tag === ValueTag.Boolean && value.value) || (value.tag === ValueTag.Number && value.value === 1)) {
+    return 'approximate'
+  }
+  throw new UnsupportedStreamingNativeFormulaError('VLOOKUP range lookup must be TRUE/FALSE or 1/0')
 }
 
 function integerFromFormulaValue(value: CellValue): number {
@@ -1141,6 +1245,9 @@ function decodeFormulaCellRange(
   readonly startCol: number
   readonly width: number
 } {
+  if (range.refKind !== 'cells' || range.sheetEndName !== undefined) {
+    throw new UnsupportedStreamingNativeFormulaError('expected scalar cell range')
+  }
   const start = decodeCellAddress(range.start.replaceAll('$', ''))
   const end = decodeCellAddress(range.end.replaceAll('$', ''))
   const startRow = Math.min(start.r, end.r)
@@ -1156,11 +1263,11 @@ function decodeFormulaCellRange(
   }
 }
 
-function vlookupExactValuesEqual(left: CellValue, right: CellValue): boolean {
+function compareVlookupValues(left: CellValue, right: CellValue): number {
   try {
-    return compareCellValues(left, right) === 0
-  } catch {
-    return false
+    return compareCellValues(left, right)
+  } catch (error) {
+    throw new UnsupportedStreamingNativeFormulaError(error instanceof Error ? error.message : String(error))
   }
 }
 

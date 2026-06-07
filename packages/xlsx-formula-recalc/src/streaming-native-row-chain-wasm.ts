@@ -376,9 +376,60 @@ function collectVlookupTableDependencyRows(
   if (node.kind !== 'CallExpr' || node.callee.toLocaleUpperCase('en-US') !== 'VLOOKUP') {
     return []
   }
-  const range = node.args[1]
-  if (!range || range.kind !== 'RangeRef' || range.refKind !== 'cells' || range.sheetEndName !== undefined) {
+  const range = resolveVlookupTableDependencyRange(node.args[1], scan, cell)
+  if (!range) {
     return []
+  }
+  if (range.cellCount <= 0 || range.cellCount > maxNativeSumRangeCellCount) {
+    return []
+  }
+  const rows: ScalarDependencyRow[] = []
+  for (let row = range.startRow; row <= range.endRow; row += 1) {
+    rows.push({ sheetName: range.sheetName, row })
+  }
+  return rows
+}
+
+interface VlookupTableDependencyRange {
+  readonly sheetName: string
+  readonly startRow: number
+  readonly endRow: number
+  readonly cellCount: number
+}
+
+function resolveVlookupTableDependencyRange(
+  node: FormulaNode | undefined,
+  scan: SheetScanState,
+  cell: NativeFormulaCell,
+): VlookupTableDependencyRange | null {
+  if (!node) {
+    return null
+  }
+  if (node.kind === 'RangeRef') {
+    return decodeVlookupTableDependencyRange(node, scan.sheetName)
+  }
+  if (node.kind === 'CallExpr' && normalizedFormulaFunctionName(node.callee) === 'INDIRECT') {
+    const referenceText = tryEvaluateDependencyText(node.args[0], scan, cell)
+    if (referenceText === null) {
+      return null
+    }
+    let range: FormulaNode
+    try {
+      range = parseFormula(referenceText)
+    } catch {
+      return null
+    }
+    return range.kind === 'RangeRef' ? decodeVlookupTableDependencyRange(range, scan.sheetName) : null
+  }
+  return null
+}
+
+function decodeVlookupTableDependencyRange(
+  range: Extract<FormulaNode, { readonly kind: 'RangeRef' }>,
+  currentSheetName: string,
+): VlookupTableDependencyRange | null {
+  if (range.refKind !== 'cells' || range.sheetEndName !== undefined) {
+    return null
   }
   let start
   let end
@@ -386,22 +437,96 @@ function collectVlookupTableDependencyRows(
     start = decodeCellAddress(range.start.replaceAll('$', ''))
     end = decodeCellAddress(range.end.replaceAll('$', ''))
   } catch {
-    return []
+    return null
   }
   const startRow = Math.min(start.r, end.r)
   const endRow = Math.max(start.r, end.r)
   const startCol = Math.min(start.c, end.c)
   const endCol = Math.max(start.c, end.c)
-  const cellCount = (endRow - startRow + 1) * (endCol - startCol + 1)
-  if (cellCount <= 0 || cellCount > maxNativeSumRangeCellCount) {
-    return []
+  return {
+    sheetName: range.sheetName ?? currentSheetName,
+    startRow,
+    endRow,
+    cellCount: (endRow - startRow + 1) * (endCol - startCol + 1),
   }
-  const sheetName = range.sheetName ?? scan.sheetName
-  const rows: ScalarDependencyRow[] = []
-  for (let row = startRow; row <= endRow; row += 1) {
-    rows.push({ sheetName, row })
+}
+
+function tryEvaluateDependencyText(node: FormulaNode | undefined, scan: SheetScanState, cell: NativeFormulaCell): string | null {
+  if (!node) {
+    return null
   }
-  return rows
+  switch (node.kind) {
+    case 'StringLiteral':
+      return node.value
+    case 'NumberLiteral':
+      return Number.isFinite(node.value) ? String(node.value) : null
+    case 'BooleanLiteral':
+      return node.value ? 'TRUE' : 'FALSE'
+    case 'CellRef':
+      return cellText(readDependencyCell(node, scan, cell))
+    case 'BinaryExpr':
+      if (node.operator !== '&') {
+        return null
+      }
+      {
+        const left = tryEvaluateDependencyText(node.left, scan, cell)
+        const right = tryEvaluateDependencyText(node.right, scan, cell)
+        return left === null || right === null ? null : left + right
+      }
+    case 'ArrayConstant':
+    case 'CallExpr':
+    case 'ColumnRef':
+    case 'ErrorLiteral':
+    case 'InvokeExpr':
+    case 'NameRef':
+    case 'OmittedArgument':
+    case 'RangeRef':
+    case 'RowRef':
+    case 'SpillRef':
+    case 'StructuredRef':
+    case 'UnaryExpr':
+      return null
+  }
+}
+
+function readDependencyCell(
+  node: Extract<FormulaNode, { readonly kind: 'CellRef' }>,
+  scan: SheetScanState,
+  cell: NativeFormulaCell,
+): CellValue | null {
+  if (node.sheetName && node.sheetName !== scan.sheetName) {
+    return null
+  }
+  let address
+  try {
+    address = decodeCellAddress(node.ref.replaceAll('$', ''))
+  } catch {
+    return null
+  }
+  const rowValues = address.r === cell.row ? scan.rows.get(cell.row) : scan.rows.get(address.r)
+  return resolvedCellValue(rowValues?.get(address.c))
+}
+
+function cellText(value: CellValue | null): string | null {
+  if (!value) {
+    return null
+  }
+  switch (value.tag) {
+    case ValueTag.Empty:
+      return ''
+    case ValueTag.Number:
+      return String(value.value)
+    case ValueTag.Boolean:
+      return value.value ? 'TRUE' : 'FALSE'
+    case ValueTag.String:
+      return value.value
+    case ValueTag.Error:
+      return null
+  }
+}
+
+function normalizedFormulaFunctionName(name: string): string {
+  return name.toLocaleUpperCase('en-US').replace(/^_XLFN\./u, '')
 }
 
 interface ScalarDependencyRow {
