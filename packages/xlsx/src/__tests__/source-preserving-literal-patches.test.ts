@@ -71,6 +71,20 @@ function formulaCacheWorkbookBytes(): Uint8Array {
   })
 }
 
+function splitSharedFormulaCacheWorkbookBytes(): Uint8Array {
+  const padding = ' '.repeat(65_512)
+  return minimalWorkbookBytes({
+    'xl/worksheets/sheet1.xml': new TextEncoder().encode(`<?xml version="1.0" encoding="UTF-8"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <dimension ref="A1:A2"/>
+  <sheetData>
+    <row r="1"><c r="A1"><f t="shared" ref="A1:A2" si="0">1+1</f><v>2</v></c></row>
+    ${padding}<row r="2"><c r="A2"><f t="shared" si="0"/><v>2</v></c></row>
+  </sheetData>
+</worksheet>`),
+  })
+}
+
 function guardedUntouchedEntrySource(): {
   readonly source: XlsxSourceReader
   readonly untouchedBytes: Uint8Array
@@ -297,6 +311,42 @@ describe('@bilig/xlsx source-preserving literal patches', () => {
       const zip = readXlsxZipEntries(new Uint8Array(readFileSync(outputPath)))
       expect(Buffer.from(zip[untouchedPath] ?? new Uint8Array()).equals(Buffer.from(untouchedBytes))).toBe(true)
       expect(getZipText(zip, 'xl/worksheets/sheet1.xml')).toContain('file-compressed-copy')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  it('file-backed export patches shared formula cache cells split across stream chunks', async () => {
+    const sourceBytes = splitSharedFormulaCacheWorkbookBytes()
+    let readBytesCalled = false
+    const source: XlsxSourceReader = {
+      byteLength: sourceBytes.byteLength,
+      readBytes() {
+        readBytesCalled = true
+        throw new Error('readBytes should not be called')
+      },
+      readRange(start, end) {
+        return sourceBytes.subarray(start, end)
+      },
+      readRangeInto(start, end, target) {
+        const chunk = sourceBytes.subarray(start, end)
+        target.set(chunk)
+        return target.subarray(0, chunk.byteLength)
+      },
+    }
+    const tempDir = mkdtempSync(join(tmpdir(), 'bilig-xlsx-patch-'))
+    const outputPath = join(tempDir, 'patched.xlsx')
+    try {
+      await exportXlsxSourceLiteralPatchesToFileAsync({
+        source,
+        outputPath,
+        sheetNames: ['Revenue & Ops'],
+        patches: [{ sheetName: 'Revenue & Ops', address: 'A2', value: 3, preserveFormula: true }],
+      })
+
+      expect(readBytesCalled).toBe(false)
+      const sheetXml = getZipText(readXlsxZipEntries(new Uint8Array(readFileSync(outputPath))), 'xl/worksheets/sheet1.xml')
+      expect(sheetXml).toContain('<c r="A2"><f t="shared" si="0"/><v>3</v></c>')
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
     }

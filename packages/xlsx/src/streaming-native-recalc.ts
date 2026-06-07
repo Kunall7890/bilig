@@ -897,16 +897,18 @@ function evaluateFormulaCells(
         try {
           const formula = resolveFormulaSource(scan, cell)
           const ast = parseStreamingNativeFormula(formula)
-          const value = evaluateFormulaAst(ast, {
-            sheetName: cell.sheetName,
-            row: cell.row,
-            col: cell.col,
-            rowValues,
-            sheetRows: scan.rows,
-            sheetRowsByName,
-            externalCachedRowsByAlias,
-            tablesBySheet,
-          })
+          const value = normalizeFormulaResultValue(
+            evaluateFormulaAst(ast, {
+              sheetName: cell.sheetName,
+              row: cell.row,
+              col: cell.col,
+              rowValues,
+              sheetRows: scan.rows,
+              sheetRowsByName,
+              externalCachedRowsByAlias,
+              tablesBySheet,
+            }),
+          )
           changed = changed || !cellValuesEqual(resolvedCellValue(rowValues.get(cell.col)), value)
           rowValues.set(cell.col, value)
           const patchValue = literalInputForFormulaCache(value)
@@ -1158,7 +1160,11 @@ function evaluateCallExpr(node: Extract<FormulaNode, { readonly kind: 'CallExpr'
     if (node.args.length < 2 || node.args.length > 3) {
       throw new UnsupportedStreamingNativeFormulaError('IF requires 2 or 3 arguments')
     }
-    return coerceBoolean(evaluateFormulaAst(node.args[0]!, context))
+    const condition = evaluateFormulaAst(node.args[0]!, context)
+    if (condition.tag === ValueTag.Error) {
+      return condition
+    }
+    return coerceBoolean(condition)
       ? evaluateFormulaAst(node.args[1]!, context)
       : node.args[2]
         ? evaluateFormulaAst(node.args[2], context)
@@ -1169,7 +1175,11 @@ function evaluateCallExpr(node: Extract<FormulaNode, { readonly kind: 'CallExpr'
       throw new UnsupportedStreamingNativeFormulaError('IFS requires condition/value pairs')
     }
     for (let index = 0; index < node.args.length; index += 2) {
-      if (coerceBoolean(evaluateFormulaAst(node.args[index]!, context))) {
+      const condition = evaluateFormulaAst(node.args[index]!, context)
+      if (condition.tag === ValueTag.Error) {
+        return condition
+      }
+      if (coerceBoolean(condition)) {
         return evaluateFormulaAst(node.args[index + 1]!, context)
       }
     }
@@ -1217,7 +1227,7 @@ function evaluateSum(node: Extract<FormulaNode, { readonly kind: 'CallExpr' }>, 
     if (argument.kind === 'RangeRef') {
       for (const value of readScannedCellRange(argument, context)) {
         if (value.tag === ValueTag.Error) {
-          throw new UnsupportedStreamingNativeFormulaError(`cannot sum error: ${String(value.code)}`)
+          return value
         }
         if (value.tag === ValueTag.Number) {
           total += value.value
@@ -1225,7 +1235,11 @@ function evaluateSum(node: Extract<FormulaNode, { readonly kind: 'CallExpr' }>, 
       }
       continue
     }
-    total += coerceNumber(evaluateFormulaAst(argument, context))
+    const value = evaluateFormulaAst(argument, context)
+    if (value.tag === ValueTag.Error) {
+      return value
+    }
+    total += coerceNumber(value)
   }
   return { tag: ValueTag.Number, value: total }
 }
@@ -1256,7 +1270,7 @@ function evaluateAverage(node: Extract<FormulaNode, { readonly kind: 'CallExpr' 
     if (argument.kind === 'RangeRef') {
       for (const value of readScannedCellRange(argument, context)) {
         if (value.tag === ValueTag.Error) {
-          throw new UnsupportedStreamingNativeFormulaError(`cannot average error: ${String(value.code)}`)
+          return value
         }
         if (value.tag === ValueTag.Number) {
           total += value.value
@@ -1265,7 +1279,11 @@ function evaluateAverage(node: Extract<FormulaNode, { readonly kind: 'CallExpr' 
       }
       continue
     }
-    total += coerceNumber(evaluateFormulaAst(argument, context))
+    const value = evaluateFormulaAst(argument, context)
+    if (value.tag === ValueTag.Error) {
+      return value
+    }
+    total += coerceNumber(value)
     count += 1
   }
   return count === 0 ? { tag: ValueTag.Error, code: ErrorCode.Div0 } : { tag: ValueTag.Number, value: total / count }
@@ -1275,8 +1293,16 @@ function evaluateRound(node: Extract<FormulaNode, { readonly kind: 'CallExpr' }>
   if (node.args.length !== 2) {
     throw new UnsupportedStreamingNativeFormulaError('ROUND requires 2 arguments')
   }
-  const value = coerceNumber(evaluateFormulaAst(node.args[0]!, context))
-  const digits = Math.trunc(coerceNumber(evaluateFormulaAst(node.args[1]!, context)))
+  const valueInput = evaluateFormulaAst(node.args[0]!, context)
+  if (valueInput.tag === ValueTag.Error) {
+    return valueInput
+  }
+  const digitsInput = evaluateFormulaAst(node.args[1]!, context)
+  if (digitsInput.tag === ValueTag.Error) {
+    return digitsInput
+  }
+  const value = coerceNumber(valueInput)
+  const digits = Math.trunc(coerceNumber(digitsInput))
   const rounded = roundHalfAwayFromZero(value, digits)
   return Number.isFinite(rounded) ? { tag: ValueTag.Number, value: rounded } : { tag: ValueTag.Error, code: ErrorCode.Num }
 }
@@ -1622,6 +1648,10 @@ function resolvedCellValue(value: PendingCellValue | undefined): CellValue {
     return emptyCellValue
   }
   return value
+}
+
+function normalizeFormulaResultValue(value: CellValue): CellValue {
+  return value.tag === ValueTag.Empty ? { tag: ValueTag.Number, value: 0 } : value
 }
 
 function literalInputForFormulaCache(value: CellValue): XlsxSourceLiteralPatch['value'] | undefined {

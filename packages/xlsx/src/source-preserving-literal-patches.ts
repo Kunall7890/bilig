@@ -195,6 +195,7 @@ function patchLiteralCellXml(cellXml: string, value: XlsxScalarPatchValue): stri
 
 const formulaElementPattern = /<(?:[A-Za-z_][\w.-]*:)?f\b(?:[^/>]*\/>|[\s\S]*?<\/(?:[A-Za-z_][\w.-]*:)?f>)/u
 const cachedValueElementPattern = /<((?:[A-Za-z_][\w.-]*:)?v)\b[^>]*>[\s\S]*?<\/\1>/u
+const worksheetCellOpeningElementStartPattern = /<(?:[A-Za-z_][\w.-]*:)?c\b/gu
 
 function patchFormulaCacheCellXml(cellXml: string, value: XlsxScalarPatchValue): string | null {
   const valueBody = formulaCachedValue(value)
@@ -451,7 +452,7 @@ function tryWriteStreamingPatchedWorksheetEntry(
     if (buffer.length === 0 || failed) {
       return
     }
-    const safeEnd = final ? buffer.length : Math.max(0, buffer.lastIndexOf('<'))
+    const safeEnd = final ? buffer.length : safeWorksheetPatchScanEnd(buffer)
     if (safeEnd === 0 && !final) {
       return
     }
@@ -513,6 +514,24 @@ function tryWriteStreamingPatchedWorksheetEntry(
   } catch {
     return null
   }
+}
+
+function safeWorksheetPatchScanEnd(buffer: string): number {
+  const tagSafeEnd = Math.max(0, buffer.lastIndexOf('<'))
+  if (tagSafeEnd === 0) {
+    return 0
+  }
+  const prefix = buffer.slice(0, tagSafeEnd)
+  let lastCompleteCellEnd = -1
+  const cellPattern = new RegExp(worksheetCellElementPattern.source, 'gu')
+  for (const match of prefix.matchAll(cellPattern)) {
+    lastCompleteCellEnd = match.index + match[0].length
+  }
+  let lastCellStart = -1
+  for (const match of prefix.matchAll(worksheetCellOpeningElementStartPattern)) {
+    lastCellStart = match.index
+  }
+  return lastCellStart >= 0 && lastCellStart >= lastCompleteCellEnd ? lastCellStart : tagSafeEnd
 }
 
 async function tryPrepareStreamingPatchedWorksheetEntryFileAsync(

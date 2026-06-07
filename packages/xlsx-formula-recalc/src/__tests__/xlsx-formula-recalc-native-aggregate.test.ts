@@ -123,6 +123,66 @@ describe('xlsx-formula-recalc native aggregates', () => {
     }
   })
 
+  it('propagates formula error values through public financial forecast formulas', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-native-error-propagation-'))
+    try {
+      const sourcePath = join(tempDir, 'public-error-propagation.xlsx')
+      const outputPath = join(tempDir, 'public-error-propagation.recalculated.xlsx')
+      writeFileSync(sourcePath, buildPublicErrorPropagationWorkbook())
+
+      const result = await recalculateXlsxFileToFile(sourcePath, {
+        outputPath,
+        engine: 'streaming-native',
+        reads: ['Data!A2', 'Data!A3', 'Data!A4', 'Data!A5'],
+      })
+
+      expect(readErrorCode(result.reads['Data!A2'])).toBe(ErrorCode.Div0)
+      expect(readErrorCode(result.reads['Data!A3'])).toBe(ErrorCode.Ref)
+      expect(readErrorCode(result.reads['Data!A4'])).toBe(ErrorCode.Value)
+      expect(readErrorCode(result.reads['Data!A5'])).toBe(ErrorCode.NA)
+      expect(result.diagnostics?.engineMode).toBe('streaming-native')
+      expect(result.diagnostics?.formulaCounts.evaluatedFormulaCellCount).toBe(4)
+      expect(result.diagnostics?.formulaCounts.unsupportedFormulaCellCount).toBe(0)
+      expect(result.diagnostics?.formulaCounts.patchedFormulaCacheCount).toBe(4)
+      const outputBytes = readFileSync(outputPath)
+      const sheetXml = strFromU8(unzipSync(outputBytes)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+      expect(sheetXml).toContain('<c r="A2" t="e"><f>ROUND(B2/C2,1)</f><v>#DIV/0!</v></c>')
+      expect(sheetXml).toContain('<c r="A3" t="e"><f>IF(B3=#REF!,"-",ROUND(B3/#REF!,1))</f><v>#REF!</v></c>')
+      expect(sheetXml).toContain('<c r="A4" t="e"><f>SUM(B4:C4)</f><v>#VALUE!</v></c>')
+      expect(sheetXml).toContain('<c r="A5" t="e"><f>AVERAGE(B5:C5)</f><v>#N/A</v></c>')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  it('caches blank direct formula references as zero on the streaming-native path', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-native-blank-direct-ref-'))
+    try {
+      const sourcePath = join(tempDir, 'public-blank-direct-ref.xlsx')
+      const outputPath = join(tempDir, 'public-blank-direct-ref.recalculated.xlsx')
+      writeFileSync(sourcePath, buildPublicBlankDirectReferenceWorkbook())
+
+      const result = await recalculateXlsxFileToFile(sourcePath, {
+        outputPath,
+        engine: 'streaming-native',
+        reads: ['Summary!A2', 'Summary!A3'],
+      })
+
+      expect(readNumber(result.reads['Summary!A2'])).toBe(0)
+      expect(readNumber(result.reads['Summary!A3'])).toBe(25)
+      expect(result.diagnostics?.engineMode).toBe('streaming-native')
+      expect(result.diagnostics?.formulaCounts.evaluatedFormulaCellCount).toBe(2)
+      expect(result.diagnostics?.formulaCounts.unsupportedFormulaCellCount).toBe(0)
+      expect(result.diagnostics?.formulaCounts.patchedFormulaCacheCount).toBe(2)
+      const outputBytes = readFileSync(outputPath)
+      const summaryXml = strFromU8(unzipSync(outputBytes)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+      expect(summaryXml).toContain('<c r="A2"><f>\'Source\'!B2</f><v>0</v></c>')
+      expect(summaryXml).toContain('<c r="A3"><f>A2+25</f><v>25</v></c>')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
   it('evaluates exponentiation and REPT formulas from public financial forecasts', async () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-native-exponent-rept-'))
     try {
@@ -607,6 +667,82 @@ function buildPublicRoundAverageWorkbook(): Uint8Array {
     <row r="9"><c r="B9"><v>10</v></c></row>
     <row r="10"><c r="B10"><v>0</v></c></row>
   </sheetData>
+</worksheet>`),
+  })
+}
+
+function buildPublicErrorPropagationWorkbook(): Uint8Array {
+  return zipSync({
+    'xl/workbook.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${officeRelationshipNamespace}">
+  <sheets><sheet name="Data" sheetId="1" r:id="rId1"/></sheets>
+</workbook>`),
+    'xl/_rels/workbook.xml.rels': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="${officeRelationshipNamespace}/worksheet" Target="worksheets/sheet1.xml"/>
+</Relationships>`),
+    '[Content_Types].xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+</Types>`),
+    '_rels/.rels': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rIdWorkbook" Type="${officeRelationshipNamespace}/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`),
+    'xl/worksheets/sheet1.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <dimension ref="A2:C5"/>
+  <sheetData>
+    <row r="2"><c r="A2"><f>ROUND(B2/C2,1)</f><v>stale</v></c><c r="B2"><v>10</v></c><c r="C2"><v>0</v></c></row>
+    <row r="3"><c r="A3"><f>IF(B3=#REF!,"-",ROUND(B3/#REF!,1))</f><v>stale</v></c><c r="B3"><v>10</v></c></row>
+    <row r="4"><c r="A4"><f>SUM(B4:C4)</f><v>stale</v></c><c r="B4"><v>10</v></c><c r="C4" t="e"><v>#VALUE!</v></c></row>
+    <row r="5"><c r="A5"><f>AVERAGE(B5:C5)</f><v>stale</v></c><c r="B5"><v>10</v></c><c r="C5" t="e"><v>#N/A</v></c></row>
+  </sheetData>
+</worksheet>`),
+  })
+}
+
+function buildPublicBlankDirectReferenceWorkbook(): Uint8Array {
+  return zipSync({
+    'xl/workbook.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${officeRelationshipNamespace}">
+  <sheets>
+    <sheet name="Summary" sheetId="1" r:id="rId1"/>
+    <sheet name="Source" sheetId="2" r:id="rId2"/>
+  </sheets>
+</workbook>`),
+    'xl/_rels/workbook.xml.rels': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="${officeRelationshipNamespace}/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="${officeRelationshipNamespace}/worksheet" Target="worksheets/sheet2.xml"/>
+</Relationships>`),
+    '[Content_Types].xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+</Types>`),
+    '_rels/.rels': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rIdWorkbook" Type="${officeRelationshipNamespace}/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`),
+    'xl/worksheets/sheet1.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <dimension ref="A2:A3"/>
+  <sheetData>
+    <row r="2"><c r="A2"><f>'Source'!B2</f><v>stale</v></c></row>
+    <row r="3"><c r="A3"><f>A2+25</f><v>stale</v></c></row>
+  </sheetData>
+</worksheet>`),
+    'xl/worksheets/sheet2.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <dimension ref="B2:B2"/>
+  <sheetData><row r="2"><c r="B2"/></row></sheetData>
 </worksheet>`),
   })
 }
