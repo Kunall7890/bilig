@@ -452,15 +452,26 @@ describe('repository dependency policy', () => {
 
   it('keeps source-preserving file output on the streaming ZIP writer', () => {
     const sourcePreservingPatches = readFileSync(join(repoRoot, 'packages/xlsx/src/source-preserving-literal-patches.ts'), 'utf8')
+    const byteExportStart = sourcePreservingPatches.indexOf('export function exportXlsxSourceLiteralPatches(')
     const syncFileStart = sourcePreservingPatches.indexOf('export function exportXlsxSourceLiteralPatchesToFile(')
     const asyncFileStart = sourcePreservingPatches.indexOf('export function exportXlsxSourceLiteralPatchesToFileAsync(')
     const streamingFileStart = sourcePreservingPatches.indexOf('function exportXlsxSourceLiteralPatchesToFileStreaming(')
+    const readBytesGuardIndex = sourcePreservingPatches.indexOf(
+      "assertSourcePreservingLiteralPatchBytesApiWithinLimit(source, 'source-preserving readBytes fallback')",
+    )
+    const readBytesFallbackIndex = sourcePreservingPatches.indexOf('return readXlsxZipEntries(source.readBytes())')
+    const byteExportSource = sourcePreservingPatches.slice(byteExportStart, syncFileStart)
     const syncFileSource = sourcePreservingPatches.slice(syncFileStart, asyncFileStart)
     const streamingFileSource = sourcePreservingPatches.slice(streamingFileStart)
 
+    expect(byteExportStart).toBeGreaterThan(-1)
     expect(syncFileStart).toBeGreaterThan(-1)
     expect(asyncFileStart).toBeGreaterThan(syncFileStart)
     expect(streamingFileStart).toBeGreaterThan(asyncFileStart)
+    expect(sourcePreservingPatches).toContain('const sourcePreservingLiteralPatchBytesApiLimit = 1_000_000')
+    expect(byteExportSource).toContain("assertSourcePreservingLiteralPatchBytesApiWithinLimit(source, 'exportXlsxSourceLiteralPatches')")
+    expect(readBytesGuardIndex).toBeGreaterThan(-1)
+    expect(readBytesFallbackIndex).toBeGreaterThan(readBytesGuardIndex)
     expect(syncFileSource).toContain('exportXlsxSourceLiteralPatchesToFileStreaming(input)')
     expect(syncFileSource).not.toContain('exportXlsxSourceLiteralPatches(input)')
     expect(syncFileSource).not.toContain('writeAllSync(fd, exported)')

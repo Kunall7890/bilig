@@ -263,6 +263,42 @@ describe('@bilig/xlsx source-preserving literal patches', () => {
     expect(sheetXml).not.toContain('inlineStr"><f>')
   })
 
+  it('rejects large byte-output sources before parsing the workbook', () => {
+    expect(() =>
+      exportXlsxSourceLiteralPatches({
+        source: new Uint8Array(1_000_001),
+        sheetNames: [],
+        patches: [],
+      }),
+    ).toThrow(/exportXlsxSourceLiteralPatches is small-workbook only/u)
+  })
+
+  it('rejects large source-reader readBytes fallback before materializing file output', () => {
+    let readBytesCalled = false
+    const source: XlsxSourceReader = {
+      byteLength: 1_000_001,
+      readBytes() {
+        readBytesCalled = true
+        return minimalWorkbookBytes()
+      },
+    }
+    const tempDir = mkdtempSync(join(tmpdir(), 'bilig-xlsx-patch-'))
+    const outputPath = join(tempDir, 'patched.xlsx')
+    try {
+      expect(() =>
+        exportXlsxSourceLiteralPatchesToFile({
+          source,
+          outputPath,
+          sheetNames: ['Revenue & Ops'],
+          patches: [{ sheetName: 'Revenue & Ops', address: 'A1', value: 12 }],
+        }),
+      ).toThrow(/source-preserving readBytes fallback is small-workbook only/u)
+      expect(readBytesCalled).toBe(false)
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
   it('writes file-backed patches without reading the whole source through readBytes', async () => {
     const sourceBytes = minimalWorkbookBytes()
     let readBytesCalled = false

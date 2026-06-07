@@ -96,12 +96,33 @@ interface XlsxScalarCellPatch {
   readonly preserveFormula: boolean
 }
 
+const sourcePreservingLiteralPatchBytesApiLimit = 1_000_000
+
 function isXlsxZipByteSource(source: Uint8Array | XlsxSourceReader): source is XlsxSourceReader & XlsxZipByteSource {
   return !(source instanceof Uint8Array) && typeof source.readRange === 'function'
 }
 
+function sourceByteLength(source: Uint8Array | XlsxSourceReader): number {
+  return source.byteLength
+}
+
+function assertSourcePreservingLiteralPatchBytesApiWithinLimit(source: Uint8Array | XlsxSourceReader, apiName: string): void {
+  const byteLength = sourceByteLength(source)
+  if (byteLength <= sourcePreservingLiteralPatchBytesApiLimit) {
+    return
+  }
+  throw new Error(
+    [
+      `${apiName} is small-workbook only for byte-buffer XLSX sources: source is ${byteLength} bytes`,
+      `limit is ${sourcePreservingLiteralPatchBytesApiLimit} bytes`,
+      'Use source-preserving file output with a file-backed range source for large XLSX jobs.',
+    ].join('; '),
+  )
+}
+
 function readSourcePreservingZip(source: Uint8Array | XlsxSourceReader): SourcePreservingZip {
   if (source instanceof Uint8Array) {
+    assertSourcePreservingLiteralPatchBytesApiWithinLimit(source, 'source-preserving byte source')
     return readXlsxZipEntriesLazy(source)
   }
   if (isXlsxZipByteSource(source)) {
@@ -110,6 +131,7 @@ function readSourcePreservingZip(source: Uint8Array | XlsxSourceReader): SourceP
       return lazyZip
     }
   }
+  assertSourcePreservingLiteralPatchBytesApiWithinLimit(source, 'source-preserving readBytes fallback')
   return readXlsxZipEntries(source.readBytes())
 }
 
@@ -645,6 +667,7 @@ function normalizedPatchInput(input: XlsxSourceLiteralPatchExportInput): {
 
 export function exportXlsxSourceLiteralPatches(input: XlsxSourceLiteralPatchExportInput): Uint8Array {
   const { source, patches, textPatches, forceWorkbookRecalculation, sheetNames } = normalizedPatchInput(input)
+  assertSourcePreservingLiteralPatchBytesApiWithinLimit(source, 'exportXlsxSourceLiteralPatches')
   const zip = readSourcePreservingZip(source)
   const preparedEntries = new Map<string, PreparedZipEntry>()
   const sheetPathsByName = new Map(workbookSheetPathEntriesFromSource(zip, sheetNames).map((entry) => [entry.name, entry.path]))
