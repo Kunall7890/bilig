@@ -247,3 +247,38 @@ export function evalDenseDirectScalarRowChainStoreTargetBatchRaw(
     raw.__unpin(secondTargetsPtr)
   }
 }
+
+export function evalDenseDirectScalarRowChainDivideStoreTargetBatchRaw(
+  raw: RawKernelExports,
+  leftValues: Float64Array,
+  rightValues: Float64Array,
+  denominatorValues: Float64Array,
+  firstTargets: Uint32Array,
+  secondTargets: Uint32Array,
+  rowCount: number,
+  firstFormulaCode: number,
+): void {
+  const context = { dataView: new DataView(raw.memory.buffer) }
+  const leftValuesPtr = lowerTypedArray(raw, context, leftValues, float64Spec)
+  const rightValuesPtr = lowerTypedArray(raw, context, rightValues, float64Spec)
+  const denominatorValuesPtr = lowerTypedArray(raw, context, denominatorValues, float64Spec)
+  const firstTargetsPtr = lowerTypedArray(raw, context, firstTargets, uint32Spec)
+  const secondTargetsPtr = lowerTypedArray(raw, context, secondTargets, uint32Spec)
+  try {
+    raw.evalDenseDirectScalarRowChainDivideStoreTargetBatch(
+      leftValuesPtr,
+      rightValuesPtr,
+      denominatorValuesPtr,
+      firstTargetsPtr,
+      secondTargetsPtr,
+      rowCount,
+      firstFormulaCode,
+    )
+  } finally {
+    raw.__unpin(leftValuesPtr)
+    raw.__unpin(rightValuesPtr)
+    raw.__unpin(denominatorValuesPtr)
+    raw.__unpin(firstTargetsPtr)
+    raw.__unpin(secondTargetsPtr)
+  }
+}

@@ -52,6 +52,15 @@ export interface SpreadsheetKernel {
     secondFormulaScale: number,
     secondFormulaOffset: number,
   ): void
+  evalDenseDirectScalarRowChainDivideStoreTargetBatch(
+    leftValues: Float64Array,
+    rightValues: Float64Array,
+    denominatorValues: Float64Array,
+    firstTargets: Uint32Array,
+    secondTargets: Uint32Array,
+    rowCount: number,
+    firstFormulaCode: number,
+  ): void
   evalDenseNumericRowAggregateBatch(
     aggregateKind: number,
     values: Float64Array,

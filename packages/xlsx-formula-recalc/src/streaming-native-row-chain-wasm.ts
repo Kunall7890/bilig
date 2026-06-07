@@ -16,11 +16,20 @@ interface RowChainCandidate {
   readonly firstCell: NativeFormulaCell
   readonly secondCell: NativeFormulaCell
   readonly firstOperatorCode: number
-  readonly secondScale: number
-  readonly secondOffset: number
   readonly leftValue: number
   readonly rightValue: number
   readonly rowValues: Map<number, PendingCellValue>
+}
+
+interface AffineRowChainCandidate extends RowChainCandidate {
+  readonly secondKind: 'affine'
+  readonly secondScale: number
+  readonly secondOffset: number
+}
+
+interface DivideRowChainCandidate extends RowChainCandidate {
+  readonly secondKind: 'divide'
+  readonly denominatorValue: number
 }
 
 interface NumericSource {
@@ -34,11 +43,21 @@ interface FirstFormulaPlan {
   readonly right: NumericSource
 }
 
-interface SecondFormulaPlan {
+interface AffineSecondFormulaPlan {
+  readonly kind: 'affine'
   readonly firstFormulaColumn: number
   readonly scale: number
   readonly offset: number
 }
+
+interface DivideSecondFormulaPlan {
+  readonly kind: 'divide'
+  readonly firstFormulaColumn: number
+  readonly denominator: NumericSource
+}
+
+type SecondFormulaPlan = AffineSecondFormulaPlan | DivideSecondFormulaPlan
+type CompiledRowChainCandidate = AffineRowChainCandidate | DivideRowChainCandidate
 
 export function evaluateStreamingNativeWasmRowChains(args: {
   readonly sheetScans: ReadonlyMap<string, SheetScanState>
@@ -59,16 +78,31 @@ export function evaluateStreamingNativeWasmRowChains(args: {
     }
     batchCount += 1
     kernel.init(group.length * 2, 1, 1, 1, 1)
-    kernel.evalDenseDirectScalarRowChainStoreTargetBatch(
-      Float64Array.from(group.map((candidate) => candidate.leftValue)),
-      Float64Array.from(group.map((candidate) => candidate.rightValue)),
-      Uint32Array.from(group.map((_candidate, index) => index * 2)),
-      Uint32Array.from(group.map((_candidate, index) => index * 2 + 1)),
-      group.length,
-      group[0]!.firstOperatorCode,
-      group[0]!.secondScale,
-      group[0]!.secondOffset,
-    )
+    const firstCandidate = group[0]!
+    if (firstCandidate.secondKind === 'affine') {
+      const affineGroup = group.filter(isAffineRowChainCandidate)
+      kernel.evalDenseDirectScalarRowChainStoreTargetBatch(
+        Float64Array.from(affineGroup.map((candidate) => candidate.leftValue)),
+        Float64Array.from(affineGroup.map((candidate) => candidate.rightValue)),
+        Uint32Array.from(affineGroup.map((_candidate, index) => index * 2)),
+        Uint32Array.from(affineGroup.map((_candidate, index) => index * 2 + 1)),
+        affineGroup.length,
+        firstCandidate.firstOperatorCode,
+        firstCandidate.secondScale,
+        firstCandidate.secondOffset,
+      )
+    } else {
+      const divideGroup = group.filter(isDivideRowChainCandidate)
+      kernel.evalDenseDirectScalarRowChainDivideStoreTargetBatch(
+        Float64Array.from(divideGroup.map((candidate) => candidate.leftValue)),
+        Float64Array.from(divideGroup.map((candidate) => candidate.rightValue)),
+        Float64Array.from(divideGroup.map((candidate) => candidate.denominatorValue)),
+        Uint32Array.from(divideGroup.map((_candidate, index) => index * 2)),
+        Uint32Array.from(divideGroup.map((_candidate, index) => index * 2 + 1)),
+        divideGroup.length,
+        firstCandidate.firstOperatorCode,
+      )
+    }
     const numbers = kernel.readNumbers()
     for (let index = 0; index < group.length; index += 1) {
       const candidate = group[index]!
@@ -96,8 +130,8 @@ function collectRowChainCandidates(args: {
   readonly sheetScans: ReadonlyMap<string, SheetScanState>
   readonly tablesBySheet: ReadonlyMap<string, readonly NativeTable[]>
   readonly resolveFormulaSource: (scan: SheetScanState, cell: NativeFormulaCell) => string
-}): RowChainCandidate[] {
-  const candidates: RowChainCandidate[] = []
+}): CompiledRowChainCandidate[] {
+  const candidates: CompiledRowChainCandidate[] = []
   for (const scan of args.sheetScans.values()) {
     const formulaCellsByRow = formulaCellsByRowNumber(scan.formulaCells)
     for (const [row, rowFormulaCells] of formulaCellsByRow.entries()) {
@@ -124,12 +158,30 @@ function collectRowChainCandidates(args: {
         if (leftValue === null || rightValue === null || (firstPlan.operatorCode === 5 && rightValue === 0)) {
           continue
         }
+        if (secondPlan.kind === 'affine') {
+          candidates.push({
+            firstCell,
+            secondCell,
+            firstOperatorCode: firstPlan.operatorCode,
+            secondKind: 'affine',
+            secondScale: secondPlan.scale,
+            secondOffset: secondPlan.offset,
+            leftValue,
+            rightValue,
+            rowValues,
+          })
+          continue
+        }
+        const denominatorValue = readNumericSource(rowValues, secondPlan.denominator)
+        if (denominatorValue === null || denominatorValue === 0) {
+          continue
+        }
         candidates.push({
           firstCell,
           secondCell,
           firstOperatorCode: firstPlan.operatorCode,
-          secondScale: secondPlan.scale,
-          secondOffset: secondPlan.offset,
+          secondKind: 'divide',
+          denominatorValue,
           leftValue,
           rightValue,
           rowValues,
@@ -230,26 +282,32 @@ function compileSecondFormula(
     const leftNumber = numberLiteralValue(node.left)
     const rightNumber = numberLiteralValue(node.right)
     if (leftReference !== null && rightNumber !== null) {
-      return { firstFormulaColumn: leftReference, scale: rightNumber, offset: 0 }
+      return { kind: 'affine', firstFormulaColumn: leftReference, scale: rightNumber, offset: 0 }
     }
     if (rightReference !== null && leftNumber !== null) {
-      return { firstFormulaColumn: rightReference, scale: leftNumber, offset: 0 }
+      return { kind: 'affine', firstFormulaColumn: rightReference, scale: leftNumber, offset: 0 }
     }
   }
   if (node.operator === '+') {
     const leftNumber = numberLiteralValue(node.left)
     const rightNumber = numberLiteralValue(node.right)
     if (leftReference !== null && rightNumber !== null) {
-      return { firstFormulaColumn: leftReference, scale: 1, offset: rightNumber }
+      return { kind: 'affine', firstFormulaColumn: leftReference, scale: 1, offset: rightNumber }
     }
     if (rightReference !== null && leftNumber !== null) {
-      return { firstFormulaColumn: rightReference, scale: 1, offset: leftNumber }
+      return { kind: 'affine', firstFormulaColumn: rightReference, scale: 1, offset: leftNumber }
     }
   }
   if (node.operator === '-') {
     const rightNumber = numberLiteralValue(node.right)
     if (leftReference !== null && rightNumber !== null) {
-      return { firstFormulaColumn: leftReference, scale: 1, offset: -rightNumber }
+      return { kind: 'affine', firstFormulaColumn: leftReference, scale: 1, offset: -rightNumber }
+    }
+  }
+  if (node.operator === '/' && leftReference !== null) {
+    const denominator = compileNumericSource(node.right, sheetName, row, formulaColumn, tablesBySheet)
+    if (denominator) {
+      return { kind: 'divide', firstFormulaColumn: leftReference, denominator }
     }
   }
   return null
@@ -362,15 +420,26 @@ function isSharedStringReference(value: PendingCellValue): value is Extract<Pend
   return typeof value === 'object' && value !== null && 'kind' in value && value.kind === 'shared-string'
 }
 
-function groupCandidates(candidates: readonly RowChainCandidate[]): Map<string, RowChainCandidate[]> {
-  const output = new Map<string, RowChainCandidate[]>()
+function groupCandidates(candidates: readonly CompiledRowChainCandidate[]): Map<string, CompiledRowChainCandidate[]> {
+  const output = new Map<string, CompiledRowChainCandidate[]>()
   for (const candidate of candidates) {
-    const key = `${String(candidate.firstOperatorCode)}:${String(candidate.secondScale)}:${String(candidate.secondOffset)}`
+    const key =
+      candidate.secondKind === 'affine'
+        ? `affine:${String(candidate.firstOperatorCode)}:${String(candidate.secondScale)}:${String(candidate.secondOffset)}`
+        : `divide:${String(candidate.firstOperatorCode)}`
     const group = output.get(key) ?? []
     group.push(candidate)
     output.set(key, group)
   }
   return output
+}
+
+function isAffineRowChainCandidate(candidate: CompiledRowChainCandidate): candidate is AffineRowChainCandidate {
+  return candidate.secondKind === 'affine'
+}
+
+function isDivideRowChainCandidate(candidate: CompiledRowChainCandidate): candidate is DivideRowChainCandidate {
+  return candidate.secondKind === 'divide'
 }
 
 function formulaPatch(cell: NativeFormulaCell, value: number): XlsxSourceLiteralPatch {

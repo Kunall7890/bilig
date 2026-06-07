@@ -30,7 +30,10 @@ export {
 } from './vm'
 
 export { evalDirectScalarStoreTargetBatch, evalDirectScalarValueBatch } from './direct-scalar-batch'
-export { evalDenseDirectScalarRowChainStoreTargetBatch } from './direct-scalar-row-chain-batch'
+export {
+  evalDenseDirectScalarRowChainDivideStoreTargetBatch,
+  evalDenseDirectScalarRowChainStoreTargetBatch,
+} from './direct-scalar-row-chain-batch'
 export { evalAnchoredPrefixAggregateBatch, evalDenseNumericRowAggregateBatch } from './direct-aggregate-batch'
 export { evalDirectCriteriaMatchedAggregateBatch, evalDirectCriteriaPredicateAggregateBatch } from './direct-criteria-aggregate-batch'
 export { evalUniformNumericLookupBatch } from './direct-lookup-batch'

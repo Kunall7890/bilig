@@ -8,6 +8,7 @@ import {
 } from './raw-kernel-direct-criteria-aggregate-bridge.js'
 import { evalUniformNumericLookupBatchRaw } from './raw-kernel-direct-lookup-bridge.js'
 import {
+  evalDenseDirectScalarRowChainDivideStoreTargetBatchRaw,
   evalDenseDirectScalarRowChainStoreTargetBatchRaw,
   evalDirectScalarStoreTargetBatchRaw,
   evalDirectScalarValueBatchRaw,
@@ -502,6 +503,13 @@ class KernelHandle implements SpreadsheetKernel {
     ...args: Parameters<SpreadsheetKernel['evalDenseDirectScalarRowChainStoreTargetBatch']>
   ): void {
     evalDenseDirectScalarRowChainStoreTargetBatchRaw(this.raw, ...args)
+    this.refreshViews()
+  }
+
+  evalDenseDirectScalarRowChainDivideStoreTargetBatch(
+    ...args: Parameters<SpreadsheetKernel['evalDenseDirectScalarRowChainDivideStoreTargetBatch']>
+  ): void {
+    evalDenseDirectScalarRowChainDivideStoreTargetBatchRaw(this.raw, ...args)
     this.refreshViews()
   }
 

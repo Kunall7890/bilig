@@ -100,4 +100,24 @@ describe('wasm kernel direct scalar batch', () => {
     expect(Array.from(kernel.readNumbers().slice(0, 4))).toEqual([28.125, 168.75, 12, 72])
     expect(Array.from(kernel.readErrors().slice(0, 4))).toEqual(Array(4).fill(ErrorCode.None))
   })
+
+  it('writes dense row chains whose second formula divides by a row denominator', async () => {
+    const kernel = await createKernel()
+    kernel.init(6, 1, 1, 1, 1)
+
+    kernel.evalDenseDirectScalarRowChainDivideStoreTargetBatch(
+      Float64Array.from([900, 120]),
+      Float64Array.from([300, 30]),
+      Float64Array.from([4, 5]),
+      Uint32Array.from([0, 2]),
+      Uint32Array.from([1, 3]),
+      2,
+      1,
+    )
+
+    expect(Array.from(kernel.readTags().slice(0, 4))).toEqual(Array(4).fill(ValueTag.Number))
+    expect(Array.from(kernel.readNumbers().slice(0, 4))).toEqual([1200, 300, 150, 30])
+    expect(Array.from(kernel.readStringIds().slice(0, 4))).toEqual(Array(4).fill(0))
+    expect(Array.from(kernel.readErrors().slice(0, 4))).toEqual(Array(4).fill(ErrorCode.None))
+  })
 })

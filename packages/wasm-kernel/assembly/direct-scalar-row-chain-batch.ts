@@ -52,3 +52,22 @@ export function evalDenseDirectScalarRowChainStoreTargetBatch(
     writeNumber(<i32>secondTargets[rowOffset], first * secondFormulaScale + secondFormulaOffset)
   }
 }
+
+export function evalDenseDirectScalarRowChainDivideStoreTargetBatch(
+  leftValues: Float64Array,
+  rightValues: Float64Array,
+  denominatorValues: Float64Array,
+  firstTargets: Uint32Array,
+  secondTargets: Uint32Array,
+  rowCount: i32,
+  firstFormulaCode: u8,
+): void {
+  if (rowCount <= 0) {
+    return
+  }
+  for (let rowOffset = 0; rowOffset < rowCount; rowOffset++) {
+    const first = evalRowPairCode(firstFormulaCode, leftValues[rowOffset], rightValues[rowOffset])
+    writeNumber(<i32>firstTargets[rowOffset], first)
+    writeNumber(<i32>secondTargets[rowOffset], first / denominatorValues[rowOffset])
+  }
+}

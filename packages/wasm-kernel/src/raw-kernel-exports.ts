@@ -56,6 +56,15 @@ export interface RawKernelExports {
     secondFormulaScale: number,
     secondFormulaOffset: number,
   ): void
+  evalDenseDirectScalarRowChainDivideStoreTargetBatch(
+    leftValues: number,
+    rightValues: number,
+    denominatorValues: number,
+    firstTargets: number,
+    secondTargets: number,
+    rowCount: number,
+    firstFormulaCode: number,
+  ): void
   evalDenseNumericRowAggregateBatch(
     aggregateKind: number,
     values: number,
@@ -225,6 +234,7 @@ export function isRawKernelExports(value: unknown): value is RawKernelExports {
     'evalDirectScalarValueBatch',
     'evalDirectScalarStoreTargetBatch',
     'evalDenseDirectScalarRowChainStoreTargetBatch',
+    'evalDenseDirectScalarRowChainDivideStoreTargetBatch',
     'evalDenseNumericRowAggregateBatch',
     'evalAnchoredPrefixAggregateBatch',
     'evalDirectCriteriaMatchedAggregateBatch',
