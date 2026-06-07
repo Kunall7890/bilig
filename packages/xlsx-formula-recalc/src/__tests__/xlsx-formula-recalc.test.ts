@@ -188,6 +188,34 @@ describe('xlsx-formula-recalc', () => {
     }
   })
 
+  it('recalculates public-corpus inline ratio row chains through the native kernel', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-native-inline-ratio-chain-'))
+    try {
+      const sourcePath = join(tempDir, 'public-inline-ratio-chain.xlsx')
+      const outputPath = join(tempDir, 'public-inline-ratio-chain.recalculated.xlsx')
+      writeFileSync(sourcePath, buildPublicInlineRatioChainWorkbook())
+
+      const result = await recalculateXlsxFileToFile(sourcePath, {
+        outputPath,
+        engine: 'streaming-native',
+        reads: ["'Table 8'!G5", "'Table 8'!H5"],
+      })
+
+      expect(readNumber(result.reads["'Table 8'!G5"])).toBe(1_274_633_000)
+      expect(readNumber(result.reads["'Table 8'!H5"])).toBe(1.3314110230792131)
+      expect(result.diagnostics?.engineMode).toBe('streaming-native')
+      expect(result.diagnostics?.formulaCounts.evaluatedFormulaCellCount).toBe(2)
+      expect(result.diagnostics?.formulaCounts.nativeKernelFormulaCellCount).toBe(2)
+      expect(result.diagnostics?.formulaCounts.nativeKernelBatchCount).toBe(1)
+      const outputBytes = readFileSync(outputPath)
+      const sheetXml = strFromU8(unzipSync(outputBytes)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+      expect(sheetXml).toContain('<c r="G5"><f>F5+E5</f><v>1274633000</v></c>')
+      expect(sheetXml).toContain('<c r="H5"><f>(F5+E5)/C5</f><v>1.331411023079213</v></c>')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
   it('translates shared formulas before streaming-native row-local evaluation', async () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-native-shared-recalc-'))
     try {
@@ -608,6 +636,25 @@ function buildPublicRatioChainWorkbook(): Uint8Array {
         '<sheetData>',
         '<row r="1"><c r="C1" t="inlineStr"><is><t>Investors</t></is></c><c r="E1" t="inlineStr"><is><t>Other</t></is></c><c r="F1" t="inlineStr"><is><t>Primary</t></is></c><c r="G1" t="inlineStr"><is><t>Total</t></is></c><c r="H1" t="inlineStr"><is><t>Ratio</t></is></c></row>',
         '<row r="5"><c r="C5"><v>4</v></c><c r="E5"><v>300</v></c><c r="F5"><v>900</v></c><c r="G5"><f>F5+E5</f><v>0</v></c><c r="H5"><f>G5/C5</f><v>0</v></c></row>',
+        '</sheetData>',
+        '</worksheet>',
+      ].join(''),
+    },
+  ])
+}
+
+function buildPublicInlineRatioChainWorkbook(): Uint8Array {
+  return buildIndependentWorkbook([
+    {
+      name: 'Table 8',
+      path: 'xl/worksheets/sheet1.xml',
+      xml: [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+        '<dimension ref="A1:H5"/>',
+        '<sheetData>',
+        '<row r="1"><c r="C1" t="inlineStr"><is><t>Capital Invested</t></is></c><c r="E1" t="inlineStr"><is><t>Realized</t></is></c><c r="F1" t="inlineStr"><is><t>Unrealized</t></is></c><c r="G1" t="inlineStr"><is><t>Total Value</t></is></c><c r="H1" t="inlineStr"><is><t>TVPI</t></is></c></row>',
+        '<row r="5"><c r="C5"><v>957355000</v></c><c r="E5"><v>176091000</v></c><c r="F5"><v>1098542000</v></c><c r="G5"><f>F5+E5</f><v>0</v></c><c r="H5"><f>(F5+E5)/C5</f><v>0</v></c></row>',
         '</sheetData>',
         '</worksheet>',
       ].join(''),

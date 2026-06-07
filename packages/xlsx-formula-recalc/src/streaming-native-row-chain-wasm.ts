@@ -56,7 +56,13 @@ interface DivideSecondFormulaPlan {
   readonly denominator: NumericSource
 }
 
-type SecondFormulaPlan = AffineSecondFormulaPlan | DivideSecondFormulaPlan
+interface InlineDivideSecondFormulaPlan {
+  readonly kind: 'inline-divide'
+  readonly firstFormula: FirstFormulaPlan
+  readonly denominator: NumericSource
+}
+
+type SecondFormulaPlan = AffineSecondFormulaPlan | DivideSecondFormulaPlan | InlineDivideSecondFormulaPlan
 type CompiledRowChainCandidate = AffineRowChainCandidate | DivideRowChainCandidate
 
 export function evaluateStreamingNativeWasmRowChains(args: {
@@ -145,14 +151,11 @@ function collectRowChainCandidates(args: {
         if (!secondPlan) {
           continue
         }
-        const firstCell = formulaCellsByColumn.get(secondPlan.firstFormulaColumn)
-        if (!firstCell) {
+        const firstCandidate = resolveFirstFormulaCandidate(scan, secondCell, secondPlan, rowFormulaCells, formulaCellsByColumn, args)
+        if (!firstCandidate) {
           continue
         }
-        const firstPlan = tryCompileFirstFormula(scan, firstCell, args)
-        if (!firstPlan) {
-          continue
-        }
+        const { firstCell, firstPlan } = firstCandidate
         const leftValue = readNumericSource(rowValues, firstPlan.left)
         const rightValue = readNumericSource(rowValues, firstPlan.right)
         if (leftValue === null || rightValue === null || (firstPlan.operatorCode === 5 && rightValue === 0)) {
@@ -220,6 +223,59 @@ function tryCompileSecondFormula(
   } catch {
     return null
   }
+}
+
+function resolveFirstFormulaCandidate(
+  scan: SheetScanState,
+  secondCell: NativeFormulaCell,
+  secondPlan: SecondFormulaPlan,
+  rowFormulaCells: readonly NativeFormulaCell[],
+  formulaCellsByColumn: ReadonlyMap<number, NativeFormulaCell>,
+  args: {
+    readonly tablesBySheet: ReadonlyMap<string, readonly NativeTable[]>
+    readonly resolveFormulaSource: (scan: SheetScanState, cell: NativeFormulaCell) => string
+  },
+): { readonly firstCell: NativeFormulaCell; readonly firstPlan: FirstFormulaPlan } | null {
+  if (secondPlan.kind !== 'inline-divide') {
+    const firstCell = formulaCellsByColumn.get(secondPlan.firstFormulaColumn)
+    if (!firstCell) {
+      return null
+    }
+    const firstPlan = tryCompileFirstFormula(scan, firstCell, args)
+    return firstPlan ? { firstCell, firstPlan } : null
+  }
+  for (const firstCell of rowFormulaCells) {
+    if (firstCell.col === secondCell.col) {
+      continue
+    }
+    const firstPlan = tryCompileFirstFormula(scan, firstCell, args)
+    if (firstPlan && firstFormulaPlansMatch(firstPlan, secondPlan.firstFormula)) {
+      return { firstCell, firstPlan }
+    }
+  }
+  return null
+}
+
+function firstFormulaPlansMatch(left: FirstFormulaPlan, right: FirstFormulaPlan): boolean {
+  if (left.operatorCode !== right.operatorCode) {
+    return false
+  }
+  if (numericSourcesEqual(left.left, right.left) && numericSourcesEqual(left.right, right.right)) {
+    return true
+  }
+  return (
+    isCommutativeRowPairOperator(left.operatorCode) &&
+    numericSourcesEqual(left.left, right.right) &&
+    numericSourcesEqual(left.right, right.left)
+  )
+}
+
+function isCommutativeRowPairOperator(operatorCode: number): boolean {
+  return operatorCode === 1 || operatorCode === 4
+}
+
+function numericSourcesEqual(left: NumericSource, right: NumericSource): boolean {
+  return left.constant === right.constant && left.column === right.column
 }
 
 function formulaCellsByRowNumber(formulaCells: readonly NativeFormulaCell[]): Map<number, NativeFormulaCell[]> {
@@ -308,6 +364,13 @@ function compileSecondFormula(
     const denominator = compileNumericSource(node.right, sheetName, row, formulaColumn, tablesBySheet)
     if (denominator) {
       return { kind: 'divide', firstFormulaColumn: leftReference, denominator }
+    }
+  }
+  if (node.operator === '/' && leftReference === null) {
+    const firstFormula = compileFirstFormula(node.left, sheetName, row, formulaColumn, tablesBySheet)
+    const denominator = compileNumericSource(node.right, sheetName, row, formulaColumn, tablesBySheet)
+    if (firstFormula && denominator) {
+      return { kind: 'inline-divide', firstFormula, denominator }
     }
   }
   return null
