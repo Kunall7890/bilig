@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { ErrorCode } from '@bilig/protocol'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
 
 import {
   createMacosExcelPackageOpenSaveAppleScript,
@@ -447,10 +447,7 @@ describe('macOS Desktop Excel oracle harness', () => {
       const tempDir = mkdtempSync(join(tmpdir(), 'bilig-excel-fixtures-live-'))
       try {
         const workbookPath = join(tempDir, 'oracle.xlsx')
-        const worksheet = XLSX.utils.aoa_to_sheet([[10, 3, null]])
-        const workbook = XLSX.utils.book_new()
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Cases')
-        writeFileSync(workbookPath, XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }))
+        writeFileSync(workbookPath, buildMacosExcelOracleWorkbook())
 
         const result = runMacosExcelRecalculationOracle({
           workbookPath,
@@ -473,7 +470,7 @@ describe('macOS Desktop Excel oracle harness', () => {
         ])
 
         const packageWorkbookPath = join(tempDir, 'package-open-save.xlsx')
-        writeFileSync(packageWorkbookPath, XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }))
+        writeFileSync(packageWorkbookPath, buildMacosExcelOracleWorkbook())
         const packageOpenSave = runMacosExcelPackageOpenSaveOracle({
           workbookPath: packageWorkbookPath,
           saveWorkbook: true,
@@ -481,10 +478,7 @@ describe('macOS Desktop Excel oracle harness', () => {
         expect(packageOpenSave.excelVersion).toMatch(/^\d+\./u)
 
         const structuralWorkbookPath = join(tempDir, 'structural-oracle.xlsx')
-        const structuralWorksheet = XLSX.utils.aoa_to_sheet([[1, 2, 3, 4, 5, { f: 'SUM(B1:C1)' }]])
-        const structuralWorkbook = XLSX.utils.book_new()
-        XLSX.utils.book_append_sheet(structuralWorkbook, structuralWorksheet, 'Cases')
-        writeFileSync(structuralWorkbookPath, XLSX.write(structuralWorkbook, { type: 'buffer', bookType: 'xlsx' }))
+        writeFileSync(structuralWorkbookPath, buildMacosExcelStructuralOracleWorkbook())
 
         const structural = runMacosExcelStructuralOperationOracle({
           workbookPath: structuralWorkbookPath,
@@ -502,3 +496,35 @@ describe('macOS Desktop Excel oracle harness', () => {
     60_000,
   )
 })
+
+function buildMacosExcelOracleWorkbook(): Uint8Array {
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Cases',
+        cells: [
+          { address: 'A1', row: 0, col: 0, value: 10 },
+          { address: 'B1', row: 0, col: 1, value: 3 },
+        ],
+      },
+    ],
+  })
+}
+
+function buildMacosExcelStructuralOracleWorkbook(): Uint8Array {
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Cases',
+        cells: [
+          { address: 'A1', row: 0, col: 0, value: 1 },
+          { address: 'B1', row: 0, col: 1, value: 2 },
+          { address: 'C1', row: 0, col: 2, value: 3 },
+          { address: 'D1', row: 0, col: 3, value: 4 },
+          { address: 'E1', row: 0, col: 4, value: 5 },
+          { address: 'F1', row: 0, col: 5, formula: 'SUM(B1:C1)' },
+        ],
+      },
+    ],
+  })
+}

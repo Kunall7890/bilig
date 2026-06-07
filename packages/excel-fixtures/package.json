@@ -44,6 +44,9 @@
   "dependencies": {
     "@bilig/protocol": "workspace:*"
   },
+  "devDependencies": {
+    "@bilig/xlsx": "workspace:*"
+  },
   "engines": {
     "node": ">=24.0.0"
   }

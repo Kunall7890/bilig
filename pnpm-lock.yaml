@@ -390,6 +390,10 @@ importers:
       '@bilig/protocol':
         specifier: workspace:*
         version: link:../protocol
+    devDependencies:
+      '@bilig/xlsx':
+        specifier: workspace:*
+        version: link:../xlsx
 
   packages/excel-import:
     dependencies:
