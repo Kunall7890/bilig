@@ -99,6 +99,7 @@ const nativeXlsxExcelImportFixtureTests = [
   'packages/excel-import/src/__tests__/xlsx-worksheet-dimensions-roundtrip.test.ts',
 ] as const
 const nativeXlsxFormulaRecalcPackages = ['packages/xlsx-formula-recalc', 'packages/bilig-xlsx-formula-recalc'] as const
+const nativeXlsxFormulaRecalcReadmes = ['packages/xlsx-formula-recalc/README.md', 'packages/bilig-xlsx-formula-recalc/README.md'] as const
 const publishedNativeXlsxRuntimePackages = [
   'packages/xlsx',
   'packages/excel-import',
@@ -356,6 +357,18 @@ describe('repository dependency policy', () => {
     expect(recalcIndex).not.toContain("from './streaming-native-recalc.js'")
     expect(recalcIndex).not.toContain("from './streaming-native-inspect.js'")
     expect(nativeRecalc).not.toContain("'workpaper'")
+  })
+
+  it('keeps public cache-inspection API docs on file-backed streaming-native inspection', () => {
+    const recalcIndex = readFileSync(join(repoRoot, 'packages/xlsx-formula-recalc/src/index.ts'), 'utf8')
+    const readmeViolations = nativeXlsxFormulaRecalcReadmes.filter((path) => {
+      const source = readFileSync(join(repoRoot, path), 'utf8')
+      return !source.includes('inspectXlsxCacheFile') || source.includes('inspectXlsxCache(await readFile')
+    })
+
+    expect(recalcIndex).toContain('inspectXlsxCacheFileStreamingNative as inspectXlsxCacheFile')
+    expect(recalcIndex).not.toContain('inspectXlsxCache } from')
+    expect(readmeViolations).toEqual([])
   })
 
   it('keeps file-backed xlsx-recalc CLI on @bilig/xlsx without primary WorkPaper fallback', () => {

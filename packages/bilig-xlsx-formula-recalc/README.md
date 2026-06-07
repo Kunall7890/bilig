@@ -272,15 +272,15 @@ run
 
 ## API
 
-Use `inspectXlsxCache` when a service or test runner needs the cache-doctor
-report without shelling out to the CLI:
+Use `inspectXlsxCacheFile` when a service or test runner needs the
+cache-doctor report without shelling out to the CLI. It stays on the same
+file-backed streaming-native path as `xlsx-cache-doctor`:
 
 ```ts
-import { readFile } from 'node:fs/promises'
-import { inspectXlsxCache } from '@bilig/xlsx-formula-recalc'
+import { inspectXlsxCacheFile } from '@bilig/xlsx-formula-recalc'
 
-const report = inspectXlsxCache(await readFile('pricing.xlsx'), {
-  fileName: 'pricing.xlsx',
+const report = await inspectXlsxCacheFile('pricing.xlsx', {
+  maxRssBytes: 350 * 1024 * 1024,
 })
 
 if (report.staleCachedFormulaCount > 0) {

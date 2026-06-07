@@ -15,7 +15,7 @@ import {
   recalculateSheetjsWorkbook,
   recalculateXlsx,
 } from 'bilig-workpaper/xlsx'
-import { recalculateXlsx as recalculateNativeXlsx, recalculateXlsxFileToFile } from '../index.js'
+import { inspectXlsxCacheFile, recalculateXlsx as recalculateNativeXlsx, recalculateXlsxFileToFile } from '../index.js'
 
 const officeRelationshipNamespace = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
 
@@ -384,6 +384,59 @@ describe('xlsx-formula-recalc', () => {
     expect(report.inspectionCompleted).toBe(true)
     expect(report.recalculationCompleted).toBe(true)
     expect(report.excelParity).toBe('not_proven')
+  })
+
+  it('inspects stale XLSX formula caches through the public native file API', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-formula-recalc-file-cache-api-'))
+    try {
+      const inputPath = join(tempDir, 'stale-cache.xlsx')
+      const sourceWorkbook = WorkPaper.buildFromSheets({
+        Sheet1: [
+          ['Input', 'Output'],
+          [2, '=A2*10'],
+        ],
+      })
+      const sourceBytes = replaceCellXml(
+        exportXlsx(sourceWorkbook.exportSnapshot()),
+        'xl/worksheets/sheet1.xml',
+        'B2',
+        '<c r="B2"><f>A2*10</f><v>999</v></c>',
+      )
+      sourceWorkbook.dispose()
+      writeFileSync(inputPath, sourceBytes)
+
+      const report = await inspectXlsxCacheFile(inputPath, {
+        inspectLimit: 'all',
+      })
+
+      expect(report.schemaVersion).toBe('xlsx-cache-doctor.v1')
+      expect(report.formulaCellCount).toBe(1)
+      expect(report.inspectedFormulaCellCount).toBe(1)
+      expect(report.uninspectedFormulaCellCount).toBe(0)
+      expect(report.inspectionLimit).toBe('all')
+      expect(report.staleCachedFormulaCount).toBe(1)
+      expect(report.cacheStatusSummary).toEqual({
+        inspected: 1,
+        stale: 1,
+        fresh: 0,
+        missingCache: 0,
+        unsupportedRecalculation: 0,
+      })
+      expect(report.suggestedReads).toEqual(['Sheet1!B2'])
+      expect(report.formulas[0]).toMatchObject({
+        target: 'Sheet1!B2',
+        formula: '=A2*10',
+        cachedValue: 999,
+        literalRecalculatedValue: 20,
+        cacheStatus: 'stale',
+        staleCachedValue: true,
+      })
+      expect(report.diagnostics.engineMode).toBe('streaming-native')
+      expect(report.recalculationCompleted).toBe(true)
+      expect(report.excelParity).toBe('not_proven')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
   })
 
   it('clears stale calculation metadata after explicit formula recalculation', () => {
