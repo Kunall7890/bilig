@@ -102,6 +102,7 @@
     "public-workbook-corpus:memory-gate": "bun scripts/public-workbook-corpus-memory-gate.ts --require-public",
     "public-workbook-corpus:memory-gate:synthetic": "bun scripts/public-workbook-corpus-memory-gate.ts --synthetic-only",
     "xlsx-native-recalc:memory-gate": "bun scripts/xlsx-native-recalc-memory-gate.ts",
+    "xlsx-native-recalc:issue-442-gate": "bun scripts/xlsx-native-recalc-memory-gate.ts --issue-442-path .cache/issue-442/ocha-operational-partners-presence-jan-sep-2024.xlsx --require-issue-442 --issue-442-only",
     "xlsx-native-recalc:public-corpus": "bun scripts/xlsx-native-recalc-public-corpus.ts --limit 50 --max-rss-mb 350 --require-formula-workbook-count 50 --require-passed-formula-workbook-count 50 --require-passed --corpus .cache/public-workbook-corpus/manifest.json .cache/public-workbook-corpus --corpus .cache/public-workbook-corpus-financial/manifest.json .cache/public-workbook-corpus-financial",
     "external-xlsx-memory-stress:plan": "bun scripts/external-xlsx-memory-stress.ts plan",
     "external-xlsx-memory-stress": "bun scripts/external-xlsx-memory-stress.ts run",

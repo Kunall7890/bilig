@@ -502,6 +502,18 @@ describe('repository dependency policy', () => {
     expect(script).not.toContain('--dry-run')
   })
 
+  it('keeps the issue 442 memory gate as an exact required OCHA gate', () => {
+    const manifest = packageManifest('.')
+    const scripts = objectField(manifest, 'scripts')
+    const script = stringField(scripts, 'xlsx-native-recalc:issue-442-gate')
+
+    expect(script).toContain('bun scripts/xlsx-native-recalc-memory-gate.ts')
+    expect(script).toContain('--issue-442-path .cache/issue-442/ocha-operational-partners-presence-jan-sep-2024.xlsx')
+    expect(script).toContain('--require-issue-442')
+    expect(script).toContain('--issue-442-only')
+    expect(script).not.toContain('--synthetic-only')
+  })
+
   it('keeps large XLSX file-mode wrappers off materialized workbook and hidden fallback paths', () => {
     const reportSource = readFileSync(join(repoRoot, 'packages/xlsx/src/workbook-compatibility-report.ts'), 'utf8')
     const reportFileStart = reportSource.indexOf('export function buildWorkbookCompatibilityReportFromFile')

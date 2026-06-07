@@ -76,7 +76,12 @@ describe('xlsx native recalc memory gate', () => {
   it('exposes the focused memory gate as a package script', () => {
     const packageJson = asRecord(JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')))
     const scripts = asRecord(packageJson['scripts'])
+    const issue442Script = String(scripts['xlsx-native-recalc:issue-442-gate'])
 
     expect(scripts['xlsx-native-recalc:memory-gate']).toBe('bun scripts/xlsx-native-recalc-memory-gate.ts')
+    expect(issue442Script).toContain('bun scripts/xlsx-native-recalc-memory-gate.ts')
+    expect(issue442Script).toContain('--issue-442-path .cache/issue-442/ocha-operational-partners-presence-jan-sep-2024.xlsx')
+    expect(issue442Script).toContain('--require-issue-442')
+    expect(issue442Script).toContain('--issue-442-only')
   })
 })
