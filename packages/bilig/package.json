@@ -70,6 +70,11 @@
       "import": "./dist/mcp.js",
       "default": "./dist/mcp.js"
     },
+    "./evaluator": {
+      "types": "./dist/evaluator.d.ts",
+      "import": "./dist/evaluator.js",
+      "default": "./dist/evaluator.js"
+    },
     "./xlsx": {
       "types": "./dist/xlsx.d.ts",
       "import": "./dist/xlsx.js",

@@ -1,15 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildBiligEvaluatorProof, listBiligEvaluatorDoors, runBiligEvaluatorCli } from '../evaluator-cli.js'
+import { listBiligEvaluatorDoors, runBiligEvaluatorCli } from '../evaluator-cli.js'
 
 describe('bilig-evaluate CLI', () => {
-  it('lists the four production evaluator doors', () => {
-    expect(listBiligEvaluatorDoors().map((door) => door.door)).toEqual([
-      'xlsx-cache',
-      'workbook-compatibility',
-      'workpaper-service',
-      'agent-mcp',
-    ])
+  it('lists only the XLSX evaluator doors', () => {
+    expect(listBiligEvaluatorDoors().map((door) => door.door)).toEqual(['xlsx-cache', 'workbook-compatibility'])
   })
 
   it('prints a verified XLSX stale-cache proof', async () => {
@@ -74,155 +69,17 @@ describe('bilig-evaluate CLI', () => {
     expect(stdout).not.toMatch(/compatibilityScore|excelCompatibilityPercent/u)
   })
 
-  it('prints a verified WorkPaper service proof', async () => {
-    const proof = await buildBiligEvaluatorProof('workpaper-service')
-
-    expect(proof.verified).toBe(true)
-    expect(proof.evidence).toMatchObject({
-      editedCell: 'Inputs!B2',
-      dependentCell: 'Summary!B2',
-      before: 24_000,
-      after: 38_400,
-      afterRestore: 38_400,
-      checks: {
-        formulaReadbackChanged: true,
-        exportedWorkPaperDocument: true,
-        restoredMatchesAfter: true,
-      },
-    })
-  })
-
-  it('prints a verified agent MCP proof', async () => {
-    const proof = await buildBiligEvaluatorProof('agent-mcp')
-
-    expect(proof.verified).toBe(true)
-    expect(proof.evidence).toMatchObject({
-      editedCell: 'Inputs!B3',
-      dependentCell: 'Summary!B3',
-      before: 60_000,
-      after: 96_000,
-      afterRestore: 96_000,
-      afterRestart: 96_000,
-      checks: {
-        listedFileBackedTools: true,
-        restartReadbackMatchesAfter: true,
-      },
-    })
-    expect(proof.evidence.tools).toContain('read_cell')
-  })
-
-  it('prints a verified revenue-plan agent MCP proof', async () => {
-    let stdout = ''
-
-    const exitCode = await runBiligEvaluatorCli(['--door', 'agent-mcp', '--scenario', 'revenue-plan', '--json'], {
-      stdout: (text) => {
-        stdout += text
-      },
-    })
-
-    expect(exitCode).toBe(0)
-    const proof = readProof(stdout)
-    expect(proof.schemaVersion).toBe('bilig-evaluator.v1')
-    expect(proof.door).toBe('agent-mcp')
-    expect(proof.verified).toBe(true)
-    expect(proof.evidence).toMatchObject({
-      scenario: 'revenue-plan',
-      editedCell: 'Deals!C2',
-      readbackRange: 'Summary!B2:B8',
-      formulaFamilies: ['SUM', 'SUMIF', 'XLOOKUP', 'FILTER', 'named-expression', 'persistence', 'restart'],
-      before: {
-        totalRevenue: 27_300,
-        westCustomers: 30,
-        enterpriseArpa: 1_200,
-        targetRevenue: 30_576,
-        qualifiedCustomerCounts: [30, 18],
-      },
-      after: {
-        totalRevenue: 36_900,
-        westCustomers: 38,
-        enterpriseArpa: 1_200,
-        targetRevenue: 41_328,
-        qualifiedCustomerCounts: [20, 30, 18],
-      },
-      afterRestart: {
-        totalRevenue: 36_900,
-        westCustomers: 38,
-        enterpriseArpa: 1_200,
-        targetRevenue: 41_328,
-        qualifiedCustomerCounts: [20, 30, 18],
-      },
-      checks: {
-        totalRevenueRecalculated: true,
-        sumifReadbackChanged: true,
-        xlookupReadbackStable: true,
-        filterSpillUpdated: true,
-        namedExpressionApplied: true,
-        restartReadbackMatchesAfter: true,
-      },
-    })
-  })
-
-  it('prints a verified provider-backed agent MCP proof', async () => {
-    let stdout = ''
-
-    const exitCode = await runBiligEvaluatorCli(['--door', 'agent-mcp', '--scenario', 'provider-backed', '--json'], {
-      stdout: (text) => {
-        stdout += text
-      },
-    })
-
-    expect(exitCode).toBe(0)
-    const proof = readProof(stdout)
-    expect(proof.schemaVersion).toBe('bilig-evaluator.v1')
-    expect(proof.door).toBe('agent-mcp')
-    expect(proof.verified).toBe(true)
-    expect(proof.evidence).toMatchObject({
-      scenario: 'provider-backed',
-      providerFunction: 'IMPORTRANGE',
-      adapterSurface: 'web',
-      target: 'Imports!B2',
-      formula: '=IMPORTRANGE("source","Revenue!B2")',
-      adapterFormula: '=IMPORTRANGE("source","Revenue!B2")+0',
-      before: {
-        displayValue: '#BLOCKED!',
-      },
-      after: {
-        serialized: '=IMPORTRANGE("source","Revenue!B2")+0',
-        displayValue: '96000',
-      },
-      afterRestart: {
-        serialized: '=IMPORTRANGE("source","Revenue!B2")+0',
-        displayValue: '96000',
-      },
-      diagnostics: [
-        {
-          code: 'provider-backed-adapter-missing',
-          functionName: 'IMPORTRANGE',
-          adapterSurface: 'web',
-          errorText: '#BLOCKED!',
-        },
-      ],
-      checks: {
-        blockedReadbackIsBlocked: true,
-        blockedDiagnosticExplainsAdapter: true,
-        adapterBackedReadbackIsFresh: true,
-        adapterBackedDiagnosticsCleared: true,
-        restartReadbackMatchesAfter: true,
-      },
-    })
-  })
-
-  it('rejects unsupported door and scenario combinations', async () => {
+  it('rejects WorkPaper doors from the XLSX evaluator package', async () => {
     let stderr = ''
 
-    const exitCode = await runBiligEvaluatorCli(['--door', 'workpaper-service', '--scenario', 'provider-backed'], {
+    const exitCode = await runBiligEvaluatorCli(['--door', 'agent-mcp'], {
       stderr: (text) => {
         stderr += text
       },
     })
 
     expect(exitCode).toBe(1)
-    expect(stderr).toContain('Scenario "provider-backed" is only available for --door agent-mcp.')
+    expect(stderr).toContain('Unknown bilig-evaluate door: agent-mcp')
   })
 
   it('rejects unknown doors with a focused error', async () => {

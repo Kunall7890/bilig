@@ -293,6 +293,22 @@ describe('repository dependency policy', () => {
     expect(legacyWorkPaper).toContain('export interface XlsxFormulaRecalcWorkPaperConfig')
   })
 
+  it('keeps WorkPaper evaluator doors owned by WorkPaper packages', () => {
+    const xlsxEvaluator = readFileSync(join(repoRoot, 'packages/xlsx-formula-recalc/src/evaluator-cli.ts'), 'utf8')
+    const unscopedWorkPaperBin = readFileSync(join(repoRoot, 'packages/bilig/bin/bilig-evaluate.js'), 'utf8')
+    const scopedWorkPaperBin = readFileSync(join(repoRoot, 'packages/workpaper/bin/bilig-evaluate.js'), 'utf8')
+    const unscopedWorkPaperEvaluator = readFileSync(join(repoRoot, 'packages/bilig/src/evaluator.ts'), 'utf8')
+
+    expect(xlsxEvaluator).not.toContain("import('@bilig/headless')")
+    expect(xlsxEvaluator).not.toContain('workpaper-service')
+    expect(unscopedWorkPaperBin).toContain("await import('../dist/evaluator-bin.js')")
+    expect(scopedWorkPaperBin).toContain("await import('../dist/evaluator-bin.js')")
+    expect(unscopedWorkPaperBin).not.toContain('@bilig/xlsx-formula-recalc/evaluator')
+    expect(scopedWorkPaperBin).not.toContain('@bilig/xlsx-formula-recalc/evaluator')
+    expect(unscopedWorkPaperEvaluator).toContain("export type BiligEvaluatorDoor = 'workpaper-service' | 'agent-mcp'")
+    expect(unscopedWorkPaperEvaluator).not.toContain('xlsx-cache')
+  })
+
   it('keeps native file recalc CLI and public file types off static headless imports', () => {
     const violations = nativeXlsxFormulaRecalcPathBoundarySources.flatMap((path) => sourceSpecifierViolations(path, ['@bilig/headless']))
 

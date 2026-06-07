@@ -11,7 +11,7 @@ import type {
 
 export const biligEvaluatorSchemaVersion = 'bilig-evaluator.v1'
 
-export type BiligEvaluatorDoor = 'xlsx-cache' | 'workbook-compatibility' | 'workpaper-service' | 'agent-mcp'
+export type BiligEvaluatorDoor = 'xlsx-cache' | 'workbook-compatibility'
 export type BiligEvaluatorScenario = 'default' | 'revenue-plan' | 'provider-backed'
 
 export interface BiligEvaluatorCliContext {
@@ -27,18 +27,7 @@ export interface BiligEvaluatorDoorSummary {
 }
 
 export interface BiligEvaluatorEvidence {
-  readonly scenario?: BiligEvaluatorScenario | undefined
   readonly target?: string | undefined
-  readonly editedCell?: string | undefined
-  readonly dependentCell?: string | undefined
-  readonly dependentCells?: readonly string[] | undefined
-  readonly readbackRange?: string | undefined
-  readonly formulaFamilies?: readonly string[] | undefined
-  readonly providerFunction?: string | undefined
-  readonly adapterSurface?: string | undefined
-  readonly formula?: string | undefined
-  readonly adapterFormula?: string | undefined
-  readonly diagnostics?: readonly unknown[] | undefined
   readonly riskLevel?: WorkbookCompatibilityRiskLevel | undefined
   readonly riskReasons?: readonly string[] | undefined
   readonly unsupportedFunctions?: readonly WorkbookCompatibilityNamedCount[] | undefined
@@ -49,13 +38,8 @@ export interface BiligEvaluatorEvidence {
   readonly formulaCellCount?: number | undefined
   readonly before?: unknown
   readonly after?: unknown
-  readonly afterRestore?: unknown
-  readonly afterRestart?: unknown
-  readonly persistedDocumentBytes?: number | undefined
   readonly staleCachedFormulaCount?: number | undefined
   readonly suggestedReads?: readonly string[] | undefined
-  readonly toolCount?: number | undefined
-  readonly tools?: readonly string[] | undefined
   readonly checks: Readonly<Record<string, boolean>>
 }
 
@@ -107,8 +91,6 @@ interface XlsxCacheDoctorProofSummary {
 
 const xlsxCacheDocs = 'https://proompteng.github.io/bilig/eval-xlsx-cache-doctor.html'
 const workbookCompatibilityDocs = 'https://proompteng.github.io/bilig/workbook-compatibility-report.html'
-const workpaperDocs = 'https://proompteng.github.io/bilig/eval-workpaper-service.html'
-const mcpDocs = 'https://proompteng.github.io/bilig/eval-agent-mcp.html'
 
 const doorSummaries: readonly BiligEvaluatorDoorSummary[] = [
   {
@@ -122,18 +104,6 @@ const doorSummaries: readonly BiligEvaluatorDoorSummary[] = [
     label: 'Inspect workbook risks before trusting Bilig in a Node service or agent workflow.',
     command: 'npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json',
     docs: workbookCompatibilityDocs,
-  },
-  {
-    door: 'workpaper-service',
-    label: 'Edit, recalculate, restore, and persist a WorkPaper service document.',
-    command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json',
-    docs: workpaperDocs,
-  },
-  {
-    door: 'agent-mcp',
-    label: 'Exercise the WorkPaper MCP tools through a local file-backed server restart.',
-    command: 'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
-    docs: mcpDocs,
   },
 ]
 
@@ -171,7 +141,7 @@ export async function runBiligEvaluatorCli(args: readonly string[], context: Bil
       return 0
     }
     if (parsed.door === undefined) {
-      throw new Error('Expected --door xlsx-cache, --door workbook-compatibility, --door workpaper-service, or --door agent-mcp.')
+      throw new Error('Expected --door xlsx-cache or --door workbook-compatibility.')
     }
 
     const proof = await buildBiligEvaluatorProof(parsed.door, { scenario: parsed.scenario })
@@ -187,18 +157,14 @@ async function buildDoorProof(
   door: BiligEvaluatorDoor,
   scenario: BiligEvaluatorScenario,
 ): Promise<Omit<BiligEvaluatorProof, 'durationMs'>> {
-  if (scenario !== 'default' && door !== 'agent-mcp') {
-    throw new Error(`Scenario "${scenario}" is only available for --door agent-mcp.`)
+  if (scenario !== 'default') {
+    throw new Error(`Scenario "${scenario}" is only available from @bilig/workpaper with --door agent-mcp.`)
   }
   switch (door) {
     case 'xlsx-cache':
       return buildXlsxCacheEvaluatorProof()
     case 'workbook-compatibility':
       return await buildWorkbookCompatibilityEvaluatorProof()
-    case 'workpaper-service':
-      return await buildWorkpaperServiceEvaluatorProof()
-    case 'agent-mcp':
-      return await buildAgentMcpEvaluatorProof(scenario)
   }
 }
 
@@ -287,113 +253,6 @@ async function buildWorkbookCompatibilityEvaluatorProof(): Promise<Omit<BiligEva
     next: {
       docs: summary.docs,
       command: summary.command,
-    },
-    sourceProof,
-  }
-}
-
-async function buildWorkpaperServiceEvaluatorProof(): Promise<Omit<BiligEvaluatorProof, 'durationMs'>> {
-  const [{ WorkPaper }, { buildAgentWorkbookChallengeProof }] = await Promise.all([
-    import('@bilig/headless'),
-    import('@bilig/headless/cli'),
-  ])
-  const sourceProof = buildAgentWorkbookChallengeProof()
-  const checks = normalizeBooleanRecord(recordValue(sourceProof, 'checks'))
-  const summary = requireDoorSummary('workpaper-service')
-
-  return {
-    schemaVersion: biligEvaluatorSchemaVersion,
-    door: 'workpaper-service',
-    doorName: 'WorkPaper service proof',
-    command: summary.command,
-    packageVersions: {
-      '@bilig/workpaper': WorkPaper.version,
-      'xlsx-formula-recalc': readLocalPackageVersion(),
-    },
-    evidence: {
-      editedCell: stringValue(sourceProof, 'editedCell'),
-      dependentCell: stringValue(sourceProof, 'dependentCell'),
-      before: propertyValue(sourceProof, 'before'),
-      after: propertyValue(sourceProof, 'after'),
-      afterRestore: propertyValue(sourceProof, 'afterRestore'),
-      persistedDocumentBytes: numberValue(sourceProof, 'persistedDocumentBytes'),
-      checks,
-    },
-    verified: booleanValue(sourceProof, 'verified'),
-    limitations: stringArrayValue(sourceProof, 'limitations'),
-    next: {
-      docs: summary.docs,
-      command: summary.command,
-    },
-    sourceProof,
-  }
-}
-
-async function buildAgentMcpEvaluatorProof(scenario: BiligEvaluatorScenario): Promise<Omit<BiligEvaluatorProof, 'durationMs'>> {
-  const [{ WorkPaper }, headlessCli] = await Promise.all([import('@bilig/headless'), import('@bilig/headless/cli')])
-  const sourceProof =
-    scenario === 'revenue-plan'
-      ? headlessCli.buildMcpRevenuePlanChallengeProof()
-      : scenario === 'provider-backed'
-        ? headlessCli.buildMcpProviderBackedChallengeProof()
-        : headlessCli.buildMcpChallengeProof()
-  const checks = normalizeBooleanRecord(recordValue(sourceProof, 'checks'))
-  const tools = stringArrayValue(sourceProof, 'tools')
-  const summary = requireDoorSummary('agent-mcp')
-  const command = commandForScenario(summary, scenario)
-  const formulaFamilies = stringArrayValue(sourceProof, 'formulaFamilies')
-  const doorName =
-    scenario === 'revenue-plan'
-      ? 'Agent MCP revenue-plan proof'
-      : scenario === 'provider-backed'
-        ? 'Agent MCP provider-backed boundary proof'
-        : 'Agent MCP proof'
-
-  return {
-    schemaVersion: biligEvaluatorSchemaVersion,
-    door: 'agent-mcp',
-    doorName,
-    command,
-    packageVersions: {
-      '@bilig/workpaper': WorkPaper.version,
-      'xlsx-formula-recalc': readLocalPackageVersion(),
-    },
-    ...(scenario === 'default' ? {} : { scenario }),
-    evidence: {
-      ...(scenario === 'default' ? {} : { scenario }),
-      editedCell: stringValue(sourceProof, 'editedCell'),
-      dependentCell: stringValue(sourceProof, 'dependentCell'),
-      ...(scenario === 'revenue-plan'
-        ? {
-            dependentCells: ['Summary!B2', 'Summary!B3', 'Summary!B4', 'Summary!B5', 'Summary!B6:B8'],
-            readbackRange: stringValue(sourceProof, 'readbackRange'),
-            formulaFamilies,
-          }
-        : {}),
-      ...(scenario === 'provider-backed'
-        ? {
-            providerFunction: stringValue(sourceProof, 'providerFunction'),
-            adapterSurface: stringValue(sourceProof, 'adapterSurface'),
-            target: stringValue(sourceProof, 'target'),
-            formula: stringValue(sourceProof, 'formula'),
-            adapterFormula: stringValue(sourceProof, 'adapterFormula'),
-            diagnostics: arrayValue(sourceProof, 'diagnostics'),
-          }
-        : {}),
-      before: propertyValue(sourceProof, 'before'),
-      after: propertyValue(sourceProof, 'after'),
-      afterRestore: propertyValue(sourceProof, 'afterRestore'),
-      afterRestart: propertyValue(sourceProof, 'afterRestart'),
-      persistedDocumentBytes: numberValue(sourceProof, 'persistedDocumentBytes'),
-      toolCount: tools.length,
-      tools,
-      checks,
-    },
-    verified: booleanValue(sourceProof, 'verified'),
-    limitations: stringArrayValue(sourceProof, 'limitations'),
-    next: {
-      docs: summary.docs,
-      command,
     },
     sourceProof,
   }
@@ -506,14 +365,6 @@ function parseDoor(value: string): BiligEvaluatorDoor {
     case 'workbook-compatibility':
     case 'workbook-compatibility-report':
       return 'workbook-compatibility'
-    case 'workpaper':
-    case 'workpaper-service':
-    case 'service':
-      return 'workpaper-service'
-    case 'agent':
-    case 'agent-mcp':
-    case 'mcp':
-      return 'agent-mcp'
     default:
       throw new Error(`Unknown bilig-evaluate door: ${value}`)
   }
@@ -544,18 +395,15 @@ function requireNextArg(args: readonly string[], index: number, option: string):
 }
 
 function renderEvaluatorHelp(): string {
-  return `Usage: bilig-evaluate --door <door> [--scenario <scenario>] [--json|--markdown]
+  return `Usage: bilig-evaluate --door <door> [--json|--markdown]
 
 Doors:
   xlsx-cache          Detect stale cached XLSX formulas and prove recalculated readback.
   workbook-compatibility
                       Inspect workbook risks without claiming Excel compatibility.
-  workpaper-service   Prove WorkPaper edit, recalc, restore, and persistence.
-  agent-mcp           Prove MCP tools, restart persistence, and readback.
 
 Options:
   --door <door>        Door to run.
-  --scenario <name>    Optional scenario. Use revenue-plan or provider-backed with agent-mcp.
   --list              Print available doors.
   --json              Print JSON proof (default).
   --markdown          Print compact Markdown proof.
@@ -593,16 +441,6 @@ function requireDoorSummary(door: BiligEvaluatorDoor): BiligEvaluatorDoorSummary
   return summary
 }
 
-function commandForScenario(summary: BiligEvaluatorDoorSummary, scenario: BiligEvaluatorScenario): string {
-  if (summary.door !== 'agent-mcp' || scenario === 'default') {
-    return summary.command
-  }
-  if (scenario === 'provider-backed') {
-    return 'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json'
-  }
-  return 'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario revenue-plan --json'
-}
-
 function readLocalPackageVersion(): string {
   const packageJsonPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'package.json')
   const parsed: unknown = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
@@ -621,47 +459,9 @@ function requireRecord(value: unknown, label: string): Record<string, unknown> {
   return value
 }
 
-function propertyValue(source: unknown, key: string): unknown {
-  return requireRecord(source, 'proof')[key]
-}
-
-function recordValue(source: unknown, key: string): Record<string, unknown> {
-  const value = propertyValue(source, key)
-  if (value === undefined) {
-    return {}
-  }
-  return requireRecord(value, key)
-}
-
-function normalizeBooleanRecord(source: Record<string, unknown>): Readonly<Record<string, boolean>> {
-  const normalized: Record<string, boolean> = {}
-  for (const [key, value] of Object.entries(source)) {
-    if (typeof value === 'boolean') {
-      normalized[key] = value
-    }
-  }
-  return normalized
-}
-
-function stringValue(source: unknown, key: string): string | undefined {
-  return optionalString(propertyValue(source, key))
-}
-
-function numberValue(source: unknown, key: string): number | undefined {
-  return optionalNumber(propertyValue(source, key))
-}
-
-function booleanValue(source: unknown, key: string): boolean {
-  return propertyValue(source, key) === true
-}
-
 function arrayValue(source: unknown, key: string): readonly unknown[] {
-  const value = propertyValue(source, key)
+  const value = requireRecord(source, 'source')[key]
   return Array.isArray(value) ? value : []
-}
-
-function stringArrayValue(source: unknown, key: string): readonly string[] {
-  return stringArray(propertyValue(source, key))
 }
 
 function stringArray(value: unknown): readonly string[] {

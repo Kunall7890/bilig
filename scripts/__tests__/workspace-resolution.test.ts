@@ -25,6 +25,10 @@ describe('workspace resolution', () => {
       packageDir: 'packages/workpaper',
       sourceEntry: 'packages/workpaper/src/ai-sdk.ts',
     })
+    expect(resolution['@bilig/workpaper/evaluator']).toEqual({
+      packageDir: 'packages/workpaper',
+      sourceEntry: 'packages/workpaper/src/evaluator.ts',
+    })
     expect(resolution['@bilig/workpaper/xlsx']).toEqual({
       packageDir: 'packages/workpaper',
       sourceEntry: 'packages/workpaper/src/xlsx.ts',
@@ -64,6 +68,10 @@ describe('workspace resolution', () => {
     expect(resolution['bilig-workpaper']).toEqual({
       packageDir: 'packages/bilig',
       sourceEntry: 'packages/bilig/src/index.ts',
+    })
+    expect(resolution['bilig-workpaper/evaluator']).toEqual({
+      packageDir: 'packages/bilig',
+      sourceEntry: 'packages/bilig/src/evaluator.ts',
     })
     expect(resolution['bilig-workpaper/xlsx']).toEqual({
       packageDir: 'packages/bilig',
