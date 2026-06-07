@@ -1,11 +1,11 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs'
 import { basename, dirname, resolve } from 'node:path'
 
 import { exportWorkPaperDocument, serializeWorkPaperDocument } from './persistence.js'
 import { WorkPaper } from './work-paper.js'
 import { createFileBackedWorkPaperMcpToolServer, createFileBackedWorkPaperMcpToolServerFromFile } from './work-paper-mcp-file-server.js'
 import type { WorkPaperMcpToolServer } from './work-paper-mcp-server.js'
-import { importXlsx } from './xlsx.js'
+import { importXlsxFile } from './xlsx.js'
 
 interface FileBackedWorkPaperMcpFromXlsxOptions {
   readonly fromXlsxPath: string
@@ -21,7 +21,7 @@ function createFileBackedWorkPaperMcpToolServerFromXlsxFile(input: FileBackedWor
   }
 
   const xlsxPath = resolve(input.fromXlsxPath)
-  const imported = importXlsx(new Uint8Array(readFileSync(xlsxPath)), basename(xlsxPath), { preferNativeSimpleImport: true })
+  const imported = importXlsxFile(xlsxPath, basename(xlsxPath), { preferNativeSimpleImport: true })
   const workbook = WorkPaper.buildFromSnapshot(imported.snapshot, { useColumnIndex: true })
   mkdirSync(dirname(workpaperPath), { recursive: true })
   writeFileAtomically(workpaperPath, serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true })))
@@ -34,7 +34,7 @@ function createFileBackedWorkPaperMcpToolServerFromXlsxFile(input: FileBackedWor
 
 function createWorkPaperMcpToolServerFromXlsxFile(input: { readonly fromXlsxPath: string }): WorkPaperMcpToolServer {
   const xlsxPath = resolve(input.fromXlsxPath)
-  const imported = importXlsx(new Uint8Array(readFileSync(xlsxPath)), basename(xlsxPath), { preferNativeSimpleImport: true })
+  const imported = importXlsxFile(xlsxPath, basename(xlsxPath), { preferNativeSimpleImport: true })
   const workbook = WorkPaper.buildFromSnapshot(imported.snapshot, { useColumnIndex: true })
 
   return createFileBackedWorkPaperMcpToolServer({

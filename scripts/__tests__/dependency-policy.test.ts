@@ -610,6 +610,15 @@ describe('repository dependency policy', () => {
     expect(publicXlsxBarrel).toContain('recalculateXlsxFileToFile')
   })
 
+  it('keeps headless MCP XLSX file import on the file-backed importer boundary', () => {
+    const mcpXlsxFile = readFileSync(join(repoRoot, 'packages/headless/src/work-paper-mcp-xlsx-file.ts'), 'utf8')
+
+    expect(mcpXlsxFile).toContain("import { importXlsxFile } from './xlsx.js'")
+    expect(mcpXlsxFile).toContain('importXlsxFile(xlsxPath')
+    expect(mcpXlsxFile).not.toContain('readFileSync(xlsxPath)')
+    expect(mcpXlsxFile).not.toContain('importXlsx(new Uint8Array')
+  })
+
   it('keeps WorkPaper evaluator doors owned by WorkPaper packages', () => {
     const xlsxEvaluator = readFileSync(join(repoRoot, 'packages/xlsx-formula-recalc/src/evaluator-cli.ts'), 'utf8')
     const unscopedWorkPaperBin = readFileSync(join(repoRoot, 'packages/bilig/bin/bilig-evaluate.js'), 'utf8')
