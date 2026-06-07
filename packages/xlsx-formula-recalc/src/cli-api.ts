@@ -57,7 +57,7 @@ export interface XlsxFormulaRecalcCliContext {
   readonly stderr?: (text: string) => void
 }
 
-const defaultInspectFormulaLimit = 'all'
+const defaultInspectFormulaLimit = 2000
 const cacheDoctorCommandName = 'xlsx-cache-doctor'
 const printGithubActionOption = '--print-github-action'
 const defaultGithubActionPackageVersion = readPackageVersion()

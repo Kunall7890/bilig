@@ -21,6 +21,8 @@ export type StreamingNativeXlsxCacheInspectionLimit = number | 'all'
 export type StreamingNativeXlsxCacheStatus = 'fresh' | 'stale' | 'missing-cache' | 'unsupported-recalculation'
 export type StreamingNativeXlsxCacheLiteral = XlsxFormulaCacheLiteral
 
+export const defaultStreamingNativeXlsxCacheInspectionLimit: StreamingNativeXlsxCacheInspectionLimit = 2000
+
 export interface StreamingNativeXlsxCacheStatusSummary {
   readonly inspected: number
   readonly stale: number
@@ -84,9 +86,10 @@ export async function inspectXlsxCacheFileStreamingNative(
     formulaCellCount: 0,
     cells: [],
   }
+  const inspectLimit = options.inspectLimit ?? defaultStreamingNativeXlsxCacheInspectionLimit
   try {
     const scan = readXlsxFormulaCacheCellsFromFile(inputPath, {
-      ...(options.inspectLimit === undefined ? {} : { inspectLimit: options.inspectLimit }),
+      inspectLimit,
       onPhase: (phase) => recordPhase(`inspect-${phase}`),
     })
     sheetNames = scan.sheetNames
@@ -103,7 +106,7 @@ export async function inspectXlsxCacheFileStreamingNative(
     throw error
   }
 
-  const inspectionLimit = normalizeStreamingNativeInspectionLimit(options.inspectLimit ?? 'all')
+  const inspectionLimit = normalizeStreamingNativeInspectionLimit(inspectLimit)
   const inspectedFormulaCells = formulaCacheScan.cells
   const suggestedReads = inspectedFormulaCells.map((cell) => cell.target)
   if (suggestedReads.length === 0) {

@@ -145,6 +145,10 @@ const nativeXlsxFormulaRecalcPathBoundarySources = [
   'packages/xlsx-formula-recalc/src/types.ts',
   'packages/xlsx-formula-recalc/src/workbook-compatibility-report.ts',
 ] as const
+const nativeXlsxLargeFileModeBoundarySources = [
+  'packages/xlsx-formula-recalc/src/file-recalc.ts',
+  'packages/xlsx/src/streaming-native-inspect.ts',
+] as const
 
 type JsonRecord = { readonly [key: string]: unknown }
 
@@ -256,6 +260,10 @@ function sourceSpecifierViolations(path: string, forbiddenSpecifiers: readonly s
   return forbiddenSpecifiers
     .filter((specifier) => new RegExp(`from\\s+['"]${specifier.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}(?:/[^'"]*)?['"]`, 'u').test(source))
     .map((specifier) => `${path}: ${specifier}`)
+}
+
+function sourceContains(source: string, needle: string): boolean {
+  return source.indexOf(needle) >= 0
 }
 
 describe('repository dependency policy', () => {
@@ -386,6 +394,58 @@ describe('repository dependency policy', () => {
     expect(cliSource).toContain('buildWorkbookCompatibilityReportFromFile')
     expect(cliSource).not.toContain('readFileSync(requireInputPath(options))')
     expect(cliSource).not.toContain('readXlsxWorkbookCells')
+  })
+
+  it('keeps large XLSX file-mode diagnostics bounded by default', () => {
+    const cliApi = readFileSync(join(repoRoot, 'packages/xlsx-formula-recalc/src/cli-api.ts'), 'utf8')
+    const nativeInspect = readFileSync(join(repoRoot, 'packages/xlsx/src/streaming-native-inspect.ts'), 'utf8')
+    const reportSource = readFileSync(join(repoRoot, 'packages/xlsx/src/workbook-compatibility-report.ts'), 'utf8')
+
+    expect(cliApi).toContain('const defaultInspectFormulaLimit = 2000')
+    expect(cliApi).not.toContain("const defaultInspectFormulaLimit = 'all'")
+    expect(nativeInspect).toContain(
+      'export const defaultStreamingNativeXlsxCacheInspectionLimit: StreamingNativeXlsxCacheInspectionLimit = 2000',
+    )
+    expect(nativeInspect).not.toContain("options.inspectLimit ?? 'all'")
+    expect(reportSource).toContain('const defaultFileInspectLimit: XlsxCacheInspectionLimit = 2000')
+  })
+
+  it('keeps large XLSX file-mode wrappers off materialized workbook and hidden fallback paths', () => {
+    const reportSource = readFileSync(join(repoRoot, 'packages/xlsx/src/workbook-compatibility-report.ts'), 'utf8')
+    const reportFileStart = reportSource.indexOf('export function buildWorkbookCompatibilityReportFromFile')
+    const reportFileEnd = reportSource.indexOf('function buildWorkbookCompatibilityReportFromScans')
+    const reportFileSource = reportSource.slice(reportFileStart, reportFileEnd)
+    const violations = nativeXlsxLargeFileModeBoundarySources.flatMap((path) => {
+      const source = readFileSync(join(repoRoot, path), 'utf8')
+      return [
+        ['readFileSync(requireInputPath(options))', 'input XLSX readFileSync materialization'],
+        ['source.readBytes()', 'source readBytes fallback'],
+        ['readXlsxWorkbookCells(', 'full workbook cell materialization'],
+        ['WorkPaper.buildFromSnapshot', 'WorkPaper snapshot materialization'],
+        ["import('./legacy-workpaper.js')", 'legacy WorkPaper dynamic fallback'],
+        ["from 'xlsx'", 'SheetJS static import'],
+        ['require("xlsx")', 'SheetJS runtime require'],
+        ["require('xlsx')", 'SheetJS runtime require'],
+      ]
+        .filter(([needle]) => sourceContains(source, needle))
+        .map(([_needle, reason]) => `${path}: ${reason}`)
+    })
+    const reportFileViolations = [
+      ['readFileSync(requireInputPath(options))', 'input XLSX readFileSync materialization'],
+      ['source.readBytes()', 'source readBytes fallback'],
+      ['readXlsxWorkbookCells(', 'full workbook cell materialization'],
+      ['WorkPaper.buildFromSnapshot', 'WorkPaper snapshot materialization'],
+      ["import('./legacy-workpaper.js')", 'legacy WorkPaper dynamic fallback'],
+      ["from 'xlsx'", 'SheetJS static import'],
+      ['require("xlsx")', 'SheetJS runtime require'],
+      ["require('xlsx')", 'SheetJS runtime require'],
+    ]
+      .filter(([needle]) => sourceContains(reportFileSource, needle))
+      .map(([_needle, reason]) => `packages/xlsx/src/workbook-compatibility-report.ts buildWorkbookCompatibilityReportFromFile: ${reason}`)
+
+    expect(reportFileStart).toBeGreaterThan(-1)
+    expect(reportFileEnd).toBeGreaterThan(reportFileStart)
+    expect([...violations, ...reportFileViolations]).toEqual([])
   })
 
   it('keeps file-backed xlsx-recalc CLI on @bilig/xlsx without primary WorkPaper fallback', () => {

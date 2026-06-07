@@ -306,7 +306,7 @@ process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXls
       expect(summary.formulaCellCount).toBe(1)
       expect(summary.inspectedFormulaCellCount).toBe(1)
       expect(summary.uninspectedFormulaCellCount).toBe(0)
-      expect(summary.inspectionLimit).toBe('all')
+      expect(summary.inspectionLimit).toBe(2000)
       expect(summary.staleCachedFormulaCount).toBe(1)
       expect(summary.cacheStatusSummary).toEqual({
         inspected: 1,
@@ -695,7 +695,7 @@ process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXls
     expect(exitCode).toBe(0)
     expect(stdout).toContain('workbooks: "**/*.xlsx"')
     expect(stdout).toContain('changed-files-only: "false"')
-    expect(stdout).toContain('inspect-limit: "all"')
+    expect(stdout).toContain('inspect-limit: "2000"')
     expect(stdout).toContain(`package-version: "${packageVersion}"`)
     expect(stdout).toContain('json-output: "${{ runner.temp }}/xlsx-cache-doctor.json"')
     expect(stdout).toContain('markdown-output: "${{ runner.temp }}/xlsx-cache-doctor.md"')
@@ -728,14 +728,40 @@ process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXls
     }
   })
 
-  it('checks every formula by default so stale caches after the old sample cutoff fail inspection', async () => {
+  it('keeps default file inspection bounded so large JSON reports do not collect every formula', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-cache-doctor-default-bounded-'))
+    try {
+      const inputPath = join(tempDir, 'many-formulas.xlsx')
+      writeFileSync(inputPath, buildManyFormulaCacheWorkbook({ formulaCount: 2005 }))
+      let stdout = ''
+
+      const exitCode = await runXlsxFormulaRecalcCliAsync([inputPath, '--json'], {
+        commandName: 'xlsx-cache-doctor',
+        stdout: (text) => {
+          stdout += text
+        },
+      })
+
+      expect(exitCode).toBe(0)
+      const summary = readCliInspectionSummary(stdout)
+      expect(summary.formulaCellCount).toBe(2005)
+      expect(summary.inspectedFormulaCellCount).toBe(2000)
+      expect(summary.uninspectedFormulaCellCount).toBe(5)
+      expect(summary.inspectionLimit).toBe(2000)
+      expect(summary.suggestedReads).not.toContain('Sheet1!B2006')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  it('checks every formula when a caller explicitly requests all formulas', async () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-cache-doctor-all-formulas-'))
     try {
       const inputPath = join(tempDir, 'many-formulas.xlsx')
       writeFileSync(inputPath, buildManyFormulaCacheWorkbook())
       let stdout = ''
 
-      const exitCode = await runXlsxFormulaRecalcCliAsync([inputPath, '--json'], {
+      const exitCode = await runXlsxFormulaRecalcCliAsync([inputPath, '--inspect-limit', 'all', '--json'], {
         commandName: 'xlsx-cache-doctor',
         stdout: (text) => {
           stdout += text
@@ -1331,9 +1357,11 @@ function buildMissingFormulaCacheWorkbook(): Uint8Array {
   }
 }
 
-function buildManyFormulaCacheWorkbook(): Uint8Array {
+function buildManyFormulaCacheWorkbook(options: { readonly formulaCount?: number } = {}): Uint8Array {
+  const formulaCount = options.formulaCount ?? 60
+  const staleRow = formulaCount + 1
   const rows: Array<[number | string, number | string]> = [['Input', 'Output']]
-  for (let row = 2; row <= 61; row += 1) {
+  for (let row = 2; row <= staleRow; row += 1) {
     rows.push([row - 1, `=A${row}*10`])
   }
   const workbook = WorkPaper.buildFromSheets({
@@ -1343,8 +1371,8 @@ function buildManyFormulaCacheWorkbook(): Uint8Array {
     return replaceWorksheetCellXml(
       exportXlsx(workbook.exportSnapshot()),
       'xl/worksheets/sheet1.xml',
-      'B61',
-      '<c r="B61"><f>A61*10</f><v>999</v></c>',
+      `B${staleRow}`,
+      `<c r="B${staleRow}"><f>A${staleRow}*10</f><v>999</v></c>`,
     )
   } finally {
     workbook.dispose()
