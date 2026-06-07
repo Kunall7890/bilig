@@ -26,6 +26,7 @@ const defaultOutputDir = join(rootDir, '.cache', 'xlsx-native-recalc-public-corp
 const defaultMaxRssBytes = 350 * mib
 const defaultLimit = 50
 const defaultMaxFormulaReadsPerWorkbook = 1_000
+const defaultMinFormulaCellsPerWorkbook = 1
 const defaultTimeoutMs = 180_000
 const rssCheckIntervalMs = 10
 const noop = (): void => undefined
@@ -87,9 +88,11 @@ async function main(): Promise<void> {
   const nodeBin = readStringArg('--node-bin', process.env['BILIG_XLSX_NATIVE_RECALC_NODE'] ?? 'node')
   const limit = readNumberArg('--limit', defaultLimit)
   const maxFormulaReadsPerWorkbook = readNumberArg('--max-formula-reads-per-workbook', defaultMaxFormulaReadsPerWorkbook)
+  const minFormulaCellsPerWorkbook = readNumberArg('--min-formula-cells-per-workbook', defaultMinFormulaCellsPerWorkbook)
   const maxRssBytes = readMegabytesArg('--max-rss-mb', defaultMaxRssBytes)
   const timeoutMs = readNumberArg('--timeout-ms', defaultTimeoutMs)
   const requireFormulaWorkbookCount = readNumberArg('--require-formula-workbook-count', 1)
+  const requirePassedFormulaWorkbookCount = readNonNegativeIntegerArg('--require-passed-formula-workbook-count', 0)
   const requirePassed = readFlagArg('--require-passed')
   const dryRun = readFlagArg('--dry-run')
   mkdirSync(outputDir, { recursive: true })
@@ -102,6 +105,7 @@ async function main(): Promise<void> {
     maxRssBytes,
     limit,
     maxFormulaReadsPerWorkbook,
+    minFormulaCellsPerWorkbook,
   })
   const results: NativeRecalcPublicCorpusResult[] = []
   if (!existsSync(cliPath) && !dryRun) {
@@ -121,6 +125,7 @@ async function main(): Promise<void> {
     discoveredFormulaWorkbookCount: discoveredTargets.discoveredFormulaWorkbookCount,
     attemptedFormulaWorkbookCount: discoveredTargets.targets.length,
     requireFormulaWorkbookCount,
+    requirePassedFormulaWorkbookCount,
     results,
   })
   process.stdout.write(
@@ -133,7 +138,9 @@ async function main(): Promise<void> {
           maxRssBytes,
           limit,
           maxFormulaReadsPerWorkbook,
+          minFormulaCellsPerWorkbook,
           requireFormulaWorkbookCount,
+          requirePassedFormulaWorkbookCount,
           requirePassed,
           dryRun,
         },
@@ -147,6 +154,7 @@ async function main(): Promise<void> {
 
   const failed =
     summary.discoveredFormulaWorkbookCount < requireFormulaWorkbookCount ||
+    summary.passedWorkbookCount < requirePassedFormulaWorkbookCount ||
     (requirePassed && results.some((result) => result.status !== 'passed'))
   if (failed) {
     throw new Error('Native XLSX public corpus recalc gate failed')
@@ -160,19 +168,21 @@ export function discoverNativeRecalcPublicCorpusTargets(args: {
   readonly maxRssBytes: number
   readonly limit: number
   readonly maxFormulaReadsPerWorkbook: number
+  readonly minFormulaCellsPerWorkbook?: number
 }): {
   readonly discoveredFormulaWorkbookCount: number
   readonly targets: readonly NativeRecalcPublicCorpusTarget[]
 } {
   const targets: NativeRecalcPublicCorpusTarget[] = []
   let discoveredFormulaWorkbookCount = 0
+  const minFormulaCellsPerWorkbook = args.minFormulaCellsPerWorkbook ?? defaultMinFormulaCellsPerWorkbook
   for (const artifact of args.manifest.artifacts) {
     const inputPath = join(args.cacheDir, artifact.cachePath)
     if (!existsSync(inputPath)) {
       continue
     }
     const oracles = readFormulaOraclesForArtifact(artifact, inputPath)
-    if (oracles.length === 0) {
+    if (oracles.length < minFormulaCellsPerWorkbook) {
       continue
     }
     discoveredFormulaWorkbookCount += 1
@@ -307,6 +317,15 @@ function isOpenXmlWorkbookFileName(fileName: string): boolean {
   return normalized.endsWith('.xlsx') || normalized.endsWith('.xlsm') || normalized.endsWith('.xltx') || normalized.endsWith('.xltm')
 }
 
+function readNonNegativeIntegerArg(name: string, fallback: number): number {
+  const raw = readStringArg(name, String(fallback))
+  const parsed = Number(raw)
+  if (!/^\d+$/u.test(raw) || !Number.isSafeInteger(parsed)) {
+    throw new Error(`Expected ${name} to be a non-negative integer`)
+  }
+  return parsed
+}
+
 export function buildNativeRecalcPublicCorpusTarget(args: {
   readonly artifact: PublicWorkbookArtifact
   readonly inputPath: string
@@ -424,11 +443,15 @@ export function summarizeNativeRecalcPublicCorpusResults(args: {
   readonly discoveredFormulaWorkbookCount: number
   readonly attemptedFormulaWorkbookCount: number
   readonly requireFormulaWorkbookCount: number
+  readonly requirePassedFormulaWorkbookCount?: number
   readonly results: readonly NativeRecalcPublicCorpusResult[]
 }): {
   readonly discoveredFormulaWorkbookCount: number
   readonly attemptedFormulaWorkbookCount: number
   readonly requiredFormulaWorkbookCount: number
+  readonly requiredPassedFormulaWorkbookCount: number
+  readonly formulaWorkbookCoverageGap: number
+  readonly passedFormulaWorkbookCoverageGap: number
   readonly passedWorkbookCount: number
   readonly unsupportedWorkbookCount: number
   readonly failedWorkbookCount: number
@@ -437,11 +460,16 @@ export function summarizeNativeRecalcPublicCorpusResults(args: {
   readonly patchedCacheCount: number
   readonly maxPeakRssBytes: number | null
 } {
+  const passedWorkbookCount = args.results.filter((result) => result.status === 'passed').length
+  const requiredPassedFormulaWorkbookCount = args.requirePassedFormulaWorkbookCount ?? 0
   return {
     discoveredFormulaWorkbookCount: args.discoveredFormulaWorkbookCount,
     attemptedFormulaWorkbookCount: args.attemptedFormulaWorkbookCount,
     requiredFormulaWorkbookCount: args.requireFormulaWorkbookCount,
-    passedWorkbookCount: args.results.filter((result) => result.status === 'passed').length,
+    requiredPassedFormulaWorkbookCount,
+    formulaWorkbookCoverageGap: Math.max(0, args.requireFormulaWorkbookCount - args.discoveredFormulaWorkbookCount),
+    passedFormulaWorkbookCoverageGap: Math.max(0, requiredPassedFormulaWorkbookCount - passedWorkbookCount),
+    passedWorkbookCount,
     unsupportedWorkbookCount: args.results.filter((result) => result.status === 'unsupported').length,
     failedWorkbookCount: args.results.filter((result) => result.status === 'failed').length,
     selectedFormulaCellCount: args.results.reduce((sum, result) => sum + result.selectedFormulaCellCount, 0),
