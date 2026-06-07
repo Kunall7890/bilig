@@ -255,12 +255,14 @@ describe('repository dependency policy', () => {
     const missingNativeSources = xlsxOwnedStreamingNativeSources.filter((path) => !existsSync(join(repoRoot, path)))
     const staleRecalcSources = legacyFormulaRecalcStreamingNativeSources.filter((path) => existsSync(join(repoRoot, path)))
     const recalcIndex = readFileSync(join(repoRoot, 'packages/xlsx-formula-recalc/src/index.ts'), 'utf8')
+    const nativeRecalc = readFileSync(join(repoRoot, 'packages/xlsx/src/streaming-native-recalc.ts'), 'utf8')
 
     expect(missingNativeSources).toEqual([])
     expect(staleRecalcSources).toEqual([])
     expect(recalcIndex).toContain("from '@bilig/xlsx'")
     expect(recalcIndex).not.toContain("from './streaming-native-recalc.js'")
     expect(recalcIndex).not.toContain("from './streaming-native-inspect.js'")
+    expect(nativeRecalc).not.toContain("'workpaper'")
   })
 
   it('keeps file-backed xlsx-recalc CLI loading @bilig/xlsx before WorkPaper fallback', () => {

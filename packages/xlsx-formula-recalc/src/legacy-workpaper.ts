@@ -25,9 +25,6 @@ export { exportXlsx, exportXlsxToFile, importXlsx } from '@bilig/headless/xlsx'
 export type * from './types.js'
 export {
   type StreamingNativeFormulaCounts,
-  type XlsxFormulaRecalcEngine,
-  type XlsxFormulaRecalcEngineMode,
-  type XlsxFormulaRecalcFallbackPolicy,
   type XlsxFormulaRecalcNativeDiagnostics,
   type XlsxFormulaRecalcPhaseRss,
   StreamingNativeXlsxRecalcError,

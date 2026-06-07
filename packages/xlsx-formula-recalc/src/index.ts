@@ -10,9 +10,6 @@ export {
   type StreamingNativeXlsxCacheLiteral,
   type StreamingNativeXlsxCacheStatus,
   type StreamingNativeXlsxCacheStatusSummary,
-  type XlsxFormulaRecalcEngine,
-  type XlsxFormulaRecalcEngineMode,
-  type XlsxFormulaRecalcFallbackPolicy,
   type XlsxFormulaRecalcNativeDiagnostics,
   type XlsxFormulaRecalcPhaseRss,
 } from '@bilig/xlsx'

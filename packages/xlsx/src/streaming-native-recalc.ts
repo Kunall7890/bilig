@@ -18,9 +18,7 @@ import {
   type XlsxZipEntries,
 } from './zip-reader.js'
 
-export type XlsxFormulaRecalcEngineMode = 'streaming-native' | 'workpaper'
-export type XlsxFormulaRecalcEngine = 'auto' | XlsxFormulaRecalcEngineMode
-export type XlsxFormulaRecalcFallbackPolicy = 'error' | 'workpaper'
+export type StreamingNativeXlsxFormulaRecalcEngineMode = 'streaming-native'
 
 export interface XlsxFormulaRecalcPhaseRss {
   readonly phase: string
@@ -38,7 +36,7 @@ export interface StreamingNativeFormulaCounts {
 }
 
 export interface XlsxFormulaRecalcNativeDiagnostics {
-  readonly engineMode: XlsxFormulaRecalcEngineMode
+  readonly engineMode: StreamingNativeXlsxFormulaRecalcEngineMode
   readonly inputBytes: number
   readonly phaseRssPeaks: readonly XlsxFormulaRecalcPhaseRss[]
   readonly maxObservedRssBytes: number

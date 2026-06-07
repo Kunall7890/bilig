@@ -1,19 +1,11 @@
 import type { CellValue, CompatibilityMode, LiteralInput, WorkbookCalculationMode, WorkbookDateSystem } from '@bilig/protocol'
-import type {
-  XlsxExternalWorkbookInput,
-  XlsxExternalWorkbookHydrationDiagnostics,
-  XlsxFormulaRecalcEngine,
-  XlsxFormulaRecalcFallbackPolicy,
-  XlsxFormulaRecalcNativeDiagnostics,
-} from '@bilig/xlsx'
+import type { XlsxExternalWorkbookInput, XlsxExternalWorkbookHydrationDiagnostics, XlsxFormulaRecalcNativeDiagnostics } from '@bilig/xlsx'
 
-export type {
-  XlsxExternalWorkbookInput,
-  XlsxExternalWorkbookHydrationDiagnostics,
-  XlsxFormulaRecalcEngine,
-  XlsxFormulaRecalcFallbackPolicy,
-  XlsxFormulaRecalcNativeDiagnostics,
-} from '@bilig/xlsx'
+export type { XlsxExternalWorkbookInput, XlsxExternalWorkbookHydrationDiagnostics, XlsxFormulaRecalcNativeDiagnostics } from '@bilig/xlsx'
+
+export type XlsxFormulaRecalcEngineMode = 'streaming-native' | 'workpaper'
+export type XlsxFormulaRecalcEngine = 'auto' | XlsxFormulaRecalcEngineMode
+export type XlsxFormulaRecalcFallbackPolicy = 'error' | 'workpaper'
 
 export type XlsxFormulaRecalcCellValue = CellValue
 export type XlsxFormulaRecalcChange = unknown
