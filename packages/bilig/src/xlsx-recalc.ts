@@ -14,6 +14,7 @@ import {
 import {
   patchXlsxTextParts,
   type ImportedWorkbookDiagnostics,
+  recalculateXlsxFileToFileStreamingNative,
   type XlsxExternalWorkbookInput,
   type XlsxFormulaRecalcNativeDiagnostics,
   type XlsxImportOptions,
@@ -143,6 +144,19 @@ export interface XlsxFormulaRecalcFileResult {
   readonly diagnostics?: XlsxFormulaRecalcDiagnostics
 }
 
+export type XlsxFormulaRecalcFileToFileEngine = 'auto' | 'streaming-native'
+export type XlsxFormulaRecalcFileToFileFallbackPolicy = 'error'
+
+export interface XlsxFormulaRecalcFileToFileOptions {
+  readonly outputPath: string
+  readonly externalWorkbooks?: readonly XlsxExternalWorkbookInput[]
+  readonly edits?: readonly XlsxFormulaRecalcEdit[]
+  readonly reads?: readonly string[]
+  readonly engine?: XlsxFormulaRecalcFileToFileEngine
+  readonly maxRssBytes?: number
+  readonly fallbackPolicy?: XlsxFormulaRecalcFileToFileFallbackPolicy
+}
+
 export function recalculateXlsx(input: Uint8Array | ArrayBuffer | Buffer, options: XlsxFormulaRecalcOptions = {}): XlsxFormulaRecalcResult {
   assertBytesApiEngine((options as { readonly engine?: string }).engine)
   return withPreparedRecalculatedXlsxOutput(input, options, (prepared) => {
@@ -155,6 +169,33 @@ export function recalculateXlsx(input: Uint8Array | ArrayBuffer | Buffer, option
       changes: prepared.changes,
       ...(prepared.diagnostics ? { diagnostics: prepared.diagnostics } : {}),
     }
+  })
+}
+
+export async function recalculateXlsxFileToFile(
+  inputPath: string,
+  options: XlsxFormulaRecalcFileToFileOptions,
+): Promise<XlsxFormulaRecalcFileResult> {
+  const legacyOptions = options as {
+    readonly config?: unknown
+    readonly engine?: string
+    readonly fallbackPolicy?: string
+  }
+  if (legacyOptions.engine === 'workpaper') {
+    throw legacyWorkPaperFileToFileError('engine')
+  }
+  if (legacyOptions.fallbackPolicy === 'workpaper') {
+    throw legacyWorkPaperFileToFileError('fallbackPolicy')
+  }
+  if (legacyOptions.config !== undefined) {
+    throw new Error('streaming-native file-to-file recalc does not support WorkPaper config options')
+  }
+  return await recalculateXlsxFileToFileStreamingNative(inputPath, {
+    outputPath: options.outputPath,
+    ...(options.edits === undefined ? {} : { edits: nativeLiteralEdits(options.edits) }),
+    ...(options.reads === undefined ? {} : { reads: options.reads }),
+    ...(options.externalWorkbooks === undefined ? {} : { externalWorkbooks: options.externalWorkbooks }),
+    ...(options.maxRssBytes === undefined ? {} : { maxRssBytes: options.maxRssBytes }),
   })
 }
 
@@ -196,6 +237,22 @@ function assertBytesApiEngine(engine: string | undefined): void {
   if (engine === 'streaming-native') {
     throw new Error('streaming-native engine requires recalculateXlsxFileToFile() with file-backed input and output paths')
   }
+}
+
+function nativeLiteralEdits(edits: readonly XlsxFormulaRecalcEdit[]): readonly { readonly target: string; readonly value: LiteralInput }[] {
+  return edits.map((edit) => {
+    const value = edit.value
+    if (value === null || typeof value === 'number' || typeof value === 'string' || typeof value === 'boolean') {
+      return { target: edit.target, value }
+    }
+    throw new Error(`streaming-native file-to-file recalc supports literal edits only: ${edit.target}`)
+  })
+}
+
+function legacyWorkPaperFileToFileError(optionName: 'engine' | 'fallbackPolicy'): Error {
+  return new Error(
+    `bilig-workpaper/xlsx file-to-file recalc uses the streaming-native engine for large XLSX jobs; ${optionName}=workpaper is only available through the legacy bytes APIs.`,
+  )
 }
 
 function withPreparedRecalculatedXlsxOutput<Result>(

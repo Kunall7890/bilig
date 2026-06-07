@@ -400,6 +400,22 @@ describe('repository dependency policy', () => {
     expect(legacyWorkPaper).toContain('export interface XlsxFormulaRecalcWorkPaperConfig')
   })
 
+  it('keeps bilig-workpaper/xlsx public file-to-file recalc on @bilig/xlsx streaming-native', () => {
+    const legacyWorkPaper = readFileSync(join(repoRoot, 'packages/bilig/src/xlsx-recalc.ts'), 'utf8')
+    const publicXlsxBarrel = readFileSync(join(repoRoot, 'packages/bilig/src/xlsx.ts'), 'utf8')
+    const fileToFileStart = legacyWorkPaper.indexOf('export async function recalculateXlsxFileToFile')
+    const fileToFileEnd = legacyWorkPaper.indexOf('export function recalculateXlsxToFile')
+    const fileToFileSource = legacyWorkPaper.slice(fileToFileStart, fileToFileEnd)
+
+    expect(fileToFileStart).toBeGreaterThan(-1)
+    expect(fileToFileEnd).toBeGreaterThan(fileToFileStart)
+    expect(fileToFileSource).toContain('recalculateXlsxFileToFileStreamingNative')
+    expect(fileToFileSource).toContain("legacyOptions.engine === 'workpaper'")
+    expect(fileToFileSource).not.toContain('WorkPaper.buildFromSnapshot')
+    expect(fileToFileSource).not.toContain('withPreparedRecalculatedXlsxOutput')
+    expect(publicXlsxBarrel).toContain('recalculateXlsxFileToFile')
+  })
+
   it('keeps WorkPaper evaluator doors owned by WorkPaper packages', () => {
     const xlsxEvaluator = readFileSync(join(repoRoot, 'packages/xlsx-formula-recalc/src/evaluator-cli.ts'), 'utf8')
     const unscopedWorkPaperBin = readFileSync(join(repoRoot, 'packages/bilig/bin/bilig-evaluate.js'), 'utf8')
