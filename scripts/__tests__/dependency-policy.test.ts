@@ -450,6 +450,24 @@ describe('repository dependency policy', () => {
     expect(cellArena).toContain('stringIds')
   })
 
+  it('keeps source-preserving file output on the streaming ZIP writer', () => {
+    const sourcePreservingPatches = readFileSync(join(repoRoot, 'packages/xlsx/src/source-preserving-literal-patches.ts'), 'utf8')
+    const syncFileStart = sourcePreservingPatches.indexOf('export function exportXlsxSourceLiteralPatchesToFile(')
+    const asyncFileStart = sourcePreservingPatches.indexOf('export function exportXlsxSourceLiteralPatchesToFileAsync(')
+    const streamingFileStart = sourcePreservingPatches.indexOf('function exportXlsxSourceLiteralPatchesToFileStreaming(')
+    const syncFileSource = sourcePreservingPatches.slice(syncFileStart, asyncFileStart)
+    const streamingFileSource = sourcePreservingPatches.slice(streamingFileStart)
+
+    expect(syncFileStart).toBeGreaterThan(-1)
+    expect(asyncFileStart).toBeGreaterThan(syncFileStart)
+    expect(streamingFileStart).toBeGreaterThan(asyncFileStart)
+    expect(syncFileSource).toContain('exportXlsxSourceLiteralPatchesToFileStreaming(input)')
+    expect(syncFileSource).not.toContain('exportXlsxSourceLiteralPatches(input)')
+    expect(syncFileSource).not.toContain('writeAllSync(fd, exported)')
+    expect(streamingFileSource).toContain('zipSourcePreservingEntriesToFile')
+    expect(streamingFileSource).toContain('tryPrepareStreamingPatchedWorksheetEntryFile')
+  })
+
   it('keeps large XLSX file-mode wrappers off materialized workbook and hidden fallback paths', () => {
     const reportSource = readFileSync(join(repoRoot, 'packages/xlsx/src/workbook-compatibility-report.ts'), 'utf8')
     const reportFileStart = reportSource.indexOf('export function buildWorkbookCompatibilityReportFromFile')

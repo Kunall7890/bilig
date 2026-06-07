@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   exportXlsxSourceLiteralPatches,
+  exportXlsxSourceLiteralPatchesToFile,
   exportXlsxSourceLiteralPatchesToFileAsync,
   getZipText,
   readLazyXlsxZipEntryCompressedSource,
@@ -261,6 +262,27 @@ describe('@bilig/xlsx source-preserving literal patches', () => {
       expect(result.bytesWritten).toBe(statSync(outputPath).size)
       const zip = readXlsxZipEntries(new Uint8Array(readFileSync(outputPath)))
       expect(getZipText(zip, 'xl/worksheets/sheet1.xml')).toContain('file-backed')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  it('sync file-backed export uses the streaming writer instead of materializing output bytes', () => {
+    const { source, fullWorksheetInflateCount } = guardedPatchedWorksheetSource()
+    const tempDir = mkdtempSync(join(tmpdir(), 'bilig-xlsx-patch-'))
+    const outputPath = join(tempDir, 'patched.xlsx')
+    try {
+      const result = exportXlsxSourceLiteralPatchesToFile({
+        source,
+        outputPath,
+        sheetNames: ['Revenue & Ops'],
+        patches: [{ sheetName: 'Revenue & Ops', address: 'A2500', value: 99_002 }],
+      })
+
+      expect(fullWorksheetInflateCount()).toBe(0)
+      expect(result.bytesWritten).toBe(statSync(outputPath).size)
+      const zip = readXlsxZipEntries(new Uint8Array(readFileSync(outputPath)))
+      expect(getZipText(zip, 'xl/worksheets/sheet1.xml')).toContain('<c r="A2500"><v>99002</v></c>')
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
     }

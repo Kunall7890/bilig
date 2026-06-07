@@ -534,12 +534,12 @@ function safeWorksheetPatchScanEnd(buffer: string): number {
   return lastCellStart >= 0 && lastCellStart >= lastCompleteCellEnd ? lastCellStart : tagSafeEnd
 }
 
-async function tryPrepareStreamingPatchedWorksheetEntryFileAsync(
+function tryPrepareStreamingPatchedWorksheetEntryFile(
   zip: SourcePreservingZip,
   sheetPath: string,
   patch: WorksheetPatch,
   compressedPath: string,
-): Promise<FilePreparedZipEntry | null> {
+): FilePreparedZipEntry | null {
   const fd = openSync(compressedPath, 'w')
   let closed = false
   const close = (): void => {
@@ -681,30 +681,18 @@ export function exportXlsxSourceLiteralPatches(input: XlsxSourceLiteralPatchExpo
 }
 
 export function exportXlsxSourceLiteralPatchesToFile(input: XlsxSourceLiteralPatchFileExportInput): XlsxSourceLiteralPatchFileExportResult {
-  const exported = exportXlsxSourceLiteralPatches(input)
-  const temporaryOutputPath = `${input.outputPath}.${randomUUID()}.tmp`
-  try {
-    const fd = openSync(temporaryOutputPath, 'w')
-    try {
-      writeAllSync(fd, exported)
-    } finally {
-      closeSync(fd)
-    }
-    renameSync(temporaryOutputPath, input.outputPath)
-    return { bytesWritten: exported.byteLength }
-  } catch (error) {
-    try {
-      unlinkSync(temporaryOutputPath)
-    } catch {
-      // Best-effort cleanup only; the caller receives the export failure below.
-    }
-    throw error
-  }
+  return exportXlsxSourceLiteralPatchesToFileStreaming(input)
 }
 
-export async function exportXlsxSourceLiteralPatchesToFileAsync(
+export function exportXlsxSourceLiteralPatchesToFileAsync(
   input: XlsxSourceLiteralPatchFileExportInput,
 ): Promise<XlsxSourceLiteralPatchFileExportResult> {
+  return Promise.resolve(exportXlsxSourceLiteralPatchesToFileStreaming(input))
+}
+
+function exportXlsxSourceLiteralPatchesToFileStreaming(
+  input: XlsxSourceLiteralPatchFileExportInput,
+): XlsxSourceLiteralPatchFileExportResult {
   const { source, patches, textPatches, sheetNames } = normalizedPatchInput(input)
   const zip = readSourcePreservingZip(source)
   const preparedEntries = new Map<string, FilePreparedZipEntry>()
@@ -722,8 +710,7 @@ export async function exportXlsxSourceLiteralPatchesToFileAsync(
       throw new Error(`Unable to resolve XLSX worksheet path for sheet: ${sheetName}`)
     }
     const preparedEntryPath = `${input.outputPath}.${randomUUID()}.entry.tmp`
-    // oxlint-disable-next-line eslint(no-await-in-loop) -- Worksheets are prepared sequentially so each stream closes before the next.
-    const preparedEntry = await tryPrepareStreamingPatchedWorksheetEntryFileAsync(zip, sheetPath, { literals }, preparedEntryPath)
+    const preparedEntry = tryPrepareStreamingPatchedWorksheetEntryFile(zip, sheetPath, { literals }, preparedEntryPath)
     if (!preparedEntry) {
       cleanupTemporaryFiles(preparedEntryPaths)
       throw new Error(`Unable to apply XLSX literal patches for sheet: ${sheetName}`)
