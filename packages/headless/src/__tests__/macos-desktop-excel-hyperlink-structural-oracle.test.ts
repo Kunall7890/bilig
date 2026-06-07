@@ -3,8 +3,8 @@ import { join } from 'node:path'
 
 import { exportXlsx, importXlsx } from '@bilig/excel-import'
 import { isMacosExcelInstalled, runMacosExcelInspectionOracle, runMacosExcelStructuralOperationOracle } from '@bilig/excel-fixtures'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
 
 import { WorkPaper } from '../index.js'
 import { createExcelAccessibleTempDir, removeMacosExcelTestDir } from './macos-excel-oracle-test-utils.js'
@@ -101,23 +101,33 @@ describe('macOS Desktop Excel hyperlink structural oracle', () => {
 })
 
 function buildHyperlinkWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const links = XLSX.utils.aoa_to_sheet([['Open report'], ['', 'Summary']])
-  links['A1'] = {
-    ...links['A1'],
-    l: {
-      Target: 'https://example.com/report',
-      Tooltip: 'Open report',
-    },
-  }
-  links['B2'] = {
-    ...links['B2'],
-    l: {
-      Target: '#Summary!A1',
-      Tooltip: 'Jump to summary',
-    },
-  }
-  XLSX.utils.book_append_sheet(workbook, links, 'Links')
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['Destination']]), 'Summary')
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Links',
+        cells: [
+          { address: 'A1', row: 0, col: 0, value: 'Open report' },
+          { address: 'B2', row: 1, col: 1, value: 'Summary' },
+        ],
+        hyperlinks: [
+          {
+            address: 'A1',
+            display: 'Open report',
+            target: 'https://example.com/report',
+            tooltip: 'Open report',
+          },
+          {
+            address: 'B2',
+            display: 'Summary',
+            target: '#Summary!A1',
+            tooltip: 'Jump to summary',
+          },
+        ],
+      },
+      {
+        name: 'Summary',
+        cells: [{ address: 'A1', row: 0, col: 0, value: 'Destination' }],
+      },
+    ],
+  })
 }

@@ -31,6 +31,7 @@ const nativeXlsxExampleScripts = [
   'examples/recalc-bridge-workflows/stackoverflow-sheetjs-63085785.mjs',
 ] as const
 const nativeXlsxHeadlessFixtureTests = [
+  'packages/headless/src/__tests__/macos-desktop-excel-hyperlink-structural-oracle.test.ts',
   'packages/headless/src/__tests__/macos-desktop-excel-protected-ranges-oracle.test.ts',
   'packages/headless/src/__tests__/macos-desktop-excel-workbook-protection-oracle.test.ts',
   'packages/headless/src/__tests__/work-paper-source-preserving-xlsx-export.test.ts',
