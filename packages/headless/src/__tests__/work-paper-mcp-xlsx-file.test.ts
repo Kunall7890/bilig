@@ -1,5 +1,6 @@
 import { exportXlsx } from '@bilig/excel-import'
 import { describe, expect, it } from 'vitest'
+import { strToU8, zipSync } from 'fflate'
 import { spawn } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -134,6 +135,25 @@ describe('WorkPaper MCP XLSX file bridge', () => {
           workpaperPath,
         }),
       ).not.toThrow()
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  it('rejects large XLSX WorkPaper MCP imports before WorkPaper materialization', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'bilig-workpaper-mcp-xlsx-large-'))
+    const xlsxPath = join(tempDir, 'large.xlsx')
+    const workpaperPath = join(tempDir, 'large.workpaper.json')
+
+    try {
+      writeFileSync(xlsxPath, largeValidXlsxBytes())
+
+      expect(() =>
+        createFileBackedWorkPaperMcpToolServerFromXlsxFile({
+          fromXlsxPath: xlsxPath,
+          workpaperPath,
+        }),
+      ).toThrow('small-workbook WorkPaper materialization path')
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
     }
@@ -339,6 +359,60 @@ describe('WorkPaper MCP XLSX file bridge', () => {
     }
   })
 })
+
+function largeValidXlsxBytes(): Uint8Array {
+  return zipSync(
+    {
+      '[Content_Types].xml': strToU8(
+        [
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+          '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">',
+          '<Default Extension="bin" ContentType="application/octet-stream"/>',
+          '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>',
+          '<Default Extension="xml" ContentType="application/xml"/>',
+          '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>',
+          '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>',
+          '</Types>',
+        ].join(''),
+      ),
+      '_rels/.rels': strToU8(
+        [
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+          '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+          '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>',
+          '</Relationships>',
+        ].join(''),
+      ),
+      'xl/workbook.xml': strToU8(
+        [
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+          '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+          '<sheets><sheet name="Data" sheetId="1" r:id="rId1"/></sheets>',
+          '</workbook>',
+        ].join(''),
+      ),
+      'xl/_rels/workbook.xml.rels': strToU8(
+        [
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+          '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+          '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>',
+          '</Relationships>',
+        ].join(''),
+      ),
+      'xl/worksheets/sheet1.xml': strToU8(
+        [
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+          '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+          '<dimension ref="A1"/>',
+          '<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>',
+          '</worksheet>',
+        ].join(''),
+      ),
+      'docProps/padding.bin': new Uint8Array(1_100_000),
+    },
+    { level: 0 },
+  )
+}
 
 function readCellValue(value: unknown, path: readonly string[]): number {
   let current: unknown = readStructuredContent(value)

@@ -689,9 +689,18 @@ describe('repository dependency policy', () => {
 
   it('keeps headless MCP XLSX file import on the file-backed importer boundary', () => {
     const mcpXlsxFile = readFileSync(join(repoRoot, 'packages/headless/src/work-paper-mcp-xlsx-file.ts'), 'utf8')
+    const guardIndex = mcpXlsxFile.indexOf('assertWorkPaperMcpXlsxImportWithinSmallWorkbookLimit(xlsxPath)')
+    const importIndex = mcpXlsxFile.indexOf('importXlsxFile(xlsxPath')
+    const workPaperIndex = mcpXlsxFile.indexOf('WorkPaper.buildFromSnapshot')
 
     expect(mcpXlsxFile).toContain("import { importXlsxFile } from './xlsx.js'")
+    expect(mcpXlsxFile).toContain('const workPaperMcpFromXlsxBytesLimit = 1_000_000')
+    expect(mcpXlsxFile).toContain('statSync(xlsxPath).size')
+    expect(mcpXlsxFile).toContain('small-workbook WorkPaper materialization path')
     expect(mcpXlsxFile).toContain('importXlsxFile(xlsxPath')
+    expect(guardIndex).toBeGreaterThan(-1)
+    expect(importIndex).toBeGreaterThan(guardIndex)
+    expect(workPaperIndex).toBeGreaterThan(guardIndex)
     expect(mcpXlsxFile).not.toContain('readFileSync(xlsxPath)')
     expect(mcpXlsxFile).not.toContain('importXlsx(new Uint8Array')
   })
