@@ -1,14 +1,10 @@
-import { readFileSync, statSync } from 'node:fs'
+import { statSync } from 'node:fs'
 import { basename } from 'node:path'
 
 import type { LiteralInput } from '@bilig/protocol'
 
 import { readXlsxFormulaCacheCellsFromWorkbookCore, type XlsxFormulaCacheScanResult } from './formula-cache-reader.js'
-import {
-  assertXlsxExternalWorkbookByteInputWithinLimit,
-  type ImportedWorkbookDiagnostics,
-  type XlsxExternalWorkbookInput,
-} from './external-workbook-types.js'
+import type { ImportedWorkbookDiagnostics, XlsxExternalWorkbookInput } from './external-workbook-types.js'
 import { writeSimpleXlsxWorkbook } from './simple-workbook-writer.js'
 import { closeStreamingNativeWorkbookCore, openStreamingNativeWorkbookCore } from './streaming-native-workbook-core.js'
 import { readXlsxWorkbookCells, type XlsxWorkbookCells } from './workbook-cell-reader.js'
@@ -328,7 +324,7 @@ export function runWorkbookCompatibilityReportCli(args: readonly string[], conte
     }
     const options = parseCliArgs(args, commandName)
     const fileName = options.mode === 'demo' ? 'bilig-workbook-compatibility-demo.xlsx' : basename(requireInputPath(options))
-    const externalWorkbooks = readExternalWorkbookInputs(options.externalWorkbooks)
+    const externalWorkbooks = readExternalWorkbookReferenceInputs(options.externalWorkbooks)
     const report =
       options.mode === 'demo'
         ? buildWorkbookCompatibilityReport(buildWorkbookCompatibilityDemoBytes(), {
@@ -673,12 +669,16 @@ function parseCliArgs(args: readonly string[], commandName: string): WorkbookCom
   }
 }
 
-function readExternalWorkbookInputs(workbooks: readonly CliExternalWorkbook[]): XlsxExternalWorkbookInput[] {
+const emptyExternalWorkbookReferenceBytes = new Uint8Array(0)
+
+function readExternalWorkbookReferenceInputs(workbooks: readonly CliExternalWorkbook[]): XlsxExternalWorkbookInput[] {
   return workbooks.map((workbook) => {
-    const byteLength = statSync(workbook.path).size
-    assertXlsxExternalWorkbookByteInputWithinLimit(byteLength, workbook.path)
+    const stats = statSync(workbook.path)
+    if (!stats.isFile()) {
+      throw new Error(`External workbook is not a file: ${workbook.path}`)
+    }
     return {
-      bytes: readFileSync(workbook.path),
+      bytes: emptyExternalWorkbookReferenceBytes,
       fileName: basename(workbook.path),
       ...(workbook.target ? { target: workbook.target } : {}),
     }

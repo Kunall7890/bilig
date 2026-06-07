@@ -529,21 +529,26 @@ process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXls
     )
   })
 
-  it('rejects large workbook compatibility external workbook CLI inputs', () => {
+  it('counts large workbook compatibility external workbook CLI inputs without byte hydration', () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'workbook-compatibility-external-limit-'))
     try {
       const externalPath = join(tempDir, 'large-external.xlsx')
       writeFileSync(externalPath, Buffer.alloc(1_000_001))
+      let stdout = ''
       let stderr = ''
 
       const exitCode = runWorkbookCompatibilityReportCli(['--demo', '--external-workbook', externalPath, '--json'], {
+        stdout: (text) => {
+          stdout += text
+        },
         stderr: (text) => {
           stderr += text
         },
       })
 
-      expect(exitCode).toBe(1)
-      expect(stderr).toContain('external workbook byte input is small-workbook only')
+      expect(exitCode).toBe(0)
+      expect(stderr).toBe('')
+      expect(requireRecord(requireRecord(JSON.parse(stdout))['input'])['externalWorkbookCount']).toBe(1)
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
     }
