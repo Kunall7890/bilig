@@ -30,6 +30,7 @@ const nativeXlsxExampleScripts = [
   'examples/recalc-bridge-workflows/smoke.mjs',
   'examples/recalc-bridge-workflows/stackoverflow-sheetjs-63085785.mjs',
 ] as const
+const nativeXlsxHeadlessFixtureTests = ['packages/headless/src/__tests__/work-paper-source-preserving-xlsx-export.test.ts'] as const
 const nativeXlsxExcelImportFixtureTests = [
   'packages/excel-import/src/__tests__/excel-import-array-formulas.test.ts',
   'packages/excel-import/src/__tests__/excel-import.fuzz.test.ts',
@@ -257,6 +258,12 @@ describe('repository dependency policy', () => {
 
   it('keeps recalculation bridge examples on @bilig/xlsx instead of SheetJS fixture edits', () => {
     const violations = nativeXlsxExampleScripts.filter((path) => hasRuntimeXlsxImport(readFileSync(join(repoRoot, path), 'utf8')))
+
+    expect(violations).toEqual([])
+  })
+
+  it('keeps source-preserving headless XLSX fixture builders on @bilig/xlsx instead of SheetJS', () => {
+    const violations = nativeXlsxHeadlessFixtureTests.filter((path) => hasRuntimeXlsxImport(readFileSync(join(repoRoot, path), 'utf8')))
 
     expect(violations).toEqual([])
   })

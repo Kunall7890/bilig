@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { readRuntimeImage } from '@bilig/core'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import {
   createFileImportedXlsxSourceReader,
   exportXlsx,
@@ -21,17 +21,21 @@ import { exportWorkPaperXlsxToFileAsync, importXlsxFile } from '../xlsx.js'
 const sourcePreservingOutputCalculationSettings = Symbol.for('bilig.sourcePreservingXlsxOutputCalculationSettings')
 
 function sourceWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    [1, null],
-    [2, null],
-  ])
-  sheet['B1'] = { t: 'n', f: 'A1+1', v: 2 }
-  sheet['B2'] = { t: 'n', f: 'A2+1', v: 3 }
-  sheet['!ref'] = 'A1:B2'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Data')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Data',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 1 },
+            { address: 'B1', row: 0, col: 1, formula: 'A1+1', value: 2 },
+            { address: 'A2', row: 1, col: 0, value: 2 },
+            { address: 'B2', row: 1, col: 1, formula: 'A2+1', value: 3 },
+          ],
+        },
+      ],
+    }),
+  )
   zip['customXml/item1.xml'] = strToU8('<keep source="true"/>')
   return zipSync(zip)
 }
