@@ -58,11 +58,11 @@
     "access": "public"
   },
   "scripts": {
-    "build": "pnpm --dir ../.. --filter xlsx-formula-recalc build && rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json",
+    "build": "pnpm --dir ../.. --filter bilig-workpaper build && rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json",
     "smoke": "node ./dist/cli.js --help"
   },
   "dependencies": {
-    "xlsx-formula-recalc": "workspace:*"
+    "bilig-workpaper": "workspace:*"
   },
   "engines": {
     "node": ">=22.0.0"

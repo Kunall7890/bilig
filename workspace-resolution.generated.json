@@ -167,6 +167,10 @@
     "packageDir": "packages/workpaper",
     "sourceEntry": "packages/workpaper/src/ai-sdk.ts"
   },
+  "@bilig/workpaper/evaluator": {
+    "packageDir": "packages/workpaper",
+    "sourceEntry": "packages/workpaper/src/evaluator.ts"
+  },
   "@bilig/workpaper/mcp": {
     "packageDir": "packages/workpaper",
     "sourceEntry": "packages/workpaper/src/mcp.ts"
@@ -219,6 +223,14 @@
     "packageDir": "packages/xlsx",
     "sourceEntry": "packages/xlsx/src/source-preserving-zip.ts"
   },
+  "@bilig/xlsx/streaming-native-inspect": {
+    "packageDir": "packages/xlsx",
+    "sourceEntry": "packages/xlsx/src/streaming-native-inspect.ts"
+  },
+  "@bilig/xlsx/streaming-native-recalc": {
+    "packageDir": "packages/xlsx",
+    "sourceEntry": "packages/xlsx/src/streaming-native-recalc.ts"
+  },
   "@bilig/xlsx/targeted-cell-reader": {
     "packageDir": "packages/xlsx",
     "sourceEntry": "packages/xlsx/src/targeted-cell-reader.ts"
@@ -238,6 +250,10 @@
   "bilig-workpaper": {
     "packageDir": "packages/bilig",
     "sourceEntry": "packages/bilig/src/index.ts"
+  },
+  "bilig-workpaper/evaluator": {
+    "packageDir": "packages/bilig",
+    "sourceEntry": "packages/bilig/src/evaluator.ts"
   },
   "bilig-workpaper/mcp": {
     "packageDir": "packages/bilig",

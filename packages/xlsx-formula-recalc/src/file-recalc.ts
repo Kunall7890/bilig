@@ -45,6 +45,6 @@ function nativeLiteralEdits(
 
 function legacyWorkPaperPathError(optionName: 'engine' | 'fallbackPolicy'): Error {
   return new Error(
-    `The primary @bilig/xlsx-formula-recalc file API no longer loads WorkPaper through ${optionName}; import @bilig/xlsx-formula-recalc/legacy-workpaper explicitly for the legacy bytes-in/bytes-out compatibility path.`,
+    `The primary @bilig/xlsx-formula-recalc file API no longer loads or exports WorkPaper through ${optionName}; use @bilig/workpaper for WorkPaper workflows.`,
   )
 }

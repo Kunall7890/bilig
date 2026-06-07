@@ -17,7 +17,12 @@ import {
   type XlsxTextPartPatch,
 } from '@bilig/xlsx'
 
-import type { XlsxFormulaRecalcCellValue, XlsxFormulaRecalcEdit, XlsxFormulaRecalcFileResult, XlsxFormulaRecalcResult } from './types.js'
+import type {
+  XlsxFormulaRecalcCellValue,
+  XlsxFormulaRecalcEdit,
+  XlsxFormulaRecalcFileResult,
+  XlsxFormulaRecalcResult,
+} from '@bilig/xlsx-formula-recalc'
 
 export { WorkPaper } from '@bilig/headless'
 export { exportXlsx, exportXlsxToFile, importXlsx } from '@bilig/headless/xlsx'
@@ -30,7 +35,7 @@ export type {
   XlsxFormulaRecalcEdit,
   XlsxFormulaRecalcFileResult,
   XlsxFormulaRecalcResult,
-} from './types.js'
+} from '@bilig/xlsx-formula-recalc'
 export {
   type StreamingNativeFormulaCounts,
   type XlsxFormulaRecalcNativeDiagnostics,

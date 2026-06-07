@@ -931,7 +931,7 @@ Options:
   --engine <auto|streaming-native>
                           Select the recalculation engine. File-to-file CLI defaults to auto, which tries streaming-native.
   --fallback-policy <error>
-                          Decide whether unsupported streaming-native jobs fail. WorkPaper requires the explicit legacy-workpaper import.
+                          Decide whether unsupported streaming-native jobs fail. WorkPaper bytes APIs live under @bilig/workpaper/xlsx.
   --max-rss-mb <n>        Fail streaming-native if resident memory exceeds this cap.
   --fail-on-stale <true|false>
                           With ${printGithubActionOption}, decide whether the generated workflow fails pull requests. Defaults to false.
@@ -966,7 +966,7 @@ Options:
   --engine <auto|streaming-native>
                           Select the recalculation engine. File-to-file CLI defaults to auto, which tries streaming-native.
   --fallback-policy <error>
-                          Decide whether unsupported streaming-native jobs fail. WorkPaper requires the explicit legacy-workpaper import.
+                          Decide whether unsupported streaming-native jobs fail. WorkPaper bytes APIs live under @bilig/workpaper/xlsx.
   --max-rss-mb <n>        Fail streaming-native if resident memory exceeds this cap.
   --external-workbook <path>
                           Supply a companion XLSX for external-link cache refresh. Repeatable.
@@ -989,6 +989,6 @@ function cliErrorSummary(error: unknown): Record<string, unknown> {
 
 function legacyWorkPaperCliPathError(optionName: 'engine' | 'fallbackPolicy'): Error {
   return new Error(
-    `The primary xlsx-recalc file CLI no longer loads WorkPaper through ${optionName}; import @bilig/xlsx-formula-recalc/legacy-workpaper explicitly for the legacy bytes-in/bytes-out compatibility path.`,
+    `The primary xlsx-recalc file CLI no longer loads or exports WorkPaper through ${optionName}; use @bilig/workpaper for WorkPaper workflows.`,
   )
 }

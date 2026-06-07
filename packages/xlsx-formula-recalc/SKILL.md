@@ -111,7 +111,7 @@ const result = await recalculateXlsxFileToFile('workbook.xlsx', {
 ```
 
 For the older bytes-in/bytes-out WorkPaper path, import from
-`@bilig/xlsx-formula-recalc/legacy-workpaper` and install `@bilig/headless`
+`@bilig/workpaper/xlsx` and install `@bilig/workpaper`
 explicitly.
 
 Prefer `exceljs-formula-recalc` when the caller already owns an ExcelJS

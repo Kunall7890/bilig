@@ -339,7 +339,7 @@ If another library already produced workbook bytes instead of a file path, use
 the explicit legacy compatibility import:
 
 ```ts
-import { recalculateXlsx } from '@bilig/xlsx-formula-recalc/legacy-workpaper'
+import { recalculateXlsx } from '@bilig/workpaper/xlsx'
 
 const output = await workbook.outputAsync('nodebuffer') // for example, from xlsx-populate
 
@@ -350,7 +350,7 @@ const result = recalculateXlsx(output, {
 
 For the full workbook API, use `@bilig/workpaper`. For the old bytes-in,
 bytes-out compatibility API, import from
-`@bilig/xlsx-formula-recalc/legacy-workpaper` and install `@bilig/headless`
+`@bilig/workpaper/xlsx` and install `@bilig/workpaper`
 explicitly.
 
 ## Common Boundaries

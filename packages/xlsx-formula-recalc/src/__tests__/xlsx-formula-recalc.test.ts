@@ -14,7 +14,7 @@ import {
   parseQualifiedA1,
   recalculateSheetjsWorkbook,
   recalculateXlsx,
-} from '../legacy-workpaper.js'
+} from 'bilig-workpaper/xlsx'
 import { recalculateXlsxFileToFile } from '../index.js'
 
 const officeRelationshipNamespace = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
@@ -189,7 +189,7 @@ describe('xlsx-formula-recalc', () => {
           engine: 'workpaper',
           reads: ['Data!U57152'],
         }),
-      ).rejects.toThrow(/legacy-workpaper/u)
+      ).rejects.toThrow(/@bilig\/workpaper/u)
       expect(existsSync(engineOutputPath)).toBe(false)
 
       await expect(
@@ -199,7 +199,7 @@ describe('xlsx-formula-recalc', () => {
           fallbackPolicy: 'workpaper',
           reads: ['Data!U57152'],
         }),
-      ).rejects.toThrow(/legacy-workpaper/u)
+      ).rejects.toThrow(/@bilig\/workpaper/u)
       expect(existsSync(fallbackOutputPath)).toBe(false)
     } finally {
       rmSync(tempDir, { recursive: true, force: true })

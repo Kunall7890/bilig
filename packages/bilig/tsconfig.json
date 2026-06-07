@@ -6,6 +6,12 @@
   },
   "references": [
     {
+      "path": "../protocol"
+    },
+    {
+      "path": "../xlsx"
+    },
+    {
       "path": "../excel-import"
     },
     {

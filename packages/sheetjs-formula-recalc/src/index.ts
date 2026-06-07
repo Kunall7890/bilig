@@ -6,11 +6,11 @@ export {
   parseQualifiedCellTarget,
   recalculateXlsx as recalculateSheetjsWorkbook,
   recalculateXlsx,
-} from 'xlsx-formula-recalc/legacy-workpaper'
+} from 'bilig-workpaper/xlsx'
 
 export type {
   XlsxFormulaRecalcCellValue,
   XlsxFormulaRecalcEdit,
   XlsxFormulaRecalcOptions,
   XlsxFormulaRecalcResult,
-} from 'xlsx-formula-recalc/legacy-workpaper'
+} from 'bilig-workpaper/xlsx'

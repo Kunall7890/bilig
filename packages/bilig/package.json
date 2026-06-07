@@ -89,6 +89,8 @@
   },
   "dependencies": {
     "@bilig/headless": "workspace:*",
+    "@bilig/protocol": "workspace:*",
+    "@bilig/xlsx": "workspace:*",
     "@bilig/xlsx-formula-recalc": "workspace:*"
   },
   "engines": {

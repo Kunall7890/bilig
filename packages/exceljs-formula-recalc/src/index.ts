@@ -1,24 +1,12 @@
-import {
-  parseQualifiedA1,
-  recalculateXlsx,
-  type XlsxFormulaRecalcOptions,
-  type XlsxFormulaRecalcResult,
-} from 'xlsx-formula-recalc/legacy-workpaper'
+import { parseQualifiedA1, recalculateXlsx, type XlsxFormulaRecalcOptions, type XlsxFormulaRecalcResult } from 'bilig-workpaper/xlsx'
 
-export {
-  WorkPaper,
-  exportXlsx,
-  importXlsx,
-  parseQualifiedA1,
-  parseQualifiedCellTarget,
-  recalculateXlsx,
-} from 'xlsx-formula-recalc/legacy-workpaper'
+export { WorkPaper, exportXlsx, importXlsx, parseQualifiedA1, parseQualifiedCellTarget, recalculateXlsx } from 'bilig-workpaper/xlsx'
 export type {
   XlsxFormulaRecalcCellValue,
   XlsxFormulaRecalcEdit,
   XlsxFormulaRecalcOptions,
   XlsxFormulaRecalcResult,
-} from 'xlsx-formula-recalc/legacy-workpaper'
+} from 'bilig-workpaper/xlsx'
 
 export interface ExceljsWorkbookLike {
   readonly xlsx: {

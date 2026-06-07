@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest'
 import { parse as parseYaml } from 'yaml'
 
 import { runXlsxFormulaRecalcCli, runXlsxFormulaRecalcCliAsync } from '../cli-api.js'
-import { WorkPaper, exportXlsx } from '../legacy-workpaper.js'
+import { WorkPaper, exportXlsx } from 'bilig-workpaper/xlsx'
 import { buildWorkbookCompatibilityReport, runWorkbookCompatibilityReportCli } from '../workbook-compatibility-report.js'
 
 const officeRelationshipNamespace = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
@@ -226,8 +226,8 @@ process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXls
       const summary = readCliErrorSummary(stdout)
       expect(summary.commandSucceeded).toBe(false)
       expect(summary.recalculationCompleted).toBe(false)
-      expect(summary.error).toContain('no longer loads WorkPaper')
-      expect(summary.error).toContain('legacy-workpaper')
+      expect(summary.error).toContain('no longer loads or exports WorkPaper')
+      expect(summary.error).toContain('@bilig/workpaper')
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
     }
@@ -257,8 +257,8 @@ process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXls
       const summary = readCliErrorSummary(stdout)
       expect(summary.commandSucceeded).toBe(false)
       expect(summary.recalculationCompleted).toBe(false)
-      expect(summary.error).toContain('no longer loads WorkPaper')
-      expect(summary.error).toContain('legacy-workpaper')
+      expect(summary.error).toContain('no longer loads or exports WorkPaper')
+      expect(summary.error).toContain('@bilig/workpaper')
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
     }

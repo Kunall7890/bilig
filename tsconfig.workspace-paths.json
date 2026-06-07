@@ -51,7 +51,6 @@
       "@bilig/xlsx-formula-recalc": ["./packages/bilig-xlsx-formula-recalc/src/index.ts"],
       "@bilig/xlsx-formula-recalc/cli-api": ["./packages/bilig-xlsx-formula-recalc/src/cli-api.ts"],
       "@bilig/xlsx-formula-recalc/evaluator": ["./packages/bilig-xlsx-formula-recalc/src/evaluator.ts"],
-      "@bilig/xlsx-formula-recalc/legacy-workpaper": ["./packages/bilig-xlsx-formula-recalc/src/legacy-workpaper.ts"],
       "@bilig/xlsx-formula-recalc/workbook-compatibility-report": [
         "./packages/bilig-xlsx-formula-recalc/src/workbook-compatibility-report.ts"
       ],
@@ -76,7 +75,6 @@
       "xlsx-formula-recalc": ["./packages/xlsx-formula-recalc/src/index.ts"],
       "xlsx-formula-recalc/cli-api": ["./packages/xlsx-formula-recalc/src/cli-api.ts"],
       "xlsx-formula-recalc/evaluator": ["./packages/xlsx-formula-recalc/src/evaluator-cli.ts"],
-      "xlsx-formula-recalc/legacy-workpaper": ["./packages/xlsx-formula-recalc/src/legacy-workpaper.ts"],
       "xlsx-formula-recalc/workbook-compatibility-report": ["./packages/xlsx-formula-recalc/src/workbook-compatibility-report.ts"]
     }
   }

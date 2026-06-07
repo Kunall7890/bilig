@@ -86,8 +86,7 @@ const result = await recalculateXlsxFileToFile('quote.xlsx', {
 ```
 
 The older bytes-in/bytes-out WorkPaper API is explicit legacy compatibility:
-import it from `@bilig/xlsx-formula-recalc/legacy-workpaper` and install
-`@bilig/headless` when that fallback is intentional.
+import it from `@bilig/workpaper/xlsx` and install `@bilig/workpaper` when that fallback is intentional.
 
 Do not claim this is a full Excel clone. Review `result.warnings` and reduce
 unsupported functions, external links, macros, and volatile formula cases into
