@@ -63,9 +63,15 @@ export interface XlsxSourceLiteralPatch {
   readonly preserveFormula?: boolean
 }
 
+export interface XlsxSourceTextPatch {
+  readonly path: string
+  patchText(text: string): string
+}
+
 export interface XlsxSourceLiteralPatchExportInput {
   readonly source: Uint8Array | XlsxSourceReader
   readonly patches: readonly XlsxSourceLiteralPatch[]
+  readonly textPatches?: readonly XlsxSourceTextPatch[]
   readonly sheetNames?: readonly string[]
   readonly workbookName?: string
 }
@@ -345,6 +351,42 @@ function deflatedPreparedEntry(bytes: Uint8Array): PreparedZipEntry {
   }
 }
 
+function writeDeflatedPreparedEntryFile(bytes: Uint8Array, compressedPath: string): FilePreparedZipEntry {
+  const prepared = deflatedPreparedEntry(bytes)
+  const fd = openSync(compressedPath, 'w')
+  try {
+    for (const chunk of prepared.compressedChunks) {
+      writeAllSync(fd, chunk)
+    }
+  } finally {
+    closeSync(fd)
+  }
+  return {
+    compressedPath,
+    compressedSize: prepared.compressedSize,
+    uncompressedSize: prepared.uncompressedSize,
+    crc: prepared.crc,
+  }
+}
+
+function applyTextPartPatches(
+  zip: SourcePreservingZip,
+  patches: readonly XlsxSourceTextPatch[] | undefined,
+  prepare: (path: string, text: string) => void,
+): void {
+  for (const patch of patches ?? []) {
+    const text = getZipText(zip, patch.path)
+    if (text === null) {
+      continue
+    }
+    const nextText = patch.patchText(text)
+    if (nextText === text) {
+      continue
+    }
+    prepare(patch.path, nextText)
+  }
+}
+
 function tryPrepareStreamingPatchedWorksheetEntry(
   zip: SourcePreservingZip,
   sheetPath: string,
@@ -568,17 +610,19 @@ function ensureWorkbookRecalculation(zip: Record<string, Uint8Array>): boolean {
 function normalizedPatchInput(input: XlsxSourceLiteralPatchExportInput): {
   readonly source: Uint8Array | XlsxSourceReader
   readonly patches: readonly XlsxSourceLiteralPatch[]
+  readonly textPatches: readonly XlsxSourceTextPatch[]
   readonly sheetNames: readonly string[]
 } {
   return {
     source: input.source,
     patches: input.patches,
+    textPatches: input.textPatches ?? [],
     sheetNames: input.sheetNames ?? uniquePatchedSheetNames(input.patches),
   }
 }
 
 export function exportXlsxSourceLiteralPatches(input: XlsxSourceLiteralPatchExportInput): Uint8Array {
-  const { source, patches, sheetNames } = normalizedPatchInput(input)
+  const { source, patches, textPatches, sheetNames } = normalizedPatchInput(input)
   const zip = readSourcePreservingZip(source)
   const preparedEntries = new Map<string, PreparedZipEntry>()
   const sheetPathsByName = new Map(workbookSheetPathEntriesFromSource(zip, sheetNames).map((entry) => [entry.name, entry.path]))
@@ -607,6 +651,9 @@ export function exportXlsxSourceLiteralPatches(input: XlsxSourceLiteralPatchExpo
     }
     preparedEntries.set(sheetPath, deflatedPreparedEntry(new TextEncoder().encode(patchedXml)))
   }
+  applyTextPartPatches(zip, textPatches, (path, text) => {
+    preparedEntries.set(path, deflatedPreparedEntry(new TextEncoder().encode(text)))
+  })
   removeCalcChain(zip)
   if (!ensureWorkbookRecalculation(zip)) {
     throw new Error('Unable to update XLSX workbook recalculation settings')
@@ -639,7 +686,7 @@ export function exportXlsxSourceLiteralPatchesToFile(input: XlsxSourceLiteralPat
 export async function exportXlsxSourceLiteralPatchesToFileAsync(
   input: XlsxSourceLiteralPatchFileExportInput,
 ): Promise<XlsxSourceLiteralPatchFileExportResult> {
-  const { source, patches, sheetNames } = normalizedPatchInput(input)
+  const { source, patches, textPatches, sheetNames } = normalizedPatchInput(input)
   const zip = readSourcePreservingZip(source)
   const preparedEntries = new Map<string, FilePreparedZipEntry>()
   const preparedEntryPaths: string[] = []
@@ -665,6 +712,12 @@ export async function exportXlsxSourceLiteralPatchesToFileAsync(
     preparedEntryPaths.push(preparedEntryPath)
     preparedEntries.set(sheetPath, preparedEntry)
   }
+  applyTextPartPatches(zip, textPatches, (path, text) => {
+    const preparedEntryPath = `${input.outputPath}.${randomUUID()}.entry.tmp`
+    const preparedEntry = writeDeflatedPreparedEntryFile(new TextEncoder().encode(text), preparedEntryPath)
+    preparedEntryPaths.push(preparedEntryPath)
+    preparedEntries.set(path, preparedEntry)
+  })
   removeCalcChain(zip)
   if (!ensureWorkbookRecalculation(zip)) {
     cleanupTemporaryFiles(preparedEntryPaths)

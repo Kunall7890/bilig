@@ -413,6 +413,14 @@ describe('xlsx-formula-recalc native aggregates', () => {
       expect(sheetXml).toContain('<c r="C2"><f>SUM([1]QTR_detailed!$R130:$T130)/10^6</f><v>120</v></c>')
       expect(sheetXml).toContain('<c r="D2"><f>+\'[1]BS &amp; Op Stat\'!$D$5</f><v>2024</v></c>')
       expect(sheetXml).toContain('<c r="E2"><f>SUM([1]QTR_detailed!$B130,[1]QTR_detailed!$T130,)/10^6</f><v>2050</v></c>')
+      const externalLinkXml = strFromU8(unzipSync(outputBytes)['xl/externalLinks/externalLink1.xml'] ?? new Uint8Array())
+      expect(externalLinkXml).toContain('<cell r="B130"><v>2000000000</v></cell>')
+      expect(externalLinkXml).toContain('<cell r="R130"><v>30000000</v></cell>')
+      expect(externalLinkXml).toContain('<cell r="S130"><v>40000000</v></cell>')
+      expect(externalLinkXml).toContain('<cell r="T130"><v>50000000</v></cell>')
+      expect(externalLinkXml).toContain('<cell r="D5"><v>2024</v></cell>')
+      expect(externalLinkXml).not.toContain('<cell r="B130"><v>1460216076.6600001</v></cell>')
+      expect(externalLinkXml).not.toContain('<cell r="R130"><v>99434495</v></cell>')
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
     }

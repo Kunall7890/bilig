@@ -1,14 +1,15 @@
-import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
+import { ErrorCode, formatErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 
-import { decodeCellAddress } from './address.js'
+import { decodeCellAddress, encodeCellAddress } from './address.js'
 import type {
   XlsxExternalWorkbookHydrationDiagnostics,
   XlsxExternalWorkbookHydrationMatchKind,
   XlsxExternalWorkbookHydrationReferenceDiagnostic,
   XlsxExternalWorkbookInput,
 } from './external-workbook-types.js'
+import type { XlsxSourceTextPatch } from './source-preserving-literal-patches.js'
 import type { NativeFormulaCell, PendingCellValue, SheetScanState } from './streaming-native-recalc.js'
-import { readXmlAttribute } from './xml.js'
+import { escapeXmlAttribute, escapeXmlText, readXmlAttribute } from './xml.js'
 import { workbookSheetPathEntriesForSource } from './workbook-sheet-paths.js'
 import { getZipText, normalizeZipPath, readXlsxZipEntries, type XlsxZipEntries } from './zip-reader.js'
 
@@ -36,6 +37,7 @@ interface ResolvedExternalWorkbookInput {
 
 export interface StreamingNativeExternalCachedRows {
   readonly rowsByAlias: ReadonlyMap<string, ReadonlyMap<number, Map<number, PendingCellValue>>>
+  readonly textPatches: readonly XlsxSourceTextPatch[]
   readonly warnings: readonly string[]
   readonly diagnostics?: XlsxExternalWorkbookHydrationDiagnostics
 }
@@ -79,7 +81,7 @@ export function readStreamingNativeExternalCachedRowsByAlias(
 ): StreamingNativeExternalCachedRows {
   const targetsByAlias = collectExternalReferenceScanTargets(sheetScans, resolveFormulaSource)
   if (targetsByAlias.size === 0) {
-    return { rowsByAlias: new Map(), warnings: [] }
+    return { rowsByAlias: new Map(), textPatches: [], warnings: [] }
   }
   const externalLinkReferencesByBookIndex = readExternalLinkReferencesByBookIndex(zip)
   const targetsByBookIndex = new Map<number, ExternalReferenceScanTarget[]>()
@@ -109,11 +111,12 @@ export function readStreamingNativeExternalCachedRowsByAlias(
     }
     return {
       rowsByAlias: output,
+      textPatches: companionRows.textPatches,
       warnings: companionRows.warnings,
       ...(companionRows.diagnostics === undefined ? {} : { diagnostics: companionRows.diagnostics }),
     }
   }
-  return { rowsByAlias: output, warnings: [] }
+  return { rowsByAlias: output, textPatches: [], warnings: [] }
 }
 
 export function isStreamingNativeExternalReferenceAlias(sheetName: string): boolean {
@@ -300,6 +303,7 @@ function readCompanionExternalCachedRowsByAlias(
   targetsByBookIndex: ReadonlyMap<number, readonly ExternalReferenceScanTarget[]>,
 ): StreamingNativeExternalCachedRows {
   const output = new Map<string, ReadonlyMap<number, Map<number, PendingCellValue>>>()
+  const textPatches: XlsxSourceTextPatch[] = []
   const referenceDiagnostics: XlsxExternalWorkbookHydrationReferenceDiagnostic[] = []
   const refreshedBookIndices: number[] = []
   let refreshedSheetCount = 0
@@ -334,7 +338,7 @@ function readCompanionExternalCachedRowsByAlias(
     const companionRows = readCompanionWorkbookCachedRowsByAlias(resolved.input, bookIndex, targets)
     let referenceSheetCount = 0
     let referenceCellCount = 0
-    for (const [alias, rows] of companionRows.entries()) {
+    for (const [alias, rows] of companionRows.rowsByAlias.entries()) {
       output.set(alias, rows)
       referenceSheetCount += 1
       referenceCellCount += countExternalCachedCells(rows)
@@ -354,6 +358,10 @@ function readCompanionExternalCachedRowsByAlias(
         ...(resolved.input.target === undefined ? {} : { matchedTarget: resolved.input.target }),
       })
       continue
+    }
+    const textPatch = externalLinkCacheTextPatch(reference, companionRows.rowsBySheetName)
+    if (textPatch) {
+      textPatches.push(textPatch)
     }
     refreshedBookIndices.push(bookIndex)
     refreshedSheetCount += referenceSheetCount
@@ -379,6 +387,7 @@ function readCompanionExternalCachedRowsByAlias(
   ]
   return {
     rowsByAlias: output,
+    textPatches,
     warnings,
     diagnostics: {
       externalWorkbookCount: externalWorkbooks.length,
@@ -448,15 +457,21 @@ function countExternalCachedCells(rows: ReadonlyMap<number, ReadonlyMap<number, 
   return count
 }
 
+interface CompanionWorkbookCachedRows {
+  readonly rowsByAlias: ReadonlyMap<string, ReadonlyMap<number, Map<number, PendingCellValue>>>
+  readonly rowsBySheetName: ReadonlyMap<string, ReadonlyMap<number, Map<number, PendingCellValue>>>
+}
+
 function readCompanionWorkbookCachedRowsByAlias(
   input: XlsxExternalWorkbookInput,
   bookIndex: number,
   targets: readonly ExternalReferenceScanTarget[],
-): ReadonlyMap<string, ReadonlyMap<number, Map<number, PendingCellValue>>> {
+): CompanionWorkbookCachedRows {
   const zip = readXlsxZipEntries(toUint8Array(input.bytes))
   const sheetsByName = new Map(workbookSheetPathEntriesForSource(zip).map((sheet) => [sheetNameKey(sheet.name), sheet]))
   const sharedStrings = readSharedStrings(zip)
   const output = new Map<string, ReadonlyMap<number, Map<number, PendingCellValue>>>()
+  const rowsBySheetName = new Map<string, ReadonlyMap<number, Map<number, PendingCellValue>>>()
   for (const target of targets) {
     const sheet = sheetsByName.get(sheetNameKey(target.sheetName))
     const sheetXml = sheet ? getZipText(zip, sheet.path) : null
@@ -466,9 +481,179 @@ function readCompanionWorkbookCachedRowsByAlias(
     const rows = readExternalCachedRows(sheetXml, target.cellsByRow, true, sharedStrings)
     if (rows.size > 0) {
       output.set(externalReferenceAlias(bookIndex, target.sheetName), rows)
+      rowsBySheetName.set(target.sheetName, rows)
     }
   }
-  return output
+  return { rowsByAlias: output, rowsBySheetName }
+}
+
+function externalLinkCacheTextPatch(
+  reference: ExternalLinkReference,
+  rowsBySheetName: ReadonlyMap<string, ReadonlyMap<number, Map<number, PendingCellValue>>>,
+): XlsxSourceTextPatch | null {
+  const rowsBySheetId = new Map<number, ReadonlyMap<number, Map<number, PendingCellValue>>>()
+  for (const [sheetName, rows] of rowsBySheetName.entries()) {
+    const sheetId = reference.sheetNames.findIndex((candidate) => sheetNameKey(candidate) === sheetNameKey(sheetName))
+    if (sheetId >= 0) {
+      rowsBySheetId.set(sheetId, rows)
+    }
+  }
+  return rowsBySheetId.size === 0
+    ? null
+    : {
+        path: reference.path,
+        patchText: (text) => patchExternalLinkCacheXml(text, rowsBySheetId),
+      }
+}
+
+function patchExternalLinkCacheXml(
+  externalLinkXml: string,
+  rowsBySheetId: ReadonlyMap<number, ReadonlyMap<number, Map<number, PendingCellValue>>>,
+): string {
+  const patchedSheetIds = new Set<number>()
+  let nextXml = externalLinkXml.replace(
+    /<((?:[A-Za-z_][\w.-]*:)?sheetData)\b((?:[^/>"']|"[^"]*"|'[^']*')*)(?:\/>|>([\s\S]*?)<\/\1>)/gu,
+    (match: string, tagName: string, attributes: string, body: string | undefined) => {
+      const sheetIdText = readXmlAttribute(attributes, 'sheetId')
+      const sheetId = sheetIdText === null ? Number.NaN : Number(sheetIdText)
+      const rows = Number.isSafeInteger(sheetId) ? rowsBySheetId.get(sheetId) : undefined
+      if (!rows) {
+        return match
+      }
+      patchedSheetIds.add(sheetId)
+      return `<${tagName}${attributes}>${patchExternalSheetDataRows(body ?? '', rows)}</${tagName}>`
+    },
+  )
+  const missingSheetDataXml = [...rowsBySheetId.entries()]
+    .filter(([sheetId]) => !patchedSheetIds.has(sheetId))
+    .toSorted((left, right) => left[0] - right[0])
+    .map(([sheetId, rows]) => `<sheetData sheetId="${String(sheetId)}">${externalCacheRowsXml(rows)}</sheetData>`)
+    .join('')
+  if (missingSheetDataXml.length === 0) {
+    return nextXml
+  }
+  if (/<(?:[A-Za-z_][\w.-]*:)?sheetDataSet\b/u.test(nextXml)) {
+    return nextXml.replace(/<\/((?:[A-Za-z_][\w.-]*:)?sheetDataSet)>/u, `${missingSheetDataXml}</$1>`)
+  }
+  nextXml = nextXml.replace(/<\/((?:[A-Za-z_][\w.-]*:)?externalBook)>/u, `<sheetDataSet>${missingSheetDataXml}</sheetDataSet></$1>`)
+  return nextXml
+}
+
+function patchExternalSheetDataRows(sheetDataBody: string, rows: ReadonlyMap<number, ReadonlyMap<number, PendingCellValue>>): string {
+  const patchedRows = new Set<number>()
+  let nextBody = sheetDataBody.replace(
+    /<((?:[A-Za-z_][\w.-]*:)?row)\b((?:[^>"']|"[^"]*"|'[^']*')*)(?:\/>|>([\s\S]*?)<\/\1>)/gu,
+    (match: string, tagName: string, attributes: string, body: string | undefined) => {
+      const rowText = readXmlAttribute(attributes, 'r')
+      const rowNumber = rowText === null ? Number.NaN : Number(rowText)
+      const row = Number.isSafeInteger(rowNumber) && rowNumber > 0 ? rowNumber - 1 : Number.NaN
+      const cells = Number.isSafeInteger(row) ? rows.get(row) : undefined
+      if (!cells) {
+        return match
+      }
+      patchedRows.add(row)
+      return `<${tagName}${attributes}>${patchExternalRowCells(row, body ?? '', cells)}</${tagName}>`
+    },
+  )
+  for (const [row, cells] of [...rows.entries()].toSorted((left, right) => left[0] - right[0])) {
+    if (!patchedRows.has(row)) {
+      nextBody = insertExternalCacheRowXml(nextBody, row, cells)
+    }
+  }
+  return nextBody
+}
+
+function patchExternalRowCells(row: number, rowBody: string, cells: ReadonlyMap<number, PendingCellValue>): string {
+  const patchedCols = new Set<number>()
+  let nextBody = rowBody.replace(
+    /<((?:[A-Za-z_][\w.-]*:)?(?:cell|c))\b((?:[^>"']|"[^"]*"|'[^']*')*)(?:\/>|>([\s\S]*?)<\/\1>)/gu,
+    (match: string, _tagName: string, attributes: string) => {
+      const addressText = readXmlAttribute(attributes, 'r')
+      let address
+      try {
+        address = addressText ? decodeCellAddress(addressText.replaceAll('$', '')) : undefined
+      } catch {
+        address = undefined
+      }
+      if (!address) {
+        return match
+      }
+      const value = cells.get(address.c)
+      if (value === undefined) {
+        return match
+      }
+      patchedCols.add(address.c)
+      return externalCacheCellXml(row, address.c, value)
+    },
+  )
+  for (const [col, value] of [...cells.entries()].toSorted((left, right) => left[0] - right[0])) {
+    if (!patchedCols.has(col)) {
+      nextBody = insertExternalCacheCellXml(nextBody, row, col, value)
+    }
+  }
+  return nextBody
+}
+
+function insertExternalCacheRowXml(sheetDataBody: string, row: number, cells: ReadonlyMap<number, PendingCellValue>): string {
+  const rowXml = `<row r="${String(row + 1)}">${externalCacheCellsXml(row, cells)}</row>`
+  for (const match of sheetDataBody.matchAll(/<((?:[A-Za-z_][\w.-]*:)?row)\b((?:[^>"']|"[^"]*"|'[^']*')*)(?:\/>|>[\s\S]*?<\/\1>)/gu)) {
+    const rowText = readXmlAttribute(match[2] ?? '', 'r')
+    const rowNumber = rowText === null ? Number.NaN : Number(rowText)
+    if (Number.isSafeInteger(rowNumber) && rowNumber > row + 1) {
+      return `${sheetDataBody.slice(0, match.index)}${rowXml}${sheetDataBody.slice(match.index)}`
+    }
+  }
+  return `${sheetDataBody}${rowXml}`
+}
+
+function insertExternalCacheCellXml(rowBody: string, row: number, col: number, value: PendingCellValue): string {
+  const cellXml = externalCacheCellXml(row, col, value)
+  for (const match of rowBody.matchAll(/<((?:[A-Za-z_][\w.-]*:)?(?:cell|c))\b((?:[^>"']|"[^"]*"|'[^']*')*)(?:\/>|>[\s\S]*?<\/\1>)/gu)) {
+    const addressText = readXmlAttribute(match[2] ?? '', 'r')
+    let address
+    try {
+      address = addressText ? decodeCellAddress(addressText.replaceAll('$', '')) : undefined
+    } catch {
+      address = undefined
+    }
+    if (address && address.c > col) {
+      return `${rowBody.slice(0, match.index)}${cellXml}${rowBody.slice(match.index)}`
+    }
+  }
+  return `${rowBody}${cellXml}`
+}
+
+function externalCacheRowsXml(rows: ReadonlyMap<number, ReadonlyMap<number, PendingCellValue>>): string {
+  return [...rows.entries()]
+    .toSorted((left, right) => left[0] - right[0])
+    .map(([row, cells]) => `<row r="${String(row + 1)}">${externalCacheCellsXml(row, cells)}</row>`)
+    .join('')
+}
+
+function externalCacheCellsXml(row: number, cells: ReadonlyMap<number, PendingCellValue>): string {
+  return [...cells.entries()]
+    .toSorted((left, right) => left[0] - right[0])
+    .map(([col, value]) => externalCacheCellXml(row, col, value))
+    .join('')
+}
+
+function externalCacheCellXml(row: number, col: number, value: PendingCellValue): string {
+  const address = escapeXmlAttribute(encodeCellAddress({ r: row, c: col }))
+  if ('kind' in value) {
+    return `<cell r="${address}"/>`
+  }
+  switch (value.tag) {
+    case ValueTag.Empty:
+      return `<cell r="${address}"/>`
+    case ValueTag.Number:
+      return Number.isFinite(value.value) ? `<cell r="${address}"><v>${String(value.value)}</v></cell>` : `<cell r="${address}"/>`
+    case ValueTag.Boolean:
+      return `<cell r="${address}" t="b"><v>${value.value ? '1' : '0'}</v></cell>`
+    case ValueTag.String:
+      return `<cell r="${address}" t="str"><v>${escapeXmlText(value.value)}</v></cell>`
+    case ValueTag.Error:
+      return `<cell r="${address}" t="e"><v>${escapeXmlText(formatErrorCode(value.code))}</v></cell>`
+  }
 }
 
 function readSharedStrings(zip: XlsxZipEntries): readonly string[] {

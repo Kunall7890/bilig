@@ -319,6 +319,7 @@ export async function recalculateXlsxFileToFileStreamingNative(
           await exportXlsxSourceLiteralPatchesToFileAsync({
             source,
             patches,
+            textPatches: externalCache.textPatches,
             sheetNames: patchedSheetNames,
             outputPath: options.outputPath,
           })
