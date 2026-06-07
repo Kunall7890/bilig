@@ -9,11 +9,16 @@ const importedXlsxSourceBytes = Symbol.for('bilig.importedXlsxSourceBytes')
 const importedXlsxSourceCellPatches = Symbol.for('bilig.importedXlsxSourceCellPatches')
 const tempSourceDirectoryName = 'bilig-imported-xlsx-sources'
 const tempSourceWriteChunkSize = 1024 * 1024
+export const defaultImportedXlsxSourceReadBytesLimit = 1_000_000
 
 export interface ImportedXlsxSourceReader {
   readonly byteLength: number
   readBytes(): Uint8Array
   release?(): void
+}
+
+export interface ImportedXlsxSourceReaderOptions {
+  readonly maxReadBytes?: number | false
 }
 
 export type ImportedXlsxSourceReference = Uint8Array | ImportedXlsxSourceReader
@@ -91,12 +96,15 @@ export function detachImportedXlsxSourceBytes(snapshot: WorkbookSnapshot): boole
   return true
 }
 
-export function createTempFileImportedXlsxSourceReader(bytes: Uint8Array): ImportedXlsxSourceReader & XlsxZipByteSource {
+export function createTempFileImportedXlsxSourceReader(
+  bytes: Uint8Array,
+  options: ImportedXlsxSourceReaderOptions = {},
+): ImportedXlsxSourceReader & XlsxZipByteSource {
   const directory = join(tmpdir(), tempSourceDirectoryName)
   mkdirSync(directory, { recursive: true })
   const path = join(directory, `${randomUUID()}.xlsx`)
   writeTempSourceBytes(path, bytes)
-  const reader = new FileImportedXlsxSourceReader(path, bytes.byteLength, true)
+  const reader = new FileImportedXlsxSourceReader(path, bytes.byteLength, true, options)
   tempFileSourceFinalizer?.register(reader, path, reader)
   return reader
 }
@@ -104,8 +112,9 @@ export function createTempFileImportedXlsxSourceReader(bytes: Uint8Array): Impor
 export function createFileImportedXlsxSourceReader(
   path: string,
   byteLength = statSync(path).size,
+  options: ImportedXlsxSourceReaderOptions = {},
 ): ImportedXlsxSourceReader & XlsxZipByteSource {
-  return new FileImportedXlsxSourceReader(path, byteLength, false)
+  return new FileImportedXlsxSourceReader(path, byteLength, false, options)
 }
 
 function writeTempSourceBytes(path: string, bytes: Uint8Array): void {
@@ -125,19 +134,37 @@ function writeTempSourceBytes(path: string, bytes: Uint8Array): void {
 
 class FileImportedXlsxSourceReader implements ImportedXlsxSourceReader, XlsxZipByteSource {
   private released = false
+  private readonly maxReadBytes: number | false
 
   constructor(
     private readonly path: string,
     readonly byteLength: number,
     private readonly deleteOnRelease: boolean,
-  ) {}
+    options: ImportedXlsxSourceReaderOptions,
+  ) {
+    this.maxReadBytes = options.maxReadBytes ?? defaultImportedXlsxSourceReadBytesLimit
+  }
 
   readBytes(): Uint8Array {
     if (this.released || !existsSync(this.path)) {
       return new Uint8Array(0)
     }
+    this.assertReadBytesWithinLimit()
     const bytes = readFileSync(this.path)
     return bytes.byteLength === this.byteLength ? bytes : new Uint8Array(bytes)
+  }
+
+  private assertReadBytesWithinLimit(): void {
+    if (this.maxReadBytes === false || this.byteLength <= this.maxReadBytes) {
+      return
+    }
+    throw new Error(
+      [
+        `Imported XLSX source readBytes is small-workbook only: ${this.path} is ${String(this.byteLength)} bytes`,
+        `limit is ${String(this.maxReadBytes)} bytes`,
+        'Use readRange/readRangeInto or a file-backed native XLSX API for large workbooks.',
+      ].join('; '),
+    )
   }
 
   readRange(start: number, end: number): Uint8Array {

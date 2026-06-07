@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs'
+import { closeSync, openSync, writeFileSync, writeSync } from 'node:fs'
 import { unzipSync, zipSync } from 'fflate'
 import { decodeCellAddress, decodeCellRange, encodeCellAddress, encodeCellRange } from '@bilig/xlsx'
 import type {
@@ -71,7 +71,12 @@ import {
   worksheetCellElementPattern,
   worksheetCellOpeningTagPattern,
 } from './xlsx-style-xml.js'
-import { readImportedXlsxSourceBytes, readImportedXlsxSourceCellPatches, readImportedXlsxSourceReference } from './xlsx-source-bytes.js'
+import {
+  readImportedXlsxSourceBytes,
+  readImportedXlsxSourceCellPatches,
+  readImportedXlsxSourceReference,
+  type ImportedXlsxSourceReference,
+} from './xlsx-source-bytes.js'
 import {
   exportXlsxSourceLiteralPatches,
   exportXlsxSourceLiteralPatchesToFileAsync,
@@ -924,13 +929,59 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
 
 export function exportXlsxToFile(snapshot: WorkbookSnapshot, outputPath: string): XlsxSourceLiteralPatchFileExportResult {
   const importedSource = readImportedXlsxSourceReference(snapshot)
-  if (importedSource !== undefined && readImportedXlsxSourceCellPatches(snapshot).length > 0) {
-    const sourcePreservingResult = tryExportSourcePreservingXlsxToFile(snapshot, importedSource, outputPath)
-    if (sourcePreservingResult !== null) {
-      return sourcePreservingResult
+  if (importedSource !== undefined) {
+    const patches = readImportedXlsxSourceCellPatches(snapshot)
+    if (patches.length > 0) {
+      const sourcePreservingResult = tryExportSourcePreservingXlsxToFile(snapshot, importedSource, outputPath)
+      if (sourcePreservingResult !== null) {
+        return sourcePreservingResult
+      }
+    } else {
+      const copiedSourceResult = tryCopyImportedXlsxSourceToFile(importedSource, outputPath)
+      if (copiedSourceResult !== null) {
+        return copiedSourceResult
+      }
     }
   }
   const bytes = exportXlsx(snapshot)
   writeFileSync(outputPath, bytes)
   return { bytesWritten: bytes.byteLength }
+}
+
+const importedSourceCopyChunkSize = 1024 * 1024
+type ImportedXlsxSourceRangeReader = Exclude<ImportedXlsxSourceReference, Uint8Array> & {
+  readRange(start: number, end: number): Uint8Array
+}
+
+function tryCopyImportedXlsxSourceToFile(
+  source: ImportedXlsxSourceReference,
+  outputPath: string,
+): XlsxSourceLiteralPatchFileExportResult | null {
+  if (source instanceof Uint8Array) {
+    writeFileSync(outputPath, source)
+    return { bytesWritten: source.byteLength }
+  }
+  if (!hasImportedXlsxSourceReadRange(source)) {
+    return null
+  }
+  const fd = openSync(outputPath, 'w')
+  let bytesWritten = 0
+  try {
+    for (let offset = 0; offset < source.byteLength; offset += importedSourceCopyChunkSize) {
+      const end = Math.min(source.byteLength, offset + importedSourceCopyChunkSize)
+      const chunk = source.readRange(offset, end)
+      let chunkOffset = 0
+      while (chunkOffset < chunk.byteLength) {
+        chunkOffset += writeSync(fd, chunk, chunkOffset, chunk.byteLength - chunkOffset)
+      }
+      bytesWritten += chunk.byteLength
+    }
+  } finally {
+    closeSync(fd)
+  }
+  return { bytesWritten }
+}
+
+function hasImportedXlsxSourceReadRange(source: Exclude<ImportedXlsxSourceReference, Uint8Array>): source is ImportedXlsxSourceRangeReader {
+  return typeof Reflect.get(source, 'readRange') === 'function'
 }

@@ -83,8 +83,12 @@ export {
   normalizeWorkbookImportContentType,
 } from './workbook-import-content-types.js'
 export type { ExcelWorkbookImportContentType, WorkbookImportContentType } from './workbook-import-content-types.js'
-export { createFileImportedXlsxSourceReader, createTempFileImportedXlsxSourceReader } from './xlsx-source-bytes.js'
-export type { ImportedXlsxSourceReader } from './xlsx-source-bytes.js'
+export {
+  createFileImportedXlsxSourceReader,
+  createTempFileImportedXlsxSourceReader,
+  defaultImportedXlsxSourceReadBytesLimit,
+} from './xlsx-source-bytes.js'
+export type { ImportedXlsxSourceReader, ImportedXlsxSourceReaderOptions } from './xlsx-source-bytes.js'
 export { importXlsxFromZipByteSource } from './xlsx-byte-source-import.js'
 export type { XlsxByteSourceImportOptions } from './xlsx-byte-source-import.js'
 
@@ -482,7 +486,9 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string, op
   const ownedSource: OwnedXlsxSourceBytes = { bytes: bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes) }
   const sourceByteLength = ownedSource.bytes.byteLength
   let spooledUntouchedExportSource: (ImportedXlsxSourceReader & XlsxZipByteSource) | undefined =
-    sourceByteLength > largeSimpleInMemoryUntouchedExportSourceLimit ? createTempFileImportedXlsxSourceReader(ownedSource.bytes) : undefined
+    sourceByteLength > largeSimpleInMemoryUntouchedExportSourceLimit
+      ? createTempFileImportedXlsxSourceReader(ownedSource.bytes, { maxReadBytes: spooledSourceReadBytesLimitFor(options) })
+      : undefined
   let preReleasedOwnedSourceEvidence: ReturnType<typeof releaseOwnedXlsxSourceBytes> | undefined
   const workbookZip = spooledUntouchedExportSource
     ? readValidXlsxZipContainerFromByteSource(spooledUntouchedExportSource)
@@ -594,6 +600,17 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string, op
     spooledUntouchedExportSource = undefined
     throw error
   }
+}
+
+function spooledSourceReadBytesLimitFor(options: XlsxImportOptions): number | false {
+  if (options.limits === false) {
+    return false
+  }
+  if (options.limits === undefined) {
+    return denseSheetJsByteThreshold
+  }
+  const maxSourceBytes = options.limits.maxMaterializedSourceBytes
+  return maxSourceBytes === undefined || !Number.isFinite(maxSourceBytes) ? false : maxSourceBytes
 }
 
 export function importXlsm(bytes: Uint8Array | ArrayBuffer, fileName: string): ImportedWorkbook {

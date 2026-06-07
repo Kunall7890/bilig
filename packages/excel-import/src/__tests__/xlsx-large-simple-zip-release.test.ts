@@ -1,8 +1,11 @@
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 
 import { importXlsx } from '../index.js'
-import { exportXlsx } from '../xlsx-export.js'
+import { exportXlsx, exportXlsxToFile } from '../xlsx-export.js'
 import { importXlsxFromZipByteSource } from '../xlsx-byte-source-import.js'
 import { tryInspectLargeSimpleXlsxHeadless } from '../xlsx-large-simple-headless-inspect.js'
 import { tryImportLargeSimpleXlsx } from '../xlsx-large-simple-import.js'
@@ -140,45 +143,61 @@ describe('large simple XLSX import ZIP ownership', () => {
     )
   })
 
-  it('spools large public import source bytes while preserving unchanged export', () => {
+  it('spools large public import source bytes and preserves unchanged file export without byte materialization', () => {
     const bytes = buildSharedStringWorkbook({
       'docProps/padding.bin': deterministicBytes(9_000_000),
     })
+    const tempDir = mkdtempSync(join(tmpdir(), 'bilig-xlsx-large-source-export-'))
+    const outputPath = join(tempDir, 'exported.xlsx')
 
-    const imported = importXlsx(bytes, 'large-public-source-spool.xlsx')
-    const releasePhase = imported.stats?.phaseTelemetry.find((entry) => entry.phase === 'zip-source-release')
-    const exported = exportXlsx(imported.snapshot)
+    try {
+      const imported = importXlsx(bytes, 'large-public-source-spool.xlsx')
+      const releasePhase = imported.stats?.phaseTelemetry.find((entry) => entry.phase === 'zip-source-release')
+      const exported = exportXlsxToFile(imported.snapshot, outputPath)
 
-    expect(imported.snapshot.sheets[0]?.cells.map(({ address, value }) => ({ address, value }))).toEqual([
-      { address: 'A1', value: 'Alpha' },
-      { address: 'B1', value: 'Beta' },
-    ])
-    expect(releasePhase?.ownedSourceBytesBeforeRelease).toBeGreaterThan(8 * 1024 * 1024)
-    expect(releasePhase?.ownedSourceBytesAfterRelease).toBe(0)
-    expect(exported).toStrictEqual(bytes)
-    expect(detachImportedXlsxSourceBytes(imported.snapshot)).toBe(true)
+      expect(imported.snapshot.sheets[0]?.cells.map(({ address, value }) => ({ address, value }))).toEqual([
+        { address: 'A1', value: 'Alpha' },
+        { address: 'B1', value: 'Beta' },
+      ])
+      expect(releasePhase?.ownedSourceBytesBeforeRelease).toBeGreaterThan(8 * 1024 * 1024)
+      expect(releasePhase?.ownedSourceBytesAfterRelease).toBe(0)
+      expect(() => exportXlsx(imported.snapshot)).toThrow(/readBytes is small-workbook only/u)
+      expect(exported.bytesWritten).toBe(bytes.byteLength)
+      expect(readFileSync(outputPath)).toStrictEqual(Buffer.from(bytes))
+      expect(detachImportedXlsxSourceBytes(imported.snapshot)).toBe(true)
+    } finally {
+      rmSync(tempDir, { force: true, recursive: true })
+    }
   }, 30_000)
 
-  it('spools large SheetJS fallback source bytes as a reader for unchanged export', () => {
+  it('spools large SheetJS fallback source bytes as a reader for unchanged file export', () => {
     const bytes = buildFallbackWorkbook({
       'docProps/padding.bin': deterministicBytes(9_000_000),
       'xl/threadedComments/threadedComment1.xml': strToU8(
         '<threadedComments xmlns="http://schemas.microsoft.com/office/spreadsheetml/2018/threadedcomments"/>',
       ),
     })
+    const tempDir = mkdtempSync(join(tmpdir(), 'bilig-xlsx-large-source-export-'))
+    const outputPath = join(tempDir, 'exported.xlsx')
 
-    const imported = importXlsx(bytes, 'large-public-fallback-source-spool.xlsx', { limits: false })
-    const importedSource = readImportedXlsxSourceReference(imported.snapshot)
-    const exported = exportXlsx(imported.snapshot)
+    try {
+      const imported = importXlsx(bytes, 'large-public-fallback-source-spool.xlsx', { limits: false })
+      const importedSource = readImportedXlsxSourceReference(imported.snapshot)
+      const exported = exportXlsxToFile(imported.snapshot, outputPath)
 
-    expect(importedSource).toBeDefined()
-    expect(importedSource instanceof Uint8Array).toBe(false)
-    expect(imported.snapshot.sheets[0]?.cells.map(({ address, value }) => ({ address, value }))).toEqual([
-      { address: 'A1', value: 'Alpha' },
-      { address: 'B1', value: 'Beta' },
-    ])
-    expect(exported).toStrictEqual(bytes)
-    expect(detachImportedXlsxSourceBytes(imported.snapshot)).toBe(true)
+      expect(importedSource).toBeDefined()
+      expect(importedSource instanceof Uint8Array).toBe(false)
+      expect(imported.snapshot.sheets[0]?.cells.map(({ address, value }) => ({ address, value }))).toEqual([
+        { address: 'A1', value: 'Alpha' },
+        { address: 'B1', value: 'Beta' },
+      ])
+      expect(exportXlsx(imported.snapshot)).toStrictEqual(bytes)
+      expect(exported.bytesWritten).toBe(bytes.byteLength)
+      expect(readFileSync(outputPath)).toStrictEqual(Buffer.from(bytes))
+      expect(detachImportedXlsxSourceBytes(imported.snapshot)).toBe(true)
+    } finally {
+      rmSync(tempDir, { force: true, recursive: true })
+    }
   }, 30_000)
 
   it('retains byte-source readers by default for unchanged export', () => {
