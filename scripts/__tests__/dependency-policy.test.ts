@@ -716,6 +716,7 @@ describe('repository dependency policy', () => {
   it('keeps file-backed xlsx-recalc CLI on @bilig/xlsx without primary WorkPaper fallback', () => {
     const cliApi = readFileSync(join(repoRoot, 'packages/xlsx-formula-recalc/src/cli-api.ts'), 'utf8')
     const fileRecalc = readFileSync(join(repoRoot, 'packages/xlsx-formula-recalc/src/file-recalc.ts'), 'utf8')
+    const bytesRecalc = readFileSync(join(repoRoot, 'packages/xlsx-formula-recalc/src/bytes-recalc.ts'), 'utf8')
     const scopedIndex = readFileSync(join(repoRoot, 'packages/bilig-xlsx-formula-recalc/src/index.ts'), 'utf8')
     const sheetjsAdapter = readFileSync(join(repoRoot, 'packages/sheetjs-formula-recalc/src/index.ts'), 'utf8')
     const exceljsAdapter = readFileSync(join(repoRoot, 'packages/exceljs-formula-recalc/src/index.ts'), 'utf8')
@@ -736,6 +737,9 @@ describe('repository dependency policy', () => {
     expect(cliApi).not.toContain("import('./legacy-workpaper.js')")
     expect(fileRecalc).toContain("from '@bilig/xlsx'")
     expect(fileRecalc).not.toContain("import('./legacy-workpaper.js')")
+    expect(bytesRecalc).toContain('export const xlsxFormulaRecalcBytesApiLimit = 1_000_000')
+    expect(bytesRecalc).toContain('assertXlsxFormulaRecalcBytesApiWithinLimit(bytes)')
+    expect(bytesRecalc).toContain('await writeFile(inputPath, bytes)')
     expect(scopedIndex).not.toContain('legacy-workpaper')
     expect(objectField(unscopedManifest, 'exports')).not.toHaveProperty('./legacy-workpaper')
     expect(objectField(scopedManifest, 'exports')).not.toHaveProperty('./legacy-workpaper')

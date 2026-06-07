@@ -1,5 +1,5 @@
 export { recalculateXlsxFileToFile } from './file-recalc.js'
-export { recalculateXlsx } from './bytes-recalc.js'
+export { recalculateXlsx, xlsxFormulaRecalcBytesApiLimit } from './bytes-recalc.js'
 export type * from './types.js'
 export {
   inspectXlsxCacheFileStreamingNative as inspectXlsxCacheFile,

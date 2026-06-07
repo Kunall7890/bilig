@@ -15,7 +15,12 @@ import {
   recalculateSheetjsWorkbook,
   recalculateXlsx,
 } from 'bilig-workpaper/xlsx'
-import { inspectXlsxCacheFile, recalculateXlsx as recalculateNativeXlsx, recalculateXlsxFileToFile } from '../index.js'
+import {
+  inspectXlsxCacheFile,
+  recalculateXlsx as recalculateNativeXlsx,
+  recalculateXlsxFileToFile,
+  xlsxFormulaRecalcBytesApiLimit,
+} from '../index.js'
 
 const officeRelationshipNamespace = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
 
@@ -84,6 +89,14 @@ describe('xlsx-formula-recalc', () => {
     expect(result.diagnostics?.engineMode).toBe('streaming-native')
     expect(result.diagnostics?.fallbackUsed).toBe(false)
     expect(readCachedFormulaValue(result.xlsx, 'xl/worksheets/sheet2.xml', 'B2')).toBe('72000')
+  })
+
+  it('rejects large byte-buffer recalculation before temp-file materialization', async () => {
+    await expect(
+      recalculateNativeXlsx(new Uint8Array(xlsxFormulaRecalcBytesApiLimit + 1), {
+        fileName: 'large-byte-api.xlsx',
+      }),
+    ).rejects.toThrow(/recalculateXlsx byte input is small-workbook only/u)
   })
 
   it('recalculates formula cells written without cached formula values', () => {
