@@ -41,6 +41,10 @@ const retryableNetworkErrorCodes = new Set([
   'UND_ERR_HEADERS_TIMEOUT',
   'UND_ERR_SOCKET',
 ])
+const formulaLikelyTopicEvidencePattern =
+  /(?:account|appropriation|balance-sheet|budget|cash-flow|expense|finance|financial|ledger|public-accounts|revenue|tax|trial-balance|workpaper)/iu
+const formulaLikelyWorkbookTextPattern =
+  /\b(?:calculator|cash[-_\s]*flow|forecast|formula|model|planning|projection|template|work[-_\s]*paper|workbook)\b/iu
 
 export interface PublicWorkbookCorpusFetchPlan {
   readonly targetArtifactCount: number
@@ -322,13 +326,28 @@ function prioritizeCandidateSources(sources: readonly PublicWorkbookSource[]): P
 
 function workbookSourceFetchPriority(source: PublicWorkbookSource): number {
   const extension = spreadsheetExtension(source.fileName)
+  const formulaRank = formulaLikelyWorkbookSourceRank(source)
   if (extension === 'xlsx') {
-    return 0
+    return formulaRank
   }
   if (extension === 'xlsm') {
-    return 1
+    return 100 + formulaRank
   }
-  return 2
+  return 200 + formulaRank
+}
+
+function formulaLikelyWorkbookSourceRank(source: PublicWorkbookSource): number {
+  const evidence = source.topicEvidence ?? []
+  if (evidence.some((entry) => formulaLikelyTopicEvidencePattern.test(entry))) {
+    return 0
+  }
+  if (formulaLikelyWorkbookTextPattern.test([source.fileName, source.sourceUrl, source.downloadUrl].join(' '))) {
+    return 10
+  }
+  if (evidence.length > 0) {
+    return 20
+  }
+  return 50
 }
 
 function normalizeSourceUrl(value: string): string {

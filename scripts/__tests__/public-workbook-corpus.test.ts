@@ -1364,6 +1364,56 @@ describe('public workbook corpus', () => {
     expect(fetched.artifacts[0]?.sourceId).toBe('source-modern-xlsx')
   })
 
+  it('prioritizes formula-likely xlsx sources before generic spreadsheets', async () => {
+    const cacheDir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-fetch-formula-first-'))
+    const workbookBytes = buildWorkbookBytes()
+    const fetchMock = vi.fn(async () => new Response(workbookBytes, { headers: { 'content-length': String(workbookBytes.byteLength) } }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const license = {
+      spdxId: 'CC-BY-4.0',
+      title: 'Creative Commons Attribution 4.0 International',
+      evidenceUrl: 'https://creativecommons.org/licenses/by/4.0/',
+    }
+    const manifest: PublicWorkbookManifest = {
+      ...createEmptyPublicWorkbookManifest('2026-05-07T00:00:00.000Z'),
+      sources: [
+        {
+          id: 'source-generic',
+          kind: 'direct-url',
+          sourceUrl: 'https://example.com/open-data-table.xlsx',
+          downloadUrl: 'https://example.com/open-data-table.xlsx',
+          fileName: 'open-data-table.xlsx',
+          discoveredAt: '2026-05-07T00:00:00.000Z',
+          license,
+        },
+        {
+          id: 'source-formula-likely',
+          kind: 'direct-url',
+          sourceUrl: 'https://example.com/financial-model',
+          downloadUrl: 'https://example.com/financial-model.xlsx',
+          fileName: 'financial-model.xlsx',
+          discoveredAt: '2026-05-07T00:00:00.000Z',
+          license,
+          topicEvidence: ['financial-statement:dataset.title'],
+        },
+      ],
+    }
+
+    const fetched = await fetchPublicWorkbookArtifacts({
+      manifest,
+      cacheDir,
+      limit: 1,
+      fetchedAt: '2026-05-07T01:00:00.000Z',
+      fetchBatchSize: 1,
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('https://example.com/financial-model.xlsx')
+    expect(fetched.artifacts).toHaveLength(1)
+    expect(fetched.artifacts[0]?.sourceId).toBe('source-formula-likely')
+  })
+
   it('checkpoints the manifest when fetched artifacts are committed', async () => {
     const cacheDir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-fetch-checkpoint-'))
     const workbookBytes = buildWorkbookBytes()
