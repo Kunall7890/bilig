@@ -1,6 +1,6 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import { exportXlsx, importXlsx } from '../index.js'
 
@@ -40,10 +40,26 @@ interface ThreadedCommentSummary {
 }
 
 function buildThreadedCommentWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['Assumption', 42]]), 'Inputs')
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['Review', 84]]), 'Review')
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Inputs',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Assumption' },
+            { address: 'B1', row: 0, col: 1, value: 42 },
+          ],
+        },
+        {
+          name: 'Review',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Review' },
+            { address: 'B1', row: 0, col: 1, value: 84 },
+          ],
+        },
+      ],
+    }),
+  )
 
   zip['xl/threadedComments/threadedComment1.xml'] = strToU8(
     [

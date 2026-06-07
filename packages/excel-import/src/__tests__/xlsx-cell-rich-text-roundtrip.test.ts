@@ -1,11 +1,8 @@
-import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
+import { strFromU8, unzipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import { exportXlsx, importXlsx } from '../index.js'
-
-const sharedStringsRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings'
-const sharedStringsContentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml'
 
 const sharedRichStringXml = [
   '<si>',
@@ -76,51 +73,23 @@ interface RichTextSummary {
 }
 
 function buildRichTextCellWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const worksheet = XLSX.utils.aoa_to_sheet([['Important: Before signing off', 'Revenue sensitivity']])
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Labels')
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
-  addRichSharedString(zip)
-  addInlineRichString(zip)
-  return zipSync(zip)
-}
-
-function addRichSharedString(zip: Record<string, Uint8Array>): void {
-  const sheetPath = 'xl/worksheets/sheet1.xml'
-  const worksheetXml = strFromU8(zip[sheetPath] ?? new Uint8Array())
-  zip[sheetPath] = strToU8(
-    worksheetXml.replace('<c r="A1" t="str"><v>Important: Before signing off</v></c>', '<c r="A1" t="s"><v>0</v></c>'),
-  )
-
-  zip['xl/sharedStrings.xml'] = strToU8(
-    [
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Labels',
+        cells: [
+          { address: 'A1', row: 0, col: 0, sharedStringIndex: 0 },
+          { address: 'B1', row: 0, col: 1, inlineStringXml: inlineRichStringXml },
+        ],
+      },
+    ],
+    sharedStringsXml: [
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
       '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="1" uniqueCount="1">',
       sharedRichStringXml,
       '</sst>',
     ].join(''),
-  )
-
-  const workbookRelsXml = strFromU8(zip['xl/_rels/workbook.xml.rels'] ?? new Uint8Array())
-  zip['xl/_rels/workbook.xml.rels'] = strToU8(
-    workbookRelsXml.replace(
-      '</Relationships>',
-      `<Relationship Id="rIdSharedStrings" Type="${sharedStringsRelationshipType}" Target="sharedStrings.xml"/></Relationships>`,
-    ),
-  )
-
-  const contentTypesXml = strFromU8(zip['[Content_Types].xml'] ?? new Uint8Array())
-  zip['[Content_Types].xml'] = strToU8(
-    contentTypesXml.replace('</Types>', `<Override PartName="/xl/sharedStrings.xml" ContentType="${sharedStringsContentType}"/></Types>`),
-  )
-}
-
-function addInlineRichString(zip: Record<string, Uint8Array>): void {
-  const sheetPath = 'xl/worksheets/sheet1.xml'
-  const worksheetXml = strFromU8(zip[sheetPath] ?? new Uint8Array())
-  zip[sheetPath] = strToU8(
-    worksheetXml.replace('<c r="B1" t="str"><v>Revenue sensitivity</v></c>', `<c r="B1" t="inlineStr">${inlineRichStringXml}</c>`),
-  )
+  })
 }
 
 function readRichTextSummary(bytes: Uint8Array): RichTextSummary {

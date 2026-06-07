@@ -1,6 +1,6 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import { exportXlsx, importXlsx } from '../index.js'
 
@@ -56,13 +56,21 @@ interface CellMetadataRefSummary {
 }
 
 function buildCellMetadataWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const worksheet = XLSX.utils.aoa_to_sheet([
-    ['Ticker', 'Price'],
-    ['MSFT', 415.32],
-  ])
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Rich Values')
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Rich Values',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Ticker' },
+            { address: 'B1', row: 0, col: 1, value: 'Price' },
+            { address: 'A2', row: 1, col: 0, value: 'MSFT' },
+            { address: 'B2', row: 1, col: 1, value: 415.32 },
+          ],
+        },
+      ],
+    }),
+  )
   addWorkbookCellMetadata(zip)
   addWorksheetCellMetadataRefs(zip)
   return zipSync(zip)
