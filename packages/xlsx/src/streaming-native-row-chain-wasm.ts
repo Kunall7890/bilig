@@ -72,8 +72,16 @@ interface DirectScalarCandidate {
 
 interface RangeAggregateCandidate {
   readonly cell: NativeFormulaCell
-  readonly values: readonly number[]
+  readonly aggregateKind: number
+  readonly values: TypedRangeAggregateValues
   readonly rowValues: Map<number, PendingCellValue>
+}
+
+interface TypedRangeAggregateValues {
+  readonly tags: readonly number[]
+  readonly numbers: readonly number[]
+  readonly errors: readonly number[]
+  readonly cellCount: number
 }
 
 interface ConditionalPickCandidate {
@@ -140,6 +148,8 @@ type SecondFormulaPlan = AffineSecondFormulaPlan | DivideSecondFormulaPlan | Inl
 type CompiledRowChainCandidate = AffineRowChainCandidate | DivideRowChainCandidate
 
 const directAggregateOpSum = 1
+const directAggregateOpAverage = 2
+const directAggregateOpCounta = 6
 const directConditionOpTruthy = 1
 const directConditionOpEq = 2
 const directConditionOpNeq = 3
@@ -148,7 +158,7 @@ const directConditionOpGte = 5
 const directConditionOpLt = 6
 const directConditionOpLte = 7
 const maxExpandedFormulaDependencyRowsPerSheet = 20_000
-const maxNativeSumRangeCellCount = 50_000
+const maxNativeRangeAggregateCellCount = 50_000
 
 export function evaluateStreamingNativeWasmRowChains(args: {
   readonly sheetScans: ReadonlyMap<string, SheetScanState>
@@ -353,11 +363,11 @@ export function expandStreamingNativeFormulaDependencyRows(args: {
       if (expandedRows >= maxExpandedFormulaDependencyRowsPerSheet) {
         break
       }
-      const range = tryCompileNativeSumRange(scan, cell, args.resolveFormulaSource)
-      if (!range) {
+      const plan = tryCompileNativeRangeAggregate(scan, cell, args.resolveFormulaSource)
+      if (!plan) {
         continue
       }
-      for (let row = range.startRow; row <= range.endRow; row += 1) {
+      for (let row = plan.range.startRow; row <= plan.range.endRow; row += 1) {
         if (scan.targetRows.has(row)) {
           continue
         }
@@ -394,7 +404,7 @@ function collectVlookupTableDependencyRows(
   if (!range) {
     return []
   }
-  if (range.cellCount <= 0 || range.cellCount > maxNativeSumRangeCellCount) {
+  if (range.cellCount <= 0 || range.cellCount > maxNativeRangeAggregateCellCount) {
     return []
   }
   const rows: ScalarDependencyRow[] = []
@@ -636,7 +646,7 @@ function collectCellRangeDependencyRows(
   rows: Map<string, Set<number>>,
 ): void {
   const dependencyRange = decodeVlookupTableDependencyRange(range, currentSheetName)
-  if (!dependencyRange || dependencyRange.cellCount > maxNativeSumRangeCellCount) {
+  if (!dependencyRange || dependencyRange.cellCount > maxNativeRangeAggregateCellCount) {
     return
   }
   for (let row = dependencyRange.startRow; row <= dependencyRange.endRow; row += 1) {
@@ -667,26 +677,31 @@ export function evaluateStreamingNativeWasmRangeAggregates(args: {
       continue
     }
     batchCount += 1
-    const valueCount = group[0]!.values.length
+    const valueCount = group[0]!.values.cellCount
+    const outTags = new Uint8Array(group.length)
     const outNumbers = new Float64Array(group.length)
-    kernel.evalDenseNumericRowAggregateBatch(
-      directAggregateOpSum,
-      Float64Array.from(group.flatMap((candidate) => candidate.values)),
+    const outErrors = new Uint16Array(group.length)
+    kernel.evalDenseCellRangeAggregateBatch(
+      group[0]!.aggregateKind,
+      Uint8Array.from(group.flatMap((candidate) => candidate.values.tags)),
+      Float64Array.from(group.flatMap((candidate) => candidate.values.numbers)),
+      Uint16Array.from(group.flatMap((candidate) => candidate.values.errors)),
       group.length,
       valueCount,
-      0,
-      valueCount,
-      0,
+      outTags,
       outNumbers,
+      outErrors,
     )
     for (let index = 0; index < group.length; index += 1) {
       const candidate = group[index]!
-      const value = outNumbers[index]!
-      if (!Number.isFinite(value)) {
+      const tag = outTags[index]! as ValueTag
+      const number = outNumbers[index]!
+      if (tag !== ValueTag.Number || !Number.isFinite(number)) {
         continue
       }
-      candidate.rowValues.set(candidate.cell.col, { tag: ValueTag.Number, value })
-      patches.push(formulaPatch(candidate.cell, value))
+      const value = { tag: ValueTag.Number, value: number } satisfies CellValue
+      candidate.rowValues.set(candidate.cell.col, value)
+      patches.push(formulaPatch(candidate.cell, number))
       processedCells.add(cellKey(candidate.cell))
     }
   }
@@ -916,16 +931,17 @@ function collectRangeAggregateCandidates(args: {
       if (!rowValues) {
         continue
       }
-      const range = tryCompileNativeSumRange(scan, cell, args.resolveFormulaSource)
-      if (!range) {
+      const plan = tryCompileNativeRangeAggregate(scan, cell, args.resolveFormulaSource)
+      if (!plan) {
         continue
       }
-      const values = readNumericRangeValues(scan, range)
+      const values = readTypedRangeAggregateValues(scan, plan.range)
       if (!values) {
         continue
       }
       candidates.push({
         cell,
+        aggregateKind: plan.aggregateKind,
         values,
         rowValues,
       })
@@ -1176,18 +1192,22 @@ function tryCompileSecondFormula(
   }
 }
 
-function tryCompileNativeSumRange(
+function tryCompileNativeRangeAggregate(
   scan: SheetScanState,
   cell: NativeFormulaCell,
   resolveFormulaSource: (scan: SheetScanState, cell: NativeFormulaCell) => string,
-): CellRangePlan | null {
+): { readonly aggregateKind: number; readonly range: CellRangePlan } | null {
   let node: FormulaNode
   try {
     node = parseFormula(resolveFormulaSource(scan, cell))
   } catch {
     return null
   }
-  if (node.kind !== 'CallExpr' || node.callee.toLocaleUpperCase('en-US') !== 'SUM' || node.args.length !== 1) {
+  if (node.kind !== 'CallExpr' || node.args.length !== 1) {
+    return null
+  }
+  const aggregateKind = directRangeAggregateKind(node.callee)
+  if (aggregateKind === null) {
     return null
   }
   const range = node.args[0]
@@ -1213,15 +1233,31 @@ function tryCompileNativeSumRange(
   const startCol = Math.min(start.c, end.c)
   const endCol = Math.max(start.c, end.c)
   const cellCount = (endRow - startRow + 1) * (endCol - startCol + 1)
-  return cellCount > 0 && cellCount <= maxNativeSumRangeCellCount
+  return cellCount > 0 && cellCount <= maxNativeRangeAggregateCellCount
     ? {
-        startRow,
-        endRow,
-        startCol,
-        endCol,
-        cellCount,
+        aggregateKind,
+        range: {
+          startRow,
+          endRow,
+          startCol,
+          endCol,
+          cellCount,
+        },
       }
     : null
+}
+
+function directRangeAggregateKind(callee: string): number | null {
+  switch (normalizedFormulaFunctionName(callee)) {
+    case 'SUM':
+      return directAggregateOpSum
+    case 'AVERAGE':
+      return directAggregateOpAverage
+    case 'COUNTA':
+      return directAggregateOpCounta
+    default:
+      return null
+  }
 }
 
 function resolveFirstFormulaCandidate(
@@ -1486,26 +1522,42 @@ function readNumericSource(rowValues: ReadonlyMap<number, PendingCellValue>, sou
   return value.tag === ValueTag.Number && Number.isFinite(value.value) ? value.value : null
 }
 
-function readNumericRangeValues(scan: SheetScanState, range: CellRangePlan): readonly number[] | null {
-  const values: number[] = []
+function readTypedRangeAggregateValues(scan: SheetScanState, range: CellRangePlan): TypedRangeAggregateValues | null {
+  const tags: number[] = []
+  const numbers: number[] = []
+  const errors: number[] = []
   for (let row = range.startRow; row <= range.endRow; row += 1) {
     const rowValues = scan.rows.get(row)
-    if (!rowValues) {
-      return null
-    }
     for (let col = range.startCol; col <= range.endCol; col += 1) {
-      const value = resolvedCellValue(rowValues.get(col))
-      if (value.tag === ValueTag.Empty) {
-        values.push(0)
-        continue
-      }
-      if (value.tag !== ValueTag.Number || !Number.isFinite(value.value)) {
-        return null
-      }
-      values.push(value.value)
+      appendAggregateValueFields(resolvedCellValue(rowValues?.get(col)), tags, numbers, errors)
     }
   }
-  return values.length === range.cellCount ? values : null
+  return tags.length === range.cellCount && numbers.length === range.cellCount && errors.length === range.cellCount
+    ? { tags, numbers, errors, cellCount: range.cellCount }
+    : null
+}
+
+function appendAggregateValueFields(value: CellValue, tags: number[], numbers: number[], errors: number[]): void {
+  tags.push(value.tag)
+  switch (value.tag) {
+    case ValueTag.Number:
+      numbers.push(Number.isFinite(value.value) ? value.value : 0)
+      errors.push(ErrorCode.None)
+      return
+    case ValueTag.Boolean:
+      numbers.push(value.value ? 1 : 0)
+      errors.push(ErrorCode.None)
+      return
+    case ValueTag.Error:
+      numbers.push(0)
+      errors.push(value.code)
+      return
+    case ValueTag.Empty:
+    case ValueTag.String:
+      numbers.push(0)
+      errors.push(ErrorCode.None)
+      return
+  }
 }
 
 function resolvedCellValue(value: PendingCellValue | undefined): CellValue {
@@ -1664,10 +1716,10 @@ function groupCandidates(candidates: readonly CompiledRowChainCandidate[]): Map<
   return output
 }
 
-function groupRangeAggregateCandidates(candidates: readonly RangeAggregateCandidate[]): Map<number, RangeAggregateCandidate[]> {
-  const output = new Map<number, RangeAggregateCandidate[]>()
+function groupRangeAggregateCandidates(candidates: readonly RangeAggregateCandidate[]): Map<string, RangeAggregateCandidate[]> {
+  const output = new Map<string, RangeAggregateCandidate[]>()
   for (const candidate of candidates) {
-    const key = candidate.values.length
+    const key = `${String(candidate.aggregateKind)}:${String(candidate.values.cellCount)}`
     const group = output.get(key) ?? []
     group.push(candidate)
     output.set(key, group)

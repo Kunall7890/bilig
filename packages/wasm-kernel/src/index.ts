@@ -1,7 +1,11 @@
 import type * as Fs from 'node:fs'
 import type * as FsPromises from 'node:fs/promises'
 import type * as NodeUrl from 'node:url'
-import { evalAnchoredPrefixAggregateBatchRaw, evalDenseNumericRowAggregateBatchRaw } from './raw-kernel-direct-aggregate-bridge.js'
+import {
+  evalAnchoredPrefixAggregateBatchRaw,
+  evalDenseCellRangeAggregateBatchRaw,
+  evalDenseNumericRowAggregateBatchRaw,
+} from './raw-kernel-direct-aggregate-bridge.js'
 import {
   evalDirectCriteriaMatchedAggregateBatchRaw,
   evalDirectCriteriaPredicateAggregateBatchRaw,
@@ -231,6 +235,20 @@ class RawKernelBridge {
       resultOffset,
       outNumbers,
     )
+  }
+
+  evalDenseCellRangeAggregateBatch(
+    aggregateKind: number,
+    tags: Uint8Array,
+    numbers: Float64Array,
+    errors: Uint16Array,
+    rowCount: number,
+    cellCount: number,
+    outTags: Uint8Array,
+    outNumbers: Float64Array,
+    outErrors: Uint16Array,
+  ): void {
+    evalDenseCellRangeAggregateBatchRaw(this.raw, aggregateKind, tags, numbers, errors, rowCount, cellCount, outTags, outNumbers, outErrors)
   }
 
   evalAnchoredPrefixAggregateBatch(
@@ -538,6 +556,20 @@ class KernelHandle implements SpreadsheetKernel {
       resultOffset,
       outNumbers,
     )
+  }
+
+  evalDenseCellRangeAggregateBatch(
+    aggregateKind: number,
+    tags: Uint8Array,
+    numbers: Float64Array,
+    errors: Uint16Array,
+    rowCount: number,
+    cellCount: number,
+    outTags: Uint8Array,
+    outNumbers: Float64Array,
+    outErrors: Uint16Array,
+  ): void {
+    this.bridge.evalDenseCellRangeAggregateBatch(aggregateKind, tags, numbers, errors, rowCount, cellCount, outTags, outNumbers, outErrors)
   }
 
   evalAnchoredPrefixAggregateBatch(

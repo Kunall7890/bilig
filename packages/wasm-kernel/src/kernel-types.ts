@@ -96,6 +96,17 @@ export interface SpreadsheetKernel {
     resultOffset: number,
     outNumbers: Float64Array,
   ): void
+  evalDenseCellRangeAggregateBatch(
+    aggregateKind: number,
+    tags: Uint8Array,
+    numbers: Float64Array,
+    errors: Uint16Array,
+    rowCount: number,
+    cellCount: number,
+    outTags: Uint8Array,
+    outNumbers: Float64Array,
+    outErrors: Uint16Array,
+  ): void
   evalAnchoredPrefixAggregateBatch(
     aggregateKind: number,
     tags: Uint8Array,

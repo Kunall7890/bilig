@@ -34,7 +34,11 @@ export {
   evalDenseDirectScalarRowChainDivideStoreTargetBatch,
   evalDenseDirectScalarRowChainStoreTargetBatch,
 } from './direct-scalar-row-chain-batch'
-export { evalAnchoredPrefixAggregateBatch, evalDenseNumericRowAggregateBatch } from './direct-aggregate-batch'
+export {
+  evalAnchoredPrefixAggregateBatch,
+  evalDenseCellRangeAggregateBatch,
+  evalDenseNumericRowAggregateBatch,
+} from './direct-aggregate-batch'
 export { evalDirectCriteriaMatchedAggregateBatch, evalDirectCriteriaPredicateAggregateBatch } from './direct-criteria-aggregate-batch'
 export { evalUniformNumericLookupBatch } from './direct-lookup-batch'
 

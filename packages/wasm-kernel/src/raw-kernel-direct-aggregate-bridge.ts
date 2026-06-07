@@ -175,3 +175,47 @@ export function evalAnchoredPrefixAggregateBatchRaw(
     raw.__unpin(outErrorsPtr)
   }
 }
+
+export function evalDenseCellRangeAggregateBatchRaw(
+  raw: RawKernelExports,
+  aggregateKind: number,
+  tags: Uint8Array,
+  numbers: Float64Array,
+  errors: Uint16Array,
+  rowCount: number,
+  cellCount: number,
+  outTags: Uint8Array,
+  outNumbers: Float64Array,
+  outErrors: Uint16Array,
+): void {
+  const context: LoweringContext = { dataView: new DataView(raw.memory.buffer) }
+  const tagsPtr = lowerTypedArray(raw, context, tags, uint8Spec)
+  const numbersPtr = lowerTypedArray(raw, context, numbers, float64Spec)
+  const errorsPtr = lowerTypedArray(raw, context, errors, uint16Spec)
+  const outTagsPtr = lowerTypedArray(raw, context, outTags, uint8Spec)
+  const outNumbersPtr = lowerTypedArray(raw, context, outNumbers, float64Spec)
+  const outErrorsPtr = lowerTypedArray(raw, context, outErrors, uint16Spec)
+  try {
+    raw.evalDenseCellRangeAggregateBatch(
+      aggregateKind,
+      tagsPtr,
+      numbersPtr,
+      errorsPtr,
+      rowCount,
+      cellCount,
+      outTagsPtr,
+      outNumbersPtr,
+      outErrorsPtr,
+    )
+    copyLoweredTypedArray(raw, context, outTagsPtr, outTags, uint8Spec)
+    copyLoweredTypedArray(raw, context, outNumbersPtr, outNumbers, float64Spec)
+    copyLoweredTypedArray(raw, context, outErrorsPtr, outErrors, uint16Spec)
+  } finally {
+    raw.__unpin(tagsPtr)
+    raw.__unpin(numbersPtr)
+    raw.__unpin(errorsPtr)
+    raw.__unpin(outTagsPtr)
+    raw.__unpin(outNumbersPtr)
+    raw.__unpin(outErrorsPtr)
+  }
+}

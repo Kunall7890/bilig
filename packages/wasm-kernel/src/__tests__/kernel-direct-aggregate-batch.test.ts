@@ -7,6 +7,7 @@ const DIRECT_AGGREGATE_OP_AVERAGE = 2
 const DIRECT_AGGREGATE_OP_COUNT = 3
 const DIRECT_AGGREGATE_OP_MIN = 4
 const DIRECT_AGGREGATE_OP_MAX = 5
+const DIRECT_AGGREGATE_OP_COUNTA = 6
 
 describe('wasm kernel direct aggregate batch', () => {
   it('evaluates dense numeric row aggregate batches', async () => {
@@ -41,6 +42,61 @@ describe('wasm kernel direct aggregate batch', () => {
     expect([...outTags]).toEqual([ValueTag.Number, ValueTag.Number, ValueTag.Number, ValueTag.Error])
     expect([...outNumbers]).toEqual([5, 15, 5, 0])
     expect([...outErrors]).toEqual([0, 0, 0, ErrorCode.Value])
+  })
+
+  it('evaluates dense typed range aggregate batches with Excel range semantics', async () => {
+    const kernel = await createKernel()
+    const tags = Uint8Array.from([
+      ValueTag.Number,
+      ValueTag.String,
+      ValueTag.Empty,
+      ValueTag.Number,
+      ValueTag.Number,
+      ValueTag.Error,
+      ValueTag.Boolean,
+      ValueTag.Empty,
+    ])
+    const numbers = Float64Array.from([5, 0, 0, 7, 2, 0, 1, 0])
+    const errors = Uint16Array.from([0, 0, 0, 0, 0, ErrorCode.Value, 0, 0])
+
+    const cases = [
+      {
+        aggregateKind: DIRECT_AGGREGATE_OP_SUM,
+        expectedTags: [ValueTag.Number, ValueTag.Error],
+        expectedNumbers: [12, 0],
+        expectedErrors: [0, ErrorCode.Value],
+      },
+      {
+        aggregateKind: DIRECT_AGGREGATE_OP_AVERAGE,
+        expectedTags: [ValueTag.Number, ValueTag.Error],
+        expectedNumbers: [6, 0],
+        expectedErrors: [0, ErrorCode.Value],
+      },
+      {
+        aggregateKind: DIRECT_AGGREGATE_OP_COUNT,
+        expectedTags: [ValueTag.Number, ValueTag.Number],
+        expectedNumbers: [2, 1],
+        expectedErrors: [0, 0],
+      },
+      {
+        aggregateKind: DIRECT_AGGREGATE_OP_COUNTA,
+        expectedTags: [ValueTag.Number, ValueTag.Number],
+        expectedNumbers: [3, 3],
+        expectedErrors: [0, 0],
+      },
+    ]
+
+    for (const { aggregateKind, expectedTags, expectedNumbers, expectedErrors } of cases) {
+      const outTags = new Uint8Array(2)
+      const outNumbers = new Float64Array(2)
+      const outErrors = new Uint16Array(2)
+
+      kernel.evalDenseCellRangeAggregateBatch(aggregateKind, tags, numbers, errors, 2, 4, outTags, outNumbers, outErrors)
+
+      expect([...outTags]).toEqual(expectedTags)
+      expect([...outNumbers]).toEqual(expectedNumbers)
+      expect([...outErrors]).toEqual(expectedErrors)
+    }
   })
 
   it('ignores non-numeric prefix references for every direct aggregate kind', async () => {

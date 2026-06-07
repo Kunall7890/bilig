@@ -100,6 +100,17 @@ export interface RawKernelExports {
     resultOffset: number,
     outNumbers: number,
   ): void
+  evalDenseCellRangeAggregateBatch(
+    aggregateKind: number,
+    tags: number,
+    numbers: number,
+    errors: number,
+    rowCount: number,
+    cellCount: number,
+    outTags: number,
+    outNumbers: number,
+    outErrors: number,
+  ): void
   evalAnchoredPrefixAggregateBatch(
     aggregateKind: number,
     tags: number,
@@ -262,6 +273,7 @@ export function isRawKernelExports(value: unknown): value is RawKernelExports {
     'evalDenseDirectScalarRowChainStoreTargetBatch',
     'evalDenseDirectScalarRowChainDivideStoreTargetBatch',
     'evalDenseNumericRowAggregateBatch',
+    'evalDenseCellRangeAggregateBatch',
     'evalAnchoredPrefixAggregateBatch',
     'evalDirectCriteriaMatchedAggregateBatch',
     'evalDirectCriteriaPredicateAggregateBatch',

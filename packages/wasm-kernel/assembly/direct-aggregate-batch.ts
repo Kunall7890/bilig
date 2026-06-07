@@ -5,8 +5,10 @@ const DIRECT_AGGREGATE_OP_AVERAGE: u8 = 2
 const DIRECT_AGGREGATE_OP_COUNT: u8 = 3
 const DIRECT_AGGREGATE_OP_MIN: u8 = 4
 const DIRECT_AGGREGATE_OP_MAX: u8 = 5
+const DIRECT_AGGREGATE_OP_COUNTA: u8 = 6
 const VALUE_TAG_NUMBER: u8 = <u8>ValueTag.Number
 const VALUE_TAG_ERROR: u8 = <u8>ValueTag.Error
+const VALUE_TAG_EMPTY: u8 = <u8>ValueTag.Empty
 const ERROR_CODE_NONE: u16 = <u16>ErrorCode.None
 const ERROR_CODE_DIV0: u16 = <u16>ErrorCode.Div0
 const ERROR_CODE_VALUE: u16 = <u16>ErrorCode.Value
@@ -68,6 +70,117 @@ export function evalDenseNumericRowAggregateBatch(
       outNumbers[rowOffset] = maximum + resultOffset
     } else {
       outNumbers[rowOffset] = NaN
+    }
+  }
+}
+
+export function evalDenseCellRangeAggregateBatch(
+  aggregateKind: u8,
+  tags: Uint8Array,
+  numbers: Float64Array,
+  errors: Uint16Array,
+  rowCount: i32,
+  cellCount: i32,
+  outTags: Uint8Array,
+  outNumbers: Float64Array,
+  outErrors: Uint16Array,
+): void {
+  if (rowCount <= 0 || cellCount <= 0) {
+    return
+  }
+  if (
+    tags.length < rowCount * cellCount ||
+    numbers.length < rowCount * cellCount ||
+    errors.length < rowCount * cellCount ||
+    outTags.length < rowCount ||
+    outNumbers.length < rowCount ||
+    outErrors.length < rowCount
+  ) {
+    return
+  }
+
+  for (let rowOffset = 0; rowOffset < rowCount; rowOffset++) {
+    const baseOffset = rowOffset * cellCount
+    let sum: f64 = 0
+    let numericCount: i32 = 0
+    let nonEmptyCount: i32 = 0
+    let errorCode: u16 = ERROR_CODE_NONE
+    let errorCount: i32 = 0
+    let minimum: f64 = Infinity
+    let maximum: f64 = -Infinity
+
+    for (let cellOffset = 0; cellOffset < cellCount; cellOffset++) {
+      const valueOffset = baseOffset + cellOffset
+      const tag = tags[valueOffset]
+      if (tag != VALUE_TAG_EMPTY) {
+        nonEmptyCount += 1
+      }
+      if (tag == VALUE_TAG_NUMBER) {
+        const numeric = numbers[valueOffset]
+        sum += numeric
+        numericCount += 1
+        if (numeric < minimum) {
+          minimum = numeric
+        }
+        if (numeric > maximum) {
+          maximum = numeric
+        }
+      } else if (tag == VALUE_TAG_ERROR) {
+        errorCode = preferAggregateErrorCode(errorCode, errors[valueOffset])
+        errorCount += 1
+      }
+    }
+
+    if (aggregateKind == DIRECT_AGGREGATE_OP_SUM) {
+      if (errorCount > 0 && errorCode != ERROR_CODE_NONE) {
+        outTags[rowOffset] = VALUE_TAG_ERROR
+        outErrors[rowOffset] = errorCode
+      } else {
+        outTags[rowOffset] = VALUE_TAG_NUMBER
+        outNumbers[rowOffset] = sum
+        outErrors[rowOffset] = ERROR_CODE_NONE
+      }
+    } else if (aggregateKind == DIRECT_AGGREGATE_OP_AVERAGE) {
+      if (errorCount > 0 && errorCode != ERROR_CODE_NONE) {
+        outTags[rowOffset] = VALUE_TAG_ERROR
+        outErrors[rowOffset] = errorCode
+      } else if (numericCount == 0) {
+        outTags[rowOffset] = VALUE_TAG_ERROR
+        outErrors[rowOffset] = ERROR_CODE_DIV0
+      } else {
+        outTags[rowOffset] = VALUE_TAG_NUMBER
+        outNumbers[rowOffset] = sum / <f64>numericCount
+        outErrors[rowOffset] = ERROR_CODE_NONE
+      }
+    } else if (aggregateKind == DIRECT_AGGREGATE_OP_COUNT) {
+      outTags[rowOffset] = VALUE_TAG_NUMBER
+      outNumbers[rowOffset] = <f64>numericCount
+      outErrors[rowOffset] = ERROR_CODE_NONE
+    } else if (aggregateKind == DIRECT_AGGREGATE_OP_COUNTA) {
+      outTags[rowOffset] = VALUE_TAG_NUMBER
+      outNumbers[rowOffset] = <f64>nonEmptyCount
+      outErrors[rowOffset] = ERROR_CODE_NONE
+    } else if (aggregateKind == DIRECT_AGGREGATE_OP_MIN) {
+      if (errorCount > 0 && errorCode != ERROR_CODE_NONE) {
+        outTags[rowOffset] = VALUE_TAG_ERROR
+        outErrors[rowOffset] = errorCode
+      } else {
+        outTags[rowOffset] = VALUE_TAG_NUMBER
+        outNumbers[rowOffset] = numericCount == 0 ? 0 : minimum
+        outErrors[rowOffset] = ERROR_CODE_NONE
+      }
+    } else if (aggregateKind == DIRECT_AGGREGATE_OP_MAX) {
+      if (errorCount > 0 && errorCode != ERROR_CODE_NONE) {
+        outTags[rowOffset] = VALUE_TAG_ERROR
+        outErrors[rowOffset] = errorCode
+      } else {
+        outTags[rowOffset] = VALUE_TAG_NUMBER
+        outNumbers[rowOffset] = numericCount == 0 ? 0 : maximum
+        outErrors[rowOffset] = ERROR_CODE_NONE
+      }
+    } else {
+      outTags[rowOffset] = VALUE_TAG_ERROR
+      outErrors[rowOffset] = ERROR_CODE_VALUE
     }
   }
 }
