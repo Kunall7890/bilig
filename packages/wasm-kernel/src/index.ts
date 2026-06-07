@@ -10,6 +10,7 @@ import { evalUniformNumericLookupBatchRaw } from './raw-kernel-direct-lookup-bri
 import {
   evalDenseDirectScalarRowChainDivideStoreTargetBatchRaw,
   evalDenseDirectScalarRowChainStoreTargetBatchRaw,
+  evalDirectConditionalPickBatchRaw,
   evalDirectScalarStoreTargetBatchRaw,
   evalDirectScalarValueBatchRaw,
 } from './raw-kernel-direct-scalar-bridge.js'
@@ -497,6 +498,10 @@ class KernelHandle implements SpreadsheetKernel {
       resultOffsets,
     )
     this.refreshViews()
+  }
+
+  evalDirectConditionalPickBatch(...args: Parameters<SpreadsheetKernel['evalDirectConditionalPickBatch']>): void {
+    evalDirectConditionalPickBatchRaw(this.raw, ...args)
   }
 
   evalDenseDirectScalarRowChainStoreTargetBatch(

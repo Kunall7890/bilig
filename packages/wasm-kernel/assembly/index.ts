@@ -29,7 +29,7 @@ export {
   getSpillResultValueCount,
 } from './vm'
 
-export { evalDirectScalarStoreTargetBatch, evalDirectScalarValueBatch } from './direct-scalar-batch'
+export { evalDirectConditionalPickBatch, evalDirectScalarStoreTargetBatch, evalDirectScalarValueBatch } from './direct-scalar-batch'
 export {
   evalDenseDirectScalarRowChainDivideStoreTargetBatch,
   evalDenseDirectScalarRowChainStoreTargetBatch,

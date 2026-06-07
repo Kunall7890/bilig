@@ -142,19 +142,33 @@ describe('xlsx-formula-recalc', () => {
         outputPath,
         engine: 'streaming-native',
         edits: [{ target: 'Data!R57152', value: 16 }],
-        reads: ['Data!U57152', 'Data!V57152'],
+        reads: ['Data!U57152', 'Data!V57152', 'Data!AD57152', 'Data!AF57152', 'Data!AG57152', 'Data!AI57152'],
       })
 
       expect(readNumber(result.reads['Data!U57152'])).toBe(168.75)
       expect(readNumber(result.reads['Data!V57152'])).toBe(28.125)
+      expect(readNumber(result.reads['Data!AD57152'])).toBe(3)
+      expect(readString(result.reads['Data!AF57152'])).toBe('Cash')
+      expect(readString(result.reads['Data!AG57152'])).toBe('Child Protection')
+      expect(readString(result.reads['Data!AI57152'])).toBe('Mar')
       expect(result.diagnostics?.engineMode).toBe('streaming-native')
-      expect(result.diagnostics?.formulaCounts.evaluatedFormulaCellCount).toBe(2)
-      expect(result.diagnostics?.formulaCounts.nativeKernelFormulaCellCount).toBe(2)
-      expect(result.diagnostics?.formulaCounts.nativeKernelBatchCount).toBe(1)
+      expect(result.diagnostics?.formulaCounts.evaluatedFormulaCellCount).toBe(6)
+      expect(result.diagnostics?.formulaCounts.nativeKernelFormulaCellCount).toBe(6)
+      expect(result.diagnostics?.formulaCounts.nativeKernelBatchCount).toBe(2)
       const outputBytes = readFileSync(outputPath)
       const sheetXml = strFromU8(unzipSync(outputBytes)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
       expect(sheetXml).toContain('<f>DataTable[[#This Row],[V Households]]*6</f><v>168.75</v>')
       expect(sheetXml).toContain('<f>DataTable[[#This Row],[T USD]]/DataTable[[#This Row],[R Input]]</f><v>28.125</v>')
+      expect(sheetXml).toContain(
+        '<f>_xlfn.IFS(A57152=&quot;January&quot;,1,A57152=&quot;February&quot;,2,A57152=&quot;March&quot;,3)</f><v>3</v>',
+      )
+      expect(sheetXml).toContain(
+        '<f>IF(DataTable[[#This Row],[Assistance modality]]=&quot;In kind&quot;,&quot;In kind&quot;,&quot;Cash&quot;)</f><v>Cash</v>',
+      )
+      expect(sheetXml).toContain('<f>DataTable[[#This Row],[Cluster/AoR]]</f><v>Child Protection</v>')
+      expect(sheetXml).toContain(
+        '<f>_xlfn.IFS(A57152=&quot;January&quot;,&quot;Jan&quot;,A57152=&quot;February&quot;,&quot;Feb&quot;,A57152=&quot;March&quot;,&quot;Mar&quot;)</f><v>Mar</v>',
+      )
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
     }
@@ -573,6 +587,13 @@ function readNumber(value: unknown): number {
   throw new Error(`Expected numeric cell value, received ${JSON.stringify(value)}`)
 }
 
+function readString(value: unknown): string {
+  if (typeof value === 'object' && value !== null && 'value' in value && typeof value.value === 'string') {
+    return value.value
+  }
+  throw new Error(`Expected string cell value, received ${JSON.stringify(value)}`)
+}
+
 function buildLargeManualCalcWorkbookBytes(): Uint8Array {
   const rowCount = 65_537
   const rows = ['<row r="1"><c r="A1"><v>2</v></c><c r="B1"><f>A1*2</f><v>999</v></c></row>']
@@ -598,17 +619,31 @@ function buildLargeManualCalcWorkbookBytes(): Uint8Array {
 }
 
 function buildNativeTableFormulaWorkbook(): Uint8Array {
-  const headers = Array.from({ length: 22 }, (_value, index) => `Column ${String(index + 1)}`)
+  const headers = Array.from({ length: 35 }, (_value, index) => `Column ${String(index + 1)}`)
+  headers[0] = 'Month'
   headers[17] = 'R Input'
   headers[19] = 'T USD'
   headers[20] = 'U Individuals'
   headers[21] = 'V Households'
+  headers[28] = 'Assistance modality'
+  headers[29] = 'AD Month index'
+  headers[30] = 'Cluster/AoR'
+  headers[31] = 'AF Modality group'
+  headers[32] = 'AG Cluster copy'
+  headers[34] = 'AI Month label'
   const headerCells = headers.map((header, index) => `<c r="${columnName(index)}1" t="inlineStr"><is><t>${header}</t></is></c>`).join('')
   const dataCells = [
+    '<c r="A57152" t="inlineStr"><is><t>March</t></is></c>',
     '<c r="R57152"><v>30</v></c>',
     '<c r="T57152"><v>450</v></c>',
     '<c r="U57152"><f>DataTable[[#This Row],[V Households]]*6</f><v>90</v></c>',
     '<c r="V57152"><f>DataTable[[#This Row],[T USD]]/DataTable[[#This Row],[R Input]]</f><v>15</v></c>',
+    '<c r="AC57152" t="inlineStr"><is><t>Cash and voucher assistance</t></is></c>',
+    '<c r="AD57152"><f>_xlfn.IFS(A57152=&quot;January&quot;,1,A57152=&quot;February&quot;,2,A57152=&quot;March&quot;,3)</f><v>1</v></c>',
+    '<c r="AE57152" t="inlineStr"><is><t>Child Protection</t></is></c>',
+    '<c r="AF57152" t="str"><f>IF(DataTable[[#This Row],[Assistance modality]]=&quot;In kind&quot;,&quot;In kind&quot;,&quot;Cash&quot;)</f><v>In kind</v></c>',
+    '<c r="AG57152" t="str"><f>DataTable[[#This Row],[Cluster/AoR]]</f><v>Old Cluster</v></c>',
+    '<c r="AI57152" t="str"><f>_xlfn.IFS(A57152=&quot;January&quot;,&quot;Jan&quot;,A57152=&quot;February&quot;,&quot;Feb&quot;,A57152=&quot;March&quot;,&quot;Mar&quot;)</f><v>Jan</v></c>',
   ].join('')
   return zipSync({
     '[Content_Types].xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -633,7 +668,7 @@ function buildNativeTableFormulaWorkbook(): Uint8Array {
 </Relationships>`),
     'xl/worksheets/sheet1.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${officeRelationshipNamespace}">
-  <dimension ref="A1:V57152"/>
+  <dimension ref="A1:AI57152"/>
   <sheetData><row r="1">${headerCells}</row><row r="57152">${dataCells}</row></sheetData>
   <tableParts count="1"><tablePart r:id="rIdTable1"/></tableParts>
 </worksheet>`),
@@ -642,8 +677,8 @@ function buildNativeTableFormulaWorkbook(): Uint8Array {
   <Relationship Id="rIdTable1" Type="${officeRelationshipNamespace}/table" Target="../tables/table1.xml"/>
 </Relationships>`),
     'xl/tables/table1.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="DataTable" displayName="DataTable" ref="A1:V57152" headerRowCount="1">
-  <tableColumns count="22">${headers
+<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="DataTable" displayName="DataTable" ref="A1:AI57152" headerRowCount="1">
+  <tableColumns count="35">${headers
     .map((header, index) => `<tableColumn id="${String(index + 1)}" name="${header}"/>`)
     .join('')}</tableColumns>
 </table>`),

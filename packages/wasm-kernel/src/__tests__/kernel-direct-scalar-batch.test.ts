@@ -60,6 +60,45 @@ describe('wasm kernel direct scalar batch', () => {
     expect(kernel.readStringIds()[4]).toBe(0)
   })
 
+  it('evaluates direct conditional branch-pick batches', async () => {
+    const kernel = await createKernel()
+    const outTags = new Uint8Array(4)
+    const outNumbers = new Float64Array(4)
+    const outStringIds = new Uint32Array(4)
+    const outErrors = new Uint16Array(4)
+
+    kernel.evalDirectConditionalPickBatch(
+      Uint32Array.from([0, 2, 3, 3]),
+      Uint32Array.from([2, 1, 0, 1]),
+      Uint8Array.from([2, 2, 4, 4]),
+      Uint8Array.from([ValueTag.String, ValueTag.String, ValueTag.Number, ValueTag.String]),
+      Float64Array.from([0, 0, 8, 0]),
+      Uint32Array.from([1, 2, 0, 4]),
+      Uint16Array.from([ErrorCode.None, ErrorCode.None, ErrorCode.None, ErrorCode.None]),
+      Uint8Array.from([ValueTag.String, ValueTag.String, ValueTag.Number, ValueTag.String]),
+      Float64Array.from([0, 0, 5, 0]),
+      Uint32Array.from([3, 2, 0, 5]),
+      Uint16Array.from([ErrorCode.None, ErrorCode.None, ErrorCode.None, ErrorCode.None]),
+      Uint8Array.from([ValueTag.Number, ValueTag.String, ValueTag.Boolean, ValueTag.Number]),
+      Float64Array.from([1, 0, 1, 99]),
+      Uint32Array.from([0, 7, 0, 0]),
+      Uint16Array.from([ErrorCode.None, ErrorCode.None, ErrorCode.None, ErrorCode.None]),
+      Uint8Array.from([ValueTag.Error, ValueTag.String, ValueTag.Error, ValueTag.Number]),
+      Float64Array.from([0, 0, 0, 0]),
+      Uint32Array.from([0, 9, 0, 0]),
+      Uint16Array.from([ErrorCode.NA, ErrorCode.None, ErrorCode.NA, ErrorCode.None]),
+      outTags,
+      outNumbers,
+      outStringIds,
+      outErrors,
+    )
+
+    expect([...outTags]).toEqual([ValueTag.String, ValueTag.Boolean, ValueTag.Error, ValueTag.Error])
+    expect([...outNumbers]).toEqual([0, 1, 0, 0])
+    expect([...outStringIds]).toEqual([7, 0, 0, 0])
+    expect([...outErrors]).toEqual([ErrorCode.None, ErrorCode.None, ErrorCode.NA, ErrorCode.Value])
+  })
+
   it('writes dense two-formula row chains into resident cell arrays', async () => {
     const kernel = await createKernel()
     kernel.init(8, 1, 1, 1, 1)

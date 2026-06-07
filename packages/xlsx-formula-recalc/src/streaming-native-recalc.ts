@@ -254,12 +254,23 @@ export async function recalculateXlsxFileToFileStreamingNative(
     applyEdits(edits, sheetScans, patches)
     const formulaCounts = evaluateFormulaCells(sheetScans, tablesBySheet, patches)
     const readValues = readTargets(reads, sheetScans)
+    const targetRowCount = [...targetRowsBySheet.values()].reduce((sum, rows) => sum + rows.size, 0)
+    const editCount = edits.length
+    const readCount = reads.length
+    const patchedSheetNames = [...new Set(patches.map((patch) => patch.sheetName))]
     recordPhase('evaluate')
+
+    sheetScans.clear()
+    if (tablesBySheet instanceof Map) {
+      tablesBySheet.clear()
+    }
+    targetRowsBySheet.clear()
+    sheetPathsByName.clear()
 
     const output = await exportXlsxSourceLiteralPatchesToFileAsync({
       source,
       patches,
-      sheetNames: [...new Set(patches.map((patch) => patch.sheetName))],
+      sheetNames: patchedSheetNames,
       outputPath: options.outputPath,
     })
     recordPhase('write-output')
@@ -271,9 +282,9 @@ export async function recalculateXlsxFileToFileStreamingNative(
       maxObservedRssBytes,
       ...(options.maxRssBytes === undefined ? {} : { maxRssBytes: options.maxRssBytes }),
       sheetCount: sheetNames.length,
-      targetRowCount: [...targetRowsBySheet.values()].reduce((sum, rows) => sum + rows.size, 0),
-      editCount: edits.length,
-      readCount: reads.length,
+      targetRowCount,
+      editCount,
+      readCount,
       formulaCounts,
       patchedCacheCount: formulaCounts.patchedFormulaCacheCount,
     }

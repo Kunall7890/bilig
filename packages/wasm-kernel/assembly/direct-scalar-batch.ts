@@ -7,6 +7,13 @@ const DIRECT_SCALAR_OP_MUL: u8 = 3
 const DIRECT_SCALAR_OP_DIV: u8 = 4
 const DIRECT_SCALAR_OP_ABS: u8 = 5
 const DIRECT_SCALAR_BATCH_REF_NONE: u32 = 0xffffffff
+const DIRECT_CONDITION_OP_TRUTHY: u8 = 1
+const DIRECT_CONDITION_OP_EQ: u8 = 2
+const DIRECT_CONDITION_OP_NEQ: u8 = 3
+const DIRECT_CONDITION_OP_GT: u8 = 4
+const DIRECT_CONDITION_OP_GTE: u8 = 5
+const DIRECT_CONDITION_OP_LT: u8 = 6
+const DIRECT_CONDITION_OP_LTE: u8 = 7
 
 let directScalarOperandTag: u8 = <u8>ValueTag.Empty
 let directScalarOperandValue: f64 = 0
@@ -94,6 +101,93 @@ function writeDirectScalarStoreTargetBatchResult(targetCellIndex: i32, tag: u8, 
   }
   numbers[targetCellIndex] = value
   errors[targetCellIndex] = ErrorCode.None
+}
+
+function isDirectConditionalNumericComparable(tag: u8): bool {
+  return tag == ValueTag.Number || tag == ValueTag.Boolean || tag == ValueTag.Empty
+}
+
+function directConditionalNumericValue(tag: u8, number: f64): f64 {
+  if (tag == ValueTag.Boolean) {
+    return number != 0 ? 1 : 0
+  }
+  if (tag == ValueTag.Empty) {
+    return 0
+  }
+  return number
+}
+
+function directConditionalConditionIsTrue(
+  operator: u8,
+  leftTag: u8,
+  leftNumber: f64,
+  leftStringId: u32,
+  rightTag: u8,
+  rightNumber: f64,
+  rightStringId: u32,
+): i32 {
+  if (operator == DIRECT_CONDITION_OP_TRUTHY) {
+    if (leftTag == ValueTag.Boolean || leftTag == ValueTag.Number) {
+      return leftNumber != 0 ? 1 : 0
+    }
+    if (leftTag == ValueTag.Empty) {
+      return 0
+    }
+    return -1
+  }
+
+  const leftNumeric = isDirectConditionalNumericComparable(leftTag)
+  const rightNumeric = isDirectConditionalNumericComparable(rightTag)
+  let comparison: f64 = 0
+  if (leftNumeric && rightNumeric) {
+    comparison = directConditionalNumericValue(leftTag, leftNumber) - directConditionalNumericValue(rightTag, rightNumber)
+  } else if ((leftTag == ValueTag.String || leftTag == ValueTag.Empty) && (rightTag == ValueTag.String || rightTag == ValueTag.Empty)) {
+    const leftId = leftTag == ValueTag.Empty ? <u32>0 : leftStringId
+    const rightId = rightTag == ValueTag.Empty ? <u32>0 : rightStringId
+    comparison = leftId == rightId ? 0 : leftId < rightId ? -1 : 1
+    if (operator != DIRECT_CONDITION_OP_EQ && operator != DIRECT_CONDITION_OP_NEQ) {
+      return -1
+    }
+  } else {
+    return -1
+  }
+
+  if (operator == DIRECT_CONDITION_OP_EQ) {
+    return comparison == 0 ? 1 : 0
+  }
+  if (operator == DIRECT_CONDITION_OP_NEQ) {
+    return comparison != 0 ? 1 : 0
+  }
+  if (operator == DIRECT_CONDITION_OP_GT) {
+    return comparison > 0 ? 1 : 0
+  }
+  if (operator == DIRECT_CONDITION_OP_GTE) {
+    return comparison >= 0 ? 1 : 0
+  }
+  if (operator == DIRECT_CONDITION_OP_LT) {
+    return comparison < 0 ? 1 : 0
+  }
+  if (operator == DIRECT_CONDITION_OP_LTE) {
+    return comparison <= 0 ? 1 : 0
+  }
+  return -1
+}
+
+function writeDirectConditionalPickResult(
+  index: i32,
+  tag: u8,
+  number: f64,
+  stringId: u32,
+  error: u16,
+  outTags: Uint8Array,
+  outNumbers: Float64Array,
+  outStringIds: Uint32Array,
+  outErrors: Uint16Array,
+): void {
+  outTags[index] = tag
+  outNumbers[index] = tag == ValueTag.Number || tag == ValueTag.Boolean ? number : 0
+  outStringIds[index] = tag == ValueTag.String ? stringId : 0
+  outErrors[index] = tag == ValueTag.Error ? error : ErrorCode.None
 }
 
 export function evalDirectScalarValueBatch(
@@ -226,5 +320,121 @@ export function evalDirectScalarStoreTargetBatch(
       continue
     }
     writeDirectScalarStoreTargetBatchResult(targetCellIndex, <u8>ValueTag.Number, result + resultOffsets[index])
+  }
+}
+
+export function evalDirectConditionalPickBatch(
+  conditionStarts: Uint32Array,
+  conditionLengths: Uint32Array,
+  conditionOps: Uint8Array,
+  leftTags: Uint8Array,
+  leftNumbers: Float64Array,
+  leftStringIds: Uint32Array,
+  leftErrors: Uint16Array,
+  rightTags: Uint8Array,
+  rightNumbers: Float64Array,
+  rightStringIds: Uint32Array,
+  rightErrors: Uint16Array,
+  branchTags: Uint8Array,
+  branchNumbers: Float64Array,
+  branchStringIds: Uint32Array,
+  branchErrors: Uint16Array,
+  defaultTags: Uint8Array,
+  defaultNumbers: Float64Array,
+  defaultStringIds: Uint32Array,
+  defaultErrors: Uint16Array,
+  outTags: Uint8Array,
+  outNumbers: Float64Array,
+  outStringIds: Uint32Array,
+  outErrors: Uint16Array,
+): void {
+  for (let formulaIndex = 0; formulaIndex < conditionStarts.length; formulaIndex++) {
+    const start = <i32>conditionStarts[formulaIndex]
+    const end = start + <i32>conditionLengths[formulaIndex]
+    let matched = false
+    for (let conditionIndex = start; conditionIndex < end; conditionIndex++) {
+      if (leftTags[conditionIndex] == ValueTag.Error) {
+        writeDirectConditionalPickResult(
+          formulaIndex,
+          <u8>ValueTag.Error,
+          0,
+          0,
+          leftErrors[conditionIndex],
+          outTags,
+          outNumbers,
+          outStringIds,
+          outErrors,
+        )
+        matched = true
+        break
+      }
+      if (rightTags[conditionIndex] == ValueTag.Error) {
+        writeDirectConditionalPickResult(
+          formulaIndex,
+          <u8>ValueTag.Error,
+          0,
+          0,
+          rightErrors[conditionIndex],
+          outTags,
+          outNumbers,
+          outStringIds,
+          outErrors,
+        )
+        matched = true
+        break
+      }
+      const condition = directConditionalConditionIsTrue(
+        conditionOps[conditionIndex],
+        leftTags[conditionIndex],
+        leftNumbers[conditionIndex],
+        leftStringIds[conditionIndex],
+        rightTags[conditionIndex],
+        rightNumbers[conditionIndex],
+        rightStringIds[conditionIndex],
+      )
+      if (condition < 0) {
+        writeDirectConditionalPickResult(
+          formulaIndex,
+          <u8>ValueTag.Error,
+          0,
+          0,
+          <u16>ErrorCode.Value,
+          outTags,
+          outNumbers,
+          outStringIds,
+          outErrors,
+        )
+        matched = true
+        break
+      }
+      if (condition == 1) {
+        writeDirectConditionalPickResult(
+          formulaIndex,
+          branchTags[conditionIndex],
+          branchNumbers[conditionIndex],
+          branchStringIds[conditionIndex],
+          branchErrors[conditionIndex],
+          outTags,
+          outNumbers,
+          outStringIds,
+          outErrors,
+        )
+        matched = true
+        break
+      }
+    }
+    if (!matched) {
+      writeDirectConditionalPickResult(
+        formulaIndex,
+        defaultTags[formulaIndex],
+        defaultNumbers[formulaIndex],
+        defaultStringIds[formulaIndex],
+        defaultErrors[formulaIndex],
+        outTags,
+        outNumbers,
+        outStringIds,
+        outErrors,
+      )
+    }
   }
 }

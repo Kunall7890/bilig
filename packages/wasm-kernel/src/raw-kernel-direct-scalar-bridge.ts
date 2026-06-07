@@ -213,6 +213,113 @@ export function evalDirectScalarStoreTargetBatchRaw(
   }
 }
 
+export function evalDirectConditionalPickBatchRaw(
+  raw: RawKernelExports,
+  conditionStarts: Uint32Array,
+  conditionLengths: Uint32Array,
+  conditionOps: Uint8Array,
+  leftTags: Uint8Array,
+  leftNumbers: Float64Array,
+  leftStringIds: Uint32Array,
+  leftErrors: Uint16Array,
+  rightTags: Uint8Array,
+  rightNumbers: Float64Array,
+  rightStringIds: Uint32Array,
+  rightErrors: Uint16Array,
+  branchTags: Uint8Array,
+  branchNumbers: Float64Array,
+  branchStringIds: Uint32Array,
+  branchErrors: Uint16Array,
+  defaultTags: Uint8Array,
+  defaultNumbers: Float64Array,
+  defaultStringIds: Uint32Array,
+  defaultErrors: Uint16Array,
+  outTags: Uint8Array,
+  outNumbers: Float64Array,
+  outStringIds: Uint32Array,
+  outErrors: Uint16Array,
+): void {
+  const context = { dataView: new DataView(raw.memory.buffer) }
+  const conditionStartsPtr = lowerTypedArray(raw, context, conditionStarts, uint32Spec)
+  const conditionLengthsPtr = lowerTypedArray(raw, context, conditionLengths, uint32Spec)
+  const conditionOpsPtr = lowerTypedArray(raw, context, conditionOps, uint8Spec)
+  const leftTagsPtr = lowerTypedArray(raw, context, leftTags, uint8Spec)
+  const leftNumbersPtr = lowerTypedArray(raw, context, leftNumbers, float64Spec)
+  const leftStringIdsPtr = lowerTypedArray(raw, context, leftStringIds, uint32Spec)
+  const leftErrorsPtr = lowerTypedArray(raw, context, leftErrors, uint16Spec)
+  const rightTagsPtr = lowerTypedArray(raw, context, rightTags, uint8Spec)
+  const rightNumbersPtr = lowerTypedArray(raw, context, rightNumbers, float64Spec)
+  const rightStringIdsPtr = lowerTypedArray(raw, context, rightStringIds, uint32Spec)
+  const rightErrorsPtr = lowerTypedArray(raw, context, rightErrors, uint16Spec)
+  const branchTagsPtr = lowerTypedArray(raw, context, branchTags, uint8Spec)
+  const branchNumbersPtr = lowerTypedArray(raw, context, branchNumbers, float64Spec)
+  const branchStringIdsPtr = lowerTypedArray(raw, context, branchStringIds, uint32Spec)
+  const branchErrorsPtr = lowerTypedArray(raw, context, branchErrors, uint16Spec)
+  const defaultTagsPtr = lowerTypedArray(raw, context, defaultTags, uint8Spec)
+  const defaultNumbersPtr = lowerTypedArray(raw, context, defaultNumbers, float64Spec)
+  const defaultStringIdsPtr = lowerTypedArray(raw, context, defaultStringIds, uint32Spec)
+  const defaultErrorsPtr = lowerTypedArray(raw, context, defaultErrors, uint16Spec)
+  const outTagsPtr = lowerTypedArray(raw, context, outTags, uint8Spec)
+  const outNumbersPtr = lowerTypedArray(raw, context, outNumbers, float64Spec)
+  const outStringIdsPtr = lowerTypedArray(raw, context, outStringIds, uint32Spec)
+  const outErrorsPtr = lowerTypedArray(raw, context, outErrors, uint16Spec)
+  try {
+    raw.evalDirectConditionalPickBatch(
+      conditionStartsPtr,
+      conditionLengthsPtr,
+      conditionOpsPtr,
+      leftTagsPtr,
+      leftNumbersPtr,
+      leftStringIdsPtr,
+      leftErrorsPtr,
+      rightTagsPtr,
+      rightNumbersPtr,
+      rightStringIdsPtr,
+      rightErrorsPtr,
+      branchTagsPtr,
+      branchNumbersPtr,
+      branchStringIdsPtr,
+      branchErrorsPtr,
+      defaultTagsPtr,
+      defaultNumbersPtr,
+      defaultStringIdsPtr,
+      defaultErrorsPtr,
+      outTagsPtr,
+      outNumbersPtr,
+      outStringIdsPtr,
+      outErrorsPtr,
+    )
+    copyLoweredTypedArray(raw, context, outTagsPtr, outTags, uint8Spec)
+    copyLoweredTypedArray(raw, context, outNumbersPtr, outNumbers, float64Spec)
+    copyLoweredTypedArray(raw, context, outStringIdsPtr, outStringIds, uint32Spec)
+    copyLoweredTypedArray(raw, context, outErrorsPtr, outErrors, uint16Spec)
+  } finally {
+    raw.__unpin(conditionStartsPtr)
+    raw.__unpin(conditionLengthsPtr)
+    raw.__unpin(conditionOpsPtr)
+    raw.__unpin(leftTagsPtr)
+    raw.__unpin(leftNumbersPtr)
+    raw.__unpin(leftStringIdsPtr)
+    raw.__unpin(leftErrorsPtr)
+    raw.__unpin(rightTagsPtr)
+    raw.__unpin(rightNumbersPtr)
+    raw.__unpin(rightStringIdsPtr)
+    raw.__unpin(rightErrorsPtr)
+    raw.__unpin(branchTagsPtr)
+    raw.__unpin(branchNumbersPtr)
+    raw.__unpin(branchStringIdsPtr)
+    raw.__unpin(branchErrorsPtr)
+    raw.__unpin(defaultTagsPtr)
+    raw.__unpin(defaultNumbersPtr)
+    raw.__unpin(defaultStringIdsPtr)
+    raw.__unpin(defaultErrorsPtr)
+    raw.__unpin(outTagsPtr)
+    raw.__unpin(outNumbersPtr)
+    raw.__unpin(outStringIdsPtr)
+    raw.__unpin(outErrorsPtr)
+  }
+}
+
 export function evalDenseDirectScalarRowChainStoreTargetBatchRaw(
   raw: RawKernelExports,
   leftValues: Float64Array,

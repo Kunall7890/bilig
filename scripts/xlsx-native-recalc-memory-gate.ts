@@ -73,6 +73,7 @@ async function main(): Promise<void> {
   const cacheDir = resolve(readStringArg('--cache-dir', defaultCacheDir))
   const outputDir = resolve(readStringArg('--output-dir', join(cacheDir, 'outputs')))
   const cliPath = resolve(readStringArg('--cli', defaultCliPath))
+  const nodeBin = readStringArg('--node-bin', process.env['BILIG_XLSX_NATIVE_RECALC_NODE'] ?? 'node')
   const syntheticRows = readNumberArg('--synthetic-rows', defaultSyntheticRowCount)
   const timeoutMs = readNumberArg('--timeout-ms', defaultTimeoutMs)
   const syntheticMaxRssBytes = readMegabytesArg('--synthetic-max-rss-mb', nativeRecalcMemoryGateBudgets.syntheticRowChainMaxRssBytes)
@@ -121,7 +122,7 @@ async function main(): Promise<void> {
 
     for (const target of targets) {
       // oxlint-disable-next-line eslint(no-await-in-loop) -- Sequential targets keep host memory bounded and make RSS attribution clear.
-      results.push(await runNativeRecalcGateTarget(target, cliPath, timeoutMs))
+      results.push(await runNativeRecalcGateTarget(target, cliPath, { nodeBin, timeoutMs }))
     }
   }
 
@@ -172,14 +173,14 @@ export function buildNativeRecalcCliArgs(target: NativeRecalcGateTarget): string
 export async function runNativeRecalcGateTarget(
   target: NativeRecalcGateTarget,
   cliPath: string,
-  timeoutMs: number,
+  options: { readonly nodeBin: string; readonly timeoutMs: number },
 ): Promise<NativeRecalcMemoryGateResult> {
   if (!existsSync(target.inputPath)) {
     return failedSetupResult(target.id, target.label, target.maxRssBytes, `input not found: ${target.inputPath}`)
   }
-  const child = await runChildProcess(process.execPath, [cliPath, ...buildNativeRecalcCliArgs(target)], {
+  const child = await runChildProcess(options.nodeBin, [cliPath, ...buildNativeRecalcCliArgs(target)], {
     maxRssBytes: target.maxRssBytes,
-    timeoutMs,
+    timeoutMs: options.timeoutMs,
   })
   const peakRssBytes = child.peakRssBytes
   if (child.rssLimitExceededBytes !== undefined) {
@@ -190,7 +191,7 @@ export async function runNativeRecalcGateTarget(
     )
   }
   if (child.timedOut) {
-    return failedRuntimeResult(target, peakRssBytes, `worker timed out after ${String(timeoutMs)}ms`)
+    return failedRuntimeResult(target, peakRssBytes, `worker timed out after ${String(options.timeoutMs)}ms`)
   }
   if (child.exitCode !== 0) {
     return failedRuntimeResult(

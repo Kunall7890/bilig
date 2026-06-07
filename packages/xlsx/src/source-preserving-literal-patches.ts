@@ -18,7 +18,6 @@ import {
   readXlsxZipEntriesLazy,
   readXlsxZipEntriesLazyFromByteSource,
   forEachInflatedXlsxZipEntryChunk,
-  forEachInflatedXlsxZipEntryChunkAsync,
   getZipText,
   setZipText,
   type XlsxZipByteSource,
@@ -368,6 +367,10 @@ function tryWriteStreamingPatchedWorksheetEntry(
   let failed = false
   let buffer = ''
   let pendingDeflateChunk: Uint8Array | null = null
+  const patchAddressNeedles = [...patch.literals.keys()].flatMap((address) => {
+    const escaped = escapeXmlAttribute(address)
+    return [`r="${escaped}"`, `r='${escaped}'`]
+  })
   const deflate = new Deflate((chunk) => {
     if (chunk.byteLength === 0) {
       return
@@ -395,15 +398,18 @@ function tryWriteStreamingPatchedWorksheetEntry(
     if (safeEnd === 0 && !final) {
       return
     }
+    const safeXml = buffer.slice(0, safeEnd)
+    if (!patchAddressNeedles.some((needle) => safeXml.includes(needle))) {
+      emitText(safeXml)
+      buffer = buffer.slice(safeEnd)
+      return
+    }
     const cellPattern = new RegExp(worksheetCellElementPattern.source, 'gu')
     let emitOffset = 0
-    for (const match of buffer.matchAll(cellPattern)) {
+    for (const match of safeXml.matchAll(cellPattern)) {
       const cellXml = match[0]
       const matchStart = match.index
       const matchEnd = matchStart + cellXml.length
-      if (matchEnd > safeEnd) {
-        break
-      }
       emitText(buffer.slice(emitOffset, matchStart))
       const openingTag = worksheetCellOpeningTagPattern.exec(cellXml)?.[0]
       const address = openingTag ? readXmlAttribute(openingTag, 'r') : null
@@ -420,7 +426,7 @@ function tryWriteStreamingPatchedWorksheetEntry(
       }
       emitOffset = matchEnd
     }
-    emitText(buffer.slice(emitOffset, safeEnd))
+    emitText(safeXml.slice(emitOffset))
     buffer = buffer.slice(safeEnd)
   }
   try {
@@ -467,7 +473,7 @@ async function tryPrepareStreamingPatchedWorksheetEntryFileAsync(
     }
   }
   try {
-    const sizes = await tryWriteNativeStreamingPatchedWorksheetEntry(zip, sheetPath, patch, (chunk) => {
+    const sizes = tryWriteStreamingPatchedWorksheetEntry(zip, sheetPath, patch, (chunk) => {
       writeAllSync(fd, chunk)
     })
     close()
@@ -486,120 +492,6 @@ async function tryPrepareStreamingPatchedWorksheetEntryFileAsync(
     return null
   } finally {
     close()
-  }
-}
-
-async function tryWriteNativeStreamingPatchedWorksheetEntry(
-  zip: SourcePreservingZip,
-  sheetPath: string,
-  patch: WorksheetPatch,
-  writeCompressedChunk: (chunk: Uint8Array) => void,
-): Promise<PreparedZipEntrySizes | null> {
-  if (patch.literals.size === 0) {
-    return null
-  }
-  const [{ once }, { createDeflateRaw }, { finished }] = await Promise.all([
-    import('node:events'),
-    import('node:zlib'),
-    import('node:stream/promises'),
-  ])
-  const textDecoder = new TextDecoder()
-  const textEncoder = new TextEncoder()
-  const patchedLiterals = new Set<string>()
-  let compressedSize = 0
-  let uncompressedSize = 0
-  let crcState = 0xffffffff
-  let failed = false
-  let buffer = ''
-  const deflate = createDeflateRaw()
-  deflate.on('data', (chunk: Uint8Array | Buffer) => {
-    const bytes = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk)
-    if (bytes.byteLength === 0) {
-      return
-    }
-    writeCompressedChunk(bytes)
-    compressedSize += bytes.byteLength
-  })
-  const emitText = async (text: string): Promise<void> => {
-    if (text.length === 0) {
-      return
-    }
-    const bytes = textEncoder.encode(text)
-    uncompressedSize += bytes.byteLength
-    crcState = crc32Update(crcState, bytes)
-    if (!deflate.write(bytes)) {
-      await once(deflate, 'drain')
-    }
-  }
-  const processBuffer = async (final: boolean): Promise<void> => {
-    if (buffer.length === 0 || failed) {
-      return
-    }
-    const safeEnd = final ? buffer.length : Math.max(0, buffer.lastIndexOf('<'))
-    if (safeEnd === 0 && !final) {
-      return
-    }
-    const cellPattern = new RegExp(worksheetCellElementPattern.source, 'gu')
-    let emitOffset = 0
-    for (const match of buffer.matchAll(cellPattern)) {
-      const cellXml = match[0]
-      const matchStart = match.index
-      const matchEnd = matchStart + cellXml.length
-      if (matchEnd > safeEnd) {
-        break
-      }
-      // oxlint-disable-next-line eslint(no-await-in-loop) -- XML chunks must be emitted in worksheet order.
-      await emitText(buffer.slice(emitOffset, matchStart))
-      const openingTag = worksheetCellOpeningTagPattern.exec(cellXml)?.[0]
-      const address = openingTag ? readXmlAttribute(openingTag, 'r') : null
-      if (address && patch.literals.has(address)) {
-        const patched = patchScalarCellXml(cellXml, patch.literals.get(address) ?? { value: null, preserveFormula: false })
-        if (!patched) {
-          failed = true
-          return
-        }
-        patchedLiterals.add(address)
-        // oxlint-disable-next-line eslint(no-await-in-loop) -- Patched cells must remain ordered in the deflate stream.
-        await emitText(patched)
-      } else {
-        // oxlint-disable-next-line eslint(no-await-in-loop) -- Unpatched cell XML must remain ordered in the deflate stream.
-        await emitText(cellXml)
-      }
-      emitOffset = matchEnd
-    }
-    await emitText(buffer.slice(emitOffset, safeEnd))
-    buffer = buffer.slice(safeEnd)
-  }
-  try {
-    const streamed = await forEachInflatedXlsxZipEntryChunkAsync(
-      zip,
-      sheetPath,
-      async (chunk) => {
-        buffer += textDecoder.decode(chunk, { stream: true })
-        await processBuffer(false)
-      },
-      { chunkSize: 64 * 1024 },
-    )
-    if (!streamed || failed) {
-      deflate.destroy()
-      return null
-    }
-    buffer += textDecoder.decode()
-    await processBuffer(true)
-    if (failed || patchedLiterals.size !== patch.literals.size) {
-      deflate.destroy()
-      return null
-    }
-    deflate.end()
-    await finished(deflate)
-    return {
-      compressedSize,
-      uncompressedSize,
-      crc: crc32Finalize(crcState),
-    }
-  } catch {
-    deflate.destroy()
-    return null
   }
 }
 
