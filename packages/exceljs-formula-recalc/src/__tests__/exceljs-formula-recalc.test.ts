@@ -47,7 +47,7 @@ describe('exceljs-formula-recalc', () => {
     }
 
     const input = await workbook.xlsx.writeBuffer()
-    const result = recalculateExceljsBuffer(input, {
+    const result = await recalculateExceljsBuffer(input, {
       edits: [{ target: 'Sheet1!A1', value: 9 }],
       reads: ['Sheet1!C1'],
     })

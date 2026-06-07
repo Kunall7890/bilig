@@ -4,11 +4,12 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { exportXlsx, recalculateSheetjsWorkbook, WorkPaper } from '../index.js'
+import { recalculateSheetjsWorkbook } from '../index.js'
+import { WorkPaper, exportXlsx } from '@bilig/workpaper/xlsx'
 import { runXlsxFormulaRecalcCli } from 'xlsx-formula-recalc/cli-api'
 
 describe('sheetjs-formula-recalc', () => {
-  it('re-exports the XLSX recalculation boundary with a SheetJS-named API', () => {
+  it('re-exports the native XLSX recalculation boundary with a SheetJS-named API', async () => {
     const sourceWorkbook = WorkPaper.buildFromSheets({
       Inputs: [
         ['Metric', 'Value'],
@@ -24,7 +25,7 @@ describe('sheetjs-formula-recalc', () => {
     const sourceBytes = exportXlsx(sourceWorkbook.exportSnapshot())
     sourceWorkbook.dispose()
 
-    const result = recalculateSheetjsWorkbook(sourceBytes, {
+    const result = await recalculateSheetjsWorkbook(sourceBytes, {
       fileName: 'sheetjs-pricing.xlsx',
       edits: [
         { target: 'Inputs!B2', value: 48 },

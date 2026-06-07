@@ -54,10 +54,11 @@
     "access": "public"
   },
   "scripts": {
-    "build": "pnpm --dir ../.. --filter bilig-workpaper build && rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json"
+    "build": "pnpm --dir ../.. --filter xlsx-formula-recalc build && rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json"
   },
   "dependencies": {
-    "bilig-workpaper": "workspace:*"
+    "bilig-workpaper": "workspace:*",
+    "xlsx-formula-recalc": "workspace:*"
   },
   "devDependencies": {
     "exceljs": "4.4.0"

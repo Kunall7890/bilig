@@ -15,7 +15,7 @@ import {
   recalculateSheetjsWorkbook,
   recalculateXlsx,
 } from 'bilig-workpaper/xlsx'
-import { recalculateXlsxFileToFile } from '../index.js'
+import { recalculateXlsx as recalculateNativeXlsx, recalculateXlsxFileToFile } from '../index.js'
 
 const officeRelationshipNamespace = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
 
@@ -54,6 +54,35 @@ describe('xlsx-formula-recalc', () => {
     expect(summary).toBeTypeOf('number')
     expect(readNumber(restored.getCellValue({ sheet: summary!, row: 1, col: 1 }))).toBe(72_000)
     restored.dispose()
+  })
+
+  it('recalculates XLSX bytes through the primary native package API', async () => {
+    const sourceWorkbook = WorkPaper.buildFromSheets({
+      Inputs: [
+        ['Metric', 'Value'],
+        ['Units', 40],
+        ['Price', 1200],
+      ],
+      Summary: [
+        ['Metric', 'Value'],
+        ['Revenue', '=Inputs!B2*Inputs!B3'],
+      ],
+    })
+    const sourceBytes = exportXlsx(sourceWorkbook.exportSnapshot())
+    sourceWorkbook.dispose()
+
+    const result = await recalculateNativeXlsx(sourceBytes, {
+      fileName: 'pricing.xlsx',
+      edits: [
+        { target: 'Inputs!B2', value: 48 },
+        { target: 'Inputs!B3', value: 1500 },
+      ],
+      reads: ['Summary!B2'],
+    })
+
+    expect(readNumber(result.reads['Summary!B2'])).toBe(72_000)
+    expect(result.diagnostics?.engineMode).toBe('streaming-native')
+    expect(readCachedFormulaValue(result.xlsx, 'xl/worksheets/sheet2.xml', 'B2')).toBe('72000')
   })
 
   it('recalculates formula cells written without cached formula values', () => {

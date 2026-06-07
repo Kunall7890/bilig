@@ -364,6 +364,8 @@ describe('repository dependency policy', () => {
     const scopedIndex = readFileSync(join(repoRoot, 'packages/bilig-xlsx-formula-recalc/src/index.ts'), 'utf8')
     const sheetjsAdapter = readFileSync(join(repoRoot, 'packages/sheetjs-formula-recalc/src/index.ts'), 'utf8')
     const exceljsAdapter = readFileSync(join(repoRoot, 'packages/exceljs-formula-recalc/src/index.ts'), 'utf8')
+    const sheetjsLegacyHelperExport = sheetjsAdapter.split('\n').find((line) => line.includes("from 'bilig-workpaper/xlsx'")) ?? ''
+    const exceljsLegacyHelperExport = exceljsAdapter.split('\n').find((line) => line.includes("from 'bilig-workpaper/xlsx'")) ?? ''
     const unscopedManifest = packageManifest('packages/xlsx-formula-recalc')
     const scopedManifest = packageManifest('packages/bilig-xlsx-formula-recalc')
 
@@ -376,9 +378,11 @@ describe('repository dependency policy', () => {
     expect(scopedIndex).not.toContain('legacy-workpaper')
     expect(objectField(unscopedManifest, 'exports')).not.toHaveProperty('./legacy-workpaper')
     expect(objectField(scopedManifest, 'exports')).not.toHaveProperty('./legacy-workpaper')
-    expect(sheetjsAdapter).toContain("from 'bilig-workpaper/xlsx'")
+    expect(sheetjsAdapter).toContain("from 'xlsx-formula-recalc'")
+    expect(sheetjsLegacyHelperExport).not.toContain('recalculateXlsx')
     expect(sheetjsAdapter).not.toContain('xlsx-formula-recalc/legacy-workpaper')
-    expect(exceljsAdapter).toContain("from 'bilig-workpaper/xlsx'")
+    expect(exceljsAdapter).toContain("from 'xlsx-formula-recalc'")
+    expect(exceljsLegacyHelperExport).not.toContain('recalculateXlsx')
     expect(exceljsAdapter).not.toContain('xlsx-formula-recalc/legacy-workpaper')
   })
 

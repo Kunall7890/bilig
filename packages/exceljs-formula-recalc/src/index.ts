@@ -1,12 +1,13 @@
-import { parseQualifiedA1, recalculateXlsx, type XlsxFormulaRecalcOptions, type XlsxFormulaRecalcResult } from 'bilig-workpaper/xlsx'
+import { recalculateXlsx, type XlsxFormulaRecalcOptions, type XlsxFormulaRecalcResult } from 'xlsx-formula-recalc'
 
-export { WorkPaper, exportXlsx, importXlsx, parseQualifiedA1, parseQualifiedCellTarget, recalculateXlsx } from 'bilig-workpaper/xlsx'
+export { recalculateXlsx, recalculateXlsxFileToFile } from 'xlsx-formula-recalc'
+export { WorkPaper, exportXlsx, importXlsx, parseQualifiedCellTarget } from 'bilig-workpaper/xlsx'
 export type {
   XlsxFormulaRecalcCellValue,
   XlsxFormulaRecalcEdit,
   XlsxFormulaRecalcOptions,
   XlsxFormulaRecalcResult,
-} from 'bilig-workpaper/xlsx'
+} from 'xlsx-formula-recalc'
 
 export interface ExceljsWorkbookLike {
   readonly xlsx: {
@@ -38,7 +39,7 @@ export async function recalculateExceljsWorkbook(
 ): Promise<ExceljsFormulaRecalcResult> {
   const { mutateWorkbook = true, ...recalcOptions } = options
   const input = await workbook.xlsx.writeBuffer()
-  const result = recalculateXlsx(toUint8Array(input), recalcOptions)
+  const result = await recalculateXlsx(toUint8Array(input), recalcOptions)
 
   if (mutateWorkbook) {
     await workbook.xlsx.load(result.xlsx)
@@ -51,11 +52,11 @@ export async function recalculateExceljsWorkbook(
   }
 }
 
-export function recalculateExceljsBuffer(
+export async function recalculateExceljsBuffer(
   input: Uint8Array | ArrayBuffer | Buffer,
   options: XlsxFormulaRecalcOptions = {},
-): XlsxFormulaRecalcResult {
-  return recalculateXlsx(input, options)
+): Promise<XlsxFormulaRecalcResult> {
+  return await recalculateXlsx(input, options)
 }
 
 function toUint8Array(input: Uint8Array | ArrayBuffer | Buffer): Uint8Array {
@@ -90,6 +91,61 @@ function patchExceljsReadResults(workbook: ExceljsWorkbookLike, reads: XlsxFormu
       cell.value = readValue
     }
   }
+}
+
+export function parseQualifiedA1(target: string): { readonly sheetName: string; readonly row: number; readonly col: number } {
+  const trimmed = target.trim()
+  const separator = findSheetSeparator(trimmed)
+  if (separator <= 0 || separator >= trimmed.length - 1) {
+    throw new Error(`Expected a sheet-qualified A1 target such as Inputs!B2, received: ${target}`)
+  }
+  const a1 = trimmed
+    .slice(separator + 1)
+    .replace(/\$/gu, '')
+    .toUpperCase()
+  const match = /^(?<col>[A-Z]+)(?<row>[1-9][0-9]*)$/u.exec(a1)
+  const row = match?.groups?.['row']
+  const col = match?.groups?.['col']
+  if (!row || !col) {
+    throw new Error(`Expected a single A1 cell reference in target ${target}`)
+  }
+  return {
+    sheetName: unquoteSheetName(trimmed.slice(0, separator)),
+    row: Number.parseInt(row, 10) - 1,
+    col: columnLettersToIndex(col),
+  }
+}
+
+function findSheetSeparator(target: string): number {
+  let inQuote = false
+  for (let index = 0; index < target.length; index += 1) {
+    const char = target[index]
+    if (char === "'") {
+      if (inQuote && target[index + 1] === "'") {
+        index += 1
+      } else {
+        inQuote = !inQuote
+      }
+      continue
+    }
+    if (char === '!' && !inQuote) {
+      return index
+    }
+  }
+  return -1
+}
+
+function unquoteSheetName(rawSheetName: string): string {
+  const trimmed = rawSheetName.trim()
+  return trimmed.startsWith("'") && trimmed.endsWith("'") ? trimmed.slice(1, -1).replace(/''/gu, "'") : trimmed
+}
+
+function columnLettersToIndex(letters: string): number {
+  let index = 0
+  for (const char of letters) {
+    index = index * 26 + (char.charCodeAt(0) - 64)
+  }
+  return index - 1
 }
 
 function unwrapReadValue(value: XlsxFormulaRecalcResult['reads'][string]): unknown {
