@@ -414,6 +414,7 @@ describe('repository dependency policy', () => {
   it('keeps file-backed native inspection and reports on the unified workbook core', () => {
     const formulaCacheReader = readFileSync(join(repoRoot, 'packages/xlsx/src/formula-cache-reader.ts'), 'utf8')
     const reportSource = readFileSync(join(repoRoot, 'packages/xlsx/src/workbook-compatibility-report.ts'), 'utf8')
+    const nativeRecalc = readFileSync(join(repoRoot, 'packages/xlsx/src/streaming-native-recalc.ts'), 'utf8')
     const nativeCore = readFileSync(join(repoRoot, 'packages/xlsx/src/streaming-native-workbook-core.ts'), 'utf8')
 
     expect(formulaCacheReader).toContain("from './streaming-native-workbook-core.js'")
@@ -421,6 +422,10 @@ describe('repository dependency policy', () => {
     expect(reportSource).toContain("from './streaming-native-workbook-core.js'")
     expect(reportSource).toContain('readXlsxFormulaCacheCellsFromWorkbookCore')
     expect(reportSource).not.toContain('readXlsxFormulaCacheCellsFromFile(inputPath')
+    expect(nativeRecalc).toContain("from './streaming-native-workbook-core.js'")
+    expect(nativeRecalc).not.toContain("from './file-source.js'")
+    expect(nativeRecalc).not.toContain('readXlsxZipEntriesLazyFromByteSource')
+    expect(nativeRecalc).not.toContain('workbookSheetPathEntriesForSource')
     expect(nativeCore).toContain('createFileXlsxSourceReader')
     expect(nativeCore).toContain('readXlsxZipEntriesLazyFromByteSource')
     expect(nativeCore).toContain('workbookSheetPathEntriesForSource')

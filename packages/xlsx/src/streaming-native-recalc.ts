@@ -1,10 +1,7 @@
-import { statSync } from 'node:fs'
-
 import { parseFormula, translateFormulaReferences, type FormulaNode } from '@bilig/formula'
 import { ErrorCode, formatErrorCode, ValueTag, type CellValue, type LiteralInput } from '@bilig/protocol'
 
 import { decodeCellAddress, decodeCellRange, encodeCellAddress, type XlsxCellRange } from './address.js'
-import { createFileXlsxSourceReader } from './file-source.js'
 import type { XlsxExternalWorkbookHydrationDiagnostics, XlsxExternalWorkbookInput } from './external-workbook-types.js'
 import { exportXlsxSourceLiteralPatchesToFileAsync, type XlsxSourceLiteralPatch } from './source-preserving-literal-patches.js'
 import {
@@ -13,15 +10,14 @@ import {
   readStreamingNativeExternalCachedRowsByAlias,
 } from './streaming-native-external-cache.js'
 import { evaluateStreamingNativeWasmFormulas, expandStreamingNativeFormulaDependencyRows } from './streaming-native-row-chain-wasm.js'
-import { readXmlAttribute, worksheetCellElementPattern, worksheetCellOpeningTagPattern } from './xml.js'
-import { workbookSheetPathEntriesForSource } from './workbook-sheet-paths.js'
 import {
-  forEachInflatedXlsxZipEntryChunk,
-  getZipText,
-  normalizeZipPath,
-  readXlsxZipEntriesLazyFromByteSource,
-  type XlsxZipEntries,
-} from './zip-reader.js'
+  closeStreamingNativeWorkbookCore,
+  openStreamingNativeWorkbookCore,
+  StreamingNativeWorkbookOpenError,
+  type StreamingNativeWorkbookCore,
+} from './streaming-native-workbook-core.js'
+import { readXmlAttribute, worksheetCellElementPattern, worksheetCellOpeningTagPattern } from './xml.js'
+import { forEachInflatedXlsxZipEntryChunk, getZipText, normalizeZipPath, type XlsxZipEntries } from './zip-reader.js'
 
 export type StreamingNativeXlsxFormulaRecalcEngineMode = 'streaming-native'
 
@@ -181,7 +177,7 @@ export async function recalculateXlsxFileToFileStreamingNative(
   if (!options.dryRun && options.outputPath.length === 0) {
     throw new Error('streaming-native outputPath is required unless dryRun is enabled')
   }
-  const inputBytes = statSync(inputPath).size
+  let inputBytes = 0
   const phaseRssPeaks: XlsxFormulaRecalcPhaseRss[] = []
   let maxObservedRssBytes = 0
   const recordPhase = (phase: string): void => {
@@ -197,26 +193,21 @@ export async function recalculateXlsxFileToFileStreamingNative(
     }
   }
 
-  const source = createFileXlsxSourceReader(inputPath)
+  let core: StreamingNativeWorkbookCore | null = null
   try {
-    recordPhase('open-source')
-    const zip = readXlsxZipEntriesLazyFromByteSource(source)
-    if (!zip) {
-      throw streamingError('streaming-native requires a ZIP central directory it can read lazily', phaseRssPeaks, {
-        inputBytes,
-        maxObservedRssBytes,
-        ...(options.maxRssBytes === undefined ? {} : { maxRssBytes: options.maxRssBytes }),
-        unsupportedReason: 'invalid-or-zip64-xlsx',
-      })
-    }
-    const sheetEntries = workbookSheetPathEntriesForSource(zip)
-    const sheetNames = sheetEntries.map((sheet) => sheet.name)
+    core = openStreamingNativeWorkbookCore(inputPath, {
+      onPhase: (phase, info) => {
+        inputBytes = info.inputBytes
+        recordPhase(phase)
+      },
+    })
+    inputBytes = core.inputBytes
+    const { source, zip, sheetEntries, sheetNames } = core
     const sheetPathsByName = new Map(sheetEntries.map((sheet) => [sheet.name, sheet.path]))
     const edits = (options.edits ?? []).map((edit) => Object.assign(parseQualifiedTarget(edit.target), { value: edit.value }))
     const reads = (options.reads ?? []).map(parseQualifiedTarget)
     validateTargets([...edits, ...reads], sheetPathsByName)
     const targetRowsBySheet = targetRowsForTargets([...edits, ...reads])
-    recordPhase('workbook-metadata')
 
     const sheetScans = new Map<string, SheetScanState>()
     for (const sheet of sheetEntries) {
@@ -353,15 +344,19 @@ export async function recalculateXlsxFileToFileStreamingNative(
     if (error instanceof StreamingNativeXlsxRecalcError) {
       throw error
     }
-    const unsupportedReason = error instanceof Error ? error.message : String(error)
+    const unsupportedReason =
+      error instanceof StreamingNativeWorkbookOpenError ? error.reason : error instanceof Error ? error.message : String(error)
+    const errorInputBytes = error instanceof StreamingNativeWorkbookOpenError ? error.inputBytes : inputBytes
     throw streamingError(`streaming-native could not recalculate this workbook: ${unsupportedReason}`, phaseRssPeaks, {
-      inputBytes,
+      inputBytes: errorInputBytes,
       maxObservedRssBytes,
       ...(options.maxRssBytes === undefined ? {} : { maxRssBytes: options.maxRssBytes }),
       unsupportedReason,
     })
   } finally {
-    source.release?.()
+    if (core) {
+      closeStreamingNativeWorkbookCore(core)
+    }
   }
 }
 

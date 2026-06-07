@@ -10,6 +10,10 @@ import {
 export type StreamingNativeWorkbookOpenPhase = 'open-source' | 'zip-central-directory' | 'workbook-metadata'
 export type StreamingNativeWorkbookOpenErrorReason = 'invalid-or-zip64-xlsx'
 
+export interface StreamingNativeWorkbookOpenPhaseInfo {
+  readonly inputBytes: number
+}
+
 export interface StreamingNativeWorkbookCore {
   readonly inputPath: string
   readonly inputBytes: number
@@ -35,13 +39,14 @@ export class StreamingNativeWorkbookOpenError extends Error {
 export function openStreamingNativeWorkbookCore(
   inputPath: string,
   options: {
-    readonly onPhase?: (phase: StreamingNativeWorkbookOpenPhase) => void
+    readonly onPhase?: (phase: StreamingNativeWorkbookOpenPhase, info: StreamingNativeWorkbookOpenPhaseInfo) => void
   } = {},
 ): StreamingNativeWorkbookCore {
   const source = createFileXlsxSourceReader(inputPath)
   const inputBytes = source.byteLength
   try {
-    options.onPhase?.('open-source')
+    const phaseInfo = { inputBytes }
+    options.onPhase?.('open-source', phaseInfo)
     const entryMetadata = readXlsxZipEntryMetadata(source)
     const zip = readXlsxZipEntriesLazyFromByteSource(source)
     if (!zip) {
@@ -51,9 +56,9 @@ export function openStreamingNativeWorkbookCore(
         inputBytes,
       )
     }
-    options.onPhase?.('zip-central-directory')
+    options.onPhase?.('zip-central-directory', phaseInfo)
     const sheetEntries = workbookSheetPathEntriesForSource(zip)
-    options.onPhase?.('workbook-metadata')
+    options.onPhase?.('workbook-metadata', phaseInfo)
     return {
       inputPath,
       inputBytes,
@@ -76,7 +81,7 @@ export function closeStreamingNativeWorkbookCore(core: StreamingNativeWorkbookCo
 export function withStreamingNativeWorkbookCore<T>(
   inputPath: string,
   options: {
-    readonly onPhase?: (phase: StreamingNativeWorkbookOpenPhase) => void
+    readonly onPhase?: (phase: StreamingNativeWorkbookOpenPhase, info: StreamingNativeWorkbookOpenPhaseInfo) => void
   },
   callback: (core: StreamingNativeWorkbookCore) => T,
 ): T {
