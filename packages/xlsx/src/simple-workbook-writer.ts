@@ -35,6 +35,13 @@ export interface SimpleXlsxAutoFilter {
   readonly endAddress: string
 }
 
+export interface SimpleXlsxHyperlink {
+  readonly address: string
+  readonly target: string
+  readonly tooltip?: string
+  readonly display?: string
+}
+
 export interface SimpleXlsxFont {
   readonly family?: string
   readonly size?: number
@@ -113,6 +120,7 @@ export interface SimpleXlsxSheet {
   readonly columns?: readonly SimpleXlsxAxisEntry[]
   readonly merges?: readonly SimpleXlsxMergeRange[]
   readonly autoFilters?: readonly SimpleXlsxAutoFilter[]
+  readonly hyperlinks?: readonly SimpleXlsxHyperlink[]
   readonly dimension?: XlsxCellRange
 }
 
@@ -562,6 +570,36 @@ function autoFilterXml(autoFilters: readonly SimpleXlsxAutoFilter[] | undefined)
   return filter ? `<autoFilter ref="${escapeXmlAttribute(`${filter.startAddress}:${filter.endAddress}`)}"/>` : ''
 }
 
+function validSimpleHyperlinks(hyperlinks: readonly SimpleXlsxHyperlink[] | undefined): readonly SimpleXlsxHyperlink[] {
+  return (hyperlinks ?? []).filter((hyperlink) => hyperlink.address.trim().length > 0 && hyperlink.target.trim().length > 0)
+}
+
+function externalHyperlinkRelationshipId(index: number): string {
+  return `rIdHyperlink${String(index + 1)}`
+}
+
+function worksheetHyperlinksXml(hyperlinks: readonly SimpleXlsxHyperlink[] | undefined): string {
+  let externalIndex = 0
+  const entries = validSimpleHyperlinks(hyperlinks).map((hyperlink) => {
+    const target = hyperlink.target.trim()
+    let targetAttribute: string
+    if (target.startsWith('#')) {
+      targetAttribute = `location="${escapeXmlAttribute(target.slice(1))}"`
+    } else {
+      targetAttribute = `r:id="${externalHyperlinkRelationshipId(externalIndex)}"`
+      externalIndex += 1
+    }
+    const attributes = [
+      `ref="${escapeXmlAttribute(hyperlink.address)}"`,
+      targetAttribute,
+      hyperlink.tooltip && hyperlink.tooltip.trim().length > 0 ? `tooltip="${escapeXmlAttribute(hyperlink.tooltip)}"` : null,
+      hyperlink.display && hyperlink.display.trim().length > 0 ? `display="${escapeXmlAttribute(hyperlink.display)}"` : null,
+    ].filter((entry): entry is string => Boolean(entry))
+    return `<hyperlink ${attributes.join(' ')}/>`
+  })
+  return entries.length > 0 ? `<hyperlinks>${entries.join('')}</hyperlinks>` : ''
+}
+
 function normalizedMacroCodeName(value: string | undefined): string | null {
   const trimmed = value?.trim()
   return trimmed && trimmed.length > 0 ? trimmed : null
@@ -596,6 +634,7 @@ function worksheetXml(sheet: SimpleXlsxSheet, registry: StyleRegistry, sheetCode
     sheetDataXml(sheet, registry),
     mergeCellsXml(sheet.merges),
     autoFilterXml(sheet.autoFilters),
+    worksheetHyperlinksXml(sheet.hyperlinks),
     '</worksheet>',
   ].join('')
 }
@@ -670,6 +709,20 @@ function rootRelationshipsXml(): string {
     '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>',
     '</Relationships>',
   ].join('')
+}
+
+function worksheetRelationshipsXml(hyperlinks: readonly SimpleXlsxHyperlink[] | undefined): string {
+  const relationships = validSimpleHyperlinks(hyperlinks)
+    .filter((hyperlink) => !hyperlink.target.trim().startsWith('#'))
+    .map(
+      (hyperlink, index) =>
+        `<Relationship Id="${externalHyperlinkRelationshipId(index)}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="${escapeXmlAttribute(
+          hyperlink.target.trim(),
+        )}" TargetMode="External"/>`,
+    )
+  return relationships.length > 0
+    ? [xmlDeclaration(), `<Relationships xmlns="${packageRelationshipNs}">`, ...relationships, '</Relationships>'].join('')
+    : ''
 }
 
 function contentTypesXml(sheetCount: number, hasSharedStrings: boolean, hasMacro: boolean): string {
@@ -781,6 +834,10 @@ export function writeSimpleXlsxWorkbook(workbook: SimpleXlsxWorkbook): Uint8Arra
     zip[`xl/worksheets/sheet${String(index + 1)}.xml`] = new TextEncoder().encode(
       worksheetXml(sheet, registry, sheetCodeNameByName.get(sheet.name)),
     )
+    const relationshipsXml = worksheetRelationshipsXml(sheet.hyperlinks)
+    if (relationshipsXml.length > 0) {
+      zip[`xl/worksheets/_rels/sheet${String(index + 1)}.xml.rels`] = new TextEncoder().encode(relationshipsXml)
+    }
   })
   return zipSourcePreservingEntries(zip, new Map(), { dosTime: simpleWorkbookZipDosTimeParts })
 }

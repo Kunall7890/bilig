@@ -28,6 +28,13 @@ describe('hyperlink roundtrip', () => {
     const reimported = importXlsx(exportXlsx(imported.snapshot), 'hyperlinks-roundtrip.xlsx')
 
     expect(reimported.snapshot.sheets[0]?.metadata?.hyperlinks).toEqual(imported.snapshot.sheets[0]?.metadata?.hyperlinks)
+    const exportedZip = unzipSync(exportXlsx(imported.snapshot))
+    expect(strFromU8(exportedZip['docProps/app.xml'] ?? new Uint8Array())).toContain('<Application>Bilig</Application>')
+    const sheetXml = strFromU8(exportedZip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+    const relsXml = strFromU8(exportedZip['xl/worksheets/_rels/sheet1.xml.rels'] ?? new Uint8Array())
+    expect(sheetXml).toMatch(/<hyperlink ref="A1" r:id="[^"]+" tooltip="Open report" display="Open report"\/>/u)
+    expect(sheetXml).toContain('<hyperlink ref="B2" location="Summary!A1" tooltip="Jump to summary" display="Summary"/>')
+    expect(relsXml).toContain('Target="https://example.com/report" TargetMode="External"')
   })
 })
 

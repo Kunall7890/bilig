@@ -23,6 +23,7 @@ const supportedSheetMetadataKeys = new Set([
   'formatRanges',
   'merges',
   'filters',
+  'hyperlinks',
   'richTextArtifacts',
 ])
 const excelJsDefaultPageMarginsXml = '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>'
@@ -278,6 +279,12 @@ function hasOnlySimpleFilters(sheet: WorkbookSnapshot['sheets'][number]): boolea
   return (sheet.metadata?.filters ?? []).every((filter) => !filter.criteria || filter.criteria.length === 0)
 }
 
+function hasOnlySimpleHyperlinks(sheet: WorkbookSnapshot['sheets'][number]): boolean {
+  return (sheet.metadata?.hyperlinks ?? []).every(
+    (hyperlink) => hyperlink.sheetName === sheet.name && hyperlink.target.trim().length > 0 && isValidCellAddress(hyperlink.address),
+  )
+}
+
 function canUseBiligSimpleWriter(snapshot: WorkbookSnapshot): boolean {
   if (snapshot.sheets.length === 0) {
     return false
@@ -295,6 +302,7 @@ function canUseBiligSimpleWriter(snapshot: WorkbookSnapshot): boolean {
     (sheet) =>
       !hasUnsupportedMetadata(sheet.metadata, supportedSheetMetadataKeys, isIgnorableSheetMetadata) &&
       hasOnlySimpleFilters(sheet) &&
+      hasOnlySimpleHyperlinks(sheet) &&
       canMaterializeRanges(sheet),
   )
 }
@@ -504,6 +512,21 @@ function simpleSheet(
     startAddress: filter.startAddress,
     endAddress: filter.endAddress,
   }))
+  const hyperlinks = sheet.metadata?.hyperlinks
+    ?.filter((hyperlink) => hyperlink.sheetName === sheet.name && hyperlink.target.trim().length > 0)
+    .map((hyperlink) => {
+      const output: { address: string; target: string; tooltip?: string; display?: string } = {
+        address: hyperlink.address,
+        target: hyperlink.target,
+      }
+      if (hyperlink.tooltip) {
+        output.tooltip = hyperlink.tooltip
+      }
+      if (hyperlink.display) {
+        output.display = hyperlink.display
+      }
+      return output
+    })
   return {
     name: exportName,
     cells: simpleSheetCells(sheet, formatCodesById, richTextPatches),
@@ -511,6 +534,7 @@ function simpleSheet(
     ...(columns && columns.length > 0 ? { columns } : {}),
     ...(merges && merges.length > 0 ? { merges } : {}),
     ...(autoFilters && autoFilters.length > 0 ? { autoFilters } : {}),
+    ...(hyperlinks && hyperlinks.length > 0 ? { hyperlinks } : {}),
   }
 }
 

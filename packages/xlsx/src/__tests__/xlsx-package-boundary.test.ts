@@ -417,6 +417,48 @@ describe('@bilig/xlsx package boundary', () => {
     expect(sheetXml).toContain(`<c r="B1" t="inlineStr">${inlineStringXml}</c>`)
   })
 
+  it('writes external and internal hyperlinks in simple workbooks without SheetJS', () => {
+    const zip = readXlsxZipEntries(
+      writeSimpleXlsxWorkbook({
+        sheets: [
+          {
+            name: 'Links',
+            cells: [
+              { address: 'A1', row: 0, col: 0, value: 'Open report' },
+              { address: 'B2', row: 1, col: 1, value: 'Summary' },
+            ],
+            hyperlinks: [
+              {
+                address: 'A1',
+                target: 'https://example.com/report?x=1&y=2',
+                tooltip: 'Open report',
+                display: 'Open report',
+              },
+              {
+                address: 'B2',
+                target: '#Summary!A1',
+                tooltip: 'Jump to summary',
+                display: 'Summary',
+              },
+            ],
+          },
+          {
+            name: 'Summary',
+            cells: [{ address: 'A1', row: 0, col: 0, value: 'Destination' }],
+          },
+        ],
+      }),
+    )
+    const sheetXml = textDecoder.decode(zip['xl/worksheets/sheet1.xml'])
+    const relsXml = textDecoder.decode(zip['xl/worksheets/_rels/sheet1.xml.rels'])
+
+    expect(sheetXml).toContain('<hyperlink ref="A1" r:id="rIdHyperlink1" tooltip="Open report" display="Open report"/>')
+    expect(sheetXml).toContain('<hyperlink ref="B2" location="Summary!A1" tooltip="Jump to summary" display="Summary"/>')
+    expect(relsXml).toContain('Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"')
+    expect(relsXml).toContain('Target="https://example.com/report?x=1&amp;y=2" TargetMode="External"')
+    expect(zip['xl/worksheets/_rels/sheet2.xml.rels']).toBeUndefined()
+  })
+
   it('writes simple macro-enabled workbooks with VBA payloads and code names', () => {
     const zip = readXlsxZipEntries(
       writeSimpleXlsxWorkbook({
