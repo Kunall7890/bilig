@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
 import { SpreadsheetEngine } from '@bilig/core'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import { exportXlsx, importXlsx } from '../index.js'
 
@@ -61,15 +61,26 @@ describe('XLSX protected range attribute roundtrip', () => {
 })
 
 function buildProtectedRangeAttributesWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ['Label', 'Input A', 'Input B'],
-    ['North', 10, 20],
-    ['South', 30, 40],
-  ])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Protected')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Protected',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Label' },
+            { address: 'B1', row: 0, col: 1, value: 'Input A' },
+            { address: 'C1', row: 0, col: 2, value: 'Input B' },
+            { address: 'A2', row: 1, col: 0, value: 'North' },
+            { address: 'B2', row: 1, col: 1, value: 10 },
+            { address: 'C2', row: 1, col: 2, value: 20 },
+            { address: 'A3', row: 2, col: 0, value: 'South' },
+            { address: 'B3', row: 2, col: 1, value: 30 },
+            { address: 'C3', row: 2, col: 2, value: 40 },
+          ],
+        },
+      ],
+    }),
+  )
   const sourceSheetXml = strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
   zip['xl/worksheets/sheet1.xml'] = strToU8(
     sourceSheetXml.replace(

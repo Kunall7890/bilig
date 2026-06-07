@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
 import { SpreadsheetEngine } from '@bilig/core'
 import type { WorkbookSnapshot } from '@bilig/protocol'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import { exportXlsx, importXlsx } from '../index.js'
 
@@ -44,14 +44,21 @@ describe('workbook structure protection import/export', () => {
 })
 
 function buildWorkbookProtectionBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ['Control', 'Value'],
-    ['Revenue', 100],
-  ])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Model')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Model',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Control' },
+            { address: 'B1', row: 0, col: 1, value: 'Value' },
+            { address: 'A2', row: 1, col: 0, value: 'Revenue' },
+            { address: 'B2', row: 1, col: 1, value: 100 },
+          ],
+        },
+      ],
+    }),
+  )
   const sourceWorkbookXml = strFromU8(zip['xl/workbook.xml'] ?? new Uint8Array())
   const workbookProtectionXml = '<workbookProtection lockStructure="1" lockWindows="0" workbookPassword="AF2B" revisionsPassword="BC3D"/>'
   zip['xl/workbook.xml'] = strToU8(insertWorkbookProtection(sourceWorkbookXml, workbookProtectionXml))

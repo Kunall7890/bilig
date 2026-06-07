@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
 import { SpreadsheetEngine } from '@bilig/core'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import { exportXlsx, importXlsx } from '../index.js'
 
@@ -30,11 +30,11 @@ describe('XLSX sheet protection attribute roundtrip', () => {
 })
 
 function buildSheetProtectionWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([['protected']])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Protected')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [{ name: 'Protected', cells: [{ address: 'A1', row: 0, col: 0, value: 'protected' }] }],
+    }),
+  )
   const sourceSheetXml = strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
   zip['xl/worksheets/sheet1.xml'] = strToU8(
     sourceSheetXml.replace('<sheetData>', '<sheetProtection selectLockedCells="1" algorithmName="workpaper&amp;excel"/><sheetData>'),
