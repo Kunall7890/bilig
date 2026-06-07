@@ -661,7 +661,7 @@ function shellQuote(value: string): string {
 
 function inputBytesForCli(options: CliOptions, commandName: string): Uint8Array {
   if (options.mode !== 'demo') {
-    return readFileSync(requireInputPath(options))
+    throw new Error('File-mode XLSX byte input is disabled; use runXlsxFormulaRecalcCliAsync for file-backed native XLSX work.')
   }
   return commandName === cacheDoctorCommandName && options.inspect ? buildStaleCacheDoctorDemoWorkbookBytes() : buildDemoWorkbookBytes()
 }

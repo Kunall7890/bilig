@@ -208,6 +208,20 @@ process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXls
     }
   })
 
+  it('refuses synchronous file inspection before reading input bytes', () => {
+    let stderr = ''
+
+    const exitCode = runXlsxFormulaRecalcCli(['/tmp/bilig-missing-large.xlsx', '--inspect', '--json'], {
+      stderr: (text) => {
+        stderr += text
+      },
+    })
+
+    expect(exitCode).toBe(1)
+    expect(stderr).toContain('runXlsxFormulaRecalcCliAsync')
+    expect(stderr).not.toContain('ENOENT')
+  })
+
   it('refuses WorkPaper engine selection on the primary async file CLI', async () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-formula-recalc-cli-workpaper-engine-'))
     try {

@@ -630,6 +630,8 @@ describe('repository dependency policy', () => {
 
     expect(cliApi).toContain("from './file-recalc.js'")
     expect(cliApi).toContain("from '@bilig/xlsx'")
+    expect(cliApi).toContain('File-mode XLSX byte input is disabled')
+    expect(cliApi).not.toContain('return readFileSync(requireInputPath(options))')
     expect(externalWorkbookGuardIndex).toBeGreaterThan(-1)
     expect(externalWorkbookReadIndex).toBeGreaterThan(externalWorkbookGuardIndex)
     expect(cliApi).not.toMatch(/from\s+['"]\.\/index\.js['"]/u)
