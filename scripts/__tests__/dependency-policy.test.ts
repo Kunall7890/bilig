@@ -53,6 +53,11 @@ const nativeXlsxExcelImportFixtureTests = [
   'packages/excel-import/src/__tests__/xlsx-worksheet-dimensions-roundtrip.test.ts',
 ] as const
 const nativeXlsxFormulaRecalcPackages = ['packages/xlsx-formula-recalc', 'packages/bilig-xlsx-formula-recalc'] as const
+const scopedXlsxFormulaRecalcCliEntrypoints = [
+  'packages/bilig-xlsx-formula-recalc/src/cli.ts',
+  'packages/bilig-xlsx-formula-recalc/src/cache-doctor-cli.ts',
+  'packages/bilig-xlsx-formula-recalc/src/sheetjs-cli.ts',
+] as const
 
 function packageManifestPaths(): string[] {
   return packageManifestDirs.flatMap((dir) => {
@@ -174,5 +179,14 @@ describe('repository dependency policy', () => {
     const importViolations = nativeXlsxFormulaRecalcPackages.flatMap((path) => sourceImportViolations(path, ['xlsx', 'fflate']))
 
     expect([...dependencyViolations, ...importViolations]).toEqual([])
+  })
+
+  it('keeps @bilig/xlsx-formula-recalc CLI entrypoints on the file-backed async recalc path', () => {
+    const violations = scopedXlsxFormulaRecalcCliEntrypoints.filter((path) => {
+      const source = readFileSync(join(repoRoot, path), 'utf8')
+      return !source.includes('runXlsxFormulaRecalcCliAsync') || source.includes('runXlsxFormulaRecalcCli(')
+    })
+
+    expect(violations).toEqual([])
   })
 })

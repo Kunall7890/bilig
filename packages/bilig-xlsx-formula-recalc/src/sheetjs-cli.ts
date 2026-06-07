@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { runXlsxFormulaRecalcCli } from './cli-api.js'
+import { runXlsxFormulaRecalcCliAsync } from './cli-api.js'
 
-process.exitCode = runXlsxFormulaRecalcCli(process.argv.slice(2), {
+process.exitCode = await runXlsxFormulaRecalcCliAsync(process.argv.slice(2), {
   commandName: 'sheetjs-recalc',
 })
