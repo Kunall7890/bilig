@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import { exportXlsx, importXlsx } from '../index.js'
 
@@ -59,14 +59,23 @@ describe('MS-OI29500 calcPr and calcChain import', () => {
 })
 
 function buildCalcChainWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ['Input', 'Gross', 'Net'],
-    [10, { f: 'A2*2', v: 20 }, { f: 'B2-1', v: 19 }],
-  ])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Model')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Model',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Input' },
+            { address: 'B1', row: 0, col: 1, value: 'Gross' },
+            { address: 'C1', row: 0, col: 2, value: 'Net' },
+            { address: 'A2', row: 1, col: 0, value: 10 },
+            { address: 'B2', row: 1, col: 1, formula: 'A2*2', value: 20 },
+            { address: 'C2', row: 1, col: 2, formula: 'B2-1', value: 19 },
+          ],
+        },
+      ],
+    }),
+  )
   const sourceWorkbookXml = strFromU8(zip['xl/workbook.xml'] ?? new Uint8Array())
   const calcPrXml = '<calcPr calcId="191029" calcMode="manual" fullCalcOnLoad="1" forceFullCalc="1" calcCompleted="0"/>'
   zip['xl/workbook.xml'] = strToU8(
@@ -87,11 +96,20 @@ function buildCalcChainWorkbookBytes(): Uint8Array {
 }
 
 function buildCalcChainWorkbookBytesWithSheetIdGap(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([[{ f: '10+1', v: 11 }]]), 'Inputs')
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([[{ f: 'Inputs!A1+1', v: 12 }]]), 'Report')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Inputs',
+          cells: [{ address: 'A1', row: 0, col: 0, formula: '10+1', value: 11 }],
+        },
+        {
+          name: 'Report',
+          cells: [{ address: 'A1', row: 0, col: 0, formula: 'Inputs!A1+1', value: 12 }],
+        },
+      ],
+    }),
+  )
   const sourceWorkbookXml = strFromU8(zip['xl/workbook.xml'] ?? new Uint8Array())
   zip['xl/workbook.xml'] = strToU8(
     sourceWorkbookXml

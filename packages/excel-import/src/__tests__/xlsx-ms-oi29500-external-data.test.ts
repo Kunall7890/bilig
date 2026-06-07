@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import { importXlsx } from '../index.js'
 
@@ -78,11 +78,19 @@ describe('MS-OI29500 external data provenance import', () => {
 })
 
 function buildExternalDataWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([['Local'], [1]])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Model')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Model',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Local' },
+            { address: 'A2', row: 1, col: 0, value: 1 },
+          ],
+        },
+      ],
+    }),
+  )
   const sourceWorkbookXml = strFromU8(zip['xl/workbook.xml'] ?? new Uint8Array())
   zip['xl/workbook.xml'] = strToU8(
     sourceWorkbookXml.replace(
@@ -135,11 +143,19 @@ function buildExternalDataWorkbookBytes(): Uint8Array {
 }
 
 function buildConnectionOnlyDataModelWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([['Model'], [1]])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Model')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Model',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Model' },
+            { address: 'A2', row: 1, col: 0, value: 1 },
+          ],
+        },
+      ],
+    }),
+  )
   const sourceRelsXml = strFromU8(zip['xl/_rels/workbook.xml.rels'] ?? new Uint8Array())
   zip['xl/_rels/workbook.xml.rels'] = strToU8(
     sourceRelsXml.replace(

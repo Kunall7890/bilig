@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import { definedNameFormulaCachesWarning, importXlsx, unsupportedFormulaCachesWarning } from '../index.js'
 
@@ -108,23 +108,24 @@ describe('MS-OI29500 formula context audit import', () => {
 })
 
 function buildFormulaContextWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ['Input', 'Double'],
-    [10, { f: 'A2*2', v: 20 }],
-    [15, { f: 'A3*2', v: 30 }],
-  ])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Model')
-  workbook.Workbook = {
-    Names: [
-      {
-        Name: 'NameFormula',
-        Ref: 'R1C1+1',
-      },
-    ],
-  }
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Model',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'Input' },
+            { address: 'B1', row: 0, col: 1, value: 'Double' },
+            { address: 'A2', row: 1, col: 0, value: 10 },
+            { address: 'B2', row: 1, col: 1, formula: 'A2*2', value: 20 },
+            { address: 'A3', row: 2, col: 0, value: 15 },
+            { address: 'B3', row: 2, col: 1, formula: 'A3*2', value: 30 },
+          ],
+        },
+      ],
+      definedNames: [{ name: 'NameFormula', formula: 'R1C1+1' }],
+    }),
+  )
   const sourceSheetXml = strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
   zip['xl/worksheets/sheet1.xml'] = strToU8(
     sourceSheetXml
@@ -144,11 +145,19 @@ function buildFormulaContextWorkbookBytes(): Uint8Array {
 }
 
 function buildUnsupportedCachedFormulaWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([['AAPL', 0]])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Model')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Model',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'AAPL' },
+            { address: 'B1', row: 0, col: 1, value: 0 },
+          ],
+        },
+      ],
+    }),
+  )
   const sourceSheetXml = strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
   zip['xl/worksheets/sheet1.xml'] = strToU8(
     sourceSheetXml.replace(
@@ -160,16 +169,16 @@ function buildUnsupportedCachedFormulaWorkbookBytes(): Uint8Array {
 }
 
 function buildRiskyDefinedNameFormulaWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([['AAPL', { f: 'LiveShares/1000000', v: 0 }]])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Model')
-  workbook.Workbook = {
-    Names: [
+  return writeSimpleXlsxWorkbook({
+    sheets: [
       {
-        Name: 'LiveShares',
-        Ref: '_xldudf_WISEPRICE(A1,"Shares Outstanding")',
+        name: 'Model',
+        cells: [
+          { address: 'A1', row: 0, col: 0, value: 'AAPL' },
+          { address: 'B1', row: 0, col: 1, formula: 'LiveShares/1000000', value: 0 },
+        ],
       },
     ],
-  }
-  return new Uint8Array(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+    definedNames: [{ name: 'LiveShares', formula: '_xldudf_WISEPRICE(A1,"Shares Outstanding")' }],
+  })
 }

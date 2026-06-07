@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import { exportXlsx, importXlsx } from '../index.js'
@@ -102,9 +102,11 @@ function buildPivotSemanticsWorkbookBytes(): Uint8Array {
 }
 
 function buildExternalCacheOnlyPivotWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([[]]), 'Pivot')
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [{ name: 'Pivot', cells: [] }],
+    }),
+  )
   const workbookXml = strFromU8(zip['xl/workbook.xml'] ?? new Uint8Array())
   zip['xl/workbook.xml'] = strToU8(
     workbookXml.replace('</sheets>', '</sheets><pivotCaches><pivotCache cacheId="1" r:id="rIdExternalPivotCache"/></pivotCaches>'),
