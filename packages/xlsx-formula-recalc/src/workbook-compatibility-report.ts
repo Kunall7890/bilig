@@ -1,14 +1,21 @@
 import { readFileSync } from 'node:fs'
 import { basename } from 'node:path'
 
-import { WorkPaper } from '@bilig/headless'
-import type { ImportedWorkbookDiagnostics, XlsxExternalWorkbookInput, XlsxImportOptions } from '@bilig/headless/xlsx'
-import { exportXlsx, importXlsx } from '@bilig/headless/xlsx'
-import { replaceXlsxWorksheetCellXml } from '@bilig/xlsx'
-import { inspectXlsxCache, type XlsxCacheInspectionLimit, type XlsxFormulaRecalcEdit } from './legacy-workpaper.js'
+import {
+  getZipText,
+  readXlsxWorkbookCells,
+  readXlsxZipEntriesLazy,
+  writeSimpleXlsxWorkbook,
+  type ImportedWorkbookDiagnostics,
+  type XlsxExternalWorkbookInput,
+  type XlsxWorkbookCells,
+  type XlsxZipEntries,
+} from '@bilig/xlsx'
+import type { XlsxFormulaRecalcEdit } from './types.js'
 
 export const workbookCompatibilityReportSchemaVersion = 'bilig-workbook-compatibility-report.v1'
 
+export type XlsxCacheInspectionLimit = number | 'all'
 export type WorkbookCompatibilityRiskLevel = 'low' | 'medium' | 'high'
 
 export interface WorkbookCompatibilityNamedCount {
@@ -83,7 +90,7 @@ export interface WorkbookCompatibilityReport {
   readonly diagnostics?: ImportedWorkbookDiagnostics
   readonly commandSucceeded: true
   readonly inspectionCompleted: true
-  readonly recalculationCompleted: true
+  readonly recalculationCompleted: boolean
   readonly excelParity: 'not_proven'
   readonly limitations: readonly string[]
   readonly next: {
@@ -151,28 +158,14 @@ export function buildWorkbookCompatibilityReport(
   const bytes = toUint8Array(input)
   const fileName = options.fileName ?? 'workbook.xlsx'
   const externalWorkbooks = options.externalWorkbooks ?? []
-  const imported = importXlsx(bytes, fileName, workbookCompatibilityImportOptions(externalWorkbooks))
-  const metadata = imported.snapshot.workbook.metadata
-  const cacheInspection = inspectXlsxCache(bytes, {
-    fileName,
-    ...(externalWorkbooks.length > 0 ? { externalWorkbooks } : {}),
-    ...(options.edits ? { edits: options.edits } : {}),
-    inspectLimit: options.inspectLimit ?? defaultInspectLimit,
-  })
-  const formulaAuditEntries = metadata?.formulaAudit?.formulas ?? []
-  const unsupportedFunctions = countNamedValues([
-    ...cacheInspection.formulas.flatMap((entry) => knownUnsupportedFunctionNamesFromFormula(entry.formula)),
-    ...formulaAuditEntries.flatMap((entry) =>
-      unsupportedAuditFunctionNamesFromFormula(entry.formula, entry.cacheStatus === 'unsupportedCached'),
-    ),
-  ])
-  const volatileFunctions = countNamedValues(formulaAuditEntries.flatMap((entry) => volatileFunctionNamesFromFormula(entry.formula)))
-  const macroModules = metadata?.macroPayloads ?? []
-  const pivots = metadata?.pivots ?? []
-  const unsupportedPivots = metadata?.unsupportedPivots ?? []
-  const unsupportedDependencies = metadata?.unsupportedFormulaDependencies ?? []
-  const externalWorkbookReferences = metadata?.externalWorkbookReferences ?? []
-  const externalWorkbookHydration = imported.diagnostics?.externalWorkbookHydration
+  const zip = readXlsxZipEntriesLazy(bytes)
+  const workbook = readXlsxWorkbookCells(zip)
+  const workbookParts = scanWorkbookPackageParts(zip)
+  const cacheInspection = inspectWorkbookFormulaCaches(workbook, options.inspectLimit ?? defaultInspectLimit)
+  const unsupportedFunctions = countNamedValues(
+    cacheInspection.formulas.flatMap((entry) => knownUnsupportedFunctionNamesFromFormula(entry.formula)),
+  )
+  const volatileFunctions = countNamedValues(cacheInspection.formulas.flatMap((entry) => volatileFunctionNamesFromFormula(entry.formula)))
   const report: Omit<WorkbookCompatibilityReport, 'risk'> = {
     schemaVersion: workbookCompatibilityReportSchemaVersion,
     verified: true,
@@ -182,33 +175,32 @@ export function buildWorkbookCompatibilityReport(
       inspectLimit: cacheInspection.inspectionLimit,
     },
     workbook: {
-      sheetCount: imported.sheetNames.length,
-      sheetNames: imported.sheetNames,
-      nonEmptyCellCount: imported.snapshot.sheets.reduce((sum, sheet) => sum + sheet.cells.length, 0),
+      sheetCount: workbook.sheets.length,
+      sheetNames: workbook.sheets.map((sheet) => sheet.name),
+      nonEmptyCellCount: workbook.sheets.reduce((sum, sheet) => sum + sheet.cells.length, 0),
       formulaCellCount: cacheInspection.formulaCellCount,
-      definedNameCount: metadata?.definedNames?.length ?? 0,
-      tableCount: metadata?.tables?.length ?? 0,
-      pivotTableCount: pivots.length + unsupportedPivots.length,
-      chartCount:
-        (metadata?.charts?.length ?? 0) + (metadata?.chartArtifacts?.parts.length ?? 0) + (metadata?.chartSheetArtifacts?.length ?? 0),
-      macroModuleCount: macroModules.length,
+      definedNameCount: workbookParts.definedNameCount,
+      tableCount: workbookParts.tableCount,
+      pivotTableCount: workbookParts.pivotTableCount,
+      chartCount: workbookParts.chartCount,
+      macroModuleCount: workbookParts.macroModuleCount,
     },
     findings: {
       unsupportedFunctions,
       externalLinks: {
-        count: externalWorkbookReferences.length,
-        unresolvedCount: unsupportedDependencies.reduce((sum, dependency) => sum + dependency.unresolvedExternalReferenceCount, 0),
-        refreshedCount: numberValue(externalWorkbookHydration, 'refreshedBookIndices') ?? 0,
+        count: workbookParts.externalLinkCount,
+        unresolvedCount: 0,
+        refreshedCount: 0,
       },
       macroModules: {
-        count: macroModules.length,
-        byteLength: macroModules.reduce((sum, payload) => sum + payload.byteLength, 0),
+        count: workbookParts.macroModuleCount,
+        byteLength: workbookParts.macroByteLength,
       },
       volatileFunctions,
       pivotTables: {
-        count: pivots.length + unsupportedPivots.length,
-        unsupportedCount: unsupportedPivots.length,
-        cacheOnlyCount: pivots.filter((pivot) => pivot.cacheOnly === true || pivot.sourceKind === 'external-cache-only').length,
+        count: workbookParts.pivotTableCount,
+        unsupportedCount: 0,
+        cacheOnlyCount: 0,
       },
       staleCachedFormulas: {
         count: cacheInspection.staleCachedFormulaCount,
@@ -219,7 +211,7 @@ export function buildWorkbookCompatibilityReport(
       unsupportedRecalculations: {
         count: cacheInspection.cacheStatusSummary.unsupportedRecalculation,
       },
-      warnings: [...new Set([...imported.warnings, ...cacheInspection.warnings])].toSorted(),
+      warnings: cacheInspection.warnings,
     },
     cacheInspection: {
       inspectedFormulaCellCount: cacheInspection.inspectedFormulaCellCount,
@@ -227,14 +219,14 @@ export function buildWorkbookCompatibilityReport(
       inspectionLimit: cacheInspection.inspectionLimit,
       suggestedReads: cacheInspection.suggestedReads,
     },
-    ...(imported.diagnostics || cacheInspection.diagnostics ? { diagnostics: cacheInspection.diagnostics ?? imported.diagnostics } : {}),
     commandSucceeded: true,
     inspectionCompleted: true,
-    recalculationCompleted: true,
+    recalculationCompleted: false,
     excelParity: 'not_proven',
     limitations: [
       'This report identifies workbook features that may require investigation before using Bilig in a service or agent workflow.',
       'It is not an Excel compatibility certification.',
+      'It scans workbook package metadata and formula caches; use xlsx-cache-doctor for native recalculation proof.',
       'It does not execute VBA, refresh pivots, refresh external data sources, or prove desktop Excel UI behavior.',
     ],
     next: {
@@ -247,12 +239,6 @@ export function buildWorkbookCompatibilityReport(
     ...report,
     risk: buildRisk(report),
   }
-}
-
-function workbookCompatibilityImportOptions(externalWorkbooks: readonly XlsxExternalWorkbookInput[]): XlsxImportOptions {
-  return externalWorkbooks.length > 0
-    ? { externalWorkbooks, externalLinkCacheArtifactMode: 'replace-refreshed' }
-    : { preferNativeSimpleImport: true }
 }
 
 export function runWorkbookCompatibilityReportCli(args: readonly string[], context: WorkbookCompatibilityReportCliContext = {}): number {
@@ -289,30 +275,135 @@ export function runWorkbookCompatibilityReportCli(args: readonly string[], conte
 }
 
 export function buildWorkbookCompatibilityDemoBytes(): Uint8Array {
-  const workbook = WorkPaper.buildFromSheets({
-    Inputs: [
-      ['Metric', 'Value'],
-      ['Units', 40],
-      ['Price', 1200],
-    ],
-    Summary: [
-      ['Metric', 'Value'],
-      ['Revenue', '=Inputs!B2*Inputs!B3'],
-      ['GeneratedAt', '=NOW()'],
-      ['CubeSales', '=CUBEVALUE("ThisWorkbookDataModel","[Measures].[Sales]")'],
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Inputs',
+        cells: [
+          { address: 'A1', row: 0, col: 0, value: 'Metric' },
+          { address: 'B1', row: 0, col: 1, value: 'Value' },
+          { address: 'A2', row: 1, col: 0, value: 'Units' },
+          { address: 'B2', row: 1, col: 1, value: 40 },
+          { address: 'A3', row: 2, col: 0, value: 'Price' },
+          { address: 'B3', row: 2, col: 1, value: 1200 },
+        ],
+      },
+      {
+        name: 'Summary',
+        cells: [
+          { address: 'A1', row: 0, col: 0, value: 'Metric' },
+          { address: 'B1', row: 0, col: 1, value: 'Value' },
+          { address: 'A2', row: 1, col: 0, value: 'Revenue' },
+          { address: 'B2', row: 1, col: 1, formula: 'Inputs!B2*Inputs!B3', value: 60_000 },
+          { address: 'A3', row: 2, col: 0, value: 'GeneratedAt' },
+          { address: 'B3', row: 2, col: 1, formula: 'NOW()', value: 45_123 },
+          { address: 'A4', row: 3, col: 0, value: 'CubeSales' },
+          { address: 'B4', row: 3, col: 1, formula: 'CUBEVALUE("ThisWorkbookDataModel","[Measures].[Sales]")' },
+        ],
+      },
     ],
   })
-  try {
-    let bytes = exportXlsx(workbook.exportSnapshot())
-    bytes = replaceWorksheetCellXml(bytes, 'xl/worksheets/sheet2.xml', 'B3', '<c r="B3"><f>NOW()</f><v>45123</v></c>')
-    return replaceWorksheetCellXml(
-      bytes,
-      'xl/worksheets/sheet2.xml',
-      'B4',
-      '<c r="B4"><f>CUBEVALUE(&quot;ThisWorkbookDataModel&quot;,&quot;[Measures].[Sales]&quot;)</f><v>60000</v></c>',
-    )
-  } finally {
-    workbook.dispose()
+}
+
+interface WorkbookPackagePartScan {
+  readonly definedNameCount: number
+  readonly tableCount: number
+  readonly pivotTableCount: number
+  readonly chartCount: number
+  readonly macroModuleCount: number
+  readonly macroByteLength: number
+  readonly externalLinkCount: number
+}
+
+interface WorkbookFormulaCacheInspection {
+  readonly formulaCellCount: number
+  readonly inspectedFormulaCellCount: number
+  readonly uninspectedFormulaCellCount: number
+  readonly inspectionLimit: XlsxCacheInspectionLimit
+  readonly suggestedReads: readonly string[]
+  readonly staleCachedFormulaCount: number
+  readonly cacheStatusSummary: {
+    readonly missingCache: number
+    readonly unsupportedRecalculation: number
+  }
+  readonly warnings: readonly string[]
+  readonly formulas: readonly {
+    readonly target: string
+    readonly formula: string
+    readonly hasCachedValue: boolean
+  }[]
+}
+
+function inspectWorkbookFormulaCaches(workbook: XlsxWorkbookCells, inspectLimit: XlsxCacheInspectionLimit): WorkbookFormulaCacheInspection {
+  const formulas = workbook.sheets.flatMap((sheet) =>
+    sheet.cells.flatMap((cell) =>
+      cell.formula && cell.formula.trim().length > 0
+        ? [
+            {
+              target: `${sheet.name}!${cell.address}`,
+              formula: cell.formula.startsWith('=') ? cell.formula : `=${cell.formula}`,
+              hasCachedValue: cell.hasValue,
+            },
+          ]
+        : [],
+    ),
+  )
+  const normalizedLimit = normalizeInspectLimit(inspectLimit)
+  const inspected = normalizedLimit === 'all' ? formulas : formulas.slice(0, normalizedLimit)
+  const missingCache = inspected.filter((entry) => !entry.hasCachedValue).length
+  const unsupportedRecalculation = inspected.filter((entry) => knownUnsupportedFunctionNamesFromFormula(entry.formula).length > 0).length
+  const staleCachedFormulaCount = inspected.filter(
+    (entry) => entry.hasCachedValue && volatileFunctionNamesFromFormula(entry.formula).length > 0,
+  ).length
+  const volatileFormulaCount = inspected.filter((entry) => volatileFunctionNamesFromFormula(entry.formula).length > 0).length
+  const warnings = [
+    ...(volatileFormulaCount > 0
+      ? ['Volatile formulas were detected; cached formula values may depend on workbook calculation time.']
+      : []),
+    ...(unsupportedRecalculation > 0
+      ? ['Unsupported formula families were detected; use xlsx-cache-doctor or an oracle harness before trusting cached values.']
+      : []),
+  ].toSorted()
+  return {
+    formulaCellCount: formulas.length,
+    inspectedFormulaCellCount: inspected.length,
+    uninspectedFormulaCellCount: formulas.length - inspected.length,
+    inspectionLimit: normalizedLimit,
+    suggestedReads: inspected.map((entry) => entry.target),
+    staleCachedFormulaCount,
+    cacheStatusSummary: {
+      missingCache,
+      unsupportedRecalculation,
+    },
+    warnings,
+    formulas: inspected,
+  }
+}
+
+function normalizeInspectLimit(limit: XlsxCacheInspectionLimit): XlsxCacheInspectionLimit {
+  if (limit === 'all') {
+    return limit
+  }
+  if (!Number.isInteger(limit) || limit < 1) {
+    return defaultInspectLimit
+  }
+  return limit
+}
+
+function scanWorkbookPackageParts(zip: XlsxZipEntries): WorkbookPackagePartScan {
+  const paths = Object.keys(zip)
+  const workbookXml = getZipText(zip, 'xl/workbook.xml') ?? ''
+  const externalReferenceCount = workbookXml.match(/<(?:[A-Za-z_][\w.-]*:)?externalReference\b/gu)?.length ?? 0
+  const externalLinkPartCount = paths.filter((path) => /^xl\/externalLinks\/externalLink[0-9]+\.xml$/u.test(path)).length
+  const macroPaths = paths.filter((path) => /(?:^|\/)vbaProject\.bin$/iu.test(path))
+  return {
+    definedNameCount: workbookXml.match(/<(?:[A-Za-z_][\w.-]*:)?definedName\b/gu)?.length ?? 0,
+    tableCount: paths.filter((path) => /^xl\/tables\/[^/]+\.xml$/u.test(path)).length,
+    pivotTableCount: paths.filter((path) => /^xl\/pivotTables\/[^/]+\.xml$/u.test(path)).length,
+    chartCount: paths.filter((path) => /^xl\/charts\/[^/]+\.xml$/u.test(path) || /^xl\/chartsheets\/[^/]+\.xml$/u.test(path)).length,
+    macroModuleCount: macroPaths.length,
+    macroByteLength: macroPaths.reduce((sum, path) => sum + (zip[path]?.byteLength ?? 0), 0),
+    externalLinkCount: Math.max(externalReferenceCount, externalLinkPartCount),
   }
 }
 
@@ -428,15 +519,6 @@ function knownUnsupportedFunctionNamesFromFormula(formula: string): readonly str
   return extractFormulaFunctionNames(formula).filter(isKnownUnsupportedRiskFunction)
 }
 
-function unsupportedAuditFunctionNamesFromFormula(formula: string, fromUnsupportedAudit: boolean): readonly string[] {
-  if (!fromUnsupportedAudit) {
-    return []
-  }
-  return extractFormulaFunctionNames(formula)
-    .filter((name) => !isKnownUnsupportedRiskFunction(name))
-    .slice(0, 1)
-}
-
 function volatileFunctionNamesFromFormula(formula: string): readonly string[] {
   const volatileNames = new Set<string>(volatileFunctionNames)
   return extractFormulaFunctionNames(formula).filter((name) => volatileNames.has(name))
@@ -500,18 +582,6 @@ function countNamedValues(values: readonly string[]): readonly WorkbookCompatibi
   return [...counts.entries()]
     .map(([name, count]) => ({ name, count }))
     .toSorted((left, right) => right.count - left.count || left.name.localeCompare(right.name))
-}
-
-function numberValue(source: unknown, key: string): number | undefined {
-  if (key === 'refreshedBookIndices' && isRecord(source)) {
-    const value = source[key]
-    return Array.isArray(value) ? value.length : undefined
-  }
-  if (!isRecord(source)) {
-    return undefined
-  }
-  const value = source[key]
-  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
 
 function formatNamedCounts(counts: readonly WorkbookCompatibilityNamedCount[]): string {
@@ -584,22 +654,9 @@ function shellQuote(value: string): string {
   return /^[A-Za-z0-9_./:=@-]+$/u.test(value) ? value : `'${value.replaceAll("'", "'\\''")}'`
 }
 
-function replaceWorksheetCellXml(bytes: Uint8Array, path: string, address: string, replacement: string): Uint8Array {
-  return replaceXlsxWorksheetCellXml(bytes, {
-    path,
-    address,
-    replacement,
-    missingMessage: `Demo XLSX is missing ${path} ${address}`,
-  })
-}
-
 function toUint8Array(input: Uint8Array | ArrayBuffer | Buffer): Uint8Array {
   if (input instanceof Uint8Array) {
     return input
   }
   return new Uint8Array(input)
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
 }

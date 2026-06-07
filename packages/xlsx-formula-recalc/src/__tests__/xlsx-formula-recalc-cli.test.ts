@@ -351,10 +351,15 @@ process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXls
     expect(report.workbook.formulaCellCount).toBe(3)
     expect(report.findings.unsupportedFunctions).toEqual([{ name: 'CUBEVALUE', count: 1 }])
     expect(report.findings.volatileFunctions).toEqual([{ name: 'NOW', count: 1 }])
-    expect(report.findings.staleCachedFormulas.count).toBe(2)
+    expect(report.findings.staleCachedFormulas.count).toBe(1)
     expect(report.findings.missingCachedFormulaValues.count).toBe(1)
+    expect(report.findings.unsupportedRecalculations.count).toBe(1)
+    expect(report.recalculationCompleted).toBe(false)
     expect(report.excelParity).toBe('not_proven')
     expect(report.limitations).toContain('It is not an Excel compatibility certification.')
+    expect(report.limitations).toContain(
+      'It scans workbook package metadata and formula caches; use xlsx-cache-doctor for native recalculation proof.',
+    )
     expect(stdout).not.toMatch(/compatibilityScore|excelCompatibilityPercent/u)
   })
 
@@ -846,10 +851,12 @@ interface WorkbookCompatibilityReportForTest {
     readonly volatileFunctions: readonly { readonly name: string; readonly count: number }[]
     readonly staleCachedFormulas: { readonly count: number }
     readonly missingCachedFormulaValues: { readonly count: number }
+    readonly unsupportedRecalculations: { readonly count: number }
   }
   readonly risk: {
     readonly level: string
   }
+  readonly recalculationCompleted: boolean
   readonly excelParity: 'not_proven'
   readonly limitations: readonly string[]
 }
@@ -986,10 +993,12 @@ function readWorkbookCompatibilityReport(stdout: string): WorkbookCompatibilityR
       volatileFunctions: requireNamedCounts(findings['volatileFunctions']),
       staleCachedFormulas: requireCountObject(findings['staleCachedFormulas']),
       missingCachedFormulaValues: requireCountObject(findings['missingCachedFormulaValues']),
+      unsupportedRecalculations: requireCountObject(findings['unsupportedRecalculations']),
     },
     risk: {
       level: requireString(risk['level']),
     },
+    recalculationCompleted: parsed['recalculationCompleted'] === true,
     excelParity: parsed['excelParity'] === 'not_proven' ? 'not_proven' : 'not_proven',
     limitations: limitations.filter((limitation): limitation is string => typeof limitation === 'string'),
   }

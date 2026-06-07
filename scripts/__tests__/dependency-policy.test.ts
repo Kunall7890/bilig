@@ -95,6 +95,7 @@ const nativeXlsxFormulaRecalcPathBoundarySources = [
   'packages/xlsx-formula-recalc/src/evaluator-cli.ts',
   'packages/xlsx-formula-recalc/src/file-recalc.ts',
   'packages/xlsx-formula-recalc/src/types.ts',
+  'packages/xlsx-formula-recalc/src/workbook-compatibility-report.ts',
 ] as const
 
 type JsonRecord = { readonly [key: string]: unknown }

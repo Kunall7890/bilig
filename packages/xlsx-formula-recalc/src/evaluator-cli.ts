@@ -245,10 +245,7 @@ function buildXlsxCacheEvaluatorProof(): Omit<BiligEvaluatorProof, 'durationMs'>
 }
 
 async function buildWorkbookCompatibilityEvaluatorProof(): Promise<Omit<BiligEvaluatorProof, 'durationMs'>> {
-  const [{ WorkPaper }, { buildWorkbookCompatibilityDemoBytes, buildWorkbookCompatibilityReport }] = await Promise.all([
-    import('@bilig/headless'),
-    import('./workbook-compatibility-report.js'),
-  ])
+  const { buildWorkbookCompatibilityDemoBytes, buildWorkbookCompatibilityReport } = await import('./workbook-compatibility-report.js')
   const sourceProof = buildWorkbookCompatibilityReport(buildWorkbookCompatibilityDemoBytes(), {
     fileName: 'bilig-workbook-compatibility-demo.xlsx',
     inspectLimit: 'all',
@@ -256,7 +253,7 @@ async function buildWorkbookCompatibilityEvaluatorProof(): Promise<Omit<BiligEva
   const checks = {
     commandSucceeded: sourceProof.commandSucceeded,
     inspectionCompleted: sourceProof.inspectionCompleted,
-    recalculationCompleted: sourceProof.recalculationCompleted,
+    metadataScanCompleted: sourceProof.inspectionCompleted && !sourceProof.recalculationCompleted,
     riskReasonsExplainFindings: sourceProof.risk.reasons.length > 0,
     noCompatibilityScore: !reportHasCompatibilityScore(sourceProof),
     unsupportedFunctionsReported: sourceProof.findings.unsupportedFunctions.length > 0,
@@ -271,7 +268,6 @@ async function buildWorkbookCompatibilityEvaluatorProof(): Promise<Omit<BiligEva
     command: summary.command,
     packageVersions: {
       'xlsx-formula-recalc': readLocalPackageVersion(),
-      '@bilig/workpaper-runtime': WorkPaper.version,
     },
     evidence: {
       riskLevel: sourceProof.risk.level,

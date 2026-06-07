@@ -61,11 +61,11 @@ describe('bilig-evaluate CLI', () => {
       unsupportedFunctions: [{ name: 'CUBEVALUE', count: 1 }],
       volatileFunctions: [{ name: 'NOW', count: 1 }],
       formulaCellCount: 3,
-      staleCachedFormulaCount: 2,
+      staleCachedFormulaCount: 1,
       checks: {
         commandSucceeded: true,
         inspectionCompleted: true,
-        recalculationCompleted: true,
+        metadataScanCompleted: true,
         riskReasonsExplainFindings: true,
         noCompatibilityScore: true,
         unsupportedFunctionsReported: true,
