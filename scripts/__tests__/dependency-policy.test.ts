@@ -95,6 +95,8 @@ const nativeXlsxFormulaRecalcPathBoundarySources = [
   'packages/xlsx-formula-recalc/src/types.ts',
 ] as const
 
+type JsonRecord = { readonly [key: string]: unknown }
+
 function packageManifestPaths(): string[] {
   return packageManifestDirs.flatMap((dir) => {
     if (dir === '.') {
@@ -155,6 +157,28 @@ function packageDependencyViolations(path: string, forbiddenDependencies: readon
     return []
   }
   return forbiddenDependencies.filter((dependency) => dependency in dependencies).map((dependency) => `${path}: ${dependency}`)
+}
+
+function isJsonRecord(value: unknown): value is JsonRecord {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function packageManifest(path: string): JsonRecord {
+  const parsed: unknown = JSON.parse(readFileSync(join(repoRoot, path, 'package.json'), 'utf8'))
+  if (!isJsonRecord(parsed)) {
+    throw new Error(`Invalid package manifest: ${path}`)
+  }
+  return parsed
+}
+
+function objectField(source: JsonRecord, field: string): JsonRecord {
+  const value = source[field]
+  return isJsonRecord(value) ? value : {}
+}
+
+function stringField(source: JsonRecord, field: string): string {
+  const value = source[field]
+  return typeof value === 'string' ? value : ''
 }
 
 function sourceImportViolations(path: string, forbiddenImports: readonly string[]): string[] {
@@ -251,6 +275,22 @@ describe('repository dependency policy', () => {
     const violations = nativeXlsxFormulaRecalcPathBoundarySources.flatMap((path) => sourceSpecifierViolations(path, ['@bilig/headless']))
 
     expect(violations).toEqual([])
+  })
+
+  it('keeps the xlsx-formula-recalc native package install and build path off @bilig/headless', () => {
+    const manifest = packageManifest('packages/xlsx-formula-recalc')
+    const dependencies = objectField(manifest, 'dependencies')
+    const devDependencies = objectField(manifest, 'devDependencies')
+    const peerDependencies = objectField(manifest, 'peerDependencies')
+    const peerDependenciesMeta = objectField(manifest, 'peerDependenciesMeta')
+    const headlessPeerMeta = objectField(peerDependenciesMeta, '@bilig/headless')
+    const scripts = objectField(manifest, 'scripts')
+
+    expect(dependencies).not.toHaveProperty('@bilig/headless')
+    expect(devDependencies).toHaveProperty('@bilig/headless')
+    expect(peerDependencies).toHaveProperty('@bilig/headless')
+    expect(headlessPeerMeta.optional).toBe(true)
+    expect(stringField(scripts, 'build')).not.toContain('@bilig/headless')
   })
 
   it('keeps published Bilig XLSX runtime packages free of SheetJS xlsx dependencies', () => {

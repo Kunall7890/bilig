@@ -97,13 +97,19 @@ npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc workbo
 ## TypeScript
 
 ```ts
-import { recalculateXlsx } from '@bilig/xlsx-formula-recalc'
+import { recalculateXlsxFileToFile } from '@bilig/xlsx-formula-recalc'
 
-const result = recalculateXlsx(inputXlsxBytes, {
+const result = await recalculateXlsxFileToFile('workbook.xlsx', {
+  outputPath: 'workbook.recalculated.xlsx',
   edits: [{ target: 'Inputs!B2', value: 48 }],
   reads: ['Summary!B7'],
+  engine: 'streaming-native',
 })
 ```
+
+For the older bytes-in/bytes-out WorkPaper path, import from
+`@bilig/xlsx-formula-recalc/legacy-workpaper` and install `@bilig/headless`
+explicitly.
 
 Prefer `exceljs-formula-recalc` when the caller already owns an ExcelJS
 `Workbook` object and wants read results patched back into that object.

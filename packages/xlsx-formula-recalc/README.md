@@ -8,7 +8,8 @@ Diagnose stale cached XLSX formula values in Node and CI, then recalculate the
 cells your service actually reads without opening Excel, LibreOffice, or a
 browser.
 
-This package is a narrow wrapper around Bilig WorkPaper for the high-friction Node XLSX workflow:
+This package is a native file-backed recalculation path for the high-friction
+Node XLSX workflow:
 
 1. import an XLSX workbook,
 2. edit input cells,
@@ -37,9 +38,10 @@ That is the failure behind issues and searches like:
 Use this package at the file boundary:
 
 1. let your existing library produce XLSX bytes;
-2. call `recalculateXlsx(...)`;
-3. read the proof cells from `result.reads`;
-4. write `result.xlsx` if the recalculated workbook artifact is needed.
+2. write them to the XLSX file path your service owns;
+3. call `recalculateXlsxFileToFile(...)`;
+4. read the proof cells from `result.reads`;
+5. return the recalculated output file.
 
 That keeps your current file-writer choice intact and adds only the missing
 calculation/readback step.
@@ -309,23 +311,26 @@ The API returns the same `schemaVersion`, `cacheStatusSummary`, per-formula
 `cacheStatus`, and `suggestedReads` fields as the JSON CLI report.
 
 ```ts
-import { recalculateXlsx } from '@bilig/xlsx-formula-recalc'
+import { recalculateXlsxFileToFile } from '@bilig/xlsx-formula-recalc'
 
-const result = recalculateXlsx(await fs.promises.readFile('pricing.xlsx'), {
+const result = await recalculateXlsxFileToFile('pricing.xlsx', {
+  outputPath: 'pricing.recalculated.xlsx',
   edits: [
     { target: 'Inputs!B2', value: 48 },
     { target: 'Inputs!B3', value: 1500 },
   ],
   reads: ['Summary!B7'],
+  engine: 'streaming-native',
 })
 
-await fs.promises.writeFile('pricing.recalculated.xlsx', result.xlsx)
 console.log(result.reads['Summary!B7'])
 ```
 
-External companion workbooks use the same matching rules as the CLI:
+External companion workbooks require explicit WorkPaper fallback:
 
 ```ts
+import { recalculateXlsx } from '@bilig/xlsx-formula-recalc/legacy-workpaper'
+
 const result = recalculateXlsx(await fs.promises.readFile('model.xlsx'), {
   externalWorkbooks: [
     {
@@ -343,6 +348,8 @@ console.log(result.diagnostics?.externalWorkbookHydration)
 If another library already produced the workbook bytes, pass those bytes directly:
 
 ```ts
+import { recalculateXlsx } from '@bilig/xlsx-formula-recalc/legacy-workpaper'
+
 const output = await workbook.outputAsync('nodebuffer') // for example, from xlsx-populate
 
 const result = recalculateXlsx(output, {
@@ -350,7 +357,10 @@ const result = recalculateXlsx(output, {
 })
 ```
 
-For the full workbook API, import `WorkPaper`, `importXlsx`, and `exportXlsx` from this package.
+For the full workbook API, use `@bilig/workpaper`. For the old bytes-in,
+bytes-out compatibility API, import from
+`@bilig/xlsx-formula-recalc/legacy-workpaper` and install `@bilig/headless`
+explicitly.
 
 ## Common Boundaries
 

@@ -68,16 +68,23 @@ npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc quote.
   --json
 ```
 
-Use the API when code already has workbook bytes:
+Use the production API when code has input and output file paths. The root
+package path is file-backed and uses the native streaming engine first:
 
 ```ts
-import { recalculateXlsx } from '@bilig/xlsx-formula-recalc'
+import { recalculateXlsxFileToFile } from '@bilig/xlsx-formula-recalc'
 
-const result = recalculateXlsx(xlsxBytes, {
+const result = await recalculateXlsxFileToFile('quote.xlsx', {
+  outputPath: 'quote.recalculated.xlsx',
   edits: [{ target: 'Inputs!B2', value: 48 }],
   reads: ['Summary!B7'],
+  engine: 'streaming-native',
 })
 ```
+
+The older bytes-in/bytes-out WorkPaper API is explicit legacy compatibility:
+import it from `@bilig/xlsx-formula-recalc/legacy-workpaper` and install
+`@bilig/headless` when that fallback is intentional.
 
 Do not claim this is a full Excel clone. Review `result.warnings` and reduce
 unsupported functions, external links, macros, and volatile formula cases into

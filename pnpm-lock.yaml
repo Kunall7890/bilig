@@ -614,15 +614,16 @@ importers:
 
   packages/xlsx-formula-recalc:
     dependencies:
-      '@bilig/headless':
-        specifier: workspace:*
-        version: link:../headless
       '@bilig/protocol':
         specifier: workspace:*
         version: link:../protocol
       '@bilig/xlsx':
         specifier: workspace:*
         version: link:../xlsx
+    devDependencies:
+      '@bilig/headless':
+        specifier: workspace:*
+        version: link:../headless
 
   packages/zero-sync:
     dependencies:
