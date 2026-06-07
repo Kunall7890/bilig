@@ -136,6 +136,7 @@ interface EvaluationContext {
   readonly row: number
   readonly col: number
   readonly rowValues: Map<number, PendingCellValue>
+  readonly sheetRows: ReadonlyMap<number, Map<number, PendingCellValue>>
   readonly tablesBySheet: ReadonlyMap<string, readonly NativeTable[]>
 }
 
@@ -842,6 +843,7 @@ function evaluateFormulaCells(
             row: cell.row,
             col: cell.col,
             rowValues,
+            sheetRows: scan.rows,
             tablesBySheet,
           })
           changed = changed || !cellValuesEqual(resolvedCellValue(rowValues.get(cell.col)), value)
@@ -958,10 +960,8 @@ function readCellReference(node: Extract<FormulaNode, { readonly kind: 'CellRef'
     throw new UnsupportedStreamingNativeFormulaError(`cross-sheet direct reference is not row-local: ${node.sheetName}!${node.ref}`)
   }
   const address = decodeCellAddress(node.ref)
-  if (address.r !== context.row) {
-    throw new UnsupportedStreamingNativeFormulaError(`direct reference is not row-local: ${node.ref}`)
-  }
-  return resolvedCellValue(context.rowValues.get(address.c))
+  const rowValues = address.r === context.row ? context.rowValues : context.sheetRows.get(address.r)
+  return resolvedCellValue(rowValues?.get(address.c))
 }
 
 function readStructuredReference(node: Extract<FormulaNode, { readonly kind: 'StructuredRef' }>, context: EvaluationContext): CellValue {

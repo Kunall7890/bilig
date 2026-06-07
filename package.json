@@ -102,6 +102,7 @@
     "public-workbook-corpus:memory-gate": "bun scripts/public-workbook-corpus-memory-gate.ts --require-public",
     "public-workbook-corpus:memory-gate:synthetic": "bun scripts/public-workbook-corpus-memory-gate.ts --synthetic-only",
     "xlsx-native-recalc:memory-gate": "bun scripts/xlsx-native-recalc-memory-gate.ts",
+    "xlsx-native-recalc:public-corpus": "bun scripts/xlsx-native-recalc-public-corpus.ts",
     "external-xlsx-memory-stress:plan": "bun scripts/external-xlsx-memory-stress.ts plan",
     "external-xlsx-memory-stress": "bun scripts/external-xlsx-memory-stress.ts run",
     "public-workbook-corpus:check-financial": "bun scripts/public-workbook-corpus.ts check --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --scorecard .cache/public-workbook-corpus-financial/scorecard.json --verify-checkpoint .cache/public-workbook-corpus-financial/verification-checkpoint.json --require-target",

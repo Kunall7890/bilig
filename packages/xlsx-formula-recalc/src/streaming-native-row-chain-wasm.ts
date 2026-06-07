@@ -306,6 +306,20 @@ export function expandStreamingNativeFormulaDependencyRows(args: {
   for (const scan of args.sheetScans.values()) {
     let expandedRows = 0
     for (const cell of scan.formulaCells) {
+      for (const row of collectSameSheetScalarDependencyRows(scan, cell, args.resolveFormulaSource)) {
+        if (scan.targetRows.has(row)) {
+          continue
+        }
+        scan.targetRows.add(row)
+        changedSheets.add(scan.sheetName)
+        expandedRows += 1
+        if (expandedRows >= maxExpandedFormulaDependencyRowsPerSheet) {
+          break
+        }
+      }
+      if (expandedRows >= maxExpandedFormulaDependencyRowsPerSheet) {
+        break
+      }
       const range = tryCompileNativeSumRange(scan, cell, args.resolveFormulaSource)
       if (!range) {
         continue
@@ -327,6 +341,78 @@ export function expandStreamingNativeFormulaDependencyRows(args: {
     }
   }
   return changedSheets
+}
+
+function collectSameSheetScalarDependencyRows(
+  scan: SheetScanState,
+  cell: NativeFormulaCell,
+  resolveFormulaSource: (scan: SheetScanState, cell: NativeFormulaCell) => string,
+): readonly number[] {
+  let node: FormulaNode
+  try {
+    node = parseFormula(resolveFormulaSource(scan, cell))
+  } catch {
+    return []
+  }
+  const rows = new Set<number>()
+  collectSameSheetScalarDependencyRowsFromNode(node, scan.sheetName, cell.row, rows)
+  return [...rows]
+}
+
+function collectSameSheetScalarDependencyRowsFromNode(node: FormulaNode, sheetName: string, formulaRow: number, rows: Set<number>): void {
+  switch (node.kind) {
+    case 'CellRef': {
+      if (node.sheetName !== undefined && node.sheetName !== sheetName) {
+        return
+      }
+      try {
+        const address = decodeCellAddress(node.ref.replaceAll('$', ''))
+        if (address.r !== formulaRow) {
+          rows.add(address.r)
+        }
+      } catch {
+        return
+      }
+      return
+    }
+    case 'UnaryExpr':
+      collectSameSheetScalarDependencyRowsFromNode(node.argument, sheetName, formulaRow, rows)
+      return
+    case 'BinaryExpr':
+      collectSameSheetScalarDependencyRowsFromNode(node.left, sheetName, formulaRow, rows)
+      collectSameSheetScalarDependencyRowsFromNode(node.right, sheetName, formulaRow, rows)
+      return
+    case 'CallExpr':
+      for (const argument of node.args) {
+        collectSameSheetScalarDependencyRowsFromNode(argument, sheetName, formulaRow, rows)
+      }
+      return
+    case 'InvokeExpr':
+      collectSameSheetScalarDependencyRowsFromNode(node.callee, sheetName, formulaRow, rows)
+      for (const argument of node.args) {
+        collectSameSheetScalarDependencyRowsFromNode(argument, sheetName, formulaRow, rows)
+      }
+      return
+    case 'ArrayConstant':
+      for (const row of node.rows) {
+        for (const entry of row) {
+          collectSameSheetScalarDependencyRowsFromNode(entry, sheetName, formulaRow, rows)
+        }
+      }
+      return
+    case 'NumberLiteral':
+    case 'BooleanLiteral':
+    case 'StringLiteral':
+    case 'ErrorLiteral':
+    case 'OmittedArgument':
+    case 'NameRef':
+    case 'StructuredRef':
+    case 'SpillRef':
+    case 'RowRef':
+    case 'ColumnRef':
+    case 'RangeRef':
+      return
+  }
 }
 
 export function evaluateStreamingNativeWasmRangeAggregates(args: {
