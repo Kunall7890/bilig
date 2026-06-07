@@ -301,17 +301,20 @@ export function evaluateStreamingNativeWasmDirectScalars(args: {
 export function expandStreamingNativeFormulaDependencyRows(args: {
   readonly sheetScans: ReadonlyMap<string, SheetScanState>
   readonly resolveFormulaSource: (scan: SheetScanState, cell: NativeFormulaCell) => string
+  readonly targetRowsForSheet?: (sheetName: string) => Set<number> | undefined
 }): ReadonlySet<string> {
   const changedSheets = new Set<string>()
   for (const scan of args.sheetScans.values()) {
     let expandedRows = 0
     for (const cell of scan.formulaCells) {
-      for (const row of collectSameSheetScalarDependencyRows(scan, cell, args.resolveFormulaSource)) {
-        if (scan.targetRows.has(row)) {
+      for (const dependency of collectScalarDependencyRows(scan, cell, args.resolveFormulaSource)) {
+        const targetRows =
+          args.targetRowsForSheet?.(dependency.sheetName) ?? (dependency.sheetName === scan.sheetName ? scan.targetRows : undefined)
+        if (!targetRows || targetRows.has(dependency.row)) {
           continue
         }
-        scan.targetRows.add(row)
-        changedSheets.add(scan.sheetName)
+        targetRows.add(dependency.row)
+        changedSheets.add(dependency.sheetName)
         expandedRows += 1
         if (expandedRows >= maxExpandedFormulaDependencyRowsPerSheet) {
           break
@@ -343,32 +346,42 @@ export function expandStreamingNativeFormulaDependencyRows(args: {
   return changedSheets
 }
 
-function collectSameSheetScalarDependencyRows(
+interface ScalarDependencyRow {
+  readonly sheetName: string
+  readonly row: number
+}
+
+function collectScalarDependencyRows(
   scan: SheetScanState,
   cell: NativeFormulaCell,
   resolveFormulaSource: (scan: SheetScanState, cell: NativeFormulaCell) => string,
-): readonly number[] {
+): readonly ScalarDependencyRow[] {
   let node: FormulaNode
   try {
     node = parseFormula(resolveFormulaSource(scan, cell))
   } catch {
     return []
   }
-  const rows = new Set<number>()
-  collectSameSheetScalarDependencyRowsFromNode(node, scan.sheetName, cell.row, rows)
-  return [...rows]
+  const rows = new Map<string, Set<number>>()
+  collectScalarDependencyRowsFromNode(node, scan.sheetName, cell.row, rows)
+  return [...rows].flatMap(([sheetName, sheetRows]) => [...sheetRows].map((row) => ({ sheetName, row })))
 }
 
-function collectSameSheetScalarDependencyRowsFromNode(node: FormulaNode, sheetName: string, formulaRow: number, rows: Set<number>): void {
+function collectScalarDependencyRowsFromNode(
+  node: FormulaNode,
+  sheetName: string,
+  formulaRow: number,
+  rows: Map<string, Set<number>>,
+): void {
   switch (node.kind) {
     case 'CellRef': {
-      if (node.sheetName !== undefined && node.sheetName !== sheetName) {
-        return
-      }
+      const dependencySheetName = node.sheetName ?? sheetName
       try {
         const address = decodeCellAddress(node.ref.replaceAll('$', ''))
-        if (address.r !== formulaRow) {
-          rows.add(address.r)
+        if (dependencySheetName !== sheetName || address.r !== formulaRow) {
+          const sheetRows = rows.get(dependencySheetName) ?? new Set<number>()
+          sheetRows.add(address.r)
+          rows.set(dependencySheetName, sheetRows)
         }
       } catch {
         return
@@ -376,27 +389,27 @@ function collectSameSheetScalarDependencyRowsFromNode(node: FormulaNode, sheetNa
       return
     }
     case 'UnaryExpr':
-      collectSameSheetScalarDependencyRowsFromNode(node.argument, sheetName, formulaRow, rows)
+      collectScalarDependencyRowsFromNode(node.argument, sheetName, formulaRow, rows)
       return
     case 'BinaryExpr':
-      collectSameSheetScalarDependencyRowsFromNode(node.left, sheetName, formulaRow, rows)
-      collectSameSheetScalarDependencyRowsFromNode(node.right, sheetName, formulaRow, rows)
+      collectScalarDependencyRowsFromNode(node.left, sheetName, formulaRow, rows)
+      collectScalarDependencyRowsFromNode(node.right, sheetName, formulaRow, rows)
       return
     case 'CallExpr':
       for (const argument of node.args) {
-        collectSameSheetScalarDependencyRowsFromNode(argument, sheetName, formulaRow, rows)
+        collectScalarDependencyRowsFromNode(argument, sheetName, formulaRow, rows)
       }
       return
     case 'InvokeExpr':
-      collectSameSheetScalarDependencyRowsFromNode(node.callee, sheetName, formulaRow, rows)
+      collectScalarDependencyRowsFromNode(node.callee, sheetName, formulaRow, rows)
       for (const argument of node.args) {
-        collectSameSheetScalarDependencyRowsFromNode(argument, sheetName, formulaRow, rows)
+        collectScalarDependencyRowsFromNode(argument, sheetName, formulaRow, rows)
       }
       return
     case 'ArrayConstant':
       for (const row of node.rows) {
         for (const entry of row) {
-          collectSameSheetScalarDependencyRowsFromNode(entry, sheetName, formulaRow, rows)
+          collectScalarDependencyRowsFromNode(entry, sheetName, formulaRow, rows)
         }
       }
       return

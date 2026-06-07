@@ -137,6 +137,7 @@ interface EvaluationContext {
   readonly col: number
   readonly rowValues: Map<number, PendingCellValue>
   readonly sheetRows: ReadonlyMap<number, Map<number, PendingCellValue>>
+  readonly sheetRowsByName: ReadonlyMap<string, ReadonlyMap<number, Map<number, PendingCellValue>>>
   readonly tablesBySheet: ReadonlyMap<string, readonly NativeTable[]>
 }
 
@@ -226,20 +227,23 @@ export async function recalculateXlsxFileToFileStreamingNative(
     const expandedDependencySheets = expandStreamingNativeFormulaDependencyRows({
       sheetScans,
       resolveFormulaSource,
+      targetRowsForSheet: (sheetName) => {
+        if (!sheetPathsByName.has(sheetName)) {
+          return undefined
+        }
+        const targetRows = targetRowsBySheet.get(sheetName) ?? new Set<number>()
+        targetRowsBySheet.set(sheetName, targetRows)
+        return targetRows
+      },
     })
     for (const sheetName of expandedDependencySheets) {
-      const scan = sheetScans.get(sheetName)
       const sheetPath = sheetPathsByName.get(sheetName)
-      if (!scan || !sheetPath) {
+      const targetRows = targetRowsBySheet.get(sheetName)
+      if (!sheetPath || !targetRows || targetRows.size === 0) {
         continue
       }
-      const nextScan = scanWorksheet(zip, sheetName, sheetPath, scan.targetRows)
-      const originalTargetRows = targetRowsBySheet.get(sheetName) ?? new Set<number>()
-      nextScan.formulaCells.splice(
-        0,
-        nextScan.formulaCells.length,
-        ...nextScan.formulaCells.filter((cell) => originalTargetRows.has(cell.row)),
-      )
+      const nextScan = scanWorksheet(zip, sheetName, sheetPath, targetRows)
+      nextScan.formulaCells.splice(0, nextScan.formulaCells.length, ...nextScan.formulaCells.filter((cell) => targetRows.has(cell.row)))
       sheetScans.set(sheetName, nextScan)
     }
     recordPhase('dependency-row-scan')
@@ -820,6 +824,7 @@ function evaluateFormulaCells(
   let patchedFormulaCacheCount = nativeFormulaCells.patches.length
   let unsupportedFormulaCellCount = 0
   patches.push(...nativeFormulaCells.patches)
+  const sheetRowsByName = new Map([...sheetScans].map(([sheetName, scan]) => [sheetName, scan.rows] as const))
   for (const scan of sheetScans.values()) {
     const formulaCells = scan.formulaCells.toSorted((left, right) => left.row - right.row || left.col - right.col)
     const formulaPatches = new Map<string, XlsxSourceLiteralPatch>()
@@ -844,6 +849,7 @@ function evaluateFormulaCells(
             col: cell.col,
             rowValues,
             sheetRows: scan.rows,
+            sheetRowsByName,
             tablesBySheet,
           })
           changed = changed || !cellValuesEqual(resolvedCellValue(rowValues.get(cell.col)), value)
@@ -956,11 +962,13 @@ function evaluateFormulaAst(node: FormulaNode, context: EvaluationContext): Cell
 }
 
 function readCellReference(node: Extract<FormulaNode, { readonly kind: 'CellRef' }>, context: EvaluationContext): CellValue {
-  if (node.sheetName && node.sheetName !== context.sheetName) {
-    throw new UnsupportedStreamingNativeFormulaError(`cross-sheet direct reference is not row-local: ${node.sheetName}!${node.ref}`)
+  const sheetName = node.sheetName ?? context.sheetName
+  const address = decodeCellAddress(node.ref.replaceAll('$', ''))
+  const sheetRows = sheetName === context.sheetName ? context.sheetRows : context.sheetRowsByName.get(sheetName)
+  if (!sheetRows) {
+    throw new UnsupportedStreamingNativeFormulaError(`cross-sheet direct reference row was not scanned: ${sheetName}!${node.ref}`)
   }
-  const address = decodeCellAddress(node.ref)
-  const rowValues = address.r === context.row ? context.rowValues : context.sheetRows.get(address.r)
+  const rowValues = sheetName === context.sheetName && address.r === context.row ? context.rowValues : sheetRows.get(address.r)
   return resolvedCellValue(rowValues?.get(address.c))
 }
 
