@@ -1,9 +1,10 @@
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, statSync, writeFileSync } from 'node:fs'
 import { basename, dirname, extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { ValueTag, type LiteralInput } from '@bilig/protocol'
 import {
+  assertXlsxExternalWorkbookByteInputWithinLimit,
   inspectXlsxCacheFileStreamingNative,
   replaceXlsxWorksheetCellXml,
   StreamingNativeXlsxRecalcError,
@@ -497,11 +498,15 @@ function parseCliArgs(args: readonly string[], commandName: string): CliOptions 
 }
 
 function readExternalWorkbookInputs(workbooks: readonly CliExternalWorkbook[]): XlsxExternalWorkbookInput[] {
-  return workbooks.map((workbook) => ({
-    bytes: readFileSync(workbook.path),
-    fileName: basename(workbook.path),
-    ...(workbook.target ? { target: workbook.target } : {}),
-  }))
+  return workbooks.map((workbook) => {
+    const byteLength = statSync(workbook.path).size
+    assertXlsxExternalWorkbookByteInputWithinLimit(byteLength, workbook.path)
+    return {
+      bytes: readFileSync(workbook.path),
+      fileName: basename(workbook.path),
+      ...(workbook.target ? { target: workbook.target } : {}),
+    }
+  })
 }
 
 interface PrintInspectionSummaryInput {

@@ -509,6 +509,32 @@ process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXls
     expect(report.risk.reasons).toContain('external workbook links: 1')
   })
 
+  it('keeps workbook compatibility byte-buffer reports small-workbook only', () => {
+    expect(() => buildWorkbookCompatibilityReport(new Uint8Array(1_000_001), { fileName: 'large.xlsx' })).toThrow(
+      /buildWorkbookCompatibilityReport is small-workbook only/u,
+    )
+  })
+
+  it('rejects large workbook compatibility external workbook CLI inputs', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'workbook-compatibility-external-limit-'))
+    try {
+      const externalPath = join(tempDir, 'large-external.xlsx')
+      writeFileSync(externalPath, Buffer.alloc(1_000_001))
+      let stderr = ''
+
+      const exitCode = runWorkbookCompatibilityReportCli(['--demo', '--external-workbook', externalPath, '--json'], {
+        stderr: (text) => {
+          stderr += text
+        },
+      })
+
+      expect(exitCode).toBe(1)
+      expect(stderr).toContain('external workbook byte input is small-workbook only')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
   it('raises risk when inspection limits leave formulas unchecked', () => {
     const report = buildWorkbookCompatibilityReport(buildManyFormulaCacheWorkbook(), {
       fileName: 'limited-inspection.xlsx',
@@ -868,6 +894,26 @@ process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXls
       })
       expect(readExternalLinkCacheCellValue(readFileBytes(outputPath), 'B2')).toBe('20')
       expect(readExternalLinkCacheCellValue(readFileBytes(outputPath), 'B4')).toBe('40')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  it('rejects large formula-recalc external workbook CLI inputs', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-formula-recalc-external-limit-'))
+    try {
+      const externalPath = join(tempDir, 'large-external.xlsx')
+      writeFileSync(externalPath, Buffer.alloc(1_000_001))
+      let stderr = ''
+
+      const exitCode = runXlsxFormulaRecalcCli(['--demo', '--external-workbook', externalPath, '--json'], {
+        stderr: (text) => {
+          stderr += text
+        },
+      })
+
+      expect(exitCode).toBe(1)
+      expect(stderr).toContain('external workbook byte input is small-workbook only')
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
     }

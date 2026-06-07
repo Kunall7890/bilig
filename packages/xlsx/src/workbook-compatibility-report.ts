@@ -1,10 +1,14 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, statSync } from 'node:fs'
 import { basename } from 'node:path'
 
 import type { LiteralInput } from '@bilig/protocol'
 
 import { readXlsxFormulaCacheCellsFromWorkbookCore, type XlsxFormulaCacheScanResult } from './formula-cache-reader.js'
-import type { ImportedWorkbookDiagnostics, XlsxExternalWorkbookInput } from './external-workbook-types.js'
+import {
+  assertXlsxExternalWorkbookByteInputWithinLimit,
+  type ImportedWorkbookDiagnostics,
+  type XlsxExternalWorkbookInput,
+} from './external-workbook-types.js'
 import { writeSimpleXlsxWorkbook } from './simple-workbook-writer.js'
 import { closeStreamingNativeWorkbookCore, openStreamingNativeWorkbookCore } from './streaming-native-workbook-core.js'
 import { readXlsxWorkbookCells, type XlsxWorkbookCells } from './workbook-cell-reader.js'
@@ -133,6 +137,7 @@ export interface WorkbookCompatibilityReportCliContext {
 
 const defaultInspectLimit: XlsxCacheInspectionLimit = 'all'
 const defaultFileInspectLimit: XlsxCacheInspectionLimit = 2000
+const workbookCompatibilityReportBytesApiLimit = 1_000_000
 const docsUrl = 'https://proompteng.github.io/bilig/workbook-compatibility-report.html'
 const textDecoder = new TextDecoder()
 const worksheetCellStartTagPattern = /<(?:[A-Za-z_][\w.-]*:)?c\b/gu
@@ -173,6 +178,7 @@ export function buildWorkbookCompatibilityReport(
   options: WorkbookCompatibilityReportOptions = {},
 ): WorkbookCompatibilityReport {
   const bytes = toUint8Array(input)
+  assertWorkbookCompatibilityReportBytesApiWithinLimit(bytes, 'buildWorkbookCompatibilityReport')
   const fileName = options.fileName ?? 'workbook.xlsx'
   const externalWorkbooks = options.externalWorkbooks ?? []
   const zip = readXlsxZipEntriesLazy(bytes)
@@ -668,11 +674,28 @@ function parseCliArgs(args: readonly string[], commandName: string): WorkbookCom
 }
 
 function readExternalWorkbookInputs(workbooks: readonly CliExternalWorkbook[]): XlsxExternalWorkbookInput[] {
-  return workbooks.map((workbook) => ({
-    bytes: readFileSync(workbook.path),
-    fileName: basename(workbook.path),
-    ...(workbook.target ? { target: workbook.target } : {}),
-  }))
+  return workbooks.map((workbook) => {
+    const byteLength = statSync(workbook.path).size
+    assertXlsxExternalWorkbookByteInputWithinLimit(byteLength, workbook.path)
+    return {
+      bytes: readFileSync(workbook.path),
+      fileName: basename(workbook.path),
+      ...(workbook.target ? { target: workbook.target } : {}),
+    }
+  })
+}
+
+function assertWorkbookCompatibilityReportBytesApiWithinLimit(bytes: Uint8Array, apiName: string): void {
+  if (bytes.byteLength <= workbookCompatibilityReportBytesApiLimit) {
+    return
+  }
+  throw new Error(
+    [
+      `${apiName} is small-workbook only for byte-buffer XLSX input: source is ${bytes.byteLength} bytes`,
+      `limit is ${workbookCompatibilityReportBytesApiLimit} bytes`,
+      'Use buildWorkbookCompatibilityReportFromFile() for file-backed streaming-native XLSX inspection.',
+    ].join('; '),
+  )
 }
 
 function knownUnsupportedFunctionNamesFromFormula(formula: string): readonly string[] {
