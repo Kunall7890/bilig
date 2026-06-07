@@ -964,12 +964,16 @@ function evaluateFormulaAst(node: FormulaNode, context: EvaluationContext): Cell
 function readCellReference(node: Extract<FormulaNode, { readonly kind: 'CellRef' }>, context: EvaluationContext): CellValue {
   const sheetName = node.sheetName ?? context.sheetName
   const address = decodeCellAddress(node.ref.replaceAll('$', ''))
+  return readScannedCell(sheetName, address.r, address.c, context)
+}
+
+function readScannedCell(sheetName: string, row: number, col: number, context: EvaluationContext): CellValue {
   const sheetRows = sheetName === context.sheetName ? context.sheetRows : context.sheetRowsByName.get(sheetName)
   if (!sheetRows) {
-    throw new UnsupportedStreamingNativeFormulaError(`cross-sheet direct reference row was not scanned: ${sheetName}!${node.ref}`)
+    throw new UnsupportedStreamingNativeFormulaError(`sheet was not scanned for direct reference: ${sheetName}`)
   }
-  const rowValues = sheetName === context.sheetName && address.r === context.row ? context.rowValues : sheetRows.get(address.r)
-  return resolvedCellValue(rowValues?.get(address.c))
+  const rowValues = sheetName === context.sheetName && row === context.row ? context.rowValues : sheetRows.get(row)
+  return resolvedCellValue(rowValues?.get(col))
 }
 
 function readStructuredReference(node: Extract<FormulaNode, { readonly kind: 'StructuredRef' }>, context: EvaluationContext): CellValue {
@@ -1076,7 +1080,88 @@ function evaluateCallExpr(node: Extract<FormulaNode, { readonly kind: 'CallExpr'
     }
     return { tag: ValueTag.Error, code: ErrorCode.NA }
   }
+  if (callee === 'VLOOKUP') {
+    return evaluateVlookup(node, context)
+  }
   throw new UnsupportedStreamingNativeFormulaError(`unsupported function: ${node.callee}`)
+}
+
+function evaluateVlookup(node: Extract<FormulaNode, { readonly kind: 'CallExpr' }>, context: EvaluationContext): CellValue {
+  if (node.args.length < 3 || node.args.length > 4) {
+    throw new UnsupportedStreamingNativeFormulaError('VLOOKUP requires 3 or 4 arguments')
+  }
+  const tableRange = node.args[1]
+  if (!tableRange || tableRange.kind !== 'RangeRef' || tableRange.refKind !== 'cells' || tableRange.sheetEndName !== undefined) {
+    throw new UnsupportedStreamingNativeFormulaError('VLOOKUP table array must be a scalar cell range')
+  }
+  const lookupValue = evaluateFormulaAst(node.args[0]!, context)
+  const columnIndex = integerFromFormulaValue(evaluateFormulaAst(node.args[2]!, context))
+  if (columnIndex < 1) {
+    return { tag: ValueTag.Error, code: ErrorCode.Value }
+  }
+  if (!vlookupRangeLookupIsExact(node.args[3], context)) {
+    throw new UnsupportedStreamingNativeFormulaError('VLOOKUP approximate match is not supported')
+  }
+  const range = decodeFormulaCellRange(tableRange, context.sheetName)
+  if (columnIndex > range.width) {
+    return { tag: ValueTag.Error, code: ErrorCode.Ref }
+  }
+  const resultCol = range.startCol + columnIndex - 1
+  for (let row = range.startRow; row <= range.endRow; row += 1) {
+    if (vlookupExactValuesEqual(readScannedCell(range.sheetName, row, range.startCol, context), lookupValue)) {
+      return readScannedCell(range.sheetName, row, resultCol, context)
+    }
+  }
+  return { tag: ValueTag.Error, code: ErrorCode.NA }
+}
+
+function vlookupRangeLookupIsExact(node: FormulaNode | undefined, context: EvaluationContext): boolean {
+  if (!node) {
+    return false
+  }
+  const value = evaluateFormulaAst(node, context)
+  return (value.tag === ValueTag.Boolean && !value.value) || (value.tag === ValueTag.Number && value.value === 0)
+}
+
+function integerFromFormulaValue(value: CellValue): number {
+  const number = coerceNumber(value)
+  if (!Number.isInteger(number)) {
+    throw new UnsupportedStreamingNativeFormulaError(`expected integer formula value, received ${String(number)}`)
+  }
+  return number
+}
+
+function decodeFormulaCellRange(
+  range: Extract<FormulaNode, { readonly kind: 'RangeRef' }>,
+  currentSheetName: string,
+): {
+  readonly sheetName: string
+  readonly startRow: number
+  readonly endRow: number
+  readonly startCol: number
+  readonly width: number
+} {
+  const start = decodeCellAddress(range.start.replaceAll('$', ''))
+  const end = decodeCellAddress(range.end.replaceAll('$', ''))
+  const startRow = Math.min(start.r, end.r)
+  const endRow = Math.max(start.r, end.r)
+  const startCol = Math.min(start.c, end.c)
+  const endCol = Math.max(start.c, end.c)
+  return {
+    sheetName: range.sheetName ?? currentSheetName,
+    startRow,
+    endRow,
+    startCol,
+    width: endCol - startCol + 1,
+  }
+}
+
+function vlookupExactValuesEqual(left: CellValue, right: CellValue): boolean {
+  try {
+    return compareCellValues(left, right) === 0
+  } catch {
+    return false
+  }
 }
 
 function coerceNumber(value: CellValue): number {

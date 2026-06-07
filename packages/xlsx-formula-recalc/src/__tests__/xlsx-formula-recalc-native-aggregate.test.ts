@@ -90,6 +90,33 @@ describe('xlsx-formula-recalc native aggregates', () => {
       rmSync(tempDir, { recursive: true, force: true })
     }
   })
+
+  it('evaluates exact VLOOKUP formulas over scanned public-corpus table rows', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-native-vlookup-'))
+    try {
+      const sourcePath = join(tempDir, 'public-vlookup.xlsx')
+      const outputPath = join(tempDir, 'public-vlookup.recalculated.xlsx')
+      writeFileSync(sourcePath, buildPublicVlookupWorkbook())
+
+      const result = await recalculateXlsxFileToFile(sourcePath, {
+        outputPath,
+        engine: 'streaming-native',
+        reads: ['Budget!D3'],
+      })
+
+      expect(readNumber(result.reads['Budget!D3'])).toBe(250)
+      expect(result.diagnostics?.engineMode).toBe('streaming-native')
+      expect(result.diagnostics?.targetRowCount).toBe(4)
+      expect(result.diagnostics?.formulaCounts.evaluatedFormulaCellCount).toBe(1)
+      expect(result.diagnostics?.formulaCounts.unsupportedFormulaCellCount).toBe(0)
+      expect(result.diagnostics?.formulaCounts.patchedFormulaCacheCount).toBe(1)
+      const outputBytes = readFileSync(outputPath)
+      const sheetXml = strFromU8(unzipSync(outputBytes)['xl/worksheets/sheet2.xml'] ?? new Uint8Array())
+      expect(sheetXml).toContain('<c r="D3"><f>VLOOKUP(B2,\'Lookup Table\'!$B$9:$D$10,2,FALSE)</f><v>250</v></c>')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
 })
 
 function readNumber(value: unknown): number {
@@ -206,6 +233,51 @@ function buildPublicCrossSheetScalarDependencyWorkbook(): Uint8Array {
   <dimension ref="C7"/>
   <sheetData>
     <row r="7"><c r="C7"><f>'Data Sheet'!B2+'Data Sheet'!C7*2</f><v>0</v></c></row>
+  </sheetData>
+</worksheet>`),
+  })
+}
+
+function buildPublicVlookupWorkbook(): Uint8Array {
+  return zipSync({
+    'xl/workbook.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${officeRelationshipNamespace}">
+  <sheets>
+    <sheet name="Lookup Table" sheetId="1" r:id="rId1"/>
+    <sheet name="Budget" sheetId="2" r:id="rId2"/>
+  </sheets>
+</workbook>`),
+    'xl/_rels/workbook.xml.rels': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="${officeRelationshipNamespace}/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="${officeRelationshipNamespace}/worksheet" Target="worksheets/sheet2.xml"/>
+</Relationships>`),
+    '[Content_Types].xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+</Types>`),
+    '_rels/.rels': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rIdWorkbook" Type="${officeRelationshipNamespace}/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`),
+    'xl/worksheets/sheet1.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <dimension ref="B9:D10"/>
+  <sheetData>
+    <row r="9"><c r="B9"><v>100</v></c><c r="C9"><v>150</v></c><c r="D9"><v>175</v></c></row>
+    <row r="10"><c r="B10"><v>200</v></c><c r="C10"><v>250</v></c><c r="D10"><v>275</v></c></row>
+  </sheetData>
+</worksheet>`),
+    'xl/worksheets/sheet2.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <dimension ref="B2:D3"/>
+  <sheetData>
+    <row r="2"><c r="B2"><v>200</v></c></row>
+    <row r="3"><c r="D3"><f>VLOOKUP(B2,'Lookup Table'!$B$9:$D$10,2,FALSE)</f><v>0</v></c></row>
   </sheetData>
 </worksheet>`),
   })

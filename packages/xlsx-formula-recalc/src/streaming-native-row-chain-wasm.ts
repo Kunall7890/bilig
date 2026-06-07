@@ -323,6 +323,22 @@ export function expandStreamingNativeFormulaDependencyRows(args: {
       if (expandedRows >= maxExpandedFormulaDependencyRowsPerSheet) {
         break
       }
+      for (const dependency of collectVlookupTableDependencyRows(scan, cell, args.resolveFormulaSource)) {
+        const targetRows =
+          args.targetRowsForSheet?.(dependency.sheetName) ?? (dependency.sheetName === scan.sheetName ? scan.targetRows : undefined)
+        if (!targetRows || targetRows.has(dependency.row)) {
+          continue
+        }
+        targetRows.add(dependency.row)
+        changedSheets.add(dependency.sheetName)
+        expandedRows += 1
+        if (expandedRows >= maxExpandedFormulaDependencyRowsPerSheet) {
+          break
+        }
+      }
+      if (expandedRows >= maxExpandedFormulaDependencyRowsPerSheet) {
+        break
+      }
       const range = tryCompileNativeSumRange(scan, cell, args.resolveFormulaSource)
       if (!range) {
         continue
@@ -344,6 +360,48 @@ export function expandStreamingNativeFormulaDependencyRows(args: {
     }
   }
   return changedSheets
+}
+
+function collectVlookupTableDependencyRows(
+  scan: SheetScanState,
+  cell: NativeFormulaCell,
+  resolveFormulaSource: (scan: SheetScanState, cell: NativeFormulaCell) => string,
+): readonly ScalarDependencyRow[] {
+  let node: FormulaNode
+  try {
+    node = parseFormula(resolveFormulaSource(scan, cell))
+  } catch {
+    return []
+  }
+  if (node.kind !== 'CallExpr' || node.callee.toLocaleUpperCase('en-US') !== 'VLOOKUP') {
+    return []
+  }
+  const range = node.args[1]
+  if (!range || range.kind !== 'RangeRef' || range.refKind !== 'cells' || range.sheetEndName !== undefined) {
+    return []
+  }
+  let start
+  let end
+  try {
+    start = decodeCellAddress(range.start.replaceAll('$', ''))
+    end = decodeCellAddress(range.end.replaceAll('$', ''))
+  } catch {
+    return []
+  }
+  const startRow = Math.min(start.r, end.r)
+  const endRow = Math.max(start.r, end.r)
+  const startCol = Math.min(start.c, end.c)
+  const endCol = Math.max(start.c, end.c)
+  const cellCount = (endRow - startRow + 1) * (endCol - startCol + 1)
+  if (cellCount <= 0 || cellCount > maxNativeSumRangeCellCount) {
+    return []
+  }
+  const sheetName = range.sheetName ?? scan.sheetName
+  const rows: ScalarDependencyRow[] = []
+  for (let row = startRow; row <= endRow; row += 1) {
+    rows.push({ sheetName, row })
+  }
+  return rows
 }
 
 interface ScalarDependencyRow {
