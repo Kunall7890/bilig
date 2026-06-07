@@ -2,8 +2,8 @@
 
 import { basename } from 'node:path'
 
-import { runXlsxFormulaRecalcCli } from './cli-api.js'
+import { runXlsxFormulaRecalcCliAsync } from './cli-api.js'
 
-process.exitCode = runXlsxFormulaRecalcCli(process.argv.slice(2), {
+process.exitCode = await runXlsxFormulaRecalcCliAsync(process.argv.slice(2), {
   commandName: basename(process.argv[1] ?? 'xlsx-recalc'),
 })

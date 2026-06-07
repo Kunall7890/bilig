@@ -39,6 +39,11 @@
       "import": "./dist/address.js",
       "default": "./dist/address.js"
     },
+    "./file-source": {
+      "types": "./dist/file-source.d.ts",
+      "import": "./dist/file-source.js",
+      "default": "./dist/file-source.js"
+    },
     "./source-preserving-zip": {
       "types": "./dist/source-preserving-zip.d.ts",
       "import": "./dist/source-preserving-zip.js",

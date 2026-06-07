@@ -1,12 +1,27 @@
-import { writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { WorkPaper, type RawCellContent, type WorkPaperCellAddress, type WorkPaperChange, type WorkPaperConfig } from '@bilig/headless'
 import type { ImportedWorkbookDiagnostics, XlsxExternalWorkbookInput, XlsxImportOptions } from '@bilig/headless/xlsx'
 import { exportXlsx, exportXlsxToFile, importXlsx } from '@bilig/headless/xlsx'
-import { ErrorCode, formatErrorCode, ValueTag } from '@bilig/protocol'
+import { ErrorCode, formatErrorCode, ValueTag, type LiteralInput } from '@bilig/protocol'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
+import {
+  recalculateXlsxFileToFileStreamingNative,
+  type XlsxFormulaRecalcEngine,
+  type XlsxFormulaRecalcFallbackPolicy,
+  type XlsxFormulaRecalcNativeDiagnostics,
+} from './streaming-native-recalc.js'
 
 export { WorkPaper } from '@bilig/headless'
 export { exportXlsx, exportXlsxToFile, importXlsx } from '@bilig/headless/xlsx'
+export {
+  StreamingNativeXlsxRecalcError,
+  type StreamingNativeFormulaCounts,
+  type XlsxFormulaRecalcEngine,
+  type XlsxFormulaRecalcEngineMode,
+  type XlsxFormulaRecalcFallbackPolicy,
+  type XlsxFormulaRecalcNativeDiagnostics,
+  type XlsxFormulaRecalcPhaseRss,
+} from './streaming-native-recalc.js'
 
 type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSnapshot>
 type WorkbookSnapshot = Parameters<typeof WorkPaper.buildFromSnapshot>[0]
@@ -47,7 +62,12 @@ export interface XlsxFormulaRecalcOptions {
   readonly edits?: readonly XlsxFormulaRecalcEdit[]
   readonly reads?: readonly string[]
   readonly config?: WorkPaperConfig
+  readonly engine?: XlsxFormulaRecalcEngine
+  readonly maxRssBytes?: number
+  readonly fallbackPolicy?: XlsxFormulaRecalcFallbackPolicy
 }
+
+export type XlsxFormulaRecalcDiagnostics = ImportedWorkbookDiagnostics & Partial<XlsxFormulaRecalcNativeDiagnostics>
 
 export interface XlsxFormulaRecalcResult {
   readonly xlsx: Uint8Array
@@ -55,7 +75,7 @@ export interface XlsxFormulaRecalcResult {
   readonly sheetNames: readonly string[]
   readonly reads: Readonly<Record<string, XlsxFormulaRecalcCellValue>>
   readonly changes: readonly WorkPaperChange[]
-  readonly diagnostics?: ImportedWorkbookDiagnostics
+  readonly diagnostics?: XlsxFormulaRecalcDiagnostics
 }
 
 export interface XlsxFormulaRecalcFileOptions extends XlsxFormulaRecalcOptions {
@@ -68,7 +88,7 @@ export interface XlsxFormulaRecalcFileResult {
   readonly sheetNames: readonly string[]
   readonly reads: Readonly<Record<string, XlsxFormulaRecalcCellValue>>
   readonly changes: readonly WorkPaperChange[]
-  readonly diagnostics?: ImportedWorkbookDiagnostics
+  readonly diagnostics?: XlsxFormulaRecalcDiagnostics
 }
 
 interface PreparedXlsxFormulaRecalcOutput {
@@ -82,6 +102,7 @@ interface PreparedXlsxFormulaRecalcOutput {
 }
 
 export function recalculateXlsx(input: Uint8Array | ArrayBuffer | Buffer, options: XlsxFormulaRecalcOptions = {}): XlsxFormulaRecalcResult {
+  assertBytesApiEngine(options.engine)
   return withPreparedRecalculatedXlsxOutput(input, options, (prepared) => {
     const exportedXlsx = toUint8Array(exportXlsx(prepared.outputSnapshot))
     return {
@@ -99,6 +120,7 @@ export function recalculateXlsxToFile(
   input: Uint8Array | ArrayBuffer | Buffer,
   options: XlsxFormulaRecalcFileOptions,
 ): XlsxFormulaRecalcFileResult {
+  assertBytesApiEngine(options.engine)
   return withPreparedRecalculatedXlsxOutput(input, options, (prepared) => {
     if (prepared.errorCaches.length === 0) {
       const exported = exportXlsxToFile(prepared.outputSnapshot, options.outputPath)
@@ -125,6 +147,57 @@ export function recalculateXlsxToFile(
       changes: prepared.changes,
       ...(prepared.diagnostics ? { diagnostics: prepared.diagnostics } : {}),
     }
+  })
+}
+
+export async function recalculateXlsxFileToFile(
+  inputPath: string,
+  options: XlsxFormulaRecalcFileOptions,
+): Promise<XlsxFormulaRecalcFileResult> {
+  const engine = options.engine ?? 'auto'
+  if (engine === 'workpaper') {
+    return recalculateXlsxToFile(readFileSync(inputPath), { ...options, engine: 'workpaper', fileName: options.fileName ?? inputPath })
+  }
+  try {
+    if ((options.externalWorkbooks?.length ?? 0) > 0) {
+      throw new Error('streaming-native does not support external workbook companions')
+    }
+    if (options.config !== undefined) {
+      throw new Error('streaming-native does not support WorkPaper config options')
+    }
+    const edits = nativeLiteralEdits(options.edits)
+    return await recalculateXlsxFileToFileStreamingNative(inputPath, {
+      outputPath: options.outputPath,
+      ...(edits === undefined ? {} : { edits }),
+      ...(options.reads === undefined ? {} : { reads: options.reads }),
+      ...(options.maxRssBytes === undefined ? {} : { maxRssBytes: options.maxRssBytes }),
+    })
+  } catch (error) {
+    if (options.fallbackPolicy === 'workpaper') {
+      return recalculateXlsxToFile(readFileSync(inputPath), { ...options, engine: 'workpaper', fileName: options.fileName ?? inputPath })
+    }
+    throw error
+  }
+}
+
+function assertBytesApiEngine(engine: XlsxFormulaRecalcEngine | undefined): void {
+  if (engine === 'streaming-native') {
+    throw new Error('streaming-native engine requires recalculateXlsxFileToFile() with file-backed input and output paths')
+  }
+}
+
+function nativeLiteralEdits(
+  edits: readonly XlsxFormulaRecalcEdit[] | undefined,
+): readonly { readonly target: string; readonly value: LiteralInput }[] | undefined {
+  if (!edits || edits.length === 0) {
+    return undefined
+  }
+  return edits.map((edit) => {
+    const value = edit.value
+    if (value === null || typeof value === 'number' || typeof value === 'string' || typeof value === 'boolean') {
+      return { target: edit.target, value }
+    }
+    throw new Error(`streaming-native supports literal edits only: ${edit.target}`)
   })
 }
 

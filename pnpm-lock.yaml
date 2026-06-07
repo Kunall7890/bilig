@@ -605,12 +605,18 @@ importers:
 
   packages/xlsx-formula-recalc:
     dependencies:
+      '@bilig/formula':
+        specifier: workspace:*
+        version: link:../formula
       '@bilig/headless':
         specifier: workspace:*
         version: link:../headless
       '@bilig/protocol':
         specifier: workspace:*
         version: link:../protocol
+      '@bilig/xlsx':
+        specifier: workspace:*
+        version: link:../xlsx
       fflate:
         specifier: 0.3.11
         version: 0.3.11

@@ -1,4 +1,5 @@
-import { readFileSync, readdirSync } from 'node:fs'
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -10,6 +11,7 @@ import {
   decodeColumnAddress,
   encodeCellAddress,
   encodeCellRange,
+  createFileXlsxSourceReader,
   normalizeCellAddress,
   readXlsxTargetCell,
   readXlsxWorkbookCells,
@@ -100,6 +102,35 @@ describe('@bilig/xlsx package boundary', () => {
     }
 
     expect(writeSimpleXlsxWorkbook(workbook)).toEqual(writeSimpleXlsxWorkbook(workbook))
+  })
+
+  it('exposes a file-backed XLSX byte source without materializing the package', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'bilig-xlsx-file-source-'))
+    try {
+      const workbook = writeSimpleXlsxWorkbook({
+        sheets: [
+          {
+            name: 'Sheet1',
+            cells: [{ address: 'A1', row: 0, col: 0, value: 42 }],
+          },
+        ],
+      })
+      const workbookPath = join(tempDir, 'source.xlsx')
+      writeFileSync(workbookPath, workbook)
+      const source = createFileXlsxSourceReader(workbookPath)
+      try {
+        expect(source.byteLength).toBe(workbook.byteLength)
+        expect(source.readRange(0, 2)).toEqual(workbook.subarray(0, 2))
+        const scratch = new Uint8Array(2)
+        expect(source.readRangeInto(0, 2, scratch)).toEqual(workbook.subarray(0, 2))
+        const zip = readXlsxZipEntries(source.readBytes())
+        expect(textDecoder.decode(zip['xl/worksheets/sheet1.xml'])).toContain('<v>42</v>')
+      } finally {
+        source.release?.()
+      }
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
   })
 
   it('writes compatibility theme and escaped formula XML in simple workbooks', () => {

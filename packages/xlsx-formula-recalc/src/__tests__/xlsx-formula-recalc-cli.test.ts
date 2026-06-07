@@ -6,7 +6,7 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 import { parse as parseYaml } from 'yaml'
 
-import { runXlsxFormulaRecalcCli } from '../cli-api.js'
+import { runXlsxFormulaRecalcCli, runXlsxFormulaRecalcCliAsync } from '../cli-api.js'
 import { WorkPaper, exportXlsx } from '../index.js'
 import { buildWorkbookCompatibilityReport, runWorkbookCompatibilityReportCli } from '../workbook-compatibility-report.js'
 
@@ -63,6 +63,31 @@ describe('xlsx-recalc CLI', () => {
       expect(stdout).not.toContain('star or bookmark')
       expect(stdout).not.toContain('adoption blocker')
       expect(stdout).not.toContain('Watch formula')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  it('uses streaming-native for async file-to-file recalculation by default', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-formula-recalc-cli-native-'))
+    try {
+      const inputPath = join(tempDir, 'native.xlsx')
+      const outputPath = join(tempDir, 'native.recalculated.xlsx')
+      writeFileSync(inputPath, buildStaleFormulaCacheWorkbook())
+      let stdout = ''
+
+      const exitCode = await runXlsxFormulaRecalcCliAsync([inputPath, '--out', outputPath, '--read', 'Sheet1!B2', '--json'], {
+        stdout: (text) => {
+          stdout += text
+        },
+      })
+
+      expect(exitCode).toBe(0)
+      expect(existsSync(outputPath)).toBe(true)
+      const summary = readCliSummary(stdout)
+      expect(summary.reads['Sheet1!B2']?.value).toBe(20)
+      expect(summary.diagnostics.engineMode).toBe('streaming-native')
+      expect(readCachedFormulaValue(readFileSync(outputPath), 'xl/worksheets/sheet1.xml', 'B2')).toBe('20')
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
     }
@@ -647,6 +672,7 @@ interface CliSummary {
   readonly reads: Readonly<Record<string, { readonly value: unknown }>>
   readonly warnings: readonly string[]
   readonly diagnostics?: {
+    readonly engineMode?: string
     readonly externalWorkbookHydration?: Record<string, unknown>
   }
   readonly commandSucceeded: boolean
@@ -924,7 +950,12 @@ function readCliSummaryDiagnostics(value: unknown): CliSummary['diagnostics'] | 
     return undefined
   }
   const externalWorkbookHydration = value['externalWorkbookHydration']
-  return isRecord(externalWorkbookHydration) ? { externalWorkbookHydration } : undefined
+  const engineMode = value['engineMode']
+  const parsed = {
+    ...(typeof engineMode === 'string' ? { engineMode } : {}),
+    ...(isRecord(externalWorkbookHydration) ? { externalWorkbookHydration } : {}),
+  }
+  return Object.keys(parsed).length > 0 ? parsed : undefined
 }
 
 function readNumericRecord(value: unknown): Readonly<Record<string, number>> | undefined {
@@ -960,6 +991,13 @@ function readCliSummaryReads(value: object): CliSummary['reads'] {
 
 function readFileBytes(path: string): Uint8Array {
   return new Uint8Array(readFileSync(path))
+}
+
+function readCachedFormulaValue(bytes: Uint8Array, sheetPath: string, address: string): string | null {
+  const zip = unzipSync(bytes)
+  const sheetXml = strFromU8(zip[sheetPath] ?? new Uint8Array())
+  const match = new RegExp(`<c\\b(?=[^>]*\\br="${address}")[\\s\\S]*?<v>([\\s\\S]*?)<\\/v>[\\s\\S]*?<\\/c>`, 'u').exec(sheetXml)
+  return match?.[1] ?? null
 }
 
 function buildStaleFormulaCacheWorkbook(): Uint8Array {

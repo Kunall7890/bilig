@@ -6,6 +6,12 @@
   },
   "references": [
     {
+      "path": "../formula"
+    },
+    {
+      "path": "../xlsx"
+    },
+    {
       "path": "../excel-import"
     },
     {

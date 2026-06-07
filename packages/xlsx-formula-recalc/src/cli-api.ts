@@ -9,8 +9,12 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import {
   exportXlsx,
   inspectXlsxCache,
+  recalculateXlsxFileToFile,
   recalculateXlsxToFile,
+  StreamingNativeXlsxRecalcError,
   WorkPaper,
+  type XlsxFormulaRecalcEngine,
+  type XlsxFormulaRecalcFallbackPolicy,
   type XlsxFormulaRecalcCellValue,
   type XlsxFormulaRecalcEdit,
 } from './index.js'
@@ -30,6 +34,9 @@ interface CliOptions {
   readonly inspect: boolean
   readonly inspectLimit: number | 'all'
   readonly timeoutMs?: number
+  readonly engine?: XlsxFormulaRecalcEngine
+  readonly maxRssBytes?: number
+  readonly fallbackPolicy?: XlsxFormulaRecalcFallbackPolicy
   readonly json: boolean
 }
 
@@ -90,6 +97,9 @@ export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFo
       edits: options.edits,
       reads: options.reads,
       ...(options.timeoutMs === undefined ? {} : { config: { evaluationTimeoutMs: options.timeoutMs } }),
+      ...(options.engine === undefined ? {} : { engine: options.engine }),
+      ...(options.maxRssBytes === undefined ? {} : { maxRssBytes: options.maxRssBytes }),
+      ...(options.fallbackPolicy === undefined ? {} : { fallbackPolicy: options.fallbackPolicy }),
       outputPath: options.outputPath,
     })
 
@@ -127,6 +137,113 @@ export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFo
     return 0
   } catch (error) {
     writeStderr(`${error instanceof Error ? error.message : String(error)}\n`)
+    return 1
+  }
+}
+
+export async function runXlsxFormulaRecalcCliAsync(args: readonly string[], context: XlsxFormulaRecalcCliContext = {}): Promise<number> {
+  const commandName = context.commandName ?? 'xlsx-recalc'
+  const writeStdout = context.stdout ?? ((text: string) => process.stdout.write(text))
+  const writeStderr = context.stderr ?? ((text: string) => process.stderr.write(text))
+
+  try {
+    if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
+      printHelp(commandName, writeStdout)
+      return 0
+    }
+
+    if (commandName === cacheDoctorCommandName && args.includes(printGithubActionOption)) {
+      printGithubActionWorkflow(parseGithubActionWorkflowArgs(args, commandName), writeStdout)
+      return 0
+    }
+
+    const options = parseCliArgs(normalizeCliArgsForCommand(args, commandName), commandName)
+    const inputName =
+      options.mode === 'demo'
+        ? commandName === cacheDoctorCommandName
+          ? 'bilig-cache-doctor-stale-demo.xlsx'
+          : 'bilig-formula-recalc-demo.xlsx'
+        : basename(requireInputPath(options))
+    const externalWorkbooks = readExternalWorkbookInputs(options.externalWorkbooks)
+    if (options.inspect) {
+      const input = inputBytesForCli(options, commandName)
+      printInspectionSummary({ input, inputName, externalWorkbooks, options, writeStdout })
+      return 0
+    }
+    const result =
+      options.mode === 'file'
+        ? await recalculateXlsxFileToFile(requireInputPath(options), {
+            fileName: inputName,
+            ...(externalWorkbooks.length > 0 ? { externalWorkbooks } : {}),
+            edits: options.edits,
+            reads: options.reads,
+            ...(options.timeoutMs === undefined ? {} : { config: { evaluationTimeoutMs: options.timeoutMs } }),
+            ...(options.engine === undefined ? { engine: 'auto' as const } : { engine: options.engine }),
+            ...(options.maxRssBytes === undefined ? {} : { maxRssBytes: options.maxRssBytes }),
+            ...(options.fallbackPolicy === undefined ? {} : { fallbackPolicy: options.fallbackPolicy }),
+            outputPath: options.outputPath,
+          })
+        : recalculateXlsxToFile(inputBytesForCli(options, commandName), {
+            fileName: inputName,
+            ...(externalWorkbooks.length > 0 ? { externalWorkbooks } : {}),
+            edits: options.edits,
+            reads: options.reads,
+            ...(options.timeoutMs === undefined ? {} : { config: { evaluationTimeoutMs: options.timeoutMs } }),
+            ...(options.engine === undefined ? {} : { engine: options.engine }),
+            ...(options.maxRssBytes === undefined ? {} : { maxRssBytes: options.maxRssBytes }),
+            ...(options.fallbackPolicy === undefined ? {} : { fallbackPolicy: options.fallbackPolicy }),
+            outputPath: options.outputPath,
+          })
+
+    const summary = {
+      mode: options.mode,
+      input: options.inputPath ?? 'generated demo workbook',
+      output: options.outputPath,
+      edits: options.edits.length,
+      externalWorkbooks: externalWorkbooks.length,
+      reads: result.reads,
+      warnings: result.warnings,
+      ...(result.diagnostics ? { diagnostics: result.diagnostics } : {}),
+      commandSucceeded: true,
+      recalculationCompleted: true,
+      excelParity: 'not_proven',
+      ...(options.mode === 'demo'
+        ? {
+            expectedReadback: { 'Summary!B2': 72_000 },
+            expectedValueMatched: numericReadValue(result.reads['Summary!B2']) === 72_000,
+          }
+        : {}),
+    }
+
+    if (options.json) {
+      writeStdout(`${JSON.stringify(summary, null, 2)}\n`)
+    } else {
+      writeStdout(`Recalculated ${summary.input} -> ${options.outputPath}\n`)
+      for (const [target, value] of Object.entries(result.reads)) {
+        writeStdout(`${target}: ${JSON.stringify(value)}\n`)
+      }
+      if (result.warnings.length > 0) {
+        writeStdout(`Warnings: ${result.warnings.length.toString()}\n`)
+      }
+    }
+    return 0
+  } catch (error) {
+    if (args.includes('--json') && error instanceof StreamingNativeXlsxRecalcError) {
+      writeStdout(
+        `${JSON.stringify(
+          {
+            commandSucceeded: false,
+            recalculationCompleted: false,
+            error: error.message,
+            diagnostics: error.diagnostics,
+          },
+          null,
+          2,
+        )}\n`,
+      )
+    } else {
+      writeStderr(`${error instanceof Error ? error.message : String(error)}\n`)
+    }
     return 1
   }
 }
@@ -311,6 +428,9 @@ function parseCliArgs(args: readonly string[], commandName: string): CliOptions 
   let inspect = false
   let inspectLimit: CliOptions['inspectLimit'] = defaultInspectFormulaLimit
   let timeoutMs: number | undefined
+  let engine: XlsxFormulaRecalcEngine | undefined
+  let maxRssBytes: number | undefined
+  let fallbackPolicy: XlsxFormulaRecalcFallbackPolicy | undefined
   let json = false
 
   for (let index = demo ? 0 : 1; index < args.length; index += 1) {
@@ -351,6 +471,22 @@ function parseCliArgs(args: readonly string[], commandName: string): CliOptions 
         timeoutMs = parsePositiveIntegerOption(requireNextArg(args, index, '--timeout-ms'), '--timeout-ms')
         index += 1
         break
+      case '--engine':
+        engine = parseEngineOption(requireNextArg(args, index, '--engine'))
+        index += 1
+        break
+      case '--fallback-policy':
+        fallbackPolicy = parseFallbackPolicyOption(requireNextArg(args, index, '--fallback-policy'))
+        index += 1
+        break
+      case '--max-rss-bytes':
+        maxRssBytes = parsePositiveIntegerOption(requireNextArg(args, index, '--max-rss-bytes'), '--max-rss-bytes')
+        index += 1
+        break
+      case '--max-rss-mb':
+        maxRssBytes = parsePositiveIntegerOption(requireNextArg(args, index, '--max-rss-mb'), '--max-rss-mb') * 1024 * 1024
+        index += 1
+        break
       case '--out':
       case '-o':
         outputPath = requireNextArg(args, index, arg)
@@ -375,6 +511,9 @@ function parseCliArgs(args: readonly string[], commandName: string): CliOptions 
     inspect,
     inspectLimit,
     ...(timeoutMs === undefined ? {} : { timeoutMs }),
+    ...(engine === undefined ? {} : { engine }),
+    ...(maxRssBytes === undefined ? {} : { maxRssBytes }),
+    ...(fallbackPolicy === undefined ? {} : { fallbackPolicy }),
     json,
   }
 }
@@ -587,6 +726,20 @@ function parsePositiveIntegerOption(raw: string, option: string): number {
   return value
 }
 
+function parseEngineOption(raw: string): XlsxFormulaRecalcEngine {
+  if (raw === 'auto' || raw === 'streaming-native' || raw === 'workpaper') {
+    return raw
+  }
+  throw new Error(`Expected --engine to be "auto", "streaming-native", or "workpaper", received: ${raw}`)
+}
+
+function parseFallbackPolicyOption(raw: string): XlsxFormulaRecalcFallbackPolicy {
+  if (raw === 'error' || raw === 'workpaper') {
+    return raw
+  }
+  throw new Error(`Expected --fallback-policy to be "error" or "workpaper", received: ${raw}`)
+}
+
 function requireNextArg(args: readonly string[], index: number, option: string): string {
   const value = args[index + 1]
   if (!value || value.startsWith('--')) {
@@ -627,6 +780,11 @@ Options:
   --set <Sheet!A1=value>  Edit an input cell before diagnosis. Repeatable.
   --inspect-limit <all|n> Formula cells to recompute during inspection. Defaults to ${defaultInspectFormulaLimit}.
   --timeout-ms <n>        Formula evaluation timeout in milliseconds.
+  --engine <auto|streaming-native|workpaper>
+                          Select the recalculation engine. File-to-file CLI defaults to auto, which tries streaming-native.
+  --fallback-policy <error|workpaper>
+                          Decide whether unsupported streaming-native jobs fail or explicitly fall back to WorkPaper.
+  --max-rss-mb <n>        Fail streaming-native if resident memory exceeds this cap.
   --fail-on-stale <true|false>
                           With ${printGithubActionOption}, decide whether the generated workflow fails pull requests. Defaults to false.
   --changed-files-only <true|false>
@@ -657,6 +815,11 @@ Options:
   --inspect               Inspect formula cells, stale cached values, and suggested --read targets.
   --inspect-limit <all|n> Formula cells to recompute during inspection. Defaults to ${defaultInspectFormulaLimit}.
   --timeout-ms <n>        Formula evaluation timeout in milliseconds.
+  --engine <auto|streaming-native|workpaper>
+                          Select the recalculation engine. File-to-file CLI defaults to auto, which tries streaming-native.
+  --fallback-policy <error|workpaper>
+                          Decide whether unsupported streaming-native jobs fail or explicitly fall back to WorkPaper.
+  --max-rss-mb <n>        Fail streaming-native if resident memory exceeds this cap.
   --external-workbook <path>
                           Supply a companion XLSX for external-link cache refresh. Repeatable.
   --external-workbook-target <path> <target>

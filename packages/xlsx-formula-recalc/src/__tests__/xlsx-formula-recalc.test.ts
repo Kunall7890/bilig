@@ -1,3 +1,7 @@
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 
@@ -10,6 +14,7 @@ import {
   parseQualifiedA1,
   recalculateSheetjsWorkbook,
   recalculateXlsx,
+  recalculateXlsxFileToFile,
 } from '../index.js'
 
 const officeRelationshipNamespace = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
@@ -124,6 +129,57 @@ describe('xlsx-formula-recalc', () => {
     expect(readCachedFormulaValue(result.xlsx, 'xl/worksheets/sheet1.xml', 'B1')).toBe('4')
     expect(readWorkbookCalcPrAttribute(result.xlsx, 'calcMode')).toBe('manual')
     expect(readWorkbookCalcPrAttribute(result.xlsx, 'fullCalcOnLoad')).toBeNull()
+  })
+
+  it('recalculates supported row-local table formulas through the streaming-native file path', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-native-table-recalc-'))
+    try {
+      const sourcePath = join(tempDir, 'ocha-like.xlsx')
+      const outputPath = join(tempDir, 'ocha-like.recalculated.xlsx')
+      writeFileSync(sourcePath, buildNativeTableFormulaWorkbook())
+
+      const result = await recalculateXlsxFileToFile(sourcePath, {
+        outputPath,
+        engine: 'streaming-native',
+        edits: [{ target: 'Data!R57152', value: 16 }],
+        reads: ['Data!U57152', 'Data!V57152'],
+      })
+
+      expect(readNumber(result.reads['Data!U57152'])).toBe(168.75)
+      expect(readNumber(result.reads['Data!V57152'])).toBe(28.125)
+      expect(result.diagnostics?.engineMode).toBe('streaming-native')
+      expect(result.diagnostics?.formulaCounts.evaluatedFormulaCellCount).toBe(2)
+      const outputBytes = readFileSync(outputPath)
+      const sheetXml = strFromU8(unzipSync(outputBytes)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+      expect(sheetXml).toContain('<f>DataTable[[#This Row],[V Households]]*6</f><v>168.75</v>')
+      expect(sheetXml).toContain('<f>DataTable[[#This Row],[T USD]]/DataTable[[#This Row],[R Input]]</f><v>28.125</v>')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  it('translates shared formulas before streaming-native row-local evaluation', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-native-shared-recalc-'))
+    try {
+      const sourcePath = join(tempDir, 'shared.xlsx')
+      const outputPath = join(tempDir, 'shared.recalculated.xlsx')
+      writeFileSync(sourcePath, buildNativeSharedFormulaWorkbook())
+
+      const result = await recalculateXlsxFileToFile(sourcePath, {
+        outputPath,
+        engine: 'streaming-native',
+        edits: [{ target: 'Data!A3', value: 7 }],
+        reads: ['Data!B3'],
+      })
+
+      expect(readNumber(result.reads['Data!B3'])).toBe(70)
+      expect(result.diagnostics?.engineMode).toBe('streaming-native')
+      const outputBytes = readFileSync(outputPath)
+      expect(readCachedFormulaValue(outputBytes, 'xl/worksheets/sheet1.xml', 'B3')).toBe('70')
+      expect(strFromU8(unzipSync(outputBytes)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())).toContain('<f t="shared" si="0"/><v>70</v>')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
   })
 
   it('inspects stale XLSX formula caches through the public API', () => {
@@ -455,6 +511,90 @@ function buildLargeManualCalcWorkbookBytes(): Uint8Array {
     ],
     '<calcPr calcMode="manual" fullCalcOnLoad="0"/>',
   )
+}
+
+function buildNativeTableFormulaWorkbook(): Uint8Array {
+  const headers = Array.from({ length: 22 }, (_value, index) => `Column ${String(index + 1)}`)
+  headers[17] = 'R Input'
+  headers[19] = 'T USD'
+  headers[20] = 'U Individuals'
+  headers[21] = 'V Households'
+  const headerCells = headers.map((header, index) => `<c r="${columnName(index)}1" t="inlineStr"><is><t>${header}</t></is></c>`).join('')
+  const dataCells = [
+    '<c r="R57152"><v>30</v></c>',
+    '<c r="T57152"><v>450</v></c>',
+    '<c r="U57152"><f>DataTable[[#This Row],[V Households]]*6</f><v>90</v></c>',
+    '<c r="V57152"><f>DataTable[[#This Row],[T USD]]/DataTable[[#This Row],[R Input]]</f><v>15</v></c>',
+  ].join('')
+  return zipSync({
+    '[Content_Types].xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/tables/table1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"/>
+</Types>`),
+    '_rels/.rels': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`),
+    'xl/workbook.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${officeRelationshipNamespace}">
+  <sheets><sheet name="Data" sheetId="1" r:id="rId1"/></sheets>
+</workbook>`),
+    'xl/_rels/workbook.xml.rels': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="${officeRelationshipNamespace}/worksheet" Target="worksheets/sheet1.xml"/>
+</Relationships>`),
+    'xl/worksheets/sheet1.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${officeRelationshipNamespace}">
+  <dimension ref="A1:V57152"/>
+  <sheetData><row r="1">${headerCells}</row><row r="57152">${dataCells}</row></sheetData>
+  <tableParts count="1"><tablePart r:id="rIdTable1"/></tableParts>
+</worksheet>`),
+    'xl/worksheets/_rels/sheet1.xml.rels': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rIdTable1" Type="${officeRelationshipNamespace}/table" Target="../tables/table1.xml"/>
+</Relationships>`),
+    'xl/tables/table1.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="DataTable" displayName="DataTable" ref="A1:V57152" headerRowCount="1">
+  <tableColumns count="22">${headers
+    .map((header, index) => `<tableColumn id="${String(index + 1)}" name="${header}"/>`)
+    .join('')}</tableColumns>
+</table>`),
+  })
+}
+
+function buildNativeSharedFormulaWorkbook(): Uint8Array {
+  return buildIndependentWorkbook([
+    {
+      name: 'Data',
+      path: 'xl/worksheets/sheet1.xml',
+      xml: [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+        '<dimension ref="A1:B3"/>',
+        '<sheetData>',
+        '<row r="1"><c r="A1" t="inlineStr"><is><t>Input</t></is></c><c r="B1" t="inlineStr"><is><t>Output</t></is></c></row>',
+        '<row r="2"><c r="A2"><v>2</v></c><c r="B2"><f t="shared" si="0" ref="B2:B3">A2*10</f><v>20</v></c></row>',
+        '<row r="3"><c r="A3"><v>3</v></c><c r="B3"><f t="shared" si="0"/><v>999</v></c></row>',
+        '</sheetData>',
+        '</worksheet>',
+      ].join(''),
+    },
+  ])
+}
+
+function columnName(index: number): string {
+  let value = index + 1
+  let output = ''
+  while (value > 0) {
+    const remainder = (value - 1) % 26
+    output = String.fromCharCode(65 + remainder) + output
+    value = Math.floor((value - 1) / 26)
+  }
+  return output
 }
 
 function buildIndependentWorkbook(
