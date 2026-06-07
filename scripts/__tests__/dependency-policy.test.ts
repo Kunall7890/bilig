@@ -647,6 +647,11 @@ describe('repository dependency policy', () => {
 
     expect(reportFileStart).toBeGreaterThan(-1)
     expect(reportFileEnd).toBeGreaterThan(reportFileStart)
+    expect(reportFileSource).toContain('createWorkbookCompatibilityRssRecorder(options.maxRssBytes)')
+    expect(reportFileSource).toContain("rss.recordPhase('file-api:open-core')")
+    expect(reportSource).toContain('function buildWorkbookCompatibilityNativeDiagnostics')
+    expect(reportSource).toContain("engineMode: 'streaming-native'")
+    expect(reportSource).toContain('fallbackUsed: false')
     expect([...violations, ...reportFileViolations]).toEqual([])
   })
 
@@ -752,6 +757,11 @@ describe('repository dependency policy', () => {
     expect(formulaClinic).toContain("from '@bilig/xlsx/workbook-compatibility-report'")
     expect(formulaClinic).toContain('buildWorkbookCompatibilityReportFromFile(input.filePath')
     expect(formulaClinic).toContain("status: 'native-preflight'")
+    expect(formulaClinic).toContain('maxObservedRssBytes: report.diagnostics.maxObservedRssBytes')
+    expect(formulaClinic).toContain('phaseRssPeaks: report.diagnostics.phaseRssPeaks')
+    expect(formulaClinic).toContain('formulaCounts: report.diagnostics.formulaCounts')
+    expect(formulaClinic).toContain('patchedCacheCount: report.diagnostics.patchedCacheCount')
+    expect(formulaClinic).toContain('unsupportedReason: report.diagnostics.unsupportedReason')
     expect(largeFileGuardIndex).toBeGreaterThan(-1)
     expect(readBytesIndex).toBeGreaterThan(largeFileGuardIndex)
     expect(workPaperIndex).toBeGreaterThan(readBytesIndex)

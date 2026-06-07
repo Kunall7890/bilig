@@ -4,8 +4,9 @@ import { basename } from 'node:path'
 import type { LiteralInput } from '@bilig/protocol'
 
 import { readXlsxFormulaCacheCellsFromWorkbookCore, type XlsxFormulaCacheScanResult } from './formula-cache-reader.js'
-import type { ImportedWorkbookDiagnostics, XlsxExternalWorkbookInput } from './external-workbook-types.js'
+import type { XlsxExternalWorkbookInput } from './external-workbook-types.js'
 import { writeSimpleXlsxWorkbook } from './simple-workbook-writer.js'
+import type { XlsxFormulaRecalcNativeDiagnostics, XlsxFormulaRecalcPhaseRss } from './streaming-native-recalc.js'
 import { closeStreamingNativeWorkbookCore, openStreamingNativeWorkbookCore } from './streaming-native-workbook-core.js'
 import { readXlsxWorkbookCells, type XlsxWorkbookCells } from './workbook-cell-reader.js'
 import type { WorkbookSheetPathEntry } from './workbook-sheet-paths.js'
@@ -32,6 +33,7 @@ export interface WorkbookCompatibilityReportOptions {
   readonly externalWorkbooks?: readonly XlsxExternalWorkbookInput[]
   readonly edits?: readonly WorkbookCompatibilityReportEdit[]
   readonly inspectLimit?: XlsxCacheInspectionLimit
+  readonly maxRssBytes?: number
 }
 
 export interface WorkbookCompatibilityReportFileOptions extends WorkbookCompatibilityReportOptions {
@@ -100,7 +102,7 @@ export interface WorkbookCompatibilityReport {
     readonly inspectionLimit: XlsxCacheInspectionLimit
     readonly suggestedReads: readonly string[]
   }
-  readonly diagnostics?: ImportedWorkbookDiagnostics
+  readonly diagnostics: XlsxFormulaRecalcNativeDiagnostics
   readonly commandSucceeded: true
   readonly inspectionCompleted: true
   readonly recalculationCompleted: boolean
@@ -175,12 +177,18 @@ export function buildWorkbookCompatibilityReport(
 ): WorkbookCompatibilityReport {
   const bytes = toUint8Array(input)
   assertWorkbookCompatibilityReportBytesApiWithinLimit(bytes, 'buildWorkbookCompatibilityReport')
+  const rss = createWorkbookCompatibilityRssRecorder(options.maxRssBytes)
+  rss.recordPhase('bytes-api:start')
   const fileName = options.fileName ?? 'workbook.xlsx'
   const externalWorkbooks = options.externalWorkbooks ?? []
   const zip = readXlsxZipEntriesLazy(bytes)
+  rss.recordPhase('bytes-api:zip')
   const workbook = readXlsxWorkbookCells(zip)
+  rss.recordPhase('bytes-api:cells')
   const workbookParts = scanWorkbookPackageParts(zip)
+  rss.recordPhase('bytes-api:package-parts')
   const cacheInspection = inspectWorkbookFormulaCaches(workbook, options.inspectLimit ?? defaultInspectLimit)
+  rss.recordPhase('bytes-api:formula-cache')
   return buildWorkbookCompatibilityReportFromScans({
     fileName,
     externalWorkbookCount: externalWorkbooks.length,
@@ -190,6 +198,12 @@ export function buildWorkbookCompatibilityReport(
     },
     workbookParts,
     cacheInspection,
+    diagnostics: {
+      inputBytes: bytes.byteLength,
+      maxObservedRssBytes: rss.maxObservedRssBytes,
+      ...(options.maxRssBytes === undefined ? {} : { maxRssBytes: options.maxRssBytes }),
+      phaseRssPeaks: rss.phaseRssPeaks,
+    },
   })
 }
 
@@ -200,22 +214,35 @@ export function buildWorkbookCompatibilityReportFromFile(
   const fileName = options.fileName ?? basename(inputPath)
   const externalWorkbooks = options.externalWorkbooks ?? []
   const inspectLimit = options.inspectLimit ?? defaultFileInspectLimit
+  const rss = createWorkbookCompatibilityRssRecorder(options.maxRssBytes)
+  const inputBytes = statSync(inputPath).size
+  rss.recordPhase('file-api:start')
   const core = openStreamingNativeWorkbookCore(inputPath)
   try {
+    rss.recordPhase('file-api:open-core')
     const workbook = scanWorkbookCellStats(core.zip, core.sheetEntries)
+    rss.recordPhase('file-api:cell-stats')
     const workbookParts = scanWorkbookPackageParts(core.zip, core.entryMetadata)
+    rss.recordPhase('file-api:package-parts')
     const cacheInspection = inspectWorkbookFormulaCacheScan(
       readXlsxFormulaCacheCellsFromWorkbookCore(core, {
         inspectLimit,
       }),
       inspectLimit,
     )
+    rss.recordPhase('file-api:formula-cache')
     return buildWorkbookCompatibilityReportFromScans({
       fileName,
       externalWorkbookCount: externalWorkbooks.length,
       workbook,
       workbookParts,
       cacheInspection,
+      diagnostics: {
+        inputBytes,
+        maxObservedRssBytes: rss.maxObservedRssBytes,
+        ...(options.maxRssBytes === undefined ? {} : { maxRssBytes: options.maxRssBytes }),
+        phaseRssPeaks: rss.phaseRssPeaks,
+      },
     })
   } finally {
     closeStreamingNativeWorkbookCore(core)
@@ -231,12 +258,27 @@ function buildWorkbookCompatibilityReportFromScans(input: {
   }
   readonly workbookParts: WorkbookPackagePartScan
   readonly cacheInspection: WorkbookFormulaCacheInspection
+  readonly diagnostics: {
+    readonly inputBytes: number
+    readonly phaseRssPeaks: readonly XlsxFormulaRecalcPhaseRss[]
+    readonly maxObservedRssBytes: number
+    readonly maxRssBytes?: number
+  }
 }): WorkbookCompatibilityReport {
   const { fileName, externalWorkbookCount, workbook, workbookParts, cacheInspection } = input
   const unsupportedFunctions = countNamedValues(
     cacheInspection.formulas.flatMap((entry) => knownUnsupportedFunctionNamesFromFormula(entry.formula)),
   )
   const volatileFunctions = countNamedValues(cacheInspection.formulas.flatMap((entry) => volatileFunctionNamesFromFormula(entry.formula)))
+  const diagnostics = buildWorkbookCompatibilityNativeDiagnostics({
+    ...input.diagnostics,
+    sheetCount: workbook.sheetNames.length,
+    inspectedFormulaCellCount: cacheInspection.inspectedFormulaCellCount,
+    formulaCellCount: cacheInspection.formulaCellCount,
+    unsupportedFormulaCellCount: cacheInspection.cacheStatusSummary.unsupportedRecalculation,
+    unsupportedFunctions,
+    workbookParts,
+  })
   const report: Omit<WorkbookCompatibilityReport, 'risk'> = {
     schemaVersion: workbookCompatibilityReportSchemaVersion,
     verified: true,
@@ -290,6 +332,7 @@ function buildWorkbookCompatibilityReportFromScans(input: {
       inspectionLimit: cacheInspection.inspectionLimit,
       suggestedReads: cacheInspection.suggestedReads,
     },
+    diagnostics,
     commandSucceeded: true,
     inspectionCompleted: true,
     recalculationCompleted: false,
@@ -409,6 +452,87 @@ interface WorkbookFormulaCacheInspection {
     readonly formula: string
     readonly hasCachedValue: boolean
   }[]
+}
+
+function createWorkbookCompatibilityRssRecorder(maxRssBytes: number | undefined): {
+  readonly phaseRssPeaks: XlsxFormulaRecalcPhaseRss[]
+  readonly maxObservedRssBytes: number
+  readonly recordPhase: (phase: string) => void
+} {
+  const recorder = {
+    phaseRssPeaks: [] as XlsxFormulaRecalcPhaseRss[],
+    maxObservedRssBytes: 0,
+    recordPhase(phase: string): void {
+      const rssBytes = process.memoryUsage().rss
+      recorder.maxObservedRssBytes = Math.max(recorder.maxObservedRssBytes, rssBytes)
+      recorder.phaseRssPeaks.push({ phase, rssBytes })
+      if (maxRssBytes !== undefined && rssBytes > maxRssBytes) {
+        throw new Error(`workbook compatibility report exceeded maxRssBytes during ${phase}: ${rssBytes} > ${maxRssBytes}`)
+      }
+    },
+  }
+  return recorder
+}
+
+function buildWorkbookCompatibilityNativeDiagnostics(args: {
+  readonly inputBytes: number
+  readonly phaseRssPeaks: readonly XlsxFormulaRecalcPhaseRss[]
+  readonly maxObservedRssBytes: number
+  readonly maxRssBytes?: number
+  readonly sheetCount: number
+  readonly inspectedFormulaCellCount: number
+  readonly formulaCellCount: number
+  readonly unsupportedFormulaCellCount: number
+  readonly unsupportedFunctions: readonly WorkbookCompatibilityNamedCount[]
+  readonly workbookParts: WorkbookPackagePartScan
+}): XlsxFormulaRecalcNativeDiagnostics {
+  const unsupportedReason = workbookCompatibilityUnsupportedReason(args)
+  return {
+    engineMode: 'streaming-native',
+    fallbackUsed: false,
+    inputBytes: args.inputBytes,
+    phaseRssPeaks: args.phaseRssPeaks,
+    maxObservedRssBytes: args.maxObservedRssBytes,
+    ...(args.maxRssBytes === undefined ? {} : { maxRssBytes: args.maxRssBytes }),
+    sheetCount: args.sheetCount,
+    targetRowCount: args.inspectedFormulaCellCount,
+    editCount: 0,
+    readCount: args.inspectedFormulaCellCount,
+    formulaCounts: {
+      scannedFormulaCellCount: args.formulaCellCount,
+      targetedFormulaCellCount: args.inspectedFormulaCellCount,
+      evaluatedFormulaCellCount: 0,
+      patchedFormulaCacheCount: 0,
+      unsupportedFormulaCellCount: args.unsupportedFormulaCellCount,
+      nativeKernelFormulaCellCount: 0,
+      nativeKernelBatchCount: 0,
+    },
+    patchedCacheCount: 0,
+    ...(unsupportedReason === undefined ? {} : { unsupportedReason }),
+  }
+}
+
+function workbookCompatibilityUnsupportedReason(args: {
+  readonly unsupportedFunctions: readonly WorkbookCompatibilityNamedCount[]
+  readonly workbookParts: WorkbookPackagePartScan
+  readonly unsupportedFormulaCellCount: number
+}): string | undefined {
+  if (args.unsupportedFunctions.length > 0) {
+    return `unsupported functions: ${formatNamedCounts(args.unsupportedFunctions)}`
+  }
+  if (args.unsupportedFormulaCellCount > 0) {
+    return `unsupported formula cache inspections: ${args.unsupportedFormulaCellCount.toString()}`
+  }
+  if (args.workbookParts.externalLinkCount > 0) {
+    return `external workbook links: ${args.workbookParts.externalLinkCount.toString()}`
+  }
+  if (args.workbookParts.macroModuleCount > 0) {
+    return `macro modules: ${args.workbookParts.macroModuleCount.toString()}`
+  }
+  if (args.workbookParts.pivotTableCount > 0) {
+    return `pivot tables: ${args.workbookParts.pivotTableCount.toString()}`
+  }
+  return undefined
 }
 
 function inspectWorkbookFormulaCaches(workbook: XlsxWorkbookCells, inspectLimit: XlsxCacheInspectionLimit): WorkbookFormulaCacheInspection {

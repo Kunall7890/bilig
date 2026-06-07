@@ -98,9 +98,15 @@ describe('formula clinic CLI', () => {
     expect(stdout).toContain('- Formula cells: 1200')
     expect(stdout).toContain('- Engine mode: `streaming-native`')
     expect(stdout).toContain('- Fallback used: `false`')
+    expect(stdout).toContain('- Max observed RSS bytes: 123456')
+    expect(stdout).toContain('- Phase RSS peaks: 1')
     expect(stdout).toContain('- Risk: `medium`')
     expect(stdout).toContain('- Inspected formula cells: 4')
+    expect(stdout).toContain('- Scanned formula cells: 1200')
+    expect(stdout).toContain('- Targeted formula cells: 4')
+    expect(stdout).toContain('- Patched formula caches: 0')
     expect(stdout).toContain('- Unsupported function references: 2')
+    expect(stdout).toContain('- Unsupported reason: unsupported functions: CUBESET (2)')
     expect(stdout).toContain('skipped WorkPaper readback because this workbook is above the small-workbook clinic limit')
   })
 
@@ -216,6 +222,28 @@ function largeNativeCompatibilityReport(): WorkbookCompatibilityReport {
       uninspectedFormulaCellCount: 1196,
       inspectionLimit: 4,
       suggestedReads: ['Summary!B2'],
+    },
+    diagnostics: {
+      engineMode: 'streaming-native',
+      fallbackUsed: false,
+      inputBytes: 1_000_001,
+      phaseRssPeaks: [{ phase: 'file-api:formula-cache', rssBytes: 123456 }],
+      maxObservedRssBytes: 123456,
+      sheetCount: 1,
+      targetRowCount: 4,
+      editCount: 0,
+      readCount: 4,
+      formulaCounts: {
+        scannedFormulaCellCount: 1200,
+        targetedFormulaCellCount: 4,
+        evaluatedFormulaCellCount: 0,
+        patchedFormulaCacheCount: 0,
+        unsupportedFormulaCellCount: 2,
+        nativeKernelFormulaCellCount: 0,
+        nativeKernelBatchCount: 0,
+      },
+      patchedCacheCount: 0,
+      unsupportedReason: 'unsupported functions: CUBESET (2)',
     },
     commandSucceeded: true,
     inspectionCompleted: true,

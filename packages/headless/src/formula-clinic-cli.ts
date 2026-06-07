@@ -70,11 +70,16 @@ interface FormulaClinicNativePreflight {
   readonly engineMode: 'streaming-native'
   readonly externalLinkCount: number
   readonly fallbackUsed: false
+  readonly formulaCounts: WorkbookCompatibilityReport['diagnostics']['formulaCounts']
   readonly inspectedFormulaCellCount: number
+  readonly maxObservedRssBytes: number
+  readonly patchedCacheCount: number
+  readonly phaseRssPeaks: WorkbookCompatibilityReport['diagnostics']['phaseRssPeaks']
   readonly riskLevel: string
   readonly riskReasons: readonly string[]
   readonly uninspectedFormulaCellCount: number
   readonly unsupportedFunctionCount: number
+  readonly unsupportedReason?: string
 }
 
 const formulaClinicLegacyWorkPaperBytesApiLimit = 1_000_000
@@ -252,6 +257,11 @@ function nativePreflightFromCompatibilityReport(report: WorkbookCompatibilityRep
   return {
     engineMode: 'streaming-native',
     fallbackUsed: false,
+    maxObservedRssBytes: report.diagnostics.maxObservedRssBytes,
+    phaseRssPeaks: report.diagnostics.phaseRssPeaks,
+    formulaCounts: report.diagnostics.formulaCounts,
+    patchedCacheCount: report.diagnostics.patchedCacheCount,
+    ...(report.diagnostics.unsupportedReason === undefined ? {} : { unsupportedReason: report.diagnostics.unsupportedReason }),
     riskLevel: report.risk.level,
     riskReasons: report.risk.reasons,
     inspectedFormulaCellCount: report.cacheInspection.inspectedFormulaCellCount,
@@ -402,11 +412,17 @@ function renderNativePreflight(preflight: FormulaClinicNativePreflight | null): 
   return [
     `- Engine mode: \`${preflight.engineMode}\``,
     `- Fallback used: \`${String(preflight.fallbackUsed)}\``,
+    `- Max observed RSS bytes: ${preflight.maxObservedRssBytes.toString()}`,
+    `- Phase RSS peaks: ${preflight.phaseRssPeaks.length.toString()}`,
     `- Risk: \`${preflight.riskLevel}\``,
     `- Risk reasons: ${preflight.riskReasons.length > 0 ? preflight.riskReasons.join('; ') : 'none'}`,
     `- Inspected formula cells: ${preflight.inspectedFormulaCellCount.toString()}`,
     `- Uninspected formula cells: ${preflight.uninspectedFormulaCellCount.toString()}`,
+    `- Scanned formula cells: ${preflight.formulaCounts.scannedFormulaCellCount.toString()}`,
+    `- Targeted formula cells: ${preflight.formulaCounts.targetedFormulaCellCount.toString()}`,
+    `- Patched formula caches: ${preflight.patchedCacheCount.toString()}`,
     `- Unsupported function references: ${preflight.unsupportedFunctionCount.toString()}`,
+    `- Unsupported reason: ${preflight.unsupportedReason ?? 'none'}`,
     `- External links: ${preflight.externalLinkCount.toString()}`,
   ].join('\n')
 }

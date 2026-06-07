@@ -465,6 +465,28 @@ process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXls
       expect(report.cacheInspection.inspectionLimit).toBe(2000)
       expect(report.cacheInspection.uninspectedFormulaCellCount).toBe(0)
       expect(report.workbook.formulaCellCount).toBe(5)
+      expect(report.diagnostics).toMatchObject({
+        engineMode: 'streaming-native',
+        fallbackUsed: false,
+        inputBytes: buildProviderBackedRiskWorkbook().byteLength,
+        sheetCount: 1,
+        targetRowCount: 5,
+        editCount: 0,
+        readCount: 5,
+        patchedCacheCount: 0,
+        unsupportedReason: 'unsupported functions: GOOGLEFINANCE (1), IMPORTDATA (1), IMPORTHTML (1), IMPORTRANGE (1), TRANSLATE (1)',
+      })
+      expect(report.diagnostics.maxObservedRssBytes).toBeGreaterThan(0)
+      expect(report.diagnostics.phaseRssPeaks.length).toBeGreaterThan(0)
+      expect(report.diagnostics.formulaCounts).toMatchObject({
+        scannedFormulaCellCount: 5,
+        targetedFormulaCellCount: 5,
+        evaluatedFormulaCellCount: 0,
+        patchedFormulaCacheCount: 0,
+        unsupportedFormulaCellCount: 5,
+        nativeKernelFormulaCellCount: 0,
+        nativeKernelBatchCount: 0,
+      })
       expect(report.findings.unsupportedFunctions).toEqual([
         { name: 'GOOGLEFINANCE', count: 1 },
         { name: 'IMPORTDATA', count: 1 },
@@ -1059,6 +1081,28 @@ interface CliInspectionSummary {
 interface WorkbookCompatibilityReportForTest {
   readonly schemaVersion: string
   readonly verified: boolean
+  readonly diagnostics: {
+    readonly engineMode: string
+    readonly fallbackUsed: boolean
+    readonly inputBytes: number
+    readonly phaseRssPeaks: readonly unknown[]
+    readonly maxObservedRssBytes: number
+    readonly sheetCount: number
+    readonly targetRowCount: number
+    readonly editCount: number
+    readonly readCount: number
+    readonly formulaCounts: {
+      readonly scannedFormulaCellCount: number
+      readonly targetedFormulaCellCount: number
+      readonly evaluatedFormulaCellCount: number
+      readonly patchedFormulaCacheCount: number
+      readonly unsupportedFormulaCellCount: number
+      readonly nativeKernelFormulaCellCount: number
+      readonly nativeKernelBatchCount: number
+    }
+    readonly patchedCacheCount: number
+    readonly unsupportedReason?: string
+  }
   readonly workbook: {
     readonly formulaCellCount: number
   }
@@ -1208,6 +1252,8 @@ function readWorkbookCompatibilityReport(stdout: string): WorkbookCompatibilityR
   const findings = parsed['findings']
   const risk = parsed['risk']
   const cacheInspection = parsed['cacheInspection']
+  const diagnostics = requireRecord(parsed['diagnostics'])
+  const formulaCounts = requireRecord(diagnostics['formulaCounts'])
   const limitations = parsed['limitations']
   if (!isRecord(workbook) || !isRecord(findings) || !isRecord(risk) || !isRecord(cacheInspection) || !Array.isArray(limitations)) {
     throw new Error(`Unexpected workbook compatibility report shape: ${stdout}`)
@@ -1215,6 +1261,28 @@ function readWorkbookCompatibilityReport(stdout: string): WorkbookCompatibilityR
   return {
     schemaVersion: requireString(parsed['schemaVersion']),
     verified: parsed['verified'] === true,
+    diagnostics: {
+      engineMode: requireString(diagnostics['engineMode']),
+      fallbackUsed: diagnostics['fallbackUsed'] === true,
+      inputBytes: requireNumber(diagnostics['inputBytes']),
+      phaseRssPeaks: Array.isArray(diagnostics['phaseRssPeaks']) ? diagnostics['phaseRssPeaks'] : [],
+      maxObservedRssBytes: requireNumber(diagnostics['maxObservedRssBytes']),
+      sheetCount: requireNumber(diagnostics['sheetCount']),
+      targetRowCount: requireNumber(diagnostics['targetRowCount']),
+      editCount: requireNumber(diagnostics['editCount']),
+      readCount: requireNumber(diagnostics['readCount']),
+      formulaCounts: {
+        scannedFormulaCellCount: requireNumber(formulaCounts['scannedFormulaCellCount']),
+        targetedFormulaCellCount: requireNumber(formulaCounts['targetedFormulaCellCount']),
+        evaluatedFormulaCellCount: requireNumber(formulaCounts['evaluatedFormulaCellCount']),
+        patchedFormulaCacheCount: requireNumber(formulaCounts['patchedFormulaCacheCount']),
+        unsupportedFormulaCellCount: requireNumber(formulaCounts['unsupportedFormulaCellCount']),
+        nativeKernelFormulaCellCount: requireNumber(formulaCounts['nativeKernelFormulaCellCount']),
+        nativeKernelBatchCount: requireNumber(formulaCounts['nativeKernelBatchCount']),
+      },
+      patchedCacheCount: requireNumber(diagnostics['patchedCacheCount']),
+      ...(typeof diagnostics['unsupportedReason'] === 'string' ? { unsupportedReason: diagnostics['unsupportedReason'] } : {}),
+    },
     workbook: {
       formulaCellCount: requireNumber(workbook['formulaCellCount']),
     },
