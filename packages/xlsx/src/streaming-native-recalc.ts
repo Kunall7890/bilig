@@ -2,26 +2,20 @@ import { statSync } from 'node:fs'
 
 import { parseFormula, translateFormulaReferences, type FormulaNode } from '@bilig/formula'
 import { ErrorCode, ValueTag, type CellValue, type LiteralInput } from '@bilig/protocol'
+
+import { decodeCellAddress, decodeCellRange, encodeCellAddress, type XlsxCellRange } from './address.js'
+import { createFileXlsxSourceReader } from './file-source.js'
+import { exportXlsxSourceLiteralPatchesToFileAsync, type XlsxSourceLiteralPatch } from './source-preserving-literal-patches.js'
+import { evaluateStreamingNativeWasmFormulas, expandStreamingNativeFormulaDependencyRows } from './streaming-native-row-chain-wasm.js'
+import { readXmlAttribute, worksheetCellElementPattern, worksheetCellOpeningTagPattern } from './xml.js'
+import { workbookSheetPathEntriesForSource } from './workbook-sheet-paths.js'
 import {
-  createFileXlsxSourceReader,
-  decodeCellAddress,
-  decodeCellRange,
-  encodeCellAddress,
-  exportXlsxSourceLiteralPatchesToFileAsync,
   forEachInflatedXlsxZipEntryChunk,
   getZipText,
   normalizeZipPath,
   readXlsxZipEntriesLazyFromByteSource,
-  readXmlAttribute,
-  workbookSheetPathEntriesForSource,
-  worksheetCellElementPattern,
-  worksheetCellOpeningTagPattern,
-  type XlsxCellRange,
-  type XlsxSourceLiteralPatch,
   type XlsxZipEntries,
-} from '@bilig/xlsx'
-
-import { evaluateStreamingNativeWasmFormulas, expandStreamingNativeFormulaDependencyRows } from './streaming-native-row-chain-wasm.js'
+} from './zip-reader.js'
 
 export type XlsxFormulaRecalcEngineMode = 'streaming-native' | 'workpaper'
 export type XlsxFormulaRecalcEngine = 'auto' | XlsxFormulaRecalcEngineMode
@@ -953,6 +947,8 @@ function cellValuesEqual(left: CellValue, right: CellValue): boolean {
       return right.tag === ValueTag.String && left.value === right.value
     case ValueTag.Error:
       return right.tag === ValueTag.Error && left.code === right.code
+    default:
+      return false
   }
 }
 
@@ -1471,6 +1467,8 @@ function coerceNumber(value: CellValue): number {
     }
     case ValueTag.Error:
       throw new UnsupportedStreamingNativeFormulaError(`cannot coerce error to number: ${String(value.code)}`)
+    default:
+      throw new UnsupportedStreamingNativeFormulaError('cannot coerce unknown value to number')
   }
 }
 
@@ -1486,6 +1484,8 @@ function coerceBoolean(value: CellValue): boolean {
       throw new UnsupportedStreamingNativeFormulaError(`cannot coerce string to boolean: ${value.value}`)
     case ValueTag.Error:
       throw new UnsupportedStreamingNativeFormulaError(`cannot coerce error to boolean: ${String(value.code)}`)
+    default:
+      throw new UnsupportedStreamingNativeFormulaError('cannot coerce unknown value to boolean')
   }
 }
 
@@ -1514,6 +1514,8 @@ function cellValueText(value: CellValue): string {
       return value.value
     case ValueTag.Error:
       throw new UnsupportedStreamingNativeFormulaError(`cannot use error as text: ${String(value.code)}`)
+    default:
+      throw new UnsupportedStreamingNativeFormulaError('cannot use unknown value as text')
   }
 }
 

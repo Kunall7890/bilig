@@ -602,24 +602,24 @@ importers:
       '@bilig/formula':
         specifier: workspace:*
         version: link:../formula
-      fflate-stream:
-        specifier: npm:fflate@0.8.3
-        version: fflate@0.8.3
-
-  packages/xlsx-formula-recalc:
-    dependencies:
-      '@bilig/formula':
-        specifier: workspace:*
-        version: link:../formula
-      '@bilig/headless':
-        specifier: workspace:*
-        version: link:../headless
       '@bilig/protocol':
         specifier: workspace:*
         version: link:../protocol
       '@bilig/wasm-kernel':
         specifier: workspace:*
         version: link:../wasm-kernel
+      fflate-stream:
+        specifier: npm:fflate@0.8.3
+        version: fflate@0.8.3
+
+  packages/xlsx-formula-recalc:
+    dependencies:
+      '@bilig/headless':
+        specifier: workspace:*
+        version: link:../headless
+      '@bilig/protocol':
+        specifier: workspace:*
+        version: link:../protocol
       '@bilig/xlsx':
         specifier: workspace:*
         version: link:../xlsx

@@ -1,6 +1,7 @@
 import { statSync } from 'node:fs'
 
 import { ErrorCode, ValueTag, type CellValue, type LiteralInput } from '@bilig/protocol'
+
 import {
   normalizeXlsxFormulaCacheInspectionLimit,
   readXlsxFormulaCacheCellsFromFile,
@@ -8,8 +9,7 @@ import {
   type XlsxFormulaCacheCell,
   type XlsxFormulaCacheInspectionLimit,
   type XlsxFormulaCacheLiteral,
-} from '@bilig/xlsx'
-
+} from './formula-cache-reader.js'
 import {
   recalculateXlsxFileToFileStreamingNative,
   StreamingNativeXlsxRecalcError,
@@ -354,6 +354,8 @@ function errorTextForCode(code: ErrorCode): string {
     case ErrorCode.Cycle:
     case ErrorCode.Spill:
     case ErrorCode.Blocked:
+      return '#VALUE!'
+    default:
       return '#VALUE!'
   }
 }

@@ -1,9 +1,20 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../../tsconfig.workspace-paths.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist"
   },
+  "references": [
+    {
+      "path": "../protocol"
+    },
+    {
+      "path": "../formula"
+    },
+    {
+      "path": "../wasm-kernel"
+    }
+  ],
   "include": ["src/**/*"],
   "exclude": ["src/**/__tests__/**"]
 }

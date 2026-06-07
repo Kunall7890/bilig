@@ -59,6 +59,8 @@
       "@bilig/xlsx/simple-workbook-writer": ["./packages/xlsx/src/simple-workbook-writer.ts"],
       "@bilig/xlsx/source-preserving-literal-patches": ["./packages/xlsx/src/source-preserving-literal-patches.ts"],
       "@bilig/xlsx/source-preserving-zip": ["./packages/xlsx/src/source-preserving-zip.ts"],
+      "@bilig/xlsx/streaming-native-inspect": ["./packages/xlsx/src/streaming-native-inspect.ts"],
+      "@bilig/xlsx/streaming-native-recalc": ["./packages/xlsx/src/streaming-native-recalc.ts"],
       "@bilig/xlsx/targeted-cell-reader": ["./packages/xlsx/src/targeted-cell-reader.ts"],
       "@bilig/xlsx/workbook-cell-reader": ["./packages/xlsx/src/workbook-cell-reader.ts"],
       "@bilig/xlsx/zip-reader": ["./packages/xlsx/src/zip-reader.ts"],

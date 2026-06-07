@@ -49,6 +49,16 @@
       "import": "./dist/formula-cache-reader.js",
       "default": "./dist/formula-cache-reader.js"
     },
+    "./streaming-native-inspect": {
+      "types": "./dist/streaming-native-inspect.d.ts",
+      "import": "./dist/streaming-native-inspect.js",
+      "default": "./dist/streaming-native-inspect.js"
+    },
+    "./streaming-native-recalc": {
+      "types": "./dist/streaming-native-recalc.d.ts",
+      "import": "./dist/streaming-native-recalc.js",
+      "default": "./dist/streaming-native-recalc.js"
+    },
     "./source-preserving-zip": {
       "types": "./dist/source-preserving-zip.d.ts",
       "import": "./dist/source-preserving-zip.js",
@@ -88,6 +98,8 @@
   },
   "dependencies": {
     "@bilig/formula": "workspace:*",
+    "@bilig/protocol": "workspace:*",
+    "@bilig/wasm-kernel": "workspace:*",
     "fflate-stream": "npm:fflate@0.8.3"
   },
   "engines": {

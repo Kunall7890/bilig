@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
@@ -77,6 +77,16 @@ const fileBackedXlsxFormulaRecalcCliEntrypoints = [
   'packages/exceljs-formula-recalc/src/cli.ts',
   'packages/bilig-sheetjs-formula-recalc/src/cli.ts',
   'packages/bilig-exceljs-formula-recalc/src/cli.ts',
+] as const
+const xlsxOwnedStreamingNativeSources = [
+  'packages/xlsx/src/streaming-native-inspect.ts',
+  'packages/xlsx/src/streaming-native-recalc.ts',
+  'packages/xlsx/src/streaming-native-row-chain-wasm.ts',
+] as const
+const legacyFormulaRecalcStreamingNativeSources = [
+  'packages/xlsx-formula-recalc/src/streaming-native-inspect.ts',
+  'packages/xlsx-formula-recalc/src/streaming-native-recalc.ts',
+  'packages/xlsx-formula-recalc/src/streaming-native-row-chain-wasm.ts',
 ] as const
 
 function packageManifestPaths(): string[] {
@@ -199,6 +209,18 @@ describe('repository dependency policy', () => {
     const importViolations = nativeXlsxFormulaRecalcPackages.flatMap((path) => sourceImportViolations(path, ['xlsx', 'fflate']))
 
     expect([...dependencyViolations, ...importViolations]).toEqual([])
+  })
+
+  it('keeps streaming-native XLSX recalculation implementation owned by @bilig/xlsx', () => {
+    const missingNativeSources = xlsxOwnedStreamingNativeSources.filter((path) => !existsSync(join(repoRoot, path)))
+    const staleRecalcSources = legacyFormulaRecalcStreamingNativeSources.filter((path) => existsSync(join(repoRoot, path)))
+    const recalcIndex = readFileSync(join(repoRoot, 'packages/xlsx-formula-recalc/src/index.ts'), 'utf8')
+
+    expect(missingNativeSources).toEqual([])
+    expect(staleRecalcSources).toEqual([])
+    expect(recalcIndex).toContain("from '@bilig/xlsx'")
+    expect(recalcIndex).not.toContain("from './streaming-native-recalc.js'")
+    expect(recalcIndex).not.toContain("from './streaming-native-inspect.js'")
   })
 
   it('keeps published Bilig XLSX runtime packages free of SheetJS xlsx dependencies', () => {

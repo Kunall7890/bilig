@@ -1,8 +1,9 @@
 import { parseFormula, type FormulaNode } from '@bilig/formula'
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import { createKernelSync } from '@bilig/wasm-kernel'
-import { decodeCellAddress, type XlsxSourceLiteralPatch } from '@bilig/xlsx'
 
+import { decodeCellAddress } from './address.js'
+import type { XlsxSourceLiteralPatch } from './source-preserving-literal-patches.js'
 import type { NativeFormulaCell, NativeTable, PendingCellValue, SheetScanState } from './streaming-native-recalc.js'
 
 export interface StreamingNativeWasmRowChainResult {
@@ -521,6 +522,8 @@ function cellText(value: CellValue | null): string | null {
     case ValueTag.String:
       return value.value
     case ValueTag.Error:
+      return null
+    default:
       return null
   }
 }
@@ -1624,6 +1627,8 @@ function cellValueToPatchValue(value: CellValue): XlsxSourceLiteralPatch['value'
     case ValueTag.String:
       return value.value
     case ValueTag.Error:
+      return undefined
+    default:
       return undefined
   }
 }

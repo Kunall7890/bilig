@@ -91,10 +91,8 @@
     "smoke": "node ./dist/cli.js --help"
   },
   "dependencies": {
-    "@bilig/formula": "workspace:*",
     "@bilig/headless": "workspace:*",
     "@bilig/protocol": "workspace:*",
-    "@bilig/wasm-kernel": "workspace:*",
     "@bilig/xlsx": "workspace:*"
   },
   "engines": {

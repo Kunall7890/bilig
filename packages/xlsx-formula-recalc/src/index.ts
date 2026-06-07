@@ -3,34 +3,35 @@ import { WorkPaper, type RawCellContent, type WorkPaperCellAddress, type WorkPap
 import type { ImportedWorkbookDiagnostics, XlsxExternalWorkbookInput, XlsxImportOptions } from '@bilig/headless/xlsx'
 import { exportXlsx, exportXlsxToFile, importXlsx } from '@bilig/headless/xlsx'
 import { ErrorCode, formatErrorCode, ValueTag, type LiteralInput } from '@bilig/protocol'
-import { patchXlsxTextParts, type XlsxTextPartPatch } from '@bilig/xlsx'
 import {
+  patchXlsxTextParts,
   recalculateXlsxFileToFileStreamingNative,
+  type XlsxTextPartPatch,
   type XlsxFormulaRecalcEngine,
   type XlsxFormulaRecalcFallbackPolicy,
   type XlsxFormulaRecalcNativeDiagnostics,
-} from './streaming-native-recalc.js'
+} from '@bilig/xlsx'
 
 export { WorkPaper } from '@bilig/headless'
 export { exportXlsx, exportXlsxToFile, importXlsx } from '@bilig/headless/xlsx'
 export {
-  StreamingNativeXlsxRecalcError,
   type StreamingNativeFormulaCounts,
   type XlsxFormulaRecalcEngine,
   type XlsxFormulaRecalcEngineMode,
   type XlsxFormulaRecalcFallbackPolicy,
   type XlsxFormulaRecalcNativeDiagnostics,
   type XlsxFormulaRecalcPhaseRss,
-} from './streaming-native-recalc.js'
+  StreamingNativeXlsxRecalcError,
+} from '@bilig/xlsx'
 export {
-  inspectXlsxCacheFileStreamingNative,
   type StreamingNativeXlsxCacheFormulaInspection,
   type StreamingNativeXlsxCacheInspectionLimit,
   type StreamingNativeXlsxCacheInspectionResult,
   type StreamingNativeXlsxCacheLiteral,
   type StreamingNativeXlsxCacheStatus,
   type StreamingNativeXlsxCacheStatusSummary,
-} from './streaming-native-inspect.js'
+  inspectXlsxCacheFileStreamingNative,
+} from '@bilig/xlsx'
 
 type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSnapshot>
 type WorkbookSnapshot = Parameters<typeof WorkPaper.buildFromSnapshot>[0]
