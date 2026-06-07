@@ -1,6 +1,6 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import { exportXlsx, importXlsx } from '../index.js'
 
@@ -40,37 +40,52 @@ describe('print page setup roundtrip', () => {
 })
 
 function buildPrintPageSetupWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(
-    workbook,
-    XLSX.utils.aoa_to_sheet([
-      ['Header', 'Q1', 'Q2', 'Q3'],
-      ['Revenue', 10, 20, 30],
-      ['Expense', 4, 5, 6],
-      ['Profit', 6, 15, 24],
-      ['Notes', '', '', ''],
-      ['Footer', '', '', ''],
-    ]),
-    'Print One',
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Print One',
+          cells: [
+            cell('A1', 0, 0, 'Header'),
+            cell('B1', 0, 1, 'Q1'),
+            cell('C1', 0, 2, 'Q2'),
+            cell('D1', 0, 3, 'Q3'),
+            cell('A2', 1, 0, 'Revenue'),
+            cell('B2', 1, 1, 10),
+            cell('C2', 1, 2, 20),
+            cell('D2', 1, 3, 30),
+            cell('A3', 2, 0, 'Expense'),
+            cell('B3', 2, 1, 4),
+            cell('C3', 2, 2, 5),
+            cell('D3', 2, 3, 6),
+            cell('A4', 3, 0, 'Profit'),
+            cell('B4', 3, 1, 6),
+            cell('C4', 3, 2, 15),
+            cell('D4', 3, 3, 24),
+            cell('A5', 4, 0, 'Notes'),
+            cell('A6', 5, 0, 'Footer'),
+          ],
+        },
+        {
+          name: 'Print Two',
+          cells: [
+            cell('A1', 0, 0, 'Metric'),
+            cell('B1', 0, 1, 'Value'),
+            cell('A2', 1, 0, 'Revenue'),
+            cell('B2', 1, 1, 100),
+            cell('A3', 2, 0, 'Cost'),
+            cell('B3', 2, 1, 70),
+            cell('A4', 3, 0, 'Margin'),
+            cell('B4', 3, 1, 30),
+          ],
+        },
+      ],
+      definedNames: [
+        { name: '_xlnm.Print_Area', localSheetIndex: 0, formula: "'Print One'!$A$1:$D$6" },
+        { name: '_xlnm.Print_Titles', localSheetIndex: 0, formula: "'Print One'!$1:$2" },
+      ],
+    }),
   )
-  XLSX.utils.book_append_sheet(
-    workbook,
-    XLSX.utils.aoa_to_sheet([
-      ['Metric', 'Value'],
-      ['Revenue', 100],
-      ['Cost', 70],
-      ['Margin', 30],
-    ]),
-    'Print Two',
-  )
-  workbook.Workbook = {
-    Names: [
-      { Name: '_xlnm.Print_Area', Sheet: 0, Ref: "'Print One'!$A$1:$D$6" },
-      { Name: '_xlnm.Print_Titles', Sheet: 0, Ref: "'Print One'!$1:$2" },
-    ],
-  }
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
   replaceWorksheetPrintElements(zip, 1, [
     '<printOptions horizontalCentered="1" gridLines="1"/>',
     '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>',
@@ -85,6 +100,15 @@ function buildPrintPageSetupWorkbookBytes(): Uint8Array {
     '<headerFooter differentOddEven="1"><oddFooter>Prepared &amp;D</oddFooter><evenFooter>Confidential</evenFooter></headerFooter>',
   ])
   return zipSync(zip)
+}
+
+function cell(
+  address: string,
+  row: number,
+  col: number,
+  value: string | number,
+): { address: string; row: number; col: number; value: string | number } {
+  return { address, row, col, value }
 }
 
 function replaceWorksheetPrintElements(zip: Record<string, Uint8Array>, sheetIndex: number, elements: readonly string[]): void {
@@ -127,10 +151,19 @@ function readBuiltInPrintDefinedNames(workbookXml: string): DefinedNameSummary[]
       {
         name,
         localSheetId: readAttribute(attributes, 'localSheetId'),
-        text: match[2] ?? '',
+        text: decodeDefinedNameText(match[2] ?? ''),
       },
     ]
   })
+}
+
+function decodeDefinedNameText(text: string): string {
+  return text
+    .replace(/&apos;/gu, "'")
+    .replace(/&quot;/gu, '"')
+    .replace(/&lt;/gu, '<')
+    .replace(/&gt;/gu, '>')
+    .replace(/&amp;/gu, '&')
 }
 
 function readElementXml(sheetXml: string, elementName: PrintPageSetupElementName): string {

@@ -1,6 +1,6 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import { exportXlsx, importXlsx } from '../index.js'
 
@@ -46,11 +46,14 @@ describe('printer settings roundtrip', () => {
 })
 
 function buildPrinterSettingsWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['sheet one']]), 'Print One')
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['sheet two']]), 'Print Two')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        { name: 'Print One', cells: [{ address: 'A1', row: 0, col: 0, value: 'sheet one' }] },
+        { name: 'Print Two', cells: [{ address: 'A1', row: 0, col: 0, value: 'sheet two' }] },
+      ],
+    }),
+  )
   addPrinterSettings(zip, {
     sheetIndex: 1,
     relationshipId: 'rIdPrinterA',
