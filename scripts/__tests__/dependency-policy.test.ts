@@ -39,6 +39,7 @@ const nativeXlsxExampleScripts = [
   'examples/recalc-bridge-workflows/smoke.mjs',
   'examples/recalc-bridge-workflows/stackoverflow-sheetjs-63085785.mjs',
 ] as const
+const nativeXlsxAppFixtureTests = ['apps/bilig/src/workbook-runtime/workbook-session-shared.test.ts'] as const
 const nativeXlsxExcelFixtureTests = ['packages/excel-fixtures/src/__tests__/macos-excel-oracle.test.ts'] as const
 const nativeXlsxHeadlessFixtureTests = [
   'packages/headless/src/__tests__/macos-desktop-excel-chart-deleted-sheet-oracle.test.ts',
@@ -294,6 +295,12 @@ describe('repository dependency policy', () => {
 
   it('keeps Excel oracle fixture builders on @bilig/xlsx instead of SheetJS', () => {
     const violations = nativeXlsxExcelFixtureTests.filter((path) => hasRuntimeXlsxImport(readFileSync(join(repoRoot, path), 'utf8')))
+
+    expect(violations).toEqual([])
+  })
+
+  it('keeps app workbook import fixture builders on @bilig/xlsx instead of SheetJS', () => {
+    const violations = nativeXlsxAppFixtureTests.filter((path) => hasRuntimeXlsxImport(readFileSync(join(repoRoot, path), 'utf8')))
 
     expect(violations).toEqual([])
   })

@@ -30,5 +30,8 @@
     "pg": "^8.20.0",
     "xstate": "5.30.0",
     "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@bilig/xlsx": "workspace:*"
   }
 }
