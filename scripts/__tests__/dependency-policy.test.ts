@@ -223,6 +223,17 @@ describe('repository dependency policy', () => {
     expect(recalcIndex).not.toContain("from './streaming-native-inspect.js'")
   })
 
+  it('keeps file-backed xlsx-recalc CLI loading @bilig/xlsx before WorkPaper fallback', () => {
+    const cliApi = readFileSync(join(repoRoot, 'packages/xlsx-formula-recalc/src/cli-api.ts'), 'utf8')
+    const fileRecalc = readFileSync(join(repoRoot, 'packages/xlsx-formula-recalc/src/file-recalc.ts'), 'utf8')
+
+    expect(cliApi).toContain("from './file-recalc.js'")
+    expect(cliApi).toContain("from '@bilig/xlsx'")
+    expect(cliApi).not.toMatch(/from\s+['"]\.\/index\.js['"]/u)
+    expect(fileRecalc).toContain("from '@bilig/xlsx'")
+    expect(fileRecalc).toContain("await Promise.all([import('node:fs'), import('./index.js')])")
+  })
+
   it('keeps published Bilig XLSX runtime packages free of SheetJS xlsx dependencies', () => {
     const violations = publishedNativeXlsxRuntimePackages.flatMap((path) =>
       packageDependencyViolations(path, ['xlsx', 'xlsx-js-style', '@sheetjs/xlsx']),

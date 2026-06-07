@@ -1,23 +1,25 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { basename, dirname, extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import type { RawCellContent } from '@bilig/headless'
 import type { XlsxExternalWorkbookInput } from '@bilig/headless/xlsx'
 import { ValueTag } from '@bilig/protocol'
-import { replaceXlsxWorksheetCellXml, StreamingNativeXlsxRecalcError } from '@bilig/xlsx'
 import {
-  exportXlsx,
   inspectXlsxCacheFileStreamingNative,
-  inspectXlsxCache,
-  recalculateXlsxFileToFile,
-  recalculateXlsxToFile,
-  WorkPaper,
-  type XlsxFormulaRecalcEngine,
-  type XlsxFormulaRecalcFallbackPolicy,
-  type XlsxFormulaRecalcCellValue,
-  type XlsxFormulaRecalcEdit,
-} from './index.js'
+  replaceXlsxWorksheetCellXml,
+  StreamingNativeXlsxRecalcError,
+  writeSimpleXlsxWorkbook,
+} from '@bilig/xlsx'
+
+import { recalculateXlsxFileToFile } from './file-recalc.js'
+import type {
+  XlsxFormulaRecalcCellValue,
+  XlsxFormulaRecalcEdit,
+  XlsxFormulaRecalcEngine,
+  XlsxFormulaRecalcFallbackPolicy,
+  XlsxFormulaRecalcFileOptions,
+} from './types.js'
 
 interface CliExternalWorkbook {
   readonly path: string
@@ -101,18 +103,7 @@ export function runXlsxFormulaRecalcCli(args: readonly string[], context: XlsxFo
         'File-mode XLSX recalculation requires runXlsxFormulaRecalcCliAsync so the file-backed streaming-native engine is used.',
       )
     }
-    const input = inputBytesForCli(options, commandName)
-    const result = recalculateXlsxToFile(input, {
-      fileName: inputName,
-      ...(externalWorkbooks.length > 0 ? { externalWorkbooks } : {}),
-      edits: options.edits,
-      reads: options.reads,
-      ...(options.timeoutMs === undefined ? {} : { config: { evaluationTimeoutMs: options.timeoutMs } }),
-      ...(options.engine === undefined ? {} : { engine: options.engine }),
-      ...(options.maxRssBytes === undefined ? {} : { maxRssBytes: options.maxRssBytes }),
-      ...(options.fallbackPolicy === undefined ? {} : { fallbackPolicy: options.fallbackPolicy }),
-      outputPath: options.outputPath,
-    })
+    const result = recalculateDemoXlsxToFile(options)
 
     const summary = {
       mode: options.mode,
@@ -193,7 +184,7 @@ export async function runXlsxFormulaRecalcCliAsync(args: readonly string[], cont
             ...(options.fallbackPolicy === undefined ? {} : { fallbackPolicy: options.fallbackPolicy }),
             outputPath: options.outputPath,
           })
-        : recalculateXlsxToFile(inputBytesForCli(options, commandName), {
+        : await recalculateXlsxToFileWithWorkPaper(inputBytesForCli(options, commandName), {
             fileName: inputName,
             ...(externalWorkbooks.length > 0 ? { externalWorkbooks } : {}),
             edits: options.edits,
@@ -597,11 +588,21 @@ async function printInspectionSummaryAsync(args: PrintInspectionSummaryAsyncInpu
       }
     }
   }
+  if (args.options.mode === 'demo') {
+    printInspectionSummary({ ...args, input: inputBytesForCli(args.options, args.commandName) })
+    return
+  }
   const input = inputBytesForCli(args.options, args.commandName)
-  printInspectionSummary({ ...args, input })
+  await printInspectionSummaryWithWorkPaper({ ...args, input })
 }
 
 function printInspectionSummary(args: PrintInspectionSummaryInput): void {
+  const inspection = buildDemoInspectionSummary(args.options)
+  writeInspectionSummary(inspection, args)
+}
+
+async function printInspectionSummaryWithWorkPaper(args: PrintInspectionSummaryInput): Promise<void> {
+  const { inspectXlsxCache } = await import('./index.js')
   const inspection = inspectXlsxCache(args.input, {
     fileName: args.inputName,
     ...(args.externalWorkbooks.length > 0 ? { externalWorkbooks: args.externalWorkbooks } : {}),
@@ -702,23 +703,34 @@ function inputBytesForCli(options: CliOptions, commandName: string): Uint8Array 
   return commandName === cacheDoctorCommandName && options.inspect ? buildStaleCacheDoctorDemoWorkbookBytes() : buildDemoWorkbookBytes()
 }
 
-function buildDemoWorkbookBytes(): Uint8Array {
-  const sourceWorkbook = WorkPaper.buildFromSheets({
-    Inputs: [
-      ['Metric', 'Value'],
-      ['Units', 40],
-      ['Price', 1200],
-    ],
-    Summary: [
-      ['Metric', 'Value'],
-      ['Revenue', '=Inputs!B2*Inputs!B3'],
+function buildDemoWorkbookBytes(values: { readonly units?: number; readonly price?: number; readonly revenue?: number } = {}): Uint8Array {
+  const units = values.units ?? 40
+  const price = values.price ?? 1200
+  const revenue = values.revenue ?? units * price
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Inputs',
+        cells: [
+          { address: 'A1', row: 0, col: 0, value: 'Metric' },
+          { address: 'B1', row: 0, col: 1, value: 'Value' },
+          { address: 'A2', row: 1, col: 0, value: 'Units' },
+          { address: 'B2', row: 1, col: 1, value: units },
+          { address: 'A3', row: 2, col: 0, value: 'Price' },
+          { address: 'B3', row: 2, col: 1, value: price },
+        ],
+      },
+      {
+        name: 'Summary',
+        cells: [
+          { address: 'A1', row: 0, col: 0, value: 'Metric' },
+          { address: 'B1', row: 0, col: 1, value: 'Value' },
+          { address: 'A2', row: 1, col: 0, value: 'Revenue' },
+          { address: 'B2', row: 1, col: 1, formula: 'Inputs!B2*Inputs!B3', value: revenue },
+        ],
+      },
     ],
   })
-  try {
-    return exportXlsx(sourceWorkbook.exportSnapshot())
-  } finally {
-    sourceWorkbook.dispose()
-  }
 }
 
 function buildStaleCacheDoctorDemoWorkbookBytes(): Uint8Array {
@@ -737,6 +749,121 @@ function replaceWorksheetCellXml(bytes: Uint8Array, path: string, address: strin
     replacement,
     missingMessage: `Demo XLSX is missing ${path} ${address}`,
   })
+}
+
+function recalculateDemoXlsxToFile(options: CliOptions): {
+  readonly bytesWritten: number
+  readonly warnings: readonly []
+  readonly sheetNames: readonly ['Inputs', 'Summary']
+  readonly reads: Readonly<Record<string, XlsxFormulaRecalcCellValue>>
+  readonly changes: readonly []
+  readonly diagnostics?: undefined
+} {
+  const values = demoWorkbookValuesAfterEdits(options.edits)
+  const xlsx = buildDemoWorkbookBytes(values)
+  writeFileSync(options.outputPath, xlsx)
+  return {
+    bytesWritten: xlsx.byteLength,
+    warnings: [],
+    sheetNames: ['Inputs', 'Summary'],
+    reads: Object.fromEntries(options.reads.map((read) => [read, demoReadValue(read, values)])),
+    changes: [],
+  }
+}
+
+function buildDemoInspectionSummary(options: CliOptions): PrintableInspectionSummary {
+  const values = demoWorkbookValuesAfterEdits(options.edits)
+  const inspectionLimit = options.inspectLimit
+  const inspectedFormulaCellCount = inspectionLimit === 'all' || inspectionLimit > 0 ? 1 : 0
+  const formula =
+    inspectedFormulaCellCount > 0
+      ? [
+          {
+            target: 'Summary!B2',
+            formula: '=Inputs!B2*Inputs!B3',
+            cachedValue: 60_000,
+            literalRecalculatedValue: values.revenue,
+            cacheStatus: values.revenue === 60_000 ? 'fresh' : 'stale',
+            staleCachedValue: values.revenue !== 60_000,
+          },
+        ]
+      : []
+  return {
+    schemaVersion: 'xlsx-cache-doctor.v1',
+    sheetNames: ['Inputs', 'Summary'],
+    formulaCellCount: 1,
+    inspectedFormulaCellCount,
+    uninspectedFormulaCellCount: 1 - inspectedFormulaCellCount,
+    inspectionLimit,
+    staleCachedFormulaCount: values.revenue === 60_000 || inspectedFormulaCellCount === 0 ? 0 : 1,
+    cacheStatusSummary: {
+      inspected: inspectedFormulaCellCount,
+      stale: values.revenue === 60_000 || inspectedFormulaCellCount === 0 ? 0 : 1,
+      fresh: values.revenue === 60_000 && inspectedFormulaCellCount > 0 ? 1 : 0,
+      missingCache: 0,
+      unsupportedRecalculation: 0,
+    },
+    suggestedReads: inspectedFormulaCellCount > 0 ? ['Summary!B2'] : [],
+    formulas: formula,
+    warnings: [],
+    inspectionCompleted: true,
+    recalculationCompleted: true,
+    excelParity: 'not_proven',
+  }
+}
+
+function demoWorkbookValuesAfterEdits(edits: readonly XlsxFormulaRecalcEdit[]): {
+  readonly units: number
+  readonly price: number
+  readonly revenue: number
+} {
+  let units = 40
+  let price = 1200
+  for (const edit of edits) {
+    const target = normalizeDemoTarget(edit.target)
+    if (target === 'Inputs!B2' && typeof edit.value === 'number') {
+      units = edit.value
+    }
+    if (target === 'Inputs!B3' && typeof edit.value === 'number') {
+      price = edit.value
+    }
+  }
+  return { units, price, revenue: units * price }
+}
+
+function normalizeDemoTarget(target: string): string {
+  return target.replace(/^'Inputs'!/u, 'Inputs!').replace(/^'Summary'!/u, 'Summary!')
+}
+
+function demoReadValue(
+  target: string,
+  values: { readonly units: number; readonly price: number; readonly revenue: number },
+): XlsxFormulaRecalcCellValue {
+  switch (normalizeDemoTarget(target)) {
+    case 'Inputs!B2':
+      return { tag: ValueTag.Number, value: values.units }
+    case 'Inputs!B3':
+      return { tag: ValueTag.Number, value: values.price }
+    case 'Summary!B2':
+      return { tag: ValueTag.Number, value: values.revenue }
+    default:
+      return { tag: ValueTag.Empty }
+  }
+}
+
+async function recalculateXlsxToFileWithWorkPaper(
+  input: Uint8Array | Buffer,
+  options: XlsxFormulaRecalcFileOptions,
+): Promise<{
+  readonly bytesWritten: number
+  readonly warnings: readonly string[]
+  readonly sheetNames: readonly string[]
+  readonly reads: Readonly<Record<string, XlsxFormulaRecalcCellValue>>
+  readonly changes: readonly unknown[]
+  readonly diagnostics?: unknown
+}> {
+  const { recalculateXlsxToFile } = await import('./index.js')
+  return recalculateXlsxToFile(input, options)
 }
 
 function demoDefaultEdits(enabled: boolean): readonly XlsxFormulaRecalcEdit[] {
