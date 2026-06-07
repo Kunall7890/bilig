@@ -1133,6 +1133,21 @@ function evaluateCallExpr(node: Extract<FormulaNode, { readonly kind: 'CallExpr'
   if (callee === 'COUNTA') {
     return evaluateCounta(node, context)
   }
+  if (callee === 'AVERAGE') {
+    return evaluateAverage(node, context)
+  }
+  if (callee === 'ROUND') {
+    return evaluateRound(node, context)
+  }
+  if (callee === 'ISERROR') {
+    return evaluateIsError(node, context)
+  }
+  if (callee === 'INDEX') {
+    return evaluateIndex(node, context)
+  }
+  if (callee === 'MATCH') {
+    return evaluateMatch(node, context)
+  }
   throw new UnsupportedStreamingNativeFormulaError(`unsupported function: ${node.callee}`)
 }
 
@@ -1172,6 +1187,106 @@ function evaluateCounta(node: Extract<FormulaNode, { readonly kind: 'CallExpr' }
     }
   }
   return { tag: ValueTag.Number, value: count }
+}
+
+function evaluateAverage(node: Extract<FormulaNode, { readonly kind: 'CallExpr' }>, context: EvaluationContext): CellValue {
+  if (node.args.length < 1) {
+    throw new UnsupportedStreamingNativeFormulaError('AVERAGE requires at least 1 argument')
+  }
+  let total = 0
+  let count = 0
+  for (const argument of node.args) {
+    if (argument.kind === 'RangeRef') {
+      for (const value of readScannedCellRange(argument, context)) {
+        if (value.tag === ValueTag.Error) {
+          throw new UnsupportedStreamingNativeFormulaError(`cannot average error: ${String(value.code)}`)
+        }
+        if (value.tag === ValueTag.Number) {
+          total += value.value
+          count += 1
+        }
+      }
+      continue
+    }
+    total += coerceNumber(evaluateFormulaAst(argument, context))
+    count += 1
+  }
+  return count === 0 ? { tag: ValueTag.Error, code: ErrorCode.Div0 } : { tag: ValueTag.Number, value: total / count }
+}
+
+function evaluateRound(node: Extract<FormulaNode, { readonly kind: 'CallExpr' }>, context: EvaluationContext): CellValue {
+  if (node.args.length !== 2) {
+    throw new UnsupportedStreamingNativeFormulaError('ROUND requires 2 arguments')
+  }
+  const value = coerceNumber(evaluateFormulaAst(node.args[0]!, context))
+  const digits = Math.trunc(coerceNumber(evaluateFormulaAst(node.args[1]!, context)))
+  const rounded = roundHalfAwayFromZero(value, digits)
+  return Number.isFinite(rounded) ? { tag: ValueTag.Number, value: rounded } : { tag: ValueTag.Error, code: ErrorCode.Num }
+}
+
+function evaluateIsError(node: Extract<FormulaNode, { readonly kind: 'CallExpr' }>, context: EvaluationContext): CellValue {
+  if (node.args.length !== 1) {
+    throw new UnsupportedStreamingNativeFormulaError('ISERROR requires 1 argument')
+  }
+  return { tag: ValueTag.Boolean, value: evaluateFormulaAst(node.args[0]!, context).tag === ValueTag.Error }
+}
+
+function evaluateIndex(node: Extract<FormulaNode, { readonly kind: 'CallExpr' }>, context: EvaluationContext): CellValue {
+  if (node.args.length < 2 || node.args.length > 3) {
+    throw new UnsupportedStreamingNativeFormulaError('INDEX requires 2 or 3 arguments')
+  }
+  const rangeArgument = node.args[0]!
+  if (rangeArgument.kind !== 'RangeRef') {
+    throw new UnsupportedStreamingNativeFormulaError('INDEX array must be a cell range')
+  }
+  const range = decodeFormulaCellRange(rangeArgument, context.sheetName)
+  const rowIndex = integerFromFormulaValue(evaluateFormulaAst(node.args[1]!, context))
+  const colIndex = node.args[2] ? integerFromFormulaValue(evaluateFormulaAst(node.args[2], context)) : 1
+  if (rowIndex < 1 || colIndex < 1) {
+    return { tag: ValueTag.Error, code: ErrorCode.Value }
+  }
+  if (rowIndex > range.endRow - range.startRow + 1 || colIndex > range.width) {
+    return { tag: ValueTag.Error, code: ErrorCode.Ref }
+  }
+  return readScannedCell(range.sheetName, range.startRow + rowIndex - 1, range.startCol + colIndex - 1, context)
+}
+
+function evaluateMatch(node: Extract<FormulaNode, { readonly kind: 'CallExpr' }>, context: EvaluationContext): CellValue {
+  if (node.args.length < 2 || node.args.length > 3) {
+    throw new UnsupportedStreamingNativeFormulaError('MATCH requires 2 or 3 arguments')
+  }
+  const matchType = node.args[2] ? coerceNumber(evaluateFormulaAst(node.args[2], context)) : 1
+  if (matchType !== 0) {
+    throw new UnsupportedStreamingNativeFormulaError('MATCH supports exact match only')
+  }
+  const rangeArgument = node.args[1]!
+  if (rangeArgument.kind !== 'RangeRef') {
+    throw new UnsupportedStreamingNativeFormulaError('MATCH lookup array must be a cell range')
+  }
+  const range = decodeFormulaCellRange(rangeArgument, context.sheetName)
+  if (range.width !== 1 && range.endRow !== range.startRow) {
+    throw new UnsupportedStreamingNativeFormulaError('MATCH exact lookup array must be one-dimensional')
+  }
+  const lookupValue = evaluateFormulaAst(node.args[0]!, context)
+  const values = readScannedCellRange(rangeArgument, context)
+  for (let index = 0; index < values.length; index += 1) {
+    if (compareCellValues(values[index]!, lookupValue) === 0) {
+      return { tag: ValueTag.Number, value: index + 1 }
+    }
+  }
+  return { tag: ValueTag.Error, code: ErrorCode.NA }
+}
+
+function roundHalfAwayFromZero(value: number, digits: number): number {
+  if (!Number.isFinite(value) || !Number.isFinite(digits)) {
+    return Number.NaN
+  }
+  if (digits >= 0) {
+    const factor = 10 ** digits
+    return (Math.sign(value) * Math.round(Math.abs(value) * factor)) / factor
+  }
+  const factor = 10 ** -digits
+  return Math.sign(value) * Math.round(Math.abs(value) / factor) * factor
 }
 
 function readScannedCellRange(

@@ -87,6 +87,68 @@ describe('xlsx-formula-recalc native aggregates', () => {
     }
   })
 
+  it('evaluates ROUND and AVERAGE formulas from public financial forecasts', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-native-round-average-'))
+    try {
+      const sourcePath = join(tempDir, 'public-round-average.xlsx')
+      const outputPath = join(tempDir, 'public-round-average.recalculated.xlsx')
+      writeFileSync(sourcePath, buildPublicRoundAverageWorkbook())
+
+      const result = await recalculateXlsxFileToFile(sourcePath, {
+        outputPath,
+        engine: 'streaming-native',
+        reads: ['Data!A2', 'Data!A3', 'Data!A4', 'Data!A5', 'Data!A6'],
+      })
+
+      expect(readNumber(result.reads['Data!A2'])).toBe(3.1)
+      expect(readNumber(result.reads['Data!A3'])).toBe(-2)
+      expect(readNumber(result.reads['Data!A4'])).toBe(1200)
+      expect(readBoolean(result.reads['Data!A5'])).toBe(true)
+      expect(readNumber(result.reads['Data!A6'])).toBe(0)
+      expect(result.diagnostics?.engineMode).toBe('streaming-native')
+      expect(result.diagnostics?.targetRowCount).toBe(9)
+      expect(result.diagnostics?.formulaCounts.evaluatedFormulaCellCount).toBe(5)
+      expect(result.diagnostics?.formulaCounts.unsupportedFormulaCellCount).toBe(0)
+      expect(result.diagnostics?.formulaCounts.patchedFormulaCacheCount).toBe(5)
+      const outputBytes = readFileSync(outputPath)
+      const sheetXml = strFromU8(unzipSync(outputBytes)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+      expect(sheetXml).toContain('<c r="A2"><f>ROUND(AVERAGE(B2:B6),1)</f><v>3.1</v></c>')
+      expect(sheetXml).toContain('<c r="A3"><f>ROUND(B7,0)</f><v>-2</v></c>')
+      expect(sheetXml).toContain('<c r="A4"><f>ROUND(B8,-2)</f><v>1200</v></c>')
+      expect(sheetXml).toContain('<c r="A5" t="b"><f>ISERROR(B9/B10)</f><v>1</v></c>')
+      expect(sheetXml).toContain('<c r="A6"><f>IF(ISERROR(B9/B10),0,B9/B10)</f><v>0</v></c>')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  it('evaluates exact INDEX MATCH header lookups from public forecasts', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-native-index-match-'))
+    try {
+      const sourcePath = join(tempDir, 'public-index-match.xlsx')
+      const outputPath = join(tempDir, 'public-index-match.recalculated.xlsx')
+      writeFileSync(sourcePath, buildPublicIndexMatchWorkbook())
+
+      const result = await recalculateXlsxFileToFile(sourcePath, {
+        outputPath,
+        engine: 'streaming-native',
+        reads: ['Data!A2'],
+      })
+
+      expect(readNumber(result.reads['Data!A2'])).toBe(30)
+      expect(result.diagnostics?.engineMode).toBe('streaming-native')
+      expect(result.diagnostics?.targetRowCount).toBe(5)
+      expect(result.diagnostics?.formulaCounts.evaluatedFormulaCellCount).toBe(1)
+      expect(result.diagnostics?.formulaCounts.unsupportedFormulaCellCount).toBe(0)
+      expect(result.diagnostics?.formulaCounts.patchedFormulaCacheCount).toBe(1)
+      const outputBytes = readFileSync(outputPath)
+      const sheetXml = strFromU8(unzipSync(outputBytes)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+      expect(sheetXml).toContain('<c r="A2"><f>INDEX(B5:B8,MATCH(B6,B5:B8,0)+1,1)</f><v>30</v></c>')
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
   it('loads same-sheet scalar dependency rows for public-corpus formulas', async () => {
     const tempDir = mkdtempSync(join(tmpdir(), 'xlsx-native-scalar-dependency-'))
     try {
@@ -254,6 +316,13 @@ function readNumber(value: unknown): number {
   throw new Error(`Expected numeric cell value, received ${JSON.stringify(value)}`)
 }
 
+function readBoolean(value: unknown): boolean {
+  if (typeof value === 'object' && value !== null && 'value' in value && typeof value.value === 'boolean') {
+    return value.value
+  }
+  throw new Error(`Expected boolean cell value, received ${JSON.stringify(value)}`)
+}
+
 function buildHighIndexSharedStringWorkbook(): Uint8Array {
   const sharedStrings = Array.from({ length: 74 }, (_value, index) => `<si><t>unused-${String(index)}</t></si>`)
   sharedStrings.push('<si><t>target-shared-string</t></si>')
@@ -355,6 +424,80 @@ function buildPublicSumCountaRangeWorkbook(): Uint8Array {
     <row r="4"/>
     <row r="5"><c r="B5"><v>7</v></c></row>
     <row r="6"><c r="A6"><f>IF(COUNTA(B6:D6)=0,"",COUNTA(C6:E6))</f><v>0</v></c><c r="C6"><v>1</v></c><c r="D6" t="inlineStr"><is><t>x</t></is></c></row>
+  </sheetData>
+</worksheet>`),
+  })
+}
+
+function buildPublicRoundAverageWorkbook(): Uint8Array {
+  return zipSync({
+    'xl/workbook.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${officeRelationshipNamespace}">
+  <sheets><sheet name="Data" sheetId="1" r:id="rId1"/></sheets>
+</workbook>`),
+    'xl/_rels/workbook.xml.rels': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="${officeRelationshipNamespace}/worksheet" Target="worksheets/sheet1.xml"/>
+</Relationships>`),
+    '[Content_Types].xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+</Types>`),
+    '_rels/.rels': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rIdWorkbook" Type="${officeRelationshipNamespace}/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`),
+    'xl/worksheets/sheet1.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <dimension ref="A2:B10"/>
+  <sheetData>
+    <row r="2"><c r="A2"><f>ROUND(AVERAGE(B2:B6),1)</f><v>0</v></c><c r="B2"><v>2</v></c></row>
+    <row r="3"><c r="A3"><f>ROUND(B7,0)</f><v>0</v></c><c r="B3"><v>3</v></c></row>
+    <row r="4"><c r="A4"><f>ROUND(B8,-2)</f><v>0</v></c><c r="B4" t="inlineStr"><is><t>ignored</t></is></c></row>
+    <row r="5"><c r="A5"><f>ISERROR(B9/B10)</f><v>0</v></c></row>
+    <row r="6"><c r="A6"><f>IF(ISERROR(B9/B10),0,B9/B10)</f><v>99</v></c><c r="B6"><v>4.4</v></c></row>
+    <row r="7"><c r="B7"><v>-1.5</v></c></row>
+    <row r="8"><c r="B8"><v>1234.56</v></c></row>
+    <row r="9"><c r="B9"><v>10</v></c></row>
+    <row r="10"><c r="B10"><v>0</v></c></row>
+  </sheetData>
+</worksheet>`),
+  })
+}
+
+function buildPublicIndexMatchWorkbook(): Uint8Array {
+  return zipSync({
+    'xl/workbook.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${officeRelationshipNamespace}">
+  <sheets><sheet name="Data" sheetId="1" r:id="rId1"/></sheets>
+</workbook>`),
+    'xl/_rels/workbook.xml.rels': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="${officeRelationshipNamespace}/worksheet" Target="worksheets/sheet1.xml"/>
+</Relationships>`),
+    '[Content_Types].xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+</Types>`),
+    '_rels/.rels': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rIdWorkbook" Type="${officeRelationshipNamespace}/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`),
+    'xl/worksheets/sheet1.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <dimension ref="A2:B8"/>
+  <sheetData>
+    <row r="2"><c r="A2"><f>INDEX(B5:B8,MATCH(B6,B5:B8,0)+1,1)</f><v>0</v></c></row>
+    <row r="5"><c r="B5"><v>10</v></c></row>
+    <row r="6"><c r="B6"><v>20</v></c></row>
+    <row r="7"><c r="B7"><v>30</v></c></row>
+    <row r="8"><c r="B8"><v>40</v></c></row>
   </sheetData>
 </worksheet>`),
   })
