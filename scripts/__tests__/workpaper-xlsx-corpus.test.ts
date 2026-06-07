@@ -3,8 +3,8 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { writeSimpleXlsxWorkbook, type SimpleXlsxCell } from '@bilig/xlsx'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
 
 import { runWorkPaperXlsxCorpus, runWorkPaperXlsxCorpusInChildProcesses } from '../check-workpaper-xlsx-corpus.ts'
 import {
@@ -68,7 +68,7 @@ describe('WorkPaper XLSX corpus verifier', () => {
 
   it('matches cached formula results from a production-style XLSX reduction corpus', () => {
     withTempCorpus((corpusDir) => {
-      writeWorkbook(join(corpusDir, 'issue-regressions.xlsx'), buildIssueRegressionWorkbook())
+      writeWorkbook(join(corpusDir, 'issue-regressions.xlsx'), buildIssueRegressionWorkbookBytes())
 
       const result = runWorkPaperXlsxCorpus([corpusDir])
 
@@ -92,7 +92,7 @@ describe('WorkPaper XLSX corpus verifier', () => {
   it('fails oversized workbook files before loading them', () => {
     withTempCorpus((corpusDir) => {
       const workbookPath = join(corpusDir, 'oversized.xlsx')
-      writeWorkbook(workbookPath, buildIssueRegressionWorkbook())
+      writeWorkbook(workbookPath, buildIssueRegressionWorkbookBytes())
 
       const result = runWorkPaperXlsxCorpus([workbookPath], { maxFileBytes: 1 })
 
@@ -160,7 +160,7 @@ describe('WorkPaper XLSX corpus verifier', () => {
     withTempCorpus((tempDir) => {
       const stopMarkerPath = join(tempDir, 'stop.md')
       writeFileSync(stopMarkerPath, 'stop')
-      writeWorkbook(join(tempDir, 'issue-regressions.xlsx'), buildIssueRegressionWorkbook())
+      writeWorkbook(join(tempDir, 'issue-regressions.xlsx'), buildIssueRegressionWorkbookBytes())
 
       const result = spawnSync('bun', [checkerScriptPath(), '--corpus-run-stop-marker', stopMarkerPath, tempDir], {
         encoding: 'utf8',
@@ -236,12 +236,20 @@ describe('WorkPaper XLSX corpus verifier', () => {
 
   it('reports actionable mismatch samples with workbook, sheet, address, formula, expected, and actual values', () => {
     withTempCorpus((corpusDir) => {
-      const workbook = XLSX.utils.book_new()
-      const sheet = XLSX.utils.aoa_to_sheet([[1, null]])
-      sheet.B1 = { t: 'n', f: 'A1+1', v: 99 }
-      sheet['!ref'] = 'A1:B1'
-      XLSX.utils.book_append_sheet(workbook, sheet, 'Sheet1')
-      writeWorkbook(join(corpusDir, 'mismatch.xlsx'), workbook)
+      writeWorkbook(
+        join(corpusDir, 'mismatch.xlsx'),
+        writeSimpleXlsxWorkbook({
+          sheets: [
+            {
+              name: 'Sheet1',
+              cells: [
+                { address: 'A1', row: 0, col: 0, value: 1 },
+                { address: 'B1', row: 0, col: 1, formula: 'A1+1', value: 99 },
+              ],
+            },
+          ],
+        }),
+      )
 
       const result = runWorkPaperXlsxCorpus([corpusDir])
 
@@ -274,26 +282,35 @@ describe('WorkPaper XLSX corpus verifier', () => {
 
   it('recalculates imported runtime snapshots before comparing formula values', () => {
     withTempCorpus((corpusDir) => {
-      const workbook = XLSX.utils.book_new()
-      const data = XLSX.utils.aoa_to_sheet([
-        ['Line', 'Amount'],
-        ['Revenue', 1000],
-        ['Revenue', 1922],
-        ['Costs', -10],
-      ])
-      const summary = XLSX.utils.aoa_to_sheet([
-        ['Line', 'Total'],
-        ['Revenue', null],
-      ])
-      summary.B2 = {
-        t: 'n',
-        f: 'SUMIF(Data!$A:$A,A2,Data!$B:$B)',
-        v: 2922,
-      }
-      summary['!ref'] = 'A1:B2'
-      XLSX.utils.book_append_sheet(workbook, data, 'Data')
-      XLSX.utils.book_append_sheet(workbook, summary, 'Summary')
-      writeWorkbook(join(corpusDir, 'whole-column-sumif.xlsx'), workbook)
+      writeWorkbook(
+        join(corpusDir, 'whole-column-sumif.xlsx'),
+        writeSimpleXlsxWorkbook({
+          sheets: [
+            {
+              name: 'Data',
+              cells: [
+                { address: 'A1', row: 0, col: 0, value: 'Line' },
+                { address: 'B1', row: 0, col: 1, value: 'Amount' },
+                { address: 'A2', row: 1, col: 0, value: 'Revenue' },
+                { address: 'B2', row: 1, col: 1, value: 1000 },
+                { address: 'A3', row: 2, col: 0, value: 'Revenue' },
+                { address: 'B3', row: 2, col: 1, value: 1922 },
+                { address: 'A4', row: 3, col: 0, value: 'Costs' },
+                { address: 'B4', row: 3, col: 1, value: -10 },
+              ],
+            },
+            {
+              name: 'Summary',
+              cells: [
+                { address: 'A1', row: 0, col: 0, value: 'Line' },
+                { address: 'B1', row: 0, col: 1, value: 'Total' },
+                { address: 'A2', row: 1, col: 0, value: 'Revenue' },
+                { address: 'B2', row: 1, col: 1, formula: 'SUMIF(Data!$A:$A,A2,Data!$B:$B)', value: 2922 },
+              ],
+            },
+          ],
+        }),
+      )
 
       const result = runWorkPaperXlsxCorpus([corpusDir])
 
@@ -313,16 +330,21 @@ describe('WorkPaper XLSX corpus verifier', () => {
 
   it('uses the public corpus tolerance for tiny floating-point residuals', () => {
     withTempCorpus((corpusDir) => {
-      const workbook = XLSX.utils.book_new()
-      const sheet = XLSX.utils.aoa_to_sheet([[0, 7.33325578039512e-9, null]])
-      sheet.C1 = {
-        t: 'n',
-        f: 'A1-B1',
-        v: 1.7598722479306161e-10,
-      }
-      sheet['!ref'] = 'A1:C1'
-      XLSX.utils.book_append_sheet(workbook, sheet, 'Sheet1')
-      writeWorkbook(join(corpusDir, 'tiny-residual.xlsx'), workbook)
+      writeWorkbook(
+        join(corpusDir, 'tiny-residual.xlsx'),
+        writeSimpleXlsxWorkbook({
+          sheets: [
+            {
+              name: 'Sheet1',
+              cells: [
+                { address: 'A1', row: 0, col: 0, value: 0 },
+                { address: 'B1', row: 0, col: 1, value: 7.33325578039512e-9 },
+                { address: 'C1', row: 0, col: 2, formula: 'A1-B1', value: 1.7598722479306161e-10 },
+              ],
+            },
+          ],
+        }),
+      )
 
       const result = runWorkPaperXlsxCorpus([corpusDir])
 
@@ -339,17 +361,17 @@ describe('WorkPaper XLSX corpus verifier', () => {
 
   it('skips stale cached #NAME? results when recalculation produces a concrete value', () => {
     withTempCorpus((corpusDir) => {
-      const workbook = XLSX.utils.book_new()
-      const sheet = XLSX.utils.aoa_to_sheet([[null]])
-      sheet.A1 = {
-        t: 'e',
-        f: 'IF(TRUE,"resolved","missing")',
-        v: 29,
-        w: '#NAME?',
-      }
-      sheet['!ref'] = 'A1:A1'
-      XLSX.utils.book_append_sheet(workbook, sheet, 'Sheet1')
-      writeWorkbook(join(corpusDir, 'stale-name-cache.xlsx'), workbook)
+      writeWorkbook(
+        join(corpusDir, 'stale-name-cache.xlsx'),
+        writeSimpleXlsxWorkbook({
+          sheets: [
+            {
+              name: 'Sheet1',
+              cells: [{ address: 'A1', row: 0, col: 0, formula: 'IF(TRUE,"resolved","missing")', error: '#NAME?' }],
+            },
+          ],
+        }),
+      )
 
       const result = runWorkPaperXlsxCorpus([corpusDir])
 
@@ -369,14 +391,21 @@ describe('WorkPaper XLSX corpus verifier', () => {
 
   it('counts cached-less and volatile formulas as skipped instead of comparable parity failures', () => {
     withTempCorpus((corpusDir) => {
-      const workbook = XLSX.utils.book_new()
-      const sheet = XLSX.utils.aoa_to_sheet([[null, null, null]])
-      sheet.A1 = { t: 'n', f: 'NOW()', v: 46_127 }
-      sheet.B1 = { t: 'n', f: 'A1+1' }
-      sheet.C1 = { t: 'e', f: 'IMAGE("https://example.com/proof.png")', v: 15, w: '#VALUE!' }
-      sheet['!ref'] = 'A1:C1'
-      XLSX.utils.book_append_sheet(workbook, sheet, 'Sheet1')
-      writeWorkbook(join(corpusDir, 'skipped.xlsx'), workbook)
+      writeWorkbook(
+        join(corpusDir, 'skipped.xlsx'),
+        writeSimpleXlsxWorkbook({
+          sheets: [
+            {
+              name: 'Sheet1',
+              cells: [
+                { address: 'A1', row: 0, col: 0, formula: 'NOW()', value: 46_127 },
+                { address: 'B1', row: 0, col: 1, formula: 'A1+1' },
+                { address: 'C1', row: 0, col: 2, formula: 'IMAGE("https://example.com/proof.png")', error: '#VALUE!' },
+              ],
+            },
+          ],
+        }),
+      )
 
       const result = runWorkPaperXlsxCorpus([corpusDir])
 
@@ -402,16 +431,22 @@ describe('WorkPaper XLSX corpus verifier', () => {
     })
   })
 
-  it('falls back to formula audit when SheetJS drops empty-cache formulas', () => {
+  it('falls back to formula audit for empty-cache formulas', () => {
     withTempCorpus((corpusDir) => {
-      const workbook = XLSX.utils.book_new()
-      const sheet = XLSX.utils.aoa_to_sheet([[1, null]])
-      const emptyCacheFormulaCell: XLSX.CellObject = { t: 'n', f: 'A1+1' }
-      Object.defineProperty(emptyCacheFormulaCell, 'v', { value: '', enumerable: true })
-      sheet.B1 = emptyCacheFormulaCell
-      sheet['!ref'] = 'A1:B1'
-      XLSX.utils.book_append_sheet(workbook, sheet, 'Sheet1')
-      writeWorkbook(join(corpusDir, 'empty-cache-formula.xlsx'), workbook)
+      writeWorkbook(
+        join(corpusDir, 'empty-cache-formula.xlsx'),
+        writeSimpleXlsxWorkbook({
+          sheets: [
+            {
+              name: 'Sheet1',
+              cells: [
+                { address: 'A1', row: 0, col: 0, value: 1 },
+                { address: 'B1', row: 0, col: 1, formula: 'A1+1' },
+              ],
+            },
+          ],
+        }),
+      )
 
       const result = runWorkPaperXlsxCorpus([corpusDir])
 
@@ -433,17 +468,22 @@ describe('WorkPaper XLSX corpus verifier', () => {
 
   it('skips cached formulas that transitively depend on volatile formulas', () => {
     withTempCorpus((corpusDir) => {
-      const workbook = XLSX.utils.book_new()
-      const sheet = XLSX.utils.aoa_to_sheet([
-        [null, null, null],
-        [2, null, null],
-      ])
-      sheet.A1 = { t: 'n', f: 'RAND()', v: 0.25 }
-      sheet.B1 = { t: 'n', f: 'A1:A2*2', F: 'B1:B2', v: 0.5 }
-      sheet.C1 = { t: 'n', f: 'B1+1', v: 1.5 }
-      sheet['!ref'] = 'A1:C2'
-      XLSX.utils.book_append_sheet(workbook, sheet, 'Sheet1')
-      writeWorkbook(join(corpusDir, 'volatile-dependents.xlsx'), workbook)
+      writeWorkbook(
+        join(corpusDir, 'volatile-dependents.xlsx'),
+        writeSimpleXlsxWorkbook({
+          sheets: [
+            {
+              name: 'Sheet1',
+              cells: [
+                { address: 'A1', row: 0, col: 0, formula: 'RAND()', value: 0.25 },
+                { address: 'B1', row: 0, col: 1, formula: 'A1:A2*2', value: 0.5 },
+                { address: 'C1', row: 0, col: 2, formula: 'B1+1', value: 1.5 },
+                { address: 'A2', row: 1, col: 0, value: 2 },
+              ],
+            },
+          ],
+        }),
+      )
 
       const result = runWorkPaperXlsxCorpus([corpusDir])
 
@@ -490,63 +530,78 @@ function withTempCorpus(run: (corpusDir: string) => void): void {
   }
 }
 
-function writeWorkbook(path: string, workbook: XLSX.WorkBook): void {
-  writeFileSync(path, XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+function writeWorkbook(path: string, workbook: Uint8Array): void {
+  writeFileSync(path, workbook)
 }
 
-function buildIssueRegressionWorkbook(): XLSX.WorkBook {
-  const workbook = XLSX.utils.book_new()
+function buildIssueRegressionWorkbookBytes(): Uint8Array {
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Summary',
+        dimension: { s: { r: 0, c: 0 }, e: { r: 13, c: 3 } },
+        cells: [
+          textCell('A1', 0, 0, 'Metric'),
+          textCell('B1', 0, 1, 'Value'),
+          textCell('C1', 0, 2, 'Lookup key'),
+          textCell('D1', 0, 3, 'Lookup value'),
+          textCell('A2', 1, 0, 'Deposits'),
+          { address: 'B2', row: 1, col: 1, formula: 'SUMIFS(Activity!$B$2:$B$4,Activity!$A$2:$A$4,"Deposit")', value: 3500 },
+          textCell('A3', 2, 0, 'Deposit check'),
+          { address: 'B3', row: 2, col: 1, formula: 'IF(ABS(B2-3500)<0.01,"PASS","FAIL")', value: 'PASS' },
+          { address: 'C3', row: 2, col: 2, formula: '1/0', error: '#DIV/0!' },
+          textCell('A4', 3, 0, 'Activity rows'),
+          { address: 'B4', row: 3, col: 1, formula: 'COUNTA(Activity!$A$2:$A$4)', value: 3 },
+          textCell('A5', 4, 0, 'Internal link'),
+          { address: 'B5', row: 4, col: 1, formula: 'HYPERLINK("#\'Summary\'!A1","Go to Summary")', value: 'Go to Summary' },
+          textCell('A6', 5, 0, 'Formatted date'),
+          { address: 'B6', row: 5, col: 1, formula: 'TEXT(46127,"mm.dd.yy")', value: '04.15.26' },
+          textCell('A7', 6, 0, 'Day'),
+          { address: 'B7', row: 6, col: 1, formula: 'DAY(46127)', value: 15 },
+          textCell('A8', 7, 0, 'Workday'),
+          { address: 'B8', row: 7, col: 1, formula: 'WORKDAY(46127,2)', value: 46_129 },
+          textCell('A14', 13, 0, 'Bank lookup'),
+          textCell('C14', 13, 2, 'txn-123'),
+          {
+            address: 'D14',
+            row: 13,
+            col: 3,
+            formula: 'IFERROR(INDEX(Bank!$B$2:$B$31,MATCH(C14,Bank!$D$2:$D$31,0)),"")',
+            value: '2026-04-01',
+          },
+        ],
+      },
+      {
+        name: 'Activity',
+        cells: [
+          textCell('A1', 0, 0, 'Type'),
+          textCell('B1', 0, 1, 'Amount'),
+          textCell('A2', 1, 0, 'Deposit'),
+          { address: 'B2', row: 1, col: 1, value: 3500 },
+          textCell('A3', 2, 0, 'Fee'),
+          { address: 'B3', row: 2, col: 1, value: -18.5 },
+          textCell('A4', 3, 0, 'Withdrawal'),
+          { address: 'B4', row: 3, col: 1, value: -250 },
+        ],
+      },
+      {
+        name: 'Bank',
+        dimension: { s: { r: 0, c: 0 }, e: { r: 30, c: 3 } },
+        cells: [
+          textCell('A1', 0, 0, 'Date label'),
+          textCell('B1', 0, 1, 'Date'),
+          textCell('C1', 0, 2, 'Description'),
+          textCell('D1', 0, 3, 'Transaction ID'),
+          textCell('A2', 1, 0, 'Posted'),
+          textCell('B2', 1, 1, '2026-04-01'),
+          textCell('C2', 1, 2, 'Deposit'),
+          textCell('D2', 1, 3, 'txn-123'),
+        ],
+      },
+    ],
+  })
+}
 
-  const summary = XLSX.utils.aoa_to_sheet([
-    ['Metric', 'Value', 'Lookup key', 'Lookup value'],
-    ['Deposits', null, null, null],
-    ['Deposit check', null, null, null],
-    ['Activity rows', null, null, null],
-    ['Internal link', null, null, null],
-    ['Formatted date', null, null, null],
-    ['Day', null, null, null],
-    ['Workday', null, null, null],
-    [],
-    [],
-    [],
-    [],
-    [],
-    ['Bank lookup', null, 'txn-123', null],
-  ])
-  summary.B2 = {
-    t: 'n',
-    f: 'SUMIFS(Activity!$B$2:$B$4,Activity!$A$2:$A$4,"Deposit")',
-    v: 3500,
-  }
-  summary.B3 = { t: 's', f: 'IF(ABS(B2-3500)<0.01,"PASS","FAIL")', v: 'PASS' }
-  summary.C3 = { t: 'e', f: '1/0', v: 7, w: '#DIV/0!' }
-  summary.B4 = { t: 'n', f: 'COUNTA(Activity!$A$2:$A$4)', v: 3 }
-  summary.B5 = { t: 's', f: 'HYPERLINK("#\'Summary\'!A1","Go to Summary")', v: 'Go to Summary' }
-  summary.B6 = { t: 's', f: 'TEXT(46127,"mm.dd.yy")', v: '04.15.26' }
-  summary.B7 = { t: 'n', f: 'DAY(46127)', v: 15 }
-  summary.B8 = { t: 'n', f: 'WORKDAY(46127,2)', v: 46_129 }
-  summary.D14 = {
-    t: 's',
-    f: 'IFERROR(INDEX(Bank!$B$2:$B$31,MATCH(C14,Bank!$D$2:$D$31,0)),"")',
-    v: '2026-04-01',
-  }
-  summary['!ref'] = 'A1:D14'
-
-  const activity = XLSX.utils.aoa_to_sheet([
-    ['Type', 'Amount'],
-    ['Deposit', 3500],
-    ['Fee', -18.5],
-    ['Withdrawal', -250],
-  ])
-
-  const bank = XLSX.utils.aoa_to_sheet([
-    ['Date label', 'Date', 'Description', 'Transaction ID'],
-    ['Posted', '2026-04-01', 'Deposit', 'txn-123'],
-  ])
-  bank['!ref'] = 'A1:D31'
-
-  XLSX.utils.book_append_sheet(workbook, summary, 'Summary')
-  XLSX.utils.book_append_sheet(workbook, activity, 'Activity')
-  XLSX.utils.book_append_sheet(workbook, bank, 'Bank')
-  return workbook
+function textCell(address: string, row: number, col: number, value: string): SimpleXlsxCell {
+  return { address, row, col, value }
 }
