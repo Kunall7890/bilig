@@ -99,6 +99,22 @@ export {
   type XlsxSourceLiteralPatchFileExportResult,
 }
 
+const sourcePreservingExportFallbackBytesLimit = 1_000_000
+
+function assertSourcePreservingExportFallbackWithinSmallWorkbookLimit(source: ImportedXlsxSourceReference, apiName: string): void {
+  const byteLength = source.byteLength
+  if (byteLength <= sourcePreservingExportFallbackBytesLimit) {
+    return
+  }
+  throw new Error(
+    [
+      `${apiName} cannot fall back to full XLSX snapshot export for a large imported source: source is ${String(byteLength)} bytes`,
+      `limit is ${String(sourcePreservingExportFallbackBytesLimit)} bytes`,
+      'Use exportXlsxToFile() with source-preserving streaming output for large XLSX jobs, or clear imported source patches before explicit legacy export.',
+    ].join('; '),
+  )
+}
+
 function buildExportColumns(columns: readonly WorkbookAxisEntrySnapshot[] | undefined): SheetJsColInfo[] | undefined {
   if (!columns || columns.length === 0) {
     return undefined
@@ -771,6 +787,7 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
     if (sourcePreservingBytes !== null) {
       return sourcePreservingBytes
     }
+    assertSourcePreservingExportFallbackWithinSmallWorkbookLimit(importedSource, 'exportXlsx')
   }
   const biligSimpleBytes = tryExportBiligSimpleXlsx(snapshot)
   if (biligSimpleBytes !== null) {
@@ -936,6 +953,7 @@ export function exportXlsxToFile(snapshot: WorkbookSnapshot, outputPath: string)
       if (sourcePreservingResult !== null) {
         return sourcePreservingResult
       }
+      assertSourcePreservingExportFallbackWithinSmallWorkbookLimit(importedSource, 'exportXlsxToFile')
     } else {
       const copiedSourceResult = tryCopyImportedXlsxSourceToFile(importedSource, outputPath)
       if (copiedSourceResult !== null) {

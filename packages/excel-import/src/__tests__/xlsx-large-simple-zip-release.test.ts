@@ -9,7 +9,12 @@ import { exportXlsx, exportXlsxToFile } from '../xlsx-export.js'
 import { importXlsxFromZipByteSource } from '../xlsx-byte-source-import.js'
 import { tryInspectLargeSimpleXlsxHeadless } from '../xlsx-large-simple-headless-inspect.js'
 import { tryImportLargeSimpleXlsx } from '../xlsx-large-simple-import.js'
-import { detachImportedXlsxSourceBytes, readImportedXlsxSourceReference } from '../xlsx-source-bytes.js'
+import {
+  attachImportedXlsxSourceCellPatches,
+  attachImportedXlsxSourceReader,
+  detachImportedXlsxSourceBytes,
+  readImportedXlsxSourceReference,
+} from '../xlsx-source-bytes.js'
 import { readLazyXlsxZipSourceByteLength, readXlsxZipEntriesLazy, type XlsxZipByteSource } from '../xlsx-zip.js'
 
 describe('large simple XLSX import ZIP ownership', () => {
@@ -164,6 +169,56 @@ describe('large simple XLSX import ZIP ownership', () => {
       expect(() => exportXlsx(imported.snapshot)).toThrow(/readBytes is small-workbook only/u)
       expect(exported.bytesWritten).toBe(bytes.byteLength)
       expect(readFileSync(outputPath)).toStrictEqual(Buffer.from(bytes))
+      expect(detachImportedXlsxSourceBytes(imported.snapshot)).toBe(true)
+    } finally {
+      rmSync(tempDir, { force: true, recursive: true })
+    }
+  }, 30_000)
+
+  it('rejects source-preserving byte export fallback for patched large imported sources', () => {
+    const bytes = buildSharedStringWorkbook({
+      'docProps/padding.bin': deterministicBytes(9_000_000),
+    })
+    const imported = importXlsx(bytes, 'large-public-source-patched-export.xlsx')
+
+    attachImportedXlsxSourceCellPatches(imported.snapshot, [
+      {
+        kind: 'literal',
+        sheetName: 'Sheet1',
+        address: 'A1',
+        value: 'Edited',
+      },
+    ])
+
+    expect(() => exportXlsx(imported.snapshot)).toThrow(/cannot fall back to full XLSX snapshot export for a large imported source/u)
+    expect(detachImportedXlsxSourceBytes(imported.snapshot)).toBe(true)
+  }, 30_000)
+
+  it('rejects file export fallback when source-preserving patches fail for large imported sources', () => {
+    const bytes = buildSharedStringWorkbook()
+    const tempDir = mkdtempSync(join(tmpdir(), 'bilig-xlsx-large-patched-source-export-'))
+    const outputPath = join(tempDir, 'exported.xlsx')
+
+    try {
+      const imported = importXlsx(bytes, 'large-public-source-failed-patch-export.xlsx')
+      attachImportedXlsxSourceReader(imported.snapshot, {
+        byteLength: 1_000_001,
+        readBytes() {
+          throw new Error('large test source should not be materialized')
+        },
+      })
+      attachImportedXlsxSourceCellPatches(imported.snapshot, [
+        {
+          kind: 'literal',
+          sheetName: 'Sheet1',
+          address: 'A1',
+          value: 'Edited',
+        },
+      ])
+
+      expect(() => exportXlsxToFile(imported.snapshot, outputPath)).toThrow(
+        /cannot fall back to full XLSX snapshot export for a large imported source/u,
+      )
       expect(detachImportedXlsxSourceBytes(imported.snapshot)).toBe(true)
     } finally {
       rmSync(tempDir, { force: true, recursive: true })

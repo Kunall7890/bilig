@@ -574,6 +574,10 @@ describe('repository dependency policy', () => {
     const exportToFileEnd = exportSource.indexOf('const importedSourceCopyChunkSize')
     const exportToFileSource = exportSource.slice(exportToFileStart, exportToFileEnd)
 
+    expect(exportSource).toContain('const sourcePreservingExportFallbackBytesLimit = 1_000_000')
+    expect(exportSource).toContain("assertSourcePreservingExportFallbackWithinSmallWorkbookLimit(importedSource, 'exportXlsx')")
+    expect(exportSource).toContain("assertSourcePreservingExportFallbackWithinSmallWorkbookLimit(importedSource, 'exportXlsxToFile')")
+    expect(exportSource).toContain('cannot fall back to full XLSX snapshot export for a large imported source')
     expect(exportToFileStart).toBeGreaterThan(-1)
     expect(exportToFileEnd).toBeGreaterThan(exportToFileStart)
     expect(exportToFileSource).toContain('tryCopyImportedXlsxSourceToFile(importedSource, outputPath)')
