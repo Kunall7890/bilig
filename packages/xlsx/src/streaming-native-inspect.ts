@@ -3,6 +3,7 @@ import { statSync } from 'node:fs'
 import { ErrorCode, ValueTag, type CellValue, type LiteralInput } from '@bilig/protocol'
 
 import {
+  defaultXlsxFormulaCacheInspectionLimit,
   normalizeXlsxFormulaCacheInspectionLimit,
   readXlsxFormulaCacheCellsFromFile,
   XlsxFormulaCacheReadError,
@@ -21,7 +22,8 @@ export type StreamingNativeXlsxCacheInspectionLimit = number | 'all'
 export type StreamingNativeXlsxCacheStatus = 'fresh' | 'stale' | 'missing-cache' | 'unsupported-recalculation'
 export type StreamingNativeXlsxCacheLiteral = XlsxFormulaCacheLiteral
 
-export const defaultStreamingNativeXlsxCacheInspectionLimit: StreamingNativeXlsxCacheInspectionLimit = 2000
+export const defaultStreamingNativeXlsxCacheInspectionLimit: StreamingNativeXlsxCacheInspectionLimit =
+  defaultXlsxFormulaCacheInspectionLimit
 
 export interface StreamingNativeXlsxCacheStatusSummary {
   readonly inspected: number

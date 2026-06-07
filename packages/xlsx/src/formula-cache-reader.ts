@@ -75,6 +75,8 @@ const formulaElementPattern = /<((?:[A-Za-z_][\w.-]*:)?f)\b(?:[^>"']|"[^"]*"|'[^
 const worksheetCellStartTagPattern = /<(?:[A-Za-z_][\w.-]*:)?c\b/u
 const worksheetCellCarryLength = 128
 
+export const defaultXlsxFormulaCacheInspectionLimit: XlsxFormulaCacheInspectionLimit = 2000
+
 export function readXlsxFormulaCacheCellsFromFile(
   inputPath: string,
   options: {
@@ -114,7 +116,7 @@ export function readXlsxFormulaCacheCellsFromWorkbookCore(
   const scan = collectXlsxFormulaCacheCells(
     core.zip,
     core.sheetEntries,
-    normalizeXlsxFormulaCacheInspectionLimit(options.inspectLimit ?? 'all'),
+    normalizeXlsxFormulaCacheInspectionLimit(options.inspectLimit ?? defaultXlsxFormulaCacheInspectionLimit),
     core.inputBytes,
   )
   return {

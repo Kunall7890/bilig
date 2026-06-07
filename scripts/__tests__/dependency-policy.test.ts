@@ -424,16 +424,21 @@ describe('repository dependency policy', () => {
 
   it('keeps large XLSX file-mode diagnostics bounded by default', () => {
     const cliApi = readFileSync(join(repoRoot, 'packages/xlsx-formula-recalc/src/cli-api.ts'), 'utf8')
+    const formulaCacheReader = readFileSync(join(repoRoot, 'packages/xlsx/src/formula-cache-reader.ts'), 'utf8')
     const nativeInspect = readFileSync(join(repoRoot, 'packages/xlsx/src/streaming-native-inspect.ts'), 'utf8')
     const reportSource = readFileSync(join(repoRoot, 'packages/xlsx/src/workbook-compatibility-report.ts'), 'utf8')
+    const nativePublicCorpus = readFileSync(join(repoRoot, 'scripts/xlsx-native-recalc-public-corpus.ts'), 'utf8')
 
     expect(cliApi).toContain('const defaultInspectFormulaLimit = 2000')
     expect(cliApi).not.toContain("const defaultInspectFormulaLimit = 'all'")
-    expect(nativeInspect).toContain(
-      'export const defaultStreamingNativeXlsxCacheInspectionLimit: StreamingNativeXlsxCacheInspectionLimit = 2000',
-    )
+    expect(formulaCacheReader).toContain('export const defaultXlsxFormulaCacheInspectionLimit: XlsxFormulaCacheInspectionLimit = 2000')
+    expect(formulaCacheReader).toContain('options.inspectLimit ?? defaultXlsxFormulaCacheInspectionLimit')
+    expect(formulaCacheReader).not.toContain("options.inspectLimit ?? 'all'")
+    expect(nativeInspect).toContain('defaultXlsxFormulaCacheInspectionLimit')
+    expect(nativeInspect).toContain('export const defaultStreamingNativeXlsxCacheInspectionLimit: StreamingNativeXlsxCacheInspectionLimit')
     expect(nativeInspect).not.toContain("options.inspectLimit ?? 'all'")
     expect(reportSource).toContain('const defaultFileInspectLimit: XlsxCacheInspectionLimit = 2000')
+    expect(nativePublicCorpus).toContain("readXlsxFormulaCacheCellsFromFile(inputPath, { inspectLimit: 'all' })")
   })
 
   it('keeps file-backed native inspection and reports on the unified workbook core', () => {

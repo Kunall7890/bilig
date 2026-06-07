@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { readXlsxFormulaCacheCellsFromFile, zipSourcePreservingEntries } from '../index.js'
+import { defaultXlsxFormulaCacheInspectionLimit, readXlsxFormulaCacheCellsFromFile, zipSourcePreservingEntries } from '../index.js'
 
 const textEncoder = new TextEncoder()
 
@@ -51,6 +51,23 @@ describe('@bilig/xlsx formula cache reader', () => {
         ["'Revenue & Ops'!C1", '=A1*10', 20],
         ["'Revenue & Ops'!C2", '=A2*10', 30],
       ])
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  it('bounds default file-backed formula cache collection', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'bilig-xlsx-default-formula-cache-limit-'))
+    try {
+      const inputPath = join(tempDir, 'many-formulas.xlsx')
+      writeFileSync(inputPath, manyFormulaCacheWorkbookBytes(defaultXlsxFormulaCacheInspectionLimit + 1))
+
+      const defaultScan = readXlsxFormulaCacheCellsFromFile(inputPath)
+      const fullScan = readXlsxFormulaCacheCellsFromFile(inputPath, { inspectLimit: 'all' })
+
+      expect(defaultScan.formulaCellCount).toBe(defaultXlsxFormulaCacheInspectionLimit + 1)
+      expect(defaultScan.cells).toHaveLength(defaultXlsxFormulaCacheInspectionLimit)
+      expect(fullScan.cells).toHaveLength(defaultXlsxFormulaCacheInspectionLimit + 1)
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
     }
@@ -105,4 +122,39 @@ function formulaCacheWorkbookBytes(): Uint8Array {
 
 function bytes(value: string): Uint8Array {
   return textEncoder.encode(value)
+}
+
+function manyFormulaCacheWorkbookBytes(formulaCount: number): Uint8Array {
+  const rows = Array.from({ length: formulaCount }, (_value, index) => {
+    const row = index + 1
+    return `<row r="${row.toString()}"><c r="A${row.toString()}"><v>${row.toString()}</v></c><c r="B${row.toString()}"><f>A${row.toString()}*2</f><v>${(row * 2).toString()}</v></c></row>`
+  }).join('')
+  return zipSourcePreservingEntries({
+    '[Content_Types].xml': bytes(`<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+</Types>`),
+    '_rels/.rels': bytes(`<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`),
+    'xl/workbook.xml': bytes(`<?xml version="1.0" encoding="UTF-8"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>
+    <sheet name="Data" sheetId="1" r:id="rId1"/>
+  </sheets>
+</workbook>`),
+    'xl/_rels/workbook.xml.rels': bytes(`<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+</Relationships>`),
+    'xl/worksheets/sheet1.xml': bytes(`<?xml version="1.0" encoding="UTF-8"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <dimension ref="A1:B${formulaCount.toString()}"/>
+  <sheetData>${rows}</sheetData>
+</worksheet>`),
+  })
 }

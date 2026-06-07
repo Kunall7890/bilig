@@ -278,7 +278,7 @@ function readFormulaOraclesForArtifact(artifact: PublicWorkbookArtifact, inputPa
     if (!isOpenXmlWorkbookFileName(artifact.fileName)) {
       return []
     }
-    return formulaOraclesFromNativeFormulaCacheCells(readXlsxFormulaCacheCellsFromFile(inputPath).cells)
+    return formulaOraclesFromNativeFormulaCacheCells(readXlsxFormulaCacheCellsFromFile(inputPath, { inspectLimit: 'all' }).cells)
   } catch {
     return []
   }
