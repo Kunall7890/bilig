@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 
 import type { ImportedWorkbook } from '../../packages/excel-import/src/workbook-import-result.js'
@@ -11,9 +12,11 @@ import { XLSX_CONTENT_TYPE } from '../../packages/excel-import/src/workbook-impo
 import {
   buildExternalXlsxStressPlan,
   externalXlsxStressSources,
+  extractExternalXlsxStressWorkbookEntriesFromArchiveFile,
   hashExternalXlsxStressWorkbookFileSha256,
   validateExternalXlsxStressPlan,
   type ExternalXlsxStressPlan,
+  type ExternalXlsxStressSource,
 } from '../external-xlsx-memory-stress.ts'
 import {
   assertExternalXlsxStressPublicImportWithinSmallWorkbookLimit,
@@ -98,6 +101,44 @@ describe('external XLSX memory stress plan', () => {
       writeFileSync(workbookPath, bytes)
 
       expect(hashExternalXlsxStressWorkbookFileSha256(workbookPath)).toBe(createHash('sha256').update(bytes).digest('hex'))
+    } finally {
+      rmSync(tempDir, { force: true, recursive: true })
+    }
+  })
+
+  it('extracts ZIP archive workbook entries through the file-backed native reader', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'bilig-external-xlsx-stress-archive-'))
+    try {
+      const archivePath = join(tempDir, 'sample.zip')
+      const workbookBytes = Buffer.from('workbook payload')
+      writeFileSync(
+        archivePath,
+        zipSync({
+          'Book.xlsx': workbookBytes,
+          'Ignored.xlsx': Buffer.alloc(2_000_000, 1),
+        }),
+      )
+      const source: ExternalXlsxStressSource = {
+        id: 'sample-archive',
+        sourcePageUrl: 'https://example.test/source',
+        downloadUrl: 'https://example.test/sample.zip',
+        fileName: 'sample.zip',
+        licenseTitle: 'Test fixture',
+        workbooks: [
+          {
+            id: 'book',
+            fileName: 'Book.xlsx',
+            archiveEntryPath: 'Book.xlsx',
+            expectedMinBytes: workbookBytes.byteLength,
+          },
+        ],
+      }
+
+      const resolved = (await extractExternalXlsxStressWorkbookEntriesFromArchiveFile(source, archivePath, tempDir))[0]
+
+      expect(resolved.byteSize).toBe(workbookBytes.byteLength)
+      expect(resolved.sha256).toBe(createHash('sha256').update(workbookBytes).digest('hex'))
+      expect(readFileSync(resolved.path)).toEqual(workbookBytes)
     } finally {
       rmSync(tempDir, { force: true, recursive: true })
     }

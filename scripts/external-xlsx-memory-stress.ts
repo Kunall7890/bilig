@@ -1,10 +1,21 @@
 #!/usr/bin/env bun
 
+import { once } from 'node:events'
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, statSync, writeFileSync } from 'node:fs'
+import { closeSync, createWriteStream, existsSync, mkdirSync, openSync, readSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
+import { finished } from 'node:stream/promises'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+
+import {
+  createFileXlsxSourceReader,
+  forEachInflatedXlsxZipEntryChunkAsync,
+  normalizeZipPath,
+  readXlsxZipEntriesLazyFromByteSource,
+  readXlsxZipEntryMetadata,
+  type XlsxZipEntries,
+} from '@bilig/xlsx'
 
 import type { ExternalXlsxStressWorkerSummary } from './external-xlsx-memory-stress-worker.ts'
 import { readFlagArg, readNumberArg, readStringArg } from './public-workbook-corpus-cli.ts'
@@ -468,8 +479,8 @@ async function ensureExternalXlsxStressSource(
   mkdirSync(args.cacheDir, { recursive: true })
   const sourceCachePath = join(args.cacheDir, source.fileName)
   if (source.fileName.toLowerCase().endsWith('.zip')) {
-    const sourceBytes = await readOrFetchSourceBytes(source, sourceCachePath, args)
-    return await extractWorkbookEntries(source, sourceBytes, args.cacheDir)
+    await ensureSourceFileCached(source, sourceCachePath, args)
+    return await extractExternalXlsxStressWorkbookEntriesFromArchiveFile(source, sourceCachePath, args.cacheDir)
   }
   await ensureSourceFileCached(source, sourceCachePath, args)
   const workbook = source.workbooks[0]
@@ -487,37 +498,6 @@ async function ensureExternalXlsxStressSource(
       path: sourceCachePath,
     }),
   ]
-}
-
-async function readOrFetchSourceBytes(
-  source: ExternalXlsxStressSource,
-  sourceCachePath: string,
-  args: {
-    readonly fetchTimeoutMs: number
-    readonly maxDownloadBytes: number
-  },
-): Promise<Uint8Array> {
-  if (existsSync(sourceCachePath)) {
-    return readFileSync(sourceCachePath)
-  }
-  const { fetchBodyBytesWithTimeout } = await import('./public-workbook-corpus-http.ts')
-  const { bytes } = await fetchBodyBytesWithTimeout(
-    source.downloadUrl,
-    {},
-    {
-      timeoutMs: args.fetchTimeoutMs,
-      maxBytes: args.maxDownloadBytes,
-      maxBytesLabel: source.fileName,
-      validateResponse: (response) => {
-        if (!response.ok) {
-          throw new Error(`Failed to fetch ${source.fileName}: HTTP ${String(response.status)}`)
-        }
-      },
-    },
-  )
-  mkdirSync(dirname(sourceCachePath), { recursive: true })
-  writeFileSync(sourceCachePath, bytes)
-  return bytes
 }
 
 async function ensureSourceFileCached(
@@ -550,35 +530,87 @@ async function ensureSourceFileCached(
   writeFileSync(sourceCachePath, bytes)
 }
 
-async function extractWorkbookEntries(
+export async function extractExternalXlsxStressWorkbookEntriesFromArchiveFile(
   source: ExternalXlsxStressSource,
-  sourceBytes: Uint8Array,
+  archivePath: string,
   cacheDir: string,
 ): Promise<ResolvedWorkbook[]> {
-  const { unzipSync } = await import('fflate')
-  const unzipped = unzipSync(sourceBytes)
+  const archiveSource = createFileXlsxSourceReader(archivePath)
+  const zip = readXlsxZipEntriesLazyFromByteSource(archiveSource)
+  const metadataByPath = new Map(
+    (readXlsxZipEntryMetadata(archiveSource) ?? []).map((entry) => [normalizeZipPath(entry.path), entry.uncompressedSize]),
+  )
+  if (!zip) {
+    archiveSource.release()
+    throw new Error(`Archive ${source.fileName} is not a supported ZIP source`)
+  }
   const sourceDir = join(cacheDir, source.id)
   mkdirSync(sourceDir, { recursive: true })
-  return source.workbooks.map((workbook) => {
-    const entryPath = workbook.archiveEntryPath ?? workbook.fileName
-    const bytes = unzipped[entryPath]
-    if (!bytes) {
-      throw new Error(`Archive ${source.fileName} is missing workbook entry ${entryPath}`)
+  try {
+    const resolved: ResolvedWorkbook[] = []
+    for (const workbook of source.workbooks) {
+      const entryPath = workbook.archiveEntryPath ?? workbook.fileName
+      const expectedEntryByteLength = metadataByPath.get(normalizeZipPath(entryPath))
+      if (expectedEntryByteLength === undefined) {
+        throw new Error(`Archive ${source.fileName} is missing workbook entry ${entryPath}`)
+      }
+      const outputPath = join(sourceDir, workbook.fileName)
+      if (!existsSync(outputPath) || statSync(outputPath).size !== expectedEntryByteLength) {
+        // oxlint-disable-next-line eslint(no-await-in-loop) -- Archive entries are extracted sequentially to keep memory bounded.
+        await writeExternalXlsxStressArchiveEntryFile(zip, entryPath, outputPath, expectedEntryByteLength)
+      }
+      resolved.push(
+        assertResolvedWorkbook({
+          fixture: {
+            ...workbook,
+            sourcePageUrl: source.sourcePageUrl,
+            downloadUrl: source.downloadUrl,
+            licenseTitle: source.licenseTitle,
+          },
+          path: outputPath,
+        }),
+      )
     }
-    const outputPath = join(sourceDir, workbook.fileName)
-    if (!existsSync(outputPath) || statSync(outputPath).size !== bytes.byteLength) {
-      writeFileSync(outputPath, bytes)
-    }
-    return assertResolvedWorkbook({
-      fixture: {
-        ...workbook,
-        sourcePageUrl: source.sourcePageUrl,
-        downloadUrl: source.downloadUrl,
-        licenseTitle: source.licenseTitle,
+    return resolved
+  } finally {
+    archiveSource.release()
+  }
+}
+
+async function writeExternalXlsxStressArchiveEntryFile(
+  zip: XlsxZipEntries,
+  entryPath: string,
+  outputPath: string,
+  expectedByteLength: number,
+): Promise<void> {
+  const stream = createWriteStream(outputPath)
+  try {
+    const found = await forEachInflatedXlsxZipEntryChunkAsync(
+      zip,
+      entryPath,
+      async (chunk) => {
+        if (!stream.write(Buffer.from(chunk))) {
+          await once(stream, 'drain')
+        }
       },
-      path: outputPath,
-    })
-  })
+      { chunkSize: 1024 * 1024 },
+    )
+    if (!found) {
+      throw new Error(`Archive entry is missing: ${entryPath}`)
+    }
+    stream.end()
+    await finished(stream)
+    const byteLength = statSync(outputPath).size
+    if (byteLength !== expectedByteLength) {
+      throw new Error(
+        `Archive entry ${entryPath} extracted to ${formatByteSize(byteLength)} instead of ${formatByteSize(expectedByteLength)}`,
+      )
+    }
+  } catch (error) {
+    stream.destroy()
+    rmSync(outputPath, { force: true })
+    throw error
+  }
 }
 
 function assertResolvedWorkbook(input: { readonly fixture: ExternalXlsxStressWorkbook; readonly path: string }): ResolvedWorkbook {

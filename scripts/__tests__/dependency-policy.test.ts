@@ -752,16 +752,25 @@ describe('repository dependency policy', () => {
   it('keeps external XLSX stress source resolution file-backed for cached workbooks', () => {
     const stress = readFileSync(join(repoRoot, 'scripts/external-xlsx-memory-stress.ts'), 'utf8')
     const zipBranchIndex = stress.indexOf("if (source.fileName.toLowerCase().endsWith('.zip'))")
-    const zipReadBytesIndex = stress.indexOf('const sourceBytes = await readOrFetchSourceBytes(source, sourceCachePath, args)')
+    const ensureCachedIndex = stress.indexOf('await ensureSourceFileCached(source, sourceCachePath, args)')
+    const extractArchiveIndex = stress.indexOf(
+      'extractExternalXlsxStressWorkbookEntriesFromArchiveFile(source, sourceCachePath, args.cacheDir)',
+    )
 
     expect(stress).toContain('async function ensureSourceFileCached(')
+    expect(stress).toContain("from '@bilig/xlsx'")
+    expect(stress).toContain('readXlsxZipEntriesLazyFromByteSource(archiveSource)')
+    expect(stress).toContain('forEachInflatedXlsxZipEntryChunkAsync(')
     expect(stress).toContain('statSync(input.path).size')
     expect(stress).toContain('hashExternalXlsxStressWorkbookFileSha256(input.path)')
-    expect(stress).toContain('statSync(outputPath).size !== bytes.byteLength')
+    expect(stress).toContain('statSync(outputPath).size !== expectedEntryByteLength')
     expect(stress).not.toContain('const bytes = readFileSync(input.path)')
     expect(stress).not.toContain('readFileSync(outputPath).byteLength')
+    expect(stress).not.toContain('readOrFetchSourceBytes')
+    expect(stress).not.toContain('unzipSync')
     expect(zipBranchIndex).toBeGreaterThan(-1)
-    expect(zipReadBytesIndex).toBeGreaterThan(zipBranchIndex)
+    expect(ensureCachedIndex).toBeGreaterThan(zipBranchIndex)
+    expect(extractArchiveIndex).toBeGreaterThan(ensureCachedIndex)
   })
 
   it('keeps WorkPaper evaluator doors owned by WorkPaper packages', () => {
