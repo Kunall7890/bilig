@@ -4,10 +4,10 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
 
 import { SpreadsheetEngine } from '@bilig/core'
 import { exportXlsx, externalWorkbookReferencesWarning, importXlsx } from '@bilig/excel-import'
+import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 import {
   isMacosExcelInstalled,
   runMacosExcelInspectionOracle,
@@ -284,15 +284,23 @@ function normalizedCellValue(value: CellValue): NormalizedFormulaValue {
 }
 
 function buildExternalSourceWorkbook(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ['SKU', 'Rate'],
-    ['A', 10],
-    ['B', 20],
-    ['C', 30],
-  ])
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Rates')
-  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+  return writeSimpleXlsxWorkbook({
+    sheets: [
+      {
+        name: 'Rates',
+        cells: [
+          { address: 'A1', row: 0, col: 0, value: 'SKU' },
+          { address: 'B1', row: 0, col: 1, value: 'Rate' },
+          { address: 'A2', row: 1, col: 0, value: 'A' },
+          { address: 'B2', row: 1, col: 1, value: 10 },
+          { address: 'A3', row: 2, col: 0, value: 'B' },
+          { address: 'B3', row: 2, col: 1, value: 20 },
+          { address: 'A4', row: 3, col: 0, value: 'C' },
+          { address: 'B4', row: 3, col: 1, value: 30 },
+        ],
+      },
+    ],
+  })
 }
 
 function createExcelAccessibleTempDir(prefix: string): string {
@@ -305,18 +313,35 @@ function buildExternalLinkRangeCacheWorkbook(
   target = 'file:///tmp/rates.xlsx',
   options: { readonly includeKeepSheet?: boolean } = {},
 ): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  if (options.includeKeepSheet === true) {
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['keep']]), 'Keep')
-  }
-  const sheet = XLSX.utils.aoa_to_sheet([[null, 2]])
-  sheet.C1 = { t: 'n', f: "SUM('[1]Rates'!$B$2:$B$4)*B1", v: 120 }
-  sheet.C2 = { t: 'n', f: "_xlfn.XLOOKUP(\"B\",'[1]Rates'!$A$2:$A$4,'[1]Rates'!$B$2:$B$4)*B1", v: 40 }
-  sheet.C3 = { t: 'n', f: "SUMIFS('[1]Rates'!$B$2:$B$4,'[1]Rates'!$A$2:$A$4,\"C\")*B1", v: 60 }
-  sheet['!ref'] = 'A1:C3'
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Model')
-
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    writeSimpleXlsxWorkbook({
+      sheets: [
+        ...(options.includeKeepSheet === true
+          ? [
+              {
+                name: 'Keep',
+                cells: [{ address: 'A1', row: 0, col: 0, value: 'keep' }],
+              },
+            ]
+          : []),
+        {
+          name: 'Model',
+          cells: [
+            { address: 'B1', row: 0, col: 1, value: 2 },
+            { address: 'C1', row: 0, col: 2, formula: "SUM('[1]Rates'!$B$2:$B$4)*B1", value: 120 },
+            {
+              address: 'C2',
+              row: 1,
+              col: 2,
+              formula: "_xlfn.XLOOKUP(\"B\",'[1]Rates'!$A$2:$A$4,'[1]Rates'!$B$2:$B$4)*B1",
+              value: 40,
+            },
+            { address: 'C3', row: 2, col: 2, formula: "SUMIFS('[1]Rates'!$B$2:$B$4,'[1]Rates'!$A$2:$A$4,\"C\")*B1", value: 60 },
+          ],
+        },
+      ],
+    }),
+  )
   zip['xl/workbook.xml'] = strToU8(
     ensureRelationshipNamespace(xmlText(zip, 'xl/workbook.xml')).replace(
       '</sheets>',
