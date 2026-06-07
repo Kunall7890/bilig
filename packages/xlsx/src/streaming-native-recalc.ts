@@ -9,6 +9,13 @@ import {
   normalizeExternalWorkbookReferences,
   readStreamingNativeExternalCachedRowsByAlias,
 } from './streaming-native-external-cache.js'
+import {
+  StreamingNativeSheetCellArena,
+  type StreamingNativeMutablePendingCellRow,
+  type StreamingNativePendingCellRows,
+  type StreamingNativePendingCellValue,
+  type StreamingNativeSharedStringReference,
+} from './streaming-native-cell-arena.js'
 import { evaluateStreamingNativeWasmFormulas, expandStreamingNativeFormulaDependencyRows } from './streaming-native-row-chain-wasm.js'
 import {
   closeStreamingNativeWorkbookCore,
@@ -90,7 +97,7 @@ export interface SheetScanState {
   readonly sheetName: string
   readonly sheetPath: string
   readonly targetRows: Set<number>
-  readonly rows: Map<number, Map<number, PendingCellValue>>
+  readonly rows: StreamingNativeSheetCellArena
   readonly formulaCells: NativeFormulaCell[]
   readonly sharedFormulaMasters: Map<string, SharedFormulaMaster>
   readonly tableRelationshipIds: Set<string>
@@ -132,19 +139,16 @@ interface EvaluationContext {
   readonly sheetName: string
   readonly row: number
   readonly col: number
-  readonly rowValues: Map<number, PendingCellValue>
-  readonly sheetRows: ReadonlyMap<number, Map<number, PendingCellValue>>
-  readonly sheetRowsByName: ReadonlyMap<string, ReadonlyMap<number, Map<number, PendingCellValue>>>
-  readonly externalCachedRowsByAlias: ReadonlyMap<string, ReadonlyMap<number, Map<number, PendingCellValue>>>
+  readonly rowValues: StreamingNativeMutablePendingCellRow
+  readonly sheetRows: StreamingNativePendingCellRows
+  readonly sheetRowsByName: ReadonlyMap<string, StreamingNativePendingCellRows>
+  readonly externalCachedRowsByAlias: ReadonlyMap<string, StreamingNativePendingCellRows>
   readonly tablesBySheet: ReadonlyMap<string, readonly NativeTable[]>
 }
 
-interface SharedStringReference {
-  readonly kind: 'shared-string'
-  readonly index: number
-}
-
-export type PendingCellValue = CellValue | SharedStringReference
+export type PendingCellValue = StreamingNativePendingCellValue
+export type PendingCellRow = StreamingNativeMutablePendingCellRow
+export type PendingCellRows = StreamingNativePendingCellRows
 
 class UnsupportedStreamingNativeFormulaError extends Error {
   constructor(message: string) {
@@ -468,7 +472,7 @@ function scanWorksheet(zip: XlsxZipEntries, sheetName: string, sheetPath: string
     sheetName,
     sheetPath,
     targetRows,
-    rows: new Map(),
+    rows: new StreamingNativeSheetCellArena(),
     formulaCells: [],
     sharedFormulaMasters: new Map(),
     tableRelationshipIds: new Set(),
@@ -543,9 +547,8 @@ function scanWorksheetCell(state: SheetScanState, cellXml: string): void {
   if (!state.targetRows.has(address.r)) {
     return
   }
-  const row = state.rows.get(address.r) ?? new Map<number, PendingCellValue>()
+  const row = state.rows.getOrCreate(address.r)
   row.set(address.c, readCellValue(cellXml, openingTag))
-  state.rows.set(address.r, row)
   if (formula) {
     state.formulaCells.push({
       sheetName: state.sheetName,
@@ -701,7 +704,7 @@ function hydrateSharedStringReferences(sheetScans: ReadonlyMap<string, SheetScan
   }
 }
 
-function isSharedStringReference(value: PendingCellValue): value is SharedStringReference {
+function isSharedStringReference(value: PendingCellValue): value is StreamingNativeSharedStringReference {
   return typeof value === 'object' && value !== null && 'kind' in value && value.kind === 'shared-string'
 }
 
@@ -834,9 +837,8 @@ function applyEdits(
     if (!scan) {
       throw new Error(`Missing scan state for edited sheet ${edit.sheetName}`)
     }
-    const row = scan.rows.get(edit.row) ?? new Map<number, PendingCellValue>()
+    const row = scan.rows.getOrCreate(edit.row)
     row.set(edit.col, cellValueFromLiteralInput(edit.value))
-    scan.rows.set(edit.row, row)
     patches.push({
       sheetName: edit.sheetName,
       address: edit.address,
@@ -861,7 +863,7 @@ function cellValueFromLiteralInput(value: LiteralInput): CellValue {
 function evaluateFormulaCells(
   sheetScans: ReadonlyMap<string, SheetScanState>,
   tablesBySheet: ReadonlyMap<string, readonly NativeTable[]>,
-  externalCachedRowsByAlias: ReadonlyMap<string, ReadonlyMap<number, Map<number, PendingCellValue>>>,
+  externalCachedRowsByAlias: ReadonlyMap<string, StreamingNativePendingCellRows>,
   patches: XlsxSourceLiteralPatch[],
 ): StreamingNativeFormulaCounts {
   const nativeFormulaCells = evaluateStreamingNativeWasmFormulas({

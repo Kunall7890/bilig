@@ -126,6 +126,7 @@ const fileBackedXlsxFormulaRecalcCliEntrypoints = [
   'packages/bilig-exceljs-formula-recalc/src/cli.ts',
 ] as const
 const xlsxOwnedStreamingNativeSources = [
+  'packages/xlsx/src/streaming-native-cell-arena.ts',
   'packages/xlsx/src/streaming-native-external-cache.ts',
   'packages/xlsx/src/streaming-native-inspect.ts',
   'packages/xlsx/src/streaming-native-recalc.ts',
@@ -429,6 +430,24 @@ describe('repository dependency policy', () => {
     expect(nativeCore).toContain('createFileXlsxSourceReader')
     expect(nativeCore).toContain('readXlsxZipEntriesLazyFromByteSource')
     expect(nativeCore).toContain('workbookSheetPathEntriesForSource')
+  })
+
+  it('keeps native recalc row values in the typed columnar arena', () => {
+    const recalcSource = readFileSync(join(repoRoot, 'packages/xlsx/src/streaming-native-recalc.ts'), 'utf8')
+    const rowChainWasm = readFileSync(join(repoRoot, 'packages/xlsx/src/streaming-native-row-chain-wasm.ts'), 'utf8')
+    const lookupWasm = readFileSync(join(repoRoot, 'packages/xlsx/src/streaming-native-lookup-wasm.ts'), 'utf8')
+    const cellArena = readFileSync(join(repoRoot, 'packages/xlsx/src/streaming-native-cell-arena.ts'), 'utf8')
+
+    expect(recalcSource).toContain('StreamingNativeSheetCellArena')
+    expect(recalcSource).not.toContain('rows: Map<number, Map<number, PendingCellValue>>')
+    expect(recalcSource).not.toContain('new Map<number, PendingCellValue>()')
+    expect(rowChainWasm).not.toContain('Map<number, PendingCellValue>')
+    expect(lookupWasm).not.toContain('Map<number, PendingCellValue>')
+    expect(cellArena).toContain('Int32Array')
+    expect(cellArena).toContain('Uint8Array')
+    expect(cellArena).toContain('Float64Array')
+    expect(cellArena).toContain('valueTags')
+    expect(cellArena).toContain('stringIds')
   })
 
   it('keeps large XLSX file-mode wrappers off materialized workbook and hidden fallback paths', () => {

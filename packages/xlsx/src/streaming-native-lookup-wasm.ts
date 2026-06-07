@@ -4,7 +4,7 @@ import { createKernelSync } from '@bilig/wasm-kernel'
 
 import { decodeCellAddress } from './address.js'
 import type { XlsxSourceLiteralPatch } from './source-preserving-literal-patches.js'
-import type { NativeFormulaCell, PendingCellValue, SheetScanState } from './streaming-native-recalc.js'
+import type { NativeFormulaCell, PendingCellRow, PendingCellValue, SheetScanState } from './streaming-native-recalc.js'
 
 export interface StreamingNativeWasmLookupResult {
   readonly batchCount: number
@@ -23,7 +23,7 @@ interface UniformNumericVlookupCandidate {
   readonly start: number
   readonly step: number
   readonly length: number
-  readonly rowValues: Map<number, PendingCellValue>
+  readonly rowValues: PendingCellRow
 }
 
 interface VlookupTableRange {
@@ -122,7 +122,7 @@ function collectUniformNumericVlookupCandidates(args: {
 function tryCompileUniformNumericVlookupCandidate(
   scan: SheetScanState,
   cell: NativeFormulaCell,
-  rowValues: Map<number, PendingCellValue>,
+  rowValues: PendingCellRow,
   args: {
     readonly sheetScans: ReadonlyMap<string, SheetScanState>
     readonly resolveFormulaSource: (scan: SheetScanState, cell: NativeFormulaCell) => string
@@ -200,7 +200,7 @@ function compileNumericLookupValue(
   node: FormulaNode,
   scan: SheetScanState,
   cell: NativeFormulaCell,
-  rowValues: Map<number, PendingCellValue>,
+  rowValues: PendingCellRow,
   sheetScans: ReadonlyMap<string, SheetScanState>,
 ): number | null {
   if (node.kind === 'NumberLiteral') {

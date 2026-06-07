@@ -5,7 +5,7 @@ import { createKernelSync } from '@bilig/wasm-kernel'
 import { decodeCellAddress } from './address.js'
 import type { XlsxSourceLiteralPatch } from './source-preserving-literal-patches.js'
 import { evaluateStreamingNativeWasmLookups } from './streaming-native-lookup-wasm.js'
-import type { NativeFormulaCell, NativeTable, PendingCellValue, SheetScanState } from './streaming-native-recalc.js'
+import type { NativeFormulaCell, NativeTable, PendingCellRow, PendingCellValue, SheetScanState } from './streaming-native-recalc.js'
 
 export interface StreamingNativeWasmRowChainResult {
   readonly batchCount: number
@@ -48,7 +48,7 @@ interface RowChainCandidate {
   readonly firstOperatorCode: number
   readonly leftValue: number
   readonly rightValue: number
-  readonly rowValues: Map<number, PendingCellValue>
+  readonly rowValues: PendingCellRow
 }
 
 interface AffineRowChainCandidate extends RowChainCandidate {
@@ -67,14 +67,14 @@ interface DirectScalarCandidate {
   readonly operatorCode: number
   readonly leftValue: number
   readonly rightValue: number
-  readonly rowValues: Map<number, PendingCellValue>
+  readonly rowValues: PendingCellRow
 }
 
 interface RangeAggregateCandidate {
   readonly cell: NativeFormulaCell
   readonly aggregateKind: number
   readonly values: TypedRangeAggregateValues
-  readonly rowValues: Map<number, PendingCellValue>
+  readonly rowValues: PendingCellRow
 }
 
 interface TypedRangeAggregateValues {
@@ -89,7 +89,7 @@ interface ConditionalPickCandidate {
   readonly conditions: readonly ConditionalPickCondition[]
   readonly branchValues: readonly CellValue[]
   readonly defaultValue: CellValue
-  readonly rowValues: Map<number, PendingCellValue>
+  readonly rowValues: PendingCellRow
 }
 
 interface ConditionalPickCondition {
@@ -103,7 +103,7 @@ interface ConditionalCompileContext {
   readonly row: number
   readonly formulaColumn: number
   readonly tablesBySheet: ReadonlyMap<string, readonly NativeTable[]>
-  readonly rowValues: ReadonlyMap<number, PendingCellValue>
+  readonly rowValues: PendingCellRow
 }
 
 interface NumericSource {
@@ -978,7 +978,7 @@ function collectConditionalPickCandidates(args: {
 function tryCompileConditionalPickCandidate(
   scan: SheetScanState,
   cell: NativeFormulaCell,
-  rowValues: Map<number, PendingCellValue>,
+  rowValues: PendingCellRow,
   args: {
     readonly tablesBySheet: ReadonlyMap<string, readonly NativeTable[]>
     readonly resolveFormulaSource: (scan: SheetScanState, cell: NativeFormulaCell) => string
@@ -1006,7 +1006,7 @@ function tryCompileConditionalPickCandidate(
 
 function compileNativeIfCandidate(
   cell: NativeFormulaCell,
-  rowValues: Map<number, PendingCellValue>,
+  rowValues: PendingCellRow,
   args: readonly FormulaNode[],
   context: ConditionalCompileContext,
 ): ConditionalPickCandidate | null {
@@ -1029,7 +1029,7 @@ function compileNativeIfCandidate(
 
 function compileNativeIfsCandidate(
   cell: NativeFormulaCell,
-  rowValues: Map<number, PendingCellValue>,
+  rowValues: PendingCellRow,
   args: readonly FormulaNode[],
   context: ConditionalCompileContext,
 ): ConditionalPickCandidate | null {
@@ -1511,7 +1511,7 @@ function decodeExcelEscapedText(value: string): string {
     .replaceAll(escapedUnderscore, '_')
 }
 
-function readNumericSource(rowValues: ReadonlyMap<number, PendingCellValue>, source: NumericSource): number | null {
+function readNumericSource(rowValues: PendingCellRow, source: NumericSource): number | null {
   if (source.constant !== undefined) {
     return source.constant
   }
