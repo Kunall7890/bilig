@@ -52,6 +52,7 @@ const nativeXlsxExcelImportFixtureTests = [
   'packages/excel-import/src/__tests__/xlsx-workbook-sheet-paths.test.ts',
   'packages/excel-import/src/__tests__/xlsx-worksheet-dimensions-roundtrip.test.ts',
 ] as const
+const nativeXlsxFormulaRecalcPackages = ['packages/xlsx-formula-recalc', 'packages/bilig-xlsx-formula-recalc'] as const
 
 function packageManifestPaths(): string[] {
   return packageManifestDirs.flatMap((dir) => {
@@ -105,6 +106,25 @@ function hasRuntimeXlsxImport(source: string): boolean {
   return /(?:^|\n)\s*import\s+\*\s+as\s+\w+\s+from\s+['"]xlsx['"]|require\(['"]xlsx['"]\)|import\(['"]xlsx['"]\)/u.test(source)
 }
 
+function packageDependencyViolations(path: string, forbiddenDependencies: readonly string[]): string[] {
+  const parsed: unknown = JSON.parse(readFileSync(join(repoRoot, path, 'package.json'), 'utf8'))
+  const dependencies =
+    typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed) && 'dependencies' in parsed ? parsed.dependencies : undefined
+  if (typeof dependencies !== 'object' || dependencies === null || Array.isArray(dependencies)) {
+    return []
+  }
+  return forbiddenDependencies.filter((dependency) => dependency in dependencies).map((dependency) => `${path}: ${dependency}`)
+}
+
+function sourceImportViolations(path: string, forbiddenImports: readonly string[]): string[] {
+  return sourceFiles(join(repoRoot, path, 'src')).flatMap((sourceFile) => {
+    const source = readFileSync(sourceFile, 'utf8')
+    return forbiddenImports
+      .filter((specifier) => new RegExp(`from\\s+['"]${specifier.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}['"]`, 'u').test(source))
+      .map((specifier) => `${relativePath(sourceFile)}: ${specifier}`)
+  })
+}
+
 describe('repository dependency policy', () => {
   it('does not pin package dependencies to the SheetJS CDN tarball', () => {
     const violations = packageManifestPaths().flatMap(packageDependencySourceViolations)
@@ -147,5 +167,12 @@ describe('repository dependency policy', () => {
     const violations = nativeXlsxExcelImportFixtureTests.filter((path) => hasRuntimeXlsxImport(readFileSync(join(repoRoot, path), 'utf8')))
 
     expect(violations).toEqual([])
+  })
+
+  it('keeps XLSX formula recalculation on @bilig/xlsx instead of direct ZIP or SheetJS dependencies', () => {
+    const dependencyViolations = nativeXlsxFormulaRecalcPackages.flatMap((path) => packageDependencyViolations(path, ['xlsx', 'fflate']))
+    const importViolations = nativeXlsxFormulaRecalcPackages.flatMap((path) => sourceImportViolations(path, ['xlsx', 'fflate']))
+
+    expect([...dependencyViolations, ...importViolations]).toEqual([])
   })
 })

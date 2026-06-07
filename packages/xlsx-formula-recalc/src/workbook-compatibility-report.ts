@@ -4,7 +4,7 @@ import { basename } from 'node:path'
 import { WorkPaper } from '@bilig/headless'
 import type { ImportedWorkbookDiagnostics, XlsxExternalWorkbookInput, XlsxImportOptions } from '@bilig/headless/xlsx'
 import { exportXlsx, importXlsx } from '@bilig/headless/xlsx'
-import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
+import { replaceXlsxWorksheetCellXml } from '@bilig/xlsx'
 import { inspectXlsxCache, type XlsxCacheInspectionLimit, type XlsxFormulaRecalcEdit } from './index.js'
 
 export const workbookCompatibilityReportSchemaVersion = 'bilig-workbook-compatibility-report.v1'
@@ -585,14 +585,12 @@ function shellQuote(value: string): string {
 }
 
 function replaceWorksheetCellXml(bytes: Uint8Array, path: string, address: string, replacement: string): Uint8Array {
-  const zip = unzipSync(bytes)
-  const xml = strFromU8(zip[path] ?? new Uint8Array())
-  const nextXml = xml.replace(new RegExp(`<c\\b[^>]*\\br="${address}"[^>]*>[\\s\\S]*?<\\/c>`, 'u'), replacement)
-  if (nextXml === xml) {
-    throw new Error(`Demo XLSX is missing ${path} ${address}`)
-  }
-  zip[path] = strToU8(nextXml)
-  return zipSync(zip)
+  return replaceXlsxWorksheetCellXml(bytes, {
+    path,
+    address,
+    replacement,
+    missingMessage: `Demo XLSX is missing ${path} ${address}`,
+  })
 }
 
 function toUint8Array(input: Uint8Array | ArrayBuffer | Buffer): Uint8Array {

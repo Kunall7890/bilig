@@ -12,11 +12,14 @@ import {
   encodeCellAddress,
   encodeCellRange,
   createFileXlsxSourceReader,
+  getZipText,
   normalizeCellAddress,
+  patchXlsxTextParts,
   readXlsxTargetCell,
   readXlsxWorkbookCells,
   readXlsxZipEntries,
   readXmlAttribute,
+  replaceXlsxWorksheetCellXml,
   worksheetCellElementPattern,
   writeSimpleXlsxWorkbook,
 } from '../index.js'
@@ -179,6 +182,34 @@ describe('@bilig/xlsx package boundary', () => {
     const sheetXml = textDecoder.decode(zip['xl/worksheets/sheet1.xml'])
 
     expect(sheetXml).toContain('<c r="C3" t="e"><f>1/0</f><v>#DIV/0!</v></c>')
+  })
+
+  it('patches worksheet XML parts without SheetJS or package-local ZIP dependencies', () => {
+    const bytes = writeSimpleXlsxWorkbook({
+      sheets: [
+        {
+          name: 'Patch',
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 2 },
+            { address: 'B1', row: 0, col: 1, formula: 'A1*10', value: 20 },
+          ],
+        },
+      ],
+    })
+
+    const patched = replaceXlsxWorksheetCellXml(bytes, {
+      path: 'xl/worksheets/sheet1.xml',
+      address: 'B1',
+      replacement: '<c r="B1"><f>A1*10</f><v>40</v></c>',
+    })
+    const repatched = patchXlsxTextParts(patched, [
+      {
+        path: 'xl/worksheets/sheet1.xml',
+        patchText: (text) => text.replace('<v>40</v>', '<v>50</v>'),
+      },
+    ])
+
+    expect(getZipText(readXlsxZipEntries(repatched), 'xl/worksheets/sheet1.xml')).toContain('<c r="B1"><f>A1*10</f><v>50</v></c>')
   })
 
   it('reads targeted cached formula cells without SheetJS', () => {

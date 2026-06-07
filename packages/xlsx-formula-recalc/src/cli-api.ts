@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 import type { RawCellContent } from '@bilig/headless'
 import type { XlsxExternalWorkbookInput } from '@bilig/headless/xlsx'
 import { ValueTag } from '@bilig/protocol'
-import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
+import { replaceXlsxWorksheetCellXml } from '@bilig/xlsx'
 import {
   exportXlsx,
   inspectXlsxCache,
@@ -657,14 +657,12 @@ function buildStaleCacheDoctorDemoWorkbookBytes(): Uint8Array {
 }
 
 function replaceWorksheetCellXml(bytes: Uint8Array, path: string, address: string, replacement: string): Uint8Array {
-  const zip = unzipSync(bytes)
-  const xml = strFromU8(zip[path] ?? new Uint8Array())
-  const nextXml = xml.replace(new RegExp(`<c\\b[^>]*\\br="${address}"[^>]*>[\\s\\S]*?<\\/c>`, 'u'), replacement)
-  if (nextXml === xml) {
-    throw new Error(`Demo XLSX is missing ${path} ${address}`)
-  }
-  zip[path] = strToU8(nextXml)
-  return zipSync(zip)
+  return replaceXlsxWorksheetCellXml(bytes, {
+    path,
+    address,
+    replacement,
+    missingMessage: `Demo XLSX is missing ${path} ${address}`,
+  })
 }
 
 function demoDefaultEdits(enabled: boolean): readonly XlsxFormulaRecalcEdit[] {

@@ -3,7 +3,7 @@ import { WorkPaper, type RawCellContent, type WorkPaperCellAddress, type WorkPap
 import type { ImportedWorkbookDiagnostics, XlsxExternalWorkbookInput, XlsxImportOptions } from '@bilig/headless/xlsx'
 import { exportXlsx, exportXlsxToFile, importXlsx } from '@bilig/headless/xlsx'
 import { ErrorCode, formatErrorCode, ValueTag, type LiteralInput } from '@bilig/protocol'
-import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
+import { patchXlsxTextParts, type XlsxTextPartPatch } from '@bilig/xlsx'
 import {
   recalculateXlsxFileToFileStreamingNative,
   type XlsxFormulaRecalcEngine,
@@ -741,7 +741,6 @@ function addFormulaErrorCachesToXlsxBytes(
   if (errorCaches.length === 0) {
     return bytes
   }
-  const zip = unzipSync(bytes)
   const cachesBySheetName = new Map<string, FormulaErrorCache[]>()
   for (const cache of errorCaches) {
     const sheetCaches = cachesBySheetName.get(cache.sheetName) ?? []
@@ -749,6 +748,7 @@ function addFormulaErrorCachesToXlsxBytes(
     cachesBySheetName.set(cache.sheetName, sheetCaches)
   }
   const orderedSheets = snapshot.sheets.toSorted((left, right) => left.order - right.order)
+  const patches: XlsxTextPartPatch[] = []
   for (let index = 0; index < orderedSheets.length; index += 1) {
     const sheet = orderedSheets[index]!
     const sheetCaches = cachesBySheetName.get(sheet.name)
@@ -756,19 +756,13 @@ function addFormulaErrorCachesToXlsxBytes(
       continue
     }
     const sheetPath = `xl/worksheets/sheet${String(index + 1)}.xml`
-    const sheetXml = strFromU8(zip[sheetPath] ?? new Uint8Array())
-    if (sheetXml.length === 0) {
-      continue
-    }
-    let nextSheetXml = sheetXml
-    for (const cache of sheetCaches) {
-      nextSheetXml = replaceFormulaCellErrorCache(nextSheetXml, cache.address, cache.value)
-    }
-    if (nextSheetXml !== sheetXml) {
-      zip[sheetPath] = strToU8(nextSheetXml)
-    }
+    patches.push({
+      path: sheetPath,
+      patchText: (sheetXml) =>
+        sheetCaches.reduce((nextXml, cache) => replaceFormulaCellErrorCache(nextXml, cache.address, cache.value), sheetXml),
+    })
   }
-  return zipSync(zip)
+  return patchXlsxTextParts(bytes, patches)
 }
 
 function replaceFormulaCellErrorCache(sheetXml: string, address: string, value: string): string {

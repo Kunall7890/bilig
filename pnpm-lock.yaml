@@ -620,9 +620,6 @@ importers:
       '@bilig/xlsx':
         specifier: workspace:*
         version: link:../xlsx
-      fflate:
-        specifier: 0.3.11
-        version: 0.3.11
 
   packages/zero-sync:
     dependencies:

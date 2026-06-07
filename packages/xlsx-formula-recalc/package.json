@@ -95,8 +95,7 @@
     "@bilig/headless": "workspace:*",
     "@bilig/protocol": "workspace:*",
     "@bilig/wasm-kernel": "workspace:*",
-    "@bilig/xlsx": "workspace:*",
-    "fflate": "0.3.11"
+    "@bilig/xlsx": "workspace:*"
   },
   "engines": {
     "node": ">=22.0.0"
