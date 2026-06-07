@@ -1,8 +1,8 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
 
 import { exportXlsx, importXlsx } from '../index.js'
+import { buildLegacyCommentWorkbookBytes } from './xlsx-legacy-comment-fixture.js'
 
 interface LegacyNoteVmlMetadata {
   readonly anchor: string
@@ -54,14 +54,51 @@ describe('legacy comment VML roundtrip', () => {
 })
 
 function buildLegacyCommentVmlWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const worksheet: XLSX.WorkSheet = {
-    A1: { t: 's', v: 'Hidden note', c: [{ a: 'Audit', t: 'Hidden assumption note' }] },
-    C3: { t: 'n', v: 42, c: [{ a: 'Review', t: 'Visible review note' }] },
-    '!ref': 'A1:C3',
-  }
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Notes')
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    buildLegacyCommentWorkbookBytes({
+      sheetName: 'Notes',
+      cells: [
+        { address: 'A1', row: 0, col: 0, value: 'Hidden note' },
+        { address: 'C3', row: 2, col: 2, value: 42 },
+      ],
+      comments: [
+        {
+          ref: 'A1',
+          author: 'Audit',
+          textXml: '<t>Hidden assumption note</t>',
+        },
+        {
+          ref: 'C3',
+          author: 'Review',
+          textXml: '<t>Visible review note</t>',
+        },
+      ],
+      shapes: [
+        {
+          row: 0,
+          column: 0,
+          anchor: '1, 15, 2, 4, 4, 48, 6, 12',
+          fillColor: '#ffffe1',
+          marginLeft: '59.25pt',
+          marginTop: '1.5pt',
+          width: '180pt',
+          height: '90pt',
+          visible: false,
+        },
+        {
+          row: 2,
+          column: 2,
+          anchor: '3, 12, 4, 8, 6, 44, 8, 16',
+          fillColor: '#ffffe1',
+          marginLeft: '140.25pt',
+          marginTop: '48pt',
+          width: '180pt',
+          height: '90pt',
+          visible: false,
+        },
+      ],
+    }),
+  )
   const vmlPath = Object.keys(zip).find((path) => path.startsWith('xl/drawings/') && path.endsWith('.vml'))
   if (!vmlPath) {
     throw new Error('Fixture writer did not create a legacy comment VML drawing.')

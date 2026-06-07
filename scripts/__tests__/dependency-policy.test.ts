@@ -48,6 +48,8 @@ const nativeXlsxExcelImportFixtureTests = [
   'packages/excel-import/src/__tests__/xlsx-hyperlink-roundtrip.test.ts',
   'packages/excel-import/src/__tests__/xlsx-large-simple-lazy-package-artifacts.test.ts',
   'packages/excel-import/src/__tests__/xlsx-large-simple-zip-release.test.ts',
+  'packages/excel-import/src/__tests__/xlsx-legacy-comment-rich-text-roundtrip.test.ts',
+  'packages/excel-import/src/__tests__/xlsx-legacy-comment-vml-roundtrip.test.ts',
   'packages/excel-import/src/__tests__/xlsx-print-page-setup-roundtrip.test.ts',
   'packages/excel-import/src/__tests__/xlsx-printer-settings-roundtrip.test.ts',
   'packages/excel-import/src/__tests__/xlsx-protected-range-attributes-roundtrip.test.ts',

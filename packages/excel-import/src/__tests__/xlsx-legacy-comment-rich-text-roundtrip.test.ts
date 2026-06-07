@@ -1,8 +1,8 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import * as XLSX from 'xlsx'
 
 import { exportXlsx, importXlsx } from '../index.js'
+import { buildLegacyCommentWorkbookBytes } from './xlsx-legacy-comment-fixture.js'
 
 describe('legacy comment rich text roundtrip', () => {
   it('preserves legacy note rich text runs on no-op roundtrip', () => {
@@ -40,17 +40,32 @@ describe('legacy comment rich text roundtrip', () => {
 })
 
 function buildRichTextLegacyCommentWorkbookBytes(): Uint8Array {
-  const workbook = XLSX.utils.book_new()
-  const worksheet: XLSX.WorkSheet = {
-    A1: {
-      t: 'n',
-      v: 42,
-      c: [{ a: 'Finance', t: 'Reviewed total needs CFO approval' }],
-    },
-    '!ref': 'A1:A1',
-  }
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Notes')
-  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const zip = unzipSync(
+    buildLegacyCommentWorkbookBytes({
+      sheetName: 'Notes',
+      cells: [{ address: 'A1', row: 0, col: 0, value: 42 }],
+      comments: [
+        {
+          ref: 'A1',
+          author: 'Finance',
+          textXml: '<t>Reviewed total needs CFO approval</t>',
+        },
+      ],
+      shapes: [
+        {
+          row: 0,
+          column: 0,
+          anchor: '1, 15, 2, 4, 4, 48, 6, 12',
+          fillColor: '#ffffe1',
+          marginLeft: '59.25pt',
+          marginTop: '1.5pt',
+          width: '180pt',
+          height: '90pt',
+          visible: false,
+        },
+      ],
+    }),
+  )
   const commentsPath = readCommentsPath(zip)
   zip[commentsPath] = strToU8(
     strFromU8(zip[commentsPath] ?? new Uint8Array()).replace(
