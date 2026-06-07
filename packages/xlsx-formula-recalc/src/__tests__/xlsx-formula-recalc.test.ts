@@ -82,6 +82,7 @@ describe('xlsx-formula-recalc', () => {
 
     expect(readNumber(result.reads['Summary!B2'])).toBe(72_000)
     expect(result.diagnostics?.engineMode).toBe('streaming-native')
+    expect(result.diagnostics?.fallbackUsed).toBe(false)
     expect(readCachedFormulaValue(result.xlsx, 'xl/worksheets/sheet2.xml', 'B2')).toBe('72000')
   })
 
@@ -181,6 +182,7 @@ describe('xlsx-formula-recalc', () => {
       expect(readString(result.reads['Data!AG57152'])).toBe('Child Protection')
       expect(readString(result.reads['Data!AI57152'])).toBe('Mar')
       expect(result.diagnostics?.engineMode).toBe('streaming-native')
+      expect(result.diagnostics?.fallbackUsed).toBe(false)
       expect(result.diagnostics?.formulaCounts.evaluatedFormulaCellCount).toBe(6)
       expect(result.diagnostics?.formulaCounts.nativeKernelFormulaCellCount).toBe(6)
       expect(result.diagnostics?.formulaCounts.nativeKernelBatchCount).toBe(2)
@@ -432,6 +434,7 @@ describe('xlsx-formula-recalc', () => {
         staleCachedValue: true,
       })
       expect(report.diagnostics.engineMode).toBe('streaming-native')
+      expect(report.diagnostics.fallbackUsed).toBe(false)
       expect(report.recalculationCompleted).toBe(true)
       expect(report.excelParity).toBe('not_proven')
     } finally {

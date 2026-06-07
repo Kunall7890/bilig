@@ -404,6 +404,7 @@ describe('xlsx-formula-recalc native aggregates', () => {
       ).rejects.toMatchObject({
         diagnostics: expect.objectContaining({
           engineMode: 'streaming-native',
+          fallbackUsed: false,
           unsupportedReason: expect.stringContaining('external workbook cache sheet is missing'),
         }),
       })

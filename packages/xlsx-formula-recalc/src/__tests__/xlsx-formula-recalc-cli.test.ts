@@ -93,6 +93,7 @@ describe('xlsx-recalc CLI', () => {
       const summary = readCliSummary(stdout)
       expect(summary.reads['Sheet1!B2']?.value).toBe(20)
       expect(summary.diagnostics.engineMode).toBe('streaming-native')
+      expect(summary.diagnostics.fallbackUsed).toBe(false)
       expect(readCachedFormulaValue(readFileSync(outputPath), 'xl/worksheets/sheet1.xml', 'B2')).toBe('20')
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
@@ -156,6 +157,7 @@ process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXls
       expect(output.before).toEqual([])
       expect(output.after).toEqual([])
       expect(output.summary.diagnostics?.engineMode).toBe('streaming-native')
+      expect(output.summary.diagnostics?.fallbackUsed).toBe(false)
       expect(output.summary.reads['Sheet1!B2']?.value).toBe(20)
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
@@ -324,7 +326,7 @@ process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXls
         cacheStatus: 'stale',
         staleCachedValue: true,
       })
-      expect(JSON.parse(stdout).diagnostics.engineMode).toBe('streaming-native')
+      expect(JSON.parse(stdout).diagnostics).toMatchObject({ engineMode: 'streaming-native', fallbackUsed: false })
       expect(JSON.parse(stdout)).not.toHaveProperty('nextStep')
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
@@ -355,7 +357,7 @@ process.stdout.write(JSON.stringify({ exitCode, stderr, before, after: loadedXls
       expect(summary.cacheStatusSummary.stale).toBe(1)
       expect(summary.uninspectedFormulaCellCount).toBe(0)
       expect(summary.suggestedReads).toEqual(['Sheet1!B2'])
-      expect(JSON.parse(stdout).diagnostics.engineMode).toBe('streaming-native')
+      expect(JSON.parse(stdout).diagnostics).toMatchObject({ engineMode: 'streaming-native', fallbackUsed: false })
       expect(JSON.parse(stdout)).not.toHaveProperty('nextStep')
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
@@ -935,6 +937,7 @@ interface CliSummary {
   readonly warnings: readonly string[]
   readonly diagnostics?: {
     readonly engineMode?: string
+    readonly fallbackUsed?: boolean
     readonly externalWorkbookHydration?: Record<string, unknown>
   }
   readonly commandSucceeded: boolean
@@ -1275,8 +1278,10 @@ function readCliSummaryDiagnostics(value: unknown): CliSummary['diagnostics'] | 
   }
   const externalWorkbookHydration = value['externalWorkbookHydration']
   const engineMode = value['engineMode']
+  const fallbackUsed = value['fallbackUsed']
   const parsed = {
     ...(typeof engineMode === 'string' ? { engineMode } : {}),
+    ...(typeof fallbackUsed === 'boolean' ? { fallbackUsed } : {}),
     ...(isRecord(externalWorkbookHydration) ? { externalWorkbookHydration } : {}),
   }
   return Object.keys(parsed).length > 0 ? parsed : undefined

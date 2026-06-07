@@ -280,6 +280,7 @@ function inspectionDiagnostics(args: {
 }): XlsxFormulaRecalcNativeDiagnostics {
   return {
     engineMode: 'streaming-native',
+    fallbackUsed: false,
     inputBytes: args.inputBytes,
     phaseRssPeaks: args.phaseRssPeaks,
     maxObservedRssBytes: args.maxObservedRssBytes,
@@ -375,6 +376,7 @@ function streamingInspectionError(
 ): StreamingNativeXlsxRecalcError {
   return new StreamingNativeXlsxRecalcError(message, {
     engineMode: 'streaming-native',
+    fallbackUsed: false,
     inputBytes: args.inputBytes,
     phaseRssPeaks,
     maxObservedRssBytes: args.maxObservedRssBytes,

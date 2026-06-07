@@ -45,6 +45,7 @@ export interface StreamingNativeFormulaCounts {
 
 export interface XlsxFormulaRecalcNativeDiagnostics {
   readonly engineMode: StreamingNativeXlsxFormulaRecalcEngineMode
+  readonly fallbackUsed: false
   readonly inputBytes: number
   readonly phaseRssPeaks: readonly XlsxFormulaRecalcPhaseRss[]
   readonly maxObservedRssBytes: number
@@ -324,6 +325,7 @@ export async function recalculateXlsxFileToFileStreamingNative(
 
     const diagnostics: XlsxFormulaRecalcNativeDiagnostics = {
       engineMode: 'streaming-native',
+      fallbackUsed: false,
       inputBytes,
       phaseRssPeaks,
       maxObservedRssBytes,
@@ -376,6 +378,7 @@ function streamingError(
 ): StreamingNativeXlsxRecalcError {
   return new StreamingNativeXlsxRecalcError(message, {
     engineMode: 'streaming-native',
+    fallbackUsed: false,
     inputBytes: args.inputBytes,
     phaseRssPeaks,
     maxObservedRssBytes: args.maxObservedRssBytes,
