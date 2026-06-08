@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { strToU8, zipSync } from 'fflate'
 
-import { externalWorkbookReferencesWarning, importXlsx, inspectXlsx, XlsxImportSizeLimitExceededError } from '../index.js'
+import {
+  externalWorkbookReferencesWarning,
+  importWorkbookFile,
+  importXlsx,
+  inspectXlsx,
+  XLSX_CONTENT_TYPE,
+  XlsxImportSizeLimitExceededError,
+} from '../index.js'
 import { importXlsxFromZipByteSource } from '../xlsx-byte-source-import.js'
 
 describe('large XLSX workbook routing', () => {
@@ -22,6 +29,11 @@ describe('large XLSX workbook routing', () => {
     expect(imported.stats?.definedNameCount).toBe(0)
     expect(imported.warnings).toContain(externalWorkbookReferencesWarning)
     expect(imported.snapshot.sheets[0]?.cells).toEqual([{ address: 'A1', value: 1 }])
+
+    const dispatched = importWorkbookFile(bytes, 'external-defined-name-large-simple.xlsx', XLSX_CONTENT_TYPE, {
+      xlsx: { nativeOnly: true },
+    })
+    expect(dispatched.snapshot.sheets[0]?.cells).toEqual([{ address: 'A1', value: 1 }])
   })
 
   it('imports streaming-supported formula-heavy workbooks through the range-source path', () => {

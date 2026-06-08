@@ -21,11 +21,13 @@ import {
   planXlsxImportRoute,
   resolveXlsxImportLimits,
   shouldAllowLegacyLargeSheetJsFallback,
+  xlsxByteInputApiLimit,
   type XlsxImportOptions,
 } from './xlsx-import-limits.js'
 import type { LargeSimpleXlsxHeadlessInspectResult, tryInspectLargeSimpleXlsxHeadless } from './xlsx-large-simple-headless-inspect.js'
 import type { tryImportLargeSimpleXlsx } from './xlsx-large-simple-import.js'
 import { releaseOwnedXlsxSourceBytes, type OwnedXlsxSourceBytes } from './xlsx-owned-source-release.js'
+import { importXlsxFromZipByteSource } from './xlsx-byte-source-import.js'
 import {
   attachImportedXlsxSourceBytes,
   attachImportedXlsxSourceReader,
@@ -485,6 +487,23 @@ function borrowXlsxZipByteSource(source: XlsxZipByteSource): XlsxZipByteSource {
   }
 }
 
+function xlsxZipByteSourceFromBytes(bytes: Uint8Array): XlsxZipByteSource {
+  return {
+    byteLength: bytes.byteLength,
+    readRange(start, end) {
+      return bytes.subarray(start, end)
+    },
+    readRangeInto(start, end, target) {
+      const length = end - start
+      if (target.byteLength < length) {
+        throw new Error('XLSX byte-source import target is too small')
+      }
+      target.set(bytes.subarray(start, end), 0)
+      return target.subarray(0, length)
+    },
+  }
+}
+
 export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string, options: XlsxImportOptions = {}): ImportedWorkbook {
   const ownedSource: OwnedXlsxSourceBytes = { bytes: bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes) }
   const sourceByteLength = ownedSource.bytes.byteLength
@@ -642,7 +661,10 @@ export function importWorkbookFile(
 ): ImportedWorkbook {
   const normalizedContentType = normalizeWorkbookImportContentType(contentType)
   if (normalizedContentType === XLSX_CONTENT_TYPE) {
-    return importXlsx(bytes, fileName, options.xlsx)
+    const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)
+    return data.byteLength > xlsxByteInputApiLimit
+      ? importXlsxFromZipByteSource(xlsxZipByteSourceFromBytes(data), fileName, options.xlsx)
+      : importXlsx(data, fileName, options.xlsx)
   }
   if (normalizedContentType === XLSM_CONTENT_TYPE) {
     return importXlsm(bytes, fileName)
