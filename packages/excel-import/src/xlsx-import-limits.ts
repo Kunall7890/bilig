@@ -7,6 +7,7 @@ import {
 import type { XlsxZipEntries } from './xlsx-zip.js'
 
 export const denseSheetJsByteThreshold = 1_000_000
+export const xlsxByteInputApiLimit = denseSheetJsByteThreshold
 export const largeCalcChainStreamingFormulaThreshold = 50_000
 export const largeCalcChainStreamingByteThreshold = 5_000_000
 export const largeSimpleInMemoryUntouchedExportSourceLimit = 8 * 1024 * 1024
@@ -99,6 +100,7 @@ export class XlsxImportSizeLimitExceededError extends Error {
     limits: Required<XlsxImportLimits>
     stats?: LargeSimpleXlsxHeadlessInspectResult['stats']
     sourceByteLength?: number
+    message?: string
   }) {
     const observed =
       args.reason === 'source-byte-count'
@@ -114,9 +116,10 @@ export class XlsxImportSizeLimitExceededError extends Error {
           : args.limits.maxMaterializedFormulaCells
     const label = args.reason === 'source-byte-count' ? 'source byte' : args.reason === 'cell-count' ? 'cell' : 'formula cell'
     super(
-      `XLSX import exceeds the materialized ${label} limit ` +
-        `(${observed.toLocaleString('en-US')} > ${limit.toLocaleString('en-US')}). ` +
-        'Use a file-backed native XLSX import path, inspectXlsx() for bounded metadata, raise importXlsx limits explicitly, or split the workbook before materializing it.',
+      args.message ??
+        `XLSX import exceeds the materialized ${label} limit ` +
+          `(${observed.toLocaleString('en-US')} > ${limit.toLocaleString('en-US')}). ` +
+          'Use a file-backed native XLSX import path, inspectXlsx() for bounded metadata, raise importXlsx limits explicitly, or split the workbook before materializing it.',
     )
     this.name = 'XlsxImportSizeLimitExceededError'
     this.reason = args.reason
@@ -124,6 +127,25 @@ export class XlsxImportSizeLimitExceededError extends Error {
     this.stats = args.stats
     this.sourceByteLength = args.sourceByteLength
   }
+}
+
+export function assertXlsxByteInputApiWithinLimit(sourceByteLength: number, apiName: string): void {
+  if (sourceByteLength <= xlsxByteInputApiLimit) {
+    return
+  }
+  throw new XlsxImportSizeLimitExceededError({
+    reason: 'source-byte-count',
+    limits: {
+      ...defaultSheetJsFallbackImportLimits,
+      maxMaterializedSourceBytes: xlsxByteInputApiLimit,
+    },
+    sourceByteLength,
+    message: [
+      `${apiName} byte input is small-workbook only: source is ${sourceByteLength.toLocaleString('en-US')} bytes`,
+      `limit is ${xlsxByteInputApiLimit.toLocaleString('en-US')} bytes`,
+      'Use importXlsxFile() or importXlsxFromZipByteSource() for file-backed native XLSX imports.',
+    ].join('; '),
+  })
 }
 
 export function resolveXlsxImportLimits(options: XlsxImportOptions): Required<XlsxImportLimits> | null {

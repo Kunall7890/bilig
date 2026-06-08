@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { strToU8, zipSync } from 'fflate'
 
 import { externalWorkbookReferencesWarning, importXlsx, inspectXlsx, XlsxImportSizeLimitExceededError } from '../index.js'
+import { importXlsxFromZipByteSource } from '../xlsx-byte-source-import.js'
 
 describe('large XLSX workbook routing', () => {
   it('keeps external defined names on the streaming path as a warning', () => {
@@ -12,11 +13,10 @@ describe('large XLSX workbook routing', () => {
       paddingBytes: 1_100_000,
     })
 
-    const inspected = inspectXlsx(bytes, 'external-defined-name-large-simple.xlsx')
-    expect(inspected?.stats.cellCount).toBe(1)
-    expect(inspected?.warnings).toContain(externalWorkbookReferencesWarning)
+    expect(() => inspectXlsx(bytes, 'external-defined-name-large-simple.xlsx')).toThrow(XlsxImportSizeLimitExceededError)
+    expect(() => importXlsx(bytes, 'external-defined-name-large-simple.xlsx')).toThrow(XlsxImportSizeLimitExceededError)
 
-    const imported = importXlsx(bytes, 'external-defined-name-large-simple.xlsx')
+    const imported = importXlsxFromZipByteSource(byteSourceFor(bytes), 'external-defined-name-large-simple.xlsx')
 
     expect(imported.stats?.cellCount).toBe(1)
     expect(imported.stats?.definedNameCount).toBe(0)
@@ -24,23 +24,23 @@ describe('large XLSX workbook routing', () => {
     expect(imported.snapshot.sheets[0]?.cells).toEqual([{ address: 'A1', value: 1 }])
   })
 
-  it('imports streaming-supported formula-heavy workbooks through the default public path', () => {
+  it('imports streaming-supported formula-heavy workbooks through the range-source path', () => {
     const bytes = buildFormulaWorkbook({ rowCount: 50_001, paddingBytes: 1_100_000 })
 
-    const imported = importXlsx(bytes, 'streaming-formula-heavy.xlsx')
+    const imported = importXlsxFromZipByteSource(byteSourceFor(bytes), 'streaming-formula-heavy.xlsx')
 
     expect(imported.stats?.formulaCellCount).toBe(50_001)
     expect(imported.snapshot.sheets[0]?.cells).toHaveLength(50_001)
   })
 
-  it('keeps non-slicer worksheet extensions on the streaming path instead of falling back to SheetJS', () => {
+  it('keeps non-slicer worksheet extensions on the range-source streaming path instead of falling back to SheetJS', () => {
     const bytes = buildFormulaWorkbook({
       rowCount: 50_001,
       paddingBytes: 1_100_000,
       includeWorksheetExtensionList: true,
     })
 
-    const imported = importXlsx(bytes, 'streaming-formula-heavy-extlst.xlsx')
+    const imported = importXlsxFromZipByteSource(byteSourceFor(bytes), 'streaming-formula-heavy-extlst.xlsx')
 
     expect(imported.stats?.formulaCellCount).toBe(50_001)
     expect(imported.snapshot.sheets[0]?.cells).toHaveLength(50_001)
@@ -53,7 +53,9 @@ describe('large XLSX workbook routing', () => {
       includeUnsupportedPackagePart: true,
     })
 
-    expect(() => importXlsx(bytes, 'unsupported-formula-heavy.xlsx')).toThrow(XlsxImportSizeLimitExceededError)
+    expect(() => importXlsxFromZipByteSource(byteSourceFor(bytes), 'unsupported-formula-heavy.xlsx')).toThrow(
+      XlsxImportSizeLimitExceededError,
+    )
   })
 
   it('rejects sparse large SheetJS fallback by source bytes before materialized reads', () => {
@@ -66,7 +68,7 @@ describe('large XLSX workbook routing', () => {
 
     let thrown: unknown
     try {
-      importXlsx(bytes, 'sparse-large-fallback.xlsx', {
+      importXlsxFromZipByteSource(byteSourceFor(bytes), 'sparse-large-fallback.xlsx', {
         externalWorkbooks: [{ bytes: new Uint8Array([1]), fileName: 'external.xlsx' }],
       })
     } catch (error) {
@@ -92,7 +94,7 @@ describe('large XLSX workbook routing', () => {
 
     let thrown: unknown
     try {
-      importXlsx(bytes, 'sparse-large-limits-false-fallback.xlsx', {
+      importXlsxFromZipByteSource(byteSourceFor(bytes), 'sparse-large-limits-false-fallback.xlsx', {
         externalWorkbooks: [{ bytes: new Uint8Array([1]), fileName: 'external.xlsx' }],
         limits: false,
       })
@@ -108,6 +110,15 @@ describe('large XLSX workbook routing', () => {
     expect(thrown.sourceByteLength).toBe(bytes.byteLength)
   })
 })
+
+function byteSourceFor(bytes: Uint8Array): { readonly byteLength: number; readRange(start: number, end: number): Uint8Array } {
+  return {
+    byteLength: bytes.byteLength,
+    readRange(start, end) {
+      return bytes.subarray(start, end)
+    },
+  }
+}
 
 function buildFormulaWorkbook(options: {
   readonly rowCount: number

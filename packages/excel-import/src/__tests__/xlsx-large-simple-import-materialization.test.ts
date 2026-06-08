@@ -1,7 +1,8 @@
 import { strToU8, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 
-import { importXlsx } from '../index.js'
+import { importXlsx, XlsxImportSizeLimitExceededError } from '../index.js'
+import { importXlsxFromZipByteSource } from '../xlsx-byte-source-import.js'
 import { lazySheetCellMaterializationThreshold } from '../xlsx-large-simple-build-parsed-worksheet.js'
 import { tryImportLargeSimpleXlsx } from '../xlsx-large-simple-import.js'
 import { isLazyWorkbookSheetCells } from '../xlsx-large-simple-lazy-sheet-cells.js'
@@ -104,7 +105,7 @@ describe('large simple XLSX import materialization lifetime', () => {
     expect(readLazyXlsxZipSourceByteLength(zip)).toBe(0)
   })
 
-  it('enables public spooled-source imports to finalize independent sheets before global materialization', () => {
+  it('keeps large independent-sheet imports on the range-source finalization path', () => {
     const bytes = buildIndependentWorkbook(
       [
         {
@@ -121,7 +122,9 @@ describe('large simple XLSX import materialization lifetime', () => {
       { 'docProps/padding.bin': deterministicBytes(9_000_000) },
     )
 
-    const imported = importXlsx(bytes, 'public-spooled-independent-sheets.xlsx')
+    expect(() => importXlsx(bytes, 'public-spooled-independent-sheets.xlsx')).toThrow(XlsxImportSizeLimitExceededError)
+
+    const imported = importXlsxFromZipByteSource(byteSourceFor(bytes), 'public-spooled-independent-sheets.xlsx')
     const phases = imported.stats?.phaseTelemetry.map((entry) => entry.phase) ?? []
     const ownedReleasePhase = imported.stats?.phaseTelemetry.find((entry) => entry.ownedSourceBytesBeforeRelease !== undefined)
     const firstMaterializationIndex = phases.indexOf('public-snapshot-materialization')
@@ -138,8 +141,7 @@ describe('large simple XLSX import materialization lifetime', () => {
         { address: 'B1', value: 'B inline' },
       ],
     ])
-    expect(ownedReleasePhase?.ownedSourceBytesBeforeRelease).toBeGreaterThan(8 * 1024 * 1024)
-    expect(ownedReleasePhase?.ownedSourceBytesAfterRelease).toBe(0)
+    expect(ownedReleasePhase).toBeUndefined()
     expect(firstMaterializationIndex).toBeGreaterThanOrEqual(0)
     expect(firstMaterializationIndex).toBeLessThan(sharedStringResolutionIndex)
     expect(firstMaterializationIndex).toBeLessThan(styleParsingIndex)
@@ -654,6 +656,15 @@ function deterministicBytes(length: number): Uint8Array {
     bytes[index] = (state >>> 24) & 0xff
   }
   return bytes
+}
+
+function byteSourceFor(bytes: Uint8Array): { readonly byteLength: number; readRange(start: number, end: number): Uint8Array } {
+  return {
+    byteLength: bytes.byteLength,
+    readRange(start, end) {
+      return bytes.subarray(start, end)
+    },
+  }
 }
 
 function sharedStringWorksheetXml(sharedStringIndexes: readonly number[]): string {

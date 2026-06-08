@@ -14,6 +14,7 @@ import {
 import type { ImportedWorkbook } from './workbook-import-result.js'
 import {
   assertXlsxInspectionWithinMaterializationLimits,
+  assertXlsxByteInputApiWithinLimit,
   assertXlsxSheetJsFallbackWithinMaterializationLimits,
   denseSheetJsByteThreshold,
   largeSimpleInMemoryUntouchedExportSourceLimit,
@@ -467,6 +468,7 @@ function inspectLargeSimpleXlsxByteSource(
 
 export function inspectXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): XlsxHeadlessInspectResult | null {
   const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)
+  assertXlsxByteInputApiWithinLimit(data.byteLength, 'inspectXlsx')
   return inspectLargeSimpleXlsxSource(data, fileName, { minByteLength: 0 })
 }
 
@@ -486,6 +488,7 @@ function borrowXlsxZipByteSource(source: XlsxZipByteSource): XlsxZipByteSource {
 export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string, options: XlsxImportOptions = {}): ImportedWorkbook {
   const ownedSource: OwnedXlsxSourceBytes = { bytes: bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes) }
   const sourceByteLength = ownedSource.bytes.byteLength
+  assertXlsxByteInputApiWithinLimit(sourceByteLength, 'importXlsx')
   let spooledUntouchedExportSource: (ImportedXlsxSourceReader & XlsxZipByteSource) | undefined =
     sourceByteLength > largeSimpleInMemoryUntouchedExportSourceLimit
       ? createTempFileImportedXlsxSourceReader(ownedSource.bytes, { maxReadBytes: spooledSourceReadBytesLimitFor(options) })
@@ -616,6 +619,7 @@ function spooledSourceReadBytesLimitFor(options: XlsxImportOptions): number | fa
 
 export function importXlsm(bytes: Uint8Array | ArrayBuffer, fileName: string): ImportedWorkbook {
   const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)
+  assertXlsxByteInputApiWithinLimit(data.byteLength, 'importXlsm')
   const workbookZip = readValidXlsxZipContainer(data, 'lazy')
   return importSheetJsWorkbook(data, fileName, XLSM_CONTENT_TYPE, workbookZip, data)
 }

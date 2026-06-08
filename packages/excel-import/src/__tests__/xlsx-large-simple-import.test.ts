@@ -258,7 +258,7 @@ describe('large simple XLSX import fast path', () => {
       },
     })
 
-    const imported = importXlsx(bytes, 'data-only-retry.xlsx')
+    const imported = importXlsxFromZipByteSource(byteSourceFor(bytes), 'data-only-retry.xlsx')
 
     expect(imported.stats?.phaseTelemetry.map((entry) => entry.phase)).toContain('public-snapshot-materialization')
     expect(imported.snapshot.sheets[0]?.cells).toEqual([{ address: 'A1', value: 1 }])
@@ -1456,7 +1456,7 @@ describe('large simple XLSX import fast path', () => {
       },
     })
 
-    const imported = importXlsx(bytes, 'cached-formula-calcchain.xlsx')
+    const imported = importXlsxFromZipByteSource(byteSourceFor(bytes), 'cached-formula-calcchain.xlsx')
 
     expect(imported.stats?.formulaCellCount).toBe(50_001)
     expect(imported.snapshot.sheets[0]?.cells).toHaveLength(50_001)
@@ -1639,6 +1639,15 @@ function countByteSourceZipEntryStreams(
     },
     count: () => streamCount,
     readIntoCount: () => readIntoCount,
+  }
+}
+
+function byteSourceFor(bytes: Uint8Array): { readonly byteLength: number; readRange(start: number, end: number): Uint8Array } {
+  return {
+    byteLength: bytes.byteLength,
+    readRange(start, end) {
+      return bytes.subarray(start, end)
+    },
   }
 }
 
