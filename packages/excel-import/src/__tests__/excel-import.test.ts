@@ -24,6 +24,7 @@ import {
   readImportedXlsxCellStyle,
   volatileFormulasWarning,
 } from '../index.js'
+import { importXlsxFromZipByteSource } from '../xlsx-byte-source-import.js'
 
 const relationshipNamespace = 'http://schemas.openxmlformats.org/package/2006/relationships'
 const commentsRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments'
@@ -303,6 +304,15 @@ function inflateXlsxForDenseSheetJsParse(bytes: Uint8Array): Uint8Array {
   }
   zip['customXml/dense-parse-filler.bin'] = filler
   return zipSync(zip, { level: 0 })
+}
+
+function byteSourceFor(bytes: Uint8Array): { readonly byteLength: number; readRange(start: number, end: number): Uint8Array } {
+  return {
+    byteLength: bytes.byteLength,
+    readRange(start, end) {
+      return bytes.subarray(start, end)
+    },
+  }
 }
 
 function buildExternalGetPivotDataLinkCacheWorkbook(): Uint8Array {
@@ -998,8 +1008,9 @@ describe('excel import', () => {
 
   it('keeps companion workbook hydration scoped on the dense SheetJS parse path', () => {
     const sourceBytes = inflateXlsxForDenseSheetJsParse(buildExternalLinkRangeCacheWorkbook())
-    const imported = importXlsx(sourceBytes, 'external-link-range-cache-dense.xlsx', {
+    const imported = importXlsxFromZipByteSource(byteSourceFor(sourceBytes), 'external-link-range-cache-dense.xlsx', {
       externalWorkbooks: [{ fileName: 'rates.xlsx', bytes: buildRatesWorkbook([20, 30, 40]) }],
+      limits: { maxMaterializedSourceBytes: sourceBytes.byteLength },
     })
     const cacheSheet = imported.snapshot.sheets.find((sheet) => sheet.name === '__bilig_ext_1_Rates')
     const cacheCells = new Map(cacheSheet?.cells.map((cell) => [cell.address, cell.value]) ?? [])

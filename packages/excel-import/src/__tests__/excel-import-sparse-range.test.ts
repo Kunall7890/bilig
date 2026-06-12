@@ -4,6 +4,7 @@ import { writeSimpleXlsxWorkbook } from '@bilig/xlsx'
 
 import { readBenchToleranceMultiplier } from '../../../../scripts/bench-tolerance.js'
 import { importXlsx } from '../index.js'
+import { importXlsxFromZipByteSource } from '../xlsx-byte-source-import.js'
 
 describe('XLSX sparse ranges', () => {
   it('imports actual cells without scanning every coordinate in a broad sparse ref', () => {
@@ -110,12 +111,26 @@ function readBenchmarkTolerance(): number {
   return readBenchToleranceMultiplier(process.env)
 }
 
-function measureImport(bytes: Uint8Array, fileName: string): { imported: ReturnType<typeof importXlsx>; durationMs: number } {
+function measureImport(
+  bytes: Uint8Array,
+  fileName: string,
+): { imported: ReturnType<typeof importXlsxFromZipByteSource>; durationMs: number } {
   const start = performance.now()
-  const imported = importXlsx(bytes, fileName)
+  const imported = importXlsxFromZipByteSource(byteSourceFor(bytes), fileName, {
+    attachSourceReaderForUntouchedExport: false,
+  })
   return {
     imported,
     durationMs: performance.now() - start,
+  }
+}
+
+function byteSourceFor(bytes: Uint8Array): { readonly byteLength: number; readRange(start: number, end: number): Uint8Array } {
+  return {
+    byteLength: bytes.byteLength,
+    readRange(start, end) {
+      return bytes.subarray(start, end)
+    },
   }
 }
 
