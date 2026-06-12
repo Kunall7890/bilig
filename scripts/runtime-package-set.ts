@@ -59,6 +59,12 @@ export interface RuntimePackagePublishProvisioningPlan {
   reason: string
 }
 
+export interface RuntimePackagePublishOrderingInput {
+  runtimePackages: readonly RuntimePackageManifest[]
+  missingPackageNames: ReadonlySet<string>
+  targetVersionPublishedPackageNames: ReadonlySet<string>
+}
+
 export interface StableSemver {
   major: number
   minor: number
@@ -192,6 +198,29 @@ export function formatRuntimePackagePublishedVersions(publishedVersions: readonl
 
 export function missingPublishedRuntimePackageNames(publishedVersions: readonly RuntimePackagePublishedVersion[]): string[] {
   return publishedVersions.filter((entry) => entry.version === null).map((entry) => entry.packageName)
+}
+
+export function orderRuntimePackagesForPublish(input: RuntimePackagePublishOrderingInput): RuntimePackageManifest[] {
+  return input.runtimePackages.toSorted((left, right) => {
+    const priorityDelta =
+      runtimePackagePublishPriority(left, input.missingPackageNames, input.targetVersionPublishedPackageNames) -
+      runtimePackagePublishPriority(right, input.missingPackageNames, input.targetVersionPublishedPackageNames)
+    return priorityDelta !== 0 ? priorityDelta : input.runtimePackages.indexOf(left) - input.runtimePackages.indexOf(right)
+  })
+}
+
+function runtimePackagePublishPriority(
+  runtimePackage: RuntimePackageManifest,
+  missingPackageNames: ReadonlySet<string>,
+  targetVersionPublishedPackageNames: ReadonlySet<string>,
+): number {
+  if (missingPackageNames.has(runtimePackage.name)) {
+    return 0
+  }
+  if (!targetVersionPublishedPackageNames.has(runtimePackage.name)) {
+    return 1
+  }
+  return 2
 }
 
 export function isNpmDuplicateVersionPublishError(output: string): boolean {

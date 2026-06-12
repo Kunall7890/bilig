@@ -8,6 +8,7 @@ import {
   highestPublishedStableSemver,
   highestStableSemver,
   missingPublishedRuntimePackageNames,
+  orderRuntimePackagesForPublish,
   parseBooleanEnv,
   planRuntimePackagePublishProvisioning,
   resolvePublishedRuntimePackageBaseline,
@@ -238,6 +239,24 @@ describe('runtime release helpers', () => {
       missingPackageNames: ['sheetjs-formula-recalc'],
       reason: 'unprovisioned npm package name(s) will be skipped: sheetjs-formula-recalc',
     })
+  })
+
+  it('orders missing and unpublished runtime packages before already-published target versions', () => {
+    const runtimePackages = [
+      { dir: 'packages/protocol', name: '@bilig/protocol', version: '0.164.0' },
+      { dir: 'packages/formula', name: '@bilig/formula', version: '0.164.0' },
+      { dir: 'packages/xlsx', name: '@bilig/xlsx', version: '0.164.0' },
+      { dir: 'packages/headless', name: '@bilig/headless', version: '0.164.0' },
+      { dir: 'packages/workpaper', name: '@bilig/workpaper', version: '0.164.0' },
+    ] as const
+
+    expect(
+      orderRuntimePackagesForPublish({
+        runtimePackages,
+        missingPackageNames: new Set(['@bilig/xlsx']),
+        targetVersionPublishedPackageNames: new Set(['@bilig/protocol', '@bilig/formula']),
+      }).map((runtimePackage) => runtimePackage.name),
+    ).toEqual(['@bilig/xlsx', '@bilig/headless', '@bilig/workpaper', '@bilig/protocol', '@bilig/formula'])
   })
 
   it('uses strict boolean parsing for runtime publish controls', () => {

@@ -14,6 +14,7 @@ import {
   planRuntimePackagePublishProvisioning,
   parseBooleanEnv,
   missingPublishedRuntimePackageNames,
+  orderRuntimePackagesForPublish,
   type RuntimePackagePublishedVersion,
   type RuntimePackageManifest,
 } from './runtime-package-set.ts'
@@ -85,9 +86,20 @@ try {
   }
 
   const tarballsByPackage = indexTarballs(packDir)
+  const targetVersionPublishedPackageNames = new Set<string>()
+  for (const runtimePackage of runtimePackages) {
+    if (isVersionPublished(runtimePackage.name, targetVersion)) {
+      targetVersionPublishedPackageNames.add(runtimePackage.name)
+    }
+  }
+  const runtimePackagesByPublishOrder = orderRuntimePackagesForPublish({
+    runtimePackages,
+    missingPackageNames,
+    targetVersionPublishedPackageNames,
+  })
   const results = []
 
-  for (const runtimePackage of runtimePackages) {
+  for (const runtimePackage of runtimePackagesByPublishOrder) {
     if (skipUnprovisionedNpmPackages && missingPackageNames.has(runtimePackage.name)) {
       results.push({
         package: runtimePackage.name,
@@ -103,7 +115,7 @@ try {
       throw new Error(`Packed tarball missing for ${runtimePackage.name}@${targetVersion}`)
     }
 
-    if (isVersionPublished(runtimePackage.name, targetVersion)) {
+    if (targetVersionPublishedPackageNames.has(runtimePackage.name)) {
       results.push(resolvePublishedVersionResult(runtimePackage.name, targetVersion))
       continue
     }
@@ -136,6 +148,9 @@ try {
       status: dryRun ? 'would-publish' : 'published',
       tag: distTag,
     })
+    if (!dryRun) {
+      targetVersionPublishedPackageNames.add(runtimePackage.name)
+    }
   }
 
   console.log(
