@@ -97,6 +97,7 @@
   },
   "dependencies": {
     "@bilig/headless": "workspace:*",
+    "@bilig/xlsx-formula-recalc": "workspace:*",
     "bilig-workpaper": "workspace:*"
   },
   "devDependencies": {
