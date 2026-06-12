@@ -81,9 +81,9 @@ describe('headless package workflow', () => {
       expect(headlessBuildIndex).toBeLessThan(unscopedWorkpaperBuildIndex)
     }
     const biligBuildScript = biligPackageJsonSource
+    expect(biligBuildScript).toContain('pnpm --dir ../.. --filter @bilig/xlsx build')
     expect(biligBuildScript).toContain('pnpm --dir ../.. --filter @bilig/headless build')
-    expect(biligBuildScript).toContain('pnpm --dir ../.. --filter @bilig/xlsx-formula-recalc build')
-    expect(biligBuildScript.indexOf('pnpm --dir ../.. --filter @bilig/xlsx-formula-recalc build')).toBeLessThan(
+    expect(biligBuildScript.indexOf('pnpm --dir ../.. --filter @bilig/xlsx build')).toBeLessThan(
       biligBuildScript.indexOf('tsc -p tsconfig.json'),
     )
     expect(source).toContain(
@@ -116,6 +116,10 @@ describe('headless package workflow', () => {
     expect(source).toContain('packages/bilig-exceljs-formula-recalc')
     expect(source).toContain('packages/create-workpaper/package.json')
     expect(source).toContain('packages/create-workpaper')
+    expect(source).toContain('examples/huggingface-workpaper-space/package.json')
+    expect(source).toContain('examples/huggingface-workpaper-space/README.md')
+    expect(source).toContain('examples/huggingface-workpaper-space/workpaper_proof.mjs')
+    expect(source).toContain('examples/huggingface-workpaper-space/scripts/check-space.py')
     expect(source).toContain('action.yml')
     expect(source).toContain('actions/xlsx-cache-doctor/action.yml')
     expect(source).toContain('scripts/check-create-workpaper-package.ts')

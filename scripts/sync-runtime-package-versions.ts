@@ -39,6 +39,7 @@ export function syncRuntimePackageVersions(options: SyncRuntimePackageVersionsOp
   syncGeminiExtensionVersion(options.rootDir, version, updatedFiles)
   syncXlsxCacheDoctorActionVersion(options.rootDir, version, updatedFiles)
   syncAgentEvaluatorDocVersions(options.rootDir, version, updatedFiles)
+  syncHuggingFaceWorkpaperSpaceVersion(options.rootDir, version, updatedFiles)
   syncMcpDirectoryDocVersion(options.rootDir, version, updatedFiles)
 
   return {
@@ -46,6 +47,46 @@ export function syncRuntimePackageVersions(options: SyncRuntimePackageVersionsOp
     updatedFiles,
     updatedPackages: runtimePackages.map((runtimePackage) => runtimePackage.name),
   }
+}
+
+function syncHuggingFaceWorkpaperSpaceVersion(rootDir: string, version: string, updatedFiles: string[]): void {
+  const packageJsonPath = join(rootDir, 'examples/huggingface-workpaper-space/package.json')
+  const packageJson = readJsonRecord(packageJsonPath)
+  const dependencies = packageJson['dependencies']
+  if (!isRecord(dependencies)) {
+    throw new Error(`${packageJsonPath} must define object dependencies`)
+  }
+  dependencies['@bilig/workpaper'] = version
+  if (writeJsonIfChanged(packageJsonPath, packageJson)) {
+    updatedFiles.push(packageJsonPath)
+  }
+
+  const readmePath = join(rootDir, 'examples/huggingface-workpaper-space/README.md')
+  const readme = readFileSync(readmePath, 'utf8')
+  const nextReadme = readme
+    .replace(/@bilig\/workpaper@\d+\.\d+\.\d+/gu, `@bilig/workpaper@${version}`)
+    .replace(/"packageVersion": "\d+\.\d+\.\d+"/gu, `"packageVersion": "${version}"`)
+  writeTextIfChanged(readmePath, readme, nextReadme, updatedFiles)
+
+  const proofPath = join(rootDir, 'examples/huggingface-workpaper-space/workpaper_proof.mjs')
+  const proof = readFileSync(proofPath, 'utf8')
+  const nextProof = replaceRequired(
+    proof,
+    /const workpaperPackageVersion = '\d+\.\d+\.\d+'/u,
+    `const workpaperPackageVersion = '${version}'`,
+    `${proofPath} must define workpaperPackageVersion`,
+  )
+  writeTextIfChanged(proofPath, proof, nextProof, updatedFiles)
+
+  const checkPath = join(rootDir, 'examples/huggingface-workpaper-space/scripts/check-space.py')
+  const check = readFileSync(checkPath, 'utf8')
+  const nextCheck = replaceRequired(
+    check,
+    /payload\.get\("packageVersion"\) != "\d+\.\d+\.\d+"/u,
+    `payload.get("packageVersion") != "${version}"`,
+    `${checkPath} must validate packageVersion`,
+  )
+  writeTextIfChanged(checkPath, check, nextCheck, updatedFiles)
 }
 
 function syncMcpDirectoryDocVersion(rootDir: string, version: string, updatedFiles: string[]): void {

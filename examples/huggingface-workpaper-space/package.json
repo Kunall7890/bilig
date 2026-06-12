@@ -6,7 +6,7 @@
     "proof": "node workpaper_proof.mjs 0.4"
   },
   "dependencies": {
-    "@bilig/workpaper": "0.163.0"
+    "@bilig/workpaper": "0.164.0"
   },
   "engines": {
     "node": ">=22.0.0"

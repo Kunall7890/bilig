@@ -25,7 +25,7 @@ WorkPaper JSON, restores it, and returns the exact values it read back. It is
 meant for agents and evaluators that need a no-key workbook API check before
 they wire Bilig into a private workflow.
 
-The template pins `@bilig/workpaper@0.163.0`, matching the current published
+The template pins `@bilig/workpaper@0.164.0`, matching the current published
 Bilig WorkPaper package line.
 
 ## Local Check
@@ -39,7 +39,7 @@ Expected result:
 
 ```json
 {
-  "packageVersion": "0.163.0",
+  "packageVersion": "0.164.0",
   "verified": true
 }
 ```

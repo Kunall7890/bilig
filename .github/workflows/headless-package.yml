@@ -880,6 +880,10 @@ jobs:
             docs/public-evidence.json
             packages/benchmarks/baselines/workpaper-vs-ironcalc-rust.json
             packages/benchmarks/baselines/headless-performance-leadership-scorecard.json
+            examples/huggingface-workpaper-space/package.json
+            examples/huggingface-workpaper-space/README.md
+            examples/huggingface-workpaper-space/workpaper_proof.mjs
+            examples/huggingface-workpaper-space/scripts/check-space.py
             README.md
             Dockerfile
             packages/protocol/package.json

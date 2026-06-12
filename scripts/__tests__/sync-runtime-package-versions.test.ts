@@ -82,6 +82,20 @@ describe('syncRuntimePackageVersions', () => {
     const agentEvaluatorDoc = ['{', '  "@bilig/workpaper": "0.1.95",', '  "xlsx-formula-recalc": "0.1.95"', '}', ''].join('\n')
     writeFileSync(join(rootDir, 'docs/agent-adoption-kit.md'), agentEvaluatorDoc)
     writeFileSync(join(rootDir, 'docs/eval-agent-mcp.md'), agentEvaluatorDoc)
+    mkdirSync(join(rootDir, 'examples/huggingface-workpaper-space/scripts'), { recursive: true })
+    writeFileSync(
+      join(rootDir, 'examples/huggingface-workpaper-space/package.json'),
+      `${JSON.stringify({ dependencies: { '@bilig/workpaper': '0.1.95' } }, null, 2)}\n`,
+    )
+    writeFileSync(
+      join(rootDir, 'examples/huggingface-workpaper-space/README.md'),
+      ['The template pins `@bilig/workpaper@0.1.95`.', '{', '  "packageVersion": "0.1.95"', '}', ''].join('\n'),
+    )
+    writeFileSync(join(rootDir, 'examples/huggingface-workpaper-space/workpaper_proof.mjs'), "const workpaperPackageVersion = '0.1.95'\n")
+    writeFileSync(
+      join(rootDir, 'examples/huggingface-workpaper-space/scripts/check-space.py'),
+      'if payload.get("packageVersion") != "0.1.95":\n    raise SystemExit()\n',
+    )
 
     writeFileSync(
       join(rootDir, 'packages/headless/server.json'),
@@ -135,7 +149,7 @@ describe('syncRuntimePackageVersions', () => {
     const result = syncRuntimePackageVersions({ rootDir, version: '0.14.14' })
 
     expect(result.updatedPackages).toEqual(RUNTIME_PACKAGE_DIRS.map(packageNameForDir))
-    expect(result.updatedFiles).toHaveLength(RUNTIME_PACKAGE_DIRS.length + 12)
+    expect(result.updatedFiles).toHaveLength(RUNTIME_PACKAGE_DIRS.length + 16)
 
     for (const packageDir of RUNTIME_PACKAGE_DIRS) {
       const manifest = JSON.parse(readFileSync(join(rootDir, packageDir, 'package.json'), 'utf8'))
@@ -171,6 +185,17 @@ describe('syncRuntimePackageVersions', () => {
     expect(readFileSync(join(rootDir, 'docs/xlsx-cache-doctor-github-action.md'), 'utf8')).toContain('| `package-version`    | 0.14.14 |')
     expect(readFileSync(join(rootDir, 'docs/agent-adoption-kit.md'), 'utf8')).toContain('"@bilig/workpaper": "0.14.14"')
     expect(readFileSync(join(rootDir, 'docs/eval-agent-mcp.md'), 'utf8')).toContain('"xlsx-formula-recalc": "0.14.14"')
+    expect(JSON.parse(readFileSync(join(rootDir, 'examples/huggingface-workpaper-space/package.json'), 'utf8')).dependencies).toEqual({
+      '@bilig/workpaper': '0.14.14',
+    })
+    expect(readFileSync(join(rootDir, 'examples/huggingface-workpaper-space/README.md'), 'utf8')).toContain('@bilig/workpaper@0.14.14')
+    expect(readFileSync(join(rootDir, 'examples/huggingface-workpaper-space/README.md'), 'utf8')).toContain('"packageVersion": "0.14.14"')
+    expect(readFileSync(join(rootDir, 'examples/huggingface-workpaper-space/workpaper_proof.mjs'), 'utf8')).toContain(
+      "const workpaperPackageVersion = '0.14.14'",
+    )
+    expect(readFileSync(join(rootDir, 'examples/huggingface-workpaper-space/scripts/check-space.py'), 'utf8')).toContain(
+      'payload.get("packageVersion") != "0.14.14"',
+    )
     const mcpDirectoryDoc = readFileSync(join(rootDir, 'docs/mcp-spreadsheet-server-directory.md'), 'utf8')
     expect(mcpDirectoryDoc).toContain('package `@bilig/workpaper` is version `0.1.90`')
     expect(mcpDirectoryDoc).toContain('the current repo package version is `0.14.14`')
