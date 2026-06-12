@@ -636,8 +636,9 @@ describe('repository dependency policy', () => {
 
   it('keeps unchanged source export file-backed for imported XLSX source readers', () => {
     const exportSource = readFileSync(join(repoRoot, 'packages/excel-import/src/xlsx-export.ts'), 'utf8')
+    const sourceCopy = readFileSync(join(repoRoot, 'packages/excel-import/src/xlsx-source-copy.ts'), 'utf8')
     const exportToFileStart = exportSource.indexOf('export function exportXlsxToFile(')
-    const exportToFileEnd = exportSource.indexOf('const importedSourceCopyChunkSize')
+    const exportToFileEnd = exportSource.indexOf('const bytes = exportXlsx(snapshot)', exportToFileStart)
     const exportToFileSource = exportSource.slice(exportToFileStart, exportToFileEnd)
 
     expect(exportSource).toContain('const sourcePreservingExportFallbackBytesLimit = 1_000_000')
@@ -649,9 +650,9 @@ describe('repository dependency policy', () => {
     expect(exportToFileSource).toContain('tryCopyImportedXlsxSourceToFile(importedSource, outputPath)')
     expect(exportToFileSource).toContain('if (patches.length > 0)')
     expect(exportToFileSource).toContain('} else {')
-    expect(exportSource).toContain('const importedSourceCopyChunkSize = 1024 * 1024')
-    expect(exportSource).toContain('const chunk = source.readRange(offset, end)')
-    expect(exportSource).toContain('writeSync(fd, chunk, chunkOffset, chunk.byteLength - chunkOffset)')
+    expect(sourceCopy).toContain('const importedSourceCopyChunkSize = 1024 * 1024')
+    expect(sourceCopy).toContain('const chunk = source.readRange(offset, end)')
+    expect(sourceCopy).toContain('writeSync(fd, chunk, chunkOffset, chunk.byteLength - chunkOffset)')
   })
 
   it('keeps the native recalc public corpus script as a hard 50-workbook gate', () => {
