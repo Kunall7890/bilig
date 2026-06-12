@@ -76,7 +76,7 @@ mode and let it show stale cached formulas before it blocks anything:
   with:
     workbooks: '**/*.xlsx'
     changed-files-only: 'true'
-    package-version: '0.163.0'
+    package-version: '0.164.0'
     fail-on-stale: 'false'
 ```
 
@@ -671,9 +671,9 @@ matters.
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.163.0`:
+Current checked npm footprint for `@bilig/headless@0.164.0`:
 
-- Pack dry run: `863 kB` tarball, `5.28 MB` unpacked, `835` package entries.
+- Pack dry run: `860 kB` tarball, `5.24 MB` unpacked, `835` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper; reduced workbook reports use the
