@@ -266,12 +266,6 @@ persistence gap, generate the fixture report:
 npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
-For saved-file cache diagnostics on the same reduced fixture:
-
-```sh
-npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json
-```
-
 Handing a spreadsheet task to another coding agent? Start with the
 [agent handoff prompt](docs/headless-workpaper-agent-handbook.md#copy-paste-prompt-for-another-agent)
 before opening Excel, LibreOffice, Google Sheets, or a screenshot UI.
@@ -609,7 +603,6 @@ boundary:
 ```sh
 npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json
 npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibility-report workbook.xlsx --json
-npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor pricing.xlsx --json
 npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json
 npm exec --package @bilig/sheetjs-formula-recalc@latest -- sheetjs-recalc --demo --json
 ```
@@ -800,7 +793,7 @@ file-backed WorkPaper tools:
   before promoting a WorkPaper-backed workflow beyond evaluation.
 - For XLSX accuracy audits, use the
   [Excel oracle harness](docs/xlsx-corpus-verifier-walkthrough.md#run-the-excel-oracle-harness).
-  It separates import success, timeouts, stale cached formula values, and fresh
+  It separates import success, timeouts, cached workbook values, and fresh
   Microsoft Excel recalculation results.
 - The WorkPaper MCP server is listed in the
   [official MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper)

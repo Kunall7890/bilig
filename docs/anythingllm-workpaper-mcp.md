@@ -11,7 +11,7 @@ image: /assets/github-social-preview.png
 
 Use this when an AnythingLLM agent needs spreadsheet-shaped business logic, but
 the formula state should live behind explicit WorkPaper tools instead of Excel
-UI automation, browser grid clicks, or stale XLSX cached values.
+UI automation, browser grid clicks, or unchecked workbook readback.
 
 AnythingLLM loads MCP servers from `plugins/anythingllm_mcp_servers.json` in the
 AnythingLLM storage directory. Its MCP integration exposes tools to agents; it

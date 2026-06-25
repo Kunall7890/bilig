@@ -143,7 +143,7 @@ interface CliOptions {
 
 const defaultOwner = 'proompteng'
 const defaultRepo = 'bilig'
-const defaultPackageName = '@bilig/headless'
+const defaultPackageName = '@bilig/workpaper'
 const defaultMaintainerLogin = 'gregkonush'
 const execFileAsync = promisify(execFile)
 const githubCliMaxBufferBytes = 4 * 1024 * 1024

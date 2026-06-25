@@ -11,8 +11,8 @@ image: /assets/github-social-preview.png
 
 Use this when an Airbyte sync has produced records and state, but the post-sync
 business validation should run through reviewable formulas with readback proof
-instead of Excel UI automation, browser grid clicks, or stale cached XLSX
-formula values.
+instead of Excel UI automation, browser grid clicks, or unchecked workbook
+readback.
 
 The Airbyte Protocol describes record and state messages as JSON envelopes. A
 source `read` emits `AirbyteRecordMessage` values and `AirbyteStateMessage`

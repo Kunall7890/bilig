@@ -85,8 +85,8 @@ OpenCode supports markdown agents under `.opencode/agents/`. Add:
 ```
 
 The generated file tells OpenCode to invoke the WorkPaper proof path when a
-task mentions pricing, quotes, payouts, budgets, imports, forecasts, stale XLSX
-formula caches, or formula readback after cell edits. It also allows
+task mentions pricing, quotes, payouts, budgets, imports, forecasts, workbook
+validation, or formula readback after cell edits. It also allows
 `bilig-workpaper_*` MCP tools while keeping shell commands reviewable.
 
 The Bilig starter writes `opencode.jsonc` and the OpenCode agent file for a

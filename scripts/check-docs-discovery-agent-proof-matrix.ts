@@ -67,7 +67,6 @@ export async function requireAgentProofMatrixDiscovery({
     'pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight',
     'bilig-agent-xlsx-risk-preflight.v1',
     '[Agent XLSX risk preflight](agent-xlsx-risk-preflight.md)',
-    '| XLSX cache detector |',
     '| ExcelJS recalculation | `npx --package @bilig/exceljs-formula-recalc exceljs-recalc --demo --json` | `commandSucceeded: true`, `recalculationCompleted: true`, `expectedValueMatched: true` |',
     '| MCP Inspector |',
     'analyze_workbook_risk',

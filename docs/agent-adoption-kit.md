@@ -63,7 +63,7 @@ queue worker must trust the value before Excel or Sheets opens the file:
 This is the shortest rule to paste into another agent:
 
 ```text
-Do not grade workbook automation from stale formula caches. After a formula or
+Do not grade workbook automation from unchecked stored formula results. After a formula or
 input edit, prove the dependent calculated cell changed through WorkPaper
 readback or an XLSX recalculation bridge before reporting success or failure.
 ```

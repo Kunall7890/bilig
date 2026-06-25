@@ -12,7 +12,6 @@ npm workbook package: https://www.npmjs.com/package/@bilig/workbook
 npm xlsx recalculation package: https://www.npmjs.com/package/@bilig/xlsx-formula-recalc
 npm SheetJS recalculation package: https://www.npmjs.com/package/@bilig/sheetjs-formula-recalc
 npm ExcelJS recalculation package: https://www.npmjs.com/package/@bilig/exceljs-formula-recalc
-npm full runtime package: https://www.npmjs.com/package/@bilig/headless
 remote MCP endpoint: https://bilig.proompteng.ai/mcp
 ChatGPT Apps WorkPaper MCP: https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html
 Google ADK WorkPaper MCP: https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html
@@ -51,9 +50,7 @@ agent proof matrix: https://proompteng.github.io/bilig/agent-proof-matrix.html
 agent proof transcripts: https://proompteng.github.io/bilig/agent-proof-transcripts.html
 MCP spreadsheet formula server for coding agents: https://proompteng.github.io/bilig/mcp-spreadsheet-formula-server-for-coding-agents.html
 Vercel AI SDK formula readback: https://proompteng.github.io/bilig/vercel-ai-sdk-spreadsheet-tool-formula-readback.html
-ExcelJS formula result not updating after Node edits: https://proompteng.github.io/bilig/exceljs-formula-result-not-updating-after-node-edits.html
-Stale formula readback chooser: https://proompteng.github.io/bilig/stale-formula-readback-chooser.html
-XLSX Cache Doctor proof transcript: https://proompteng.github.io/bilig/xlsx-cache-doctor-proof-transcript.html
+ExcelJS formula result boundary: https://proompteng.github.io/bilig/exceljs-formula-result-not-updating-after-node-edits.html
 Workbook Compatibility Report: https://proompteng.github.io/bilig/workbook-compatibility-report.html
 Workbook Compatibility Report transcript: https://proompteng.github.io/bilig/workbook-compatibility-report-transcript.html
 Workbook Compatibility Report JSON: https://proompteng.github.io/bilig/workbook-compatibility-report.json
@@ -95,13 +92,11 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 
 ## package chooser
 
-- Evaluator for stale XLSX formula caches:
-  https://proompteng.github.io/bilig/eval-xlsx-cache-doctor.html
 - Workbook Compatibility Report:
   https://proompteng.github.io/bilig/workbook-compatibility-report.html
   https://github.com/proompteng/bilig/blob/main/docs/workbook-compatibility-report.md
   Use this to inspect unsupported functions, external links, macro payloads,
-  pivots, volatile functions, stale cached formulas, and risk reasons before a
+  pivots, volatile functions, stored formula results, and risk reasons before a
   Node service or coding agent trusts a specific `.xlsx` workbook. It is not an
   Excel compatibility certificate and must not include a compatibility score.
   Run:
@@ -127,7 +122,7 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   https://proompteng.github.io/bilig/agent-proof-matrix.html
   https://github.com/proompteng/bilig/blob/main/docs/agent-proof-matrix.md
   Use this to choose among WorkPaper service, agent MCP, provider-backed MCP,
-  XLSX cache, XLSX recalculation, ExcelJS recalculation, MCP Inspector, file-backed MCP, Vercel AI SDK, OpenAI,
+  saved-file diagnostics, ExcelJS recalculation, MCP Inspector, file-backed MCP, Vercel AI SDK, OpenAI,
   LangGraph, Semantic Kernel, and Mastra proof paths.
 - Agent proof transcripts:
   https://proompteng.github.io/bilig/agent-proof-transcripts.html
@@ -149,23 +144,11 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 - Google Sheets QUERY/SORTN over local WorkPaper ranges:
   https://proompteng.github.io/bilig/google-sheets-query-sortn-node-workpaper.html
   https://github.com/proompteng/bilig/blob/main/docs/google-sheets-query-sortn-node-workpaper.md
-- Stale formula readback chooser:
-  https://proompteng.github.io/bilig/stale-formula-readback-chooser.html
-  https://github.com/proompteng/bilig/blob/main/docs/stale-formula-readback-chooser.md
-  Use this before choosing among XLSX cache, XLSX recalculation, SheetJS,
-  ExcelJS, xlsx-populate/template, CI, WorkPaper service, and agent MCP proof
-  paths.
-- XLSX Cache Doctor proof transcript:
-  https://proompteng.github.io/bilig/xlsx-cache-doctor-proof-transcript.html
-  https://github.com/proompteng/bilig/blob/main/docs/xlsx-cache-doctor-proof-transcript.md
-  Use this to inspect the exact stale cached value, recalculated value, cell
-  address, suggested reads, and CI boundary before adopting the detector.
 - Evaluator commands:
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json`.
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`.
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json`.
   `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json`.
-  `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json`.
 - Direct proof commands:
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-challenge --json`.
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-mcp-challenge --json`.
@@ -192,28 +175,17 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   workbook compatibility report when the question is whether a specific file has
   integration risks:
   `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibility-report workbook.xlsx --json`.
-  Then use the
-  read-only stale-cache detector:
-  `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json`.
   Use recalculation once you know the input and output cells:
   `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json`.
   `npx --package @bilig/xlsx-formula-recalc xlsx-recalc pricing.xlsx --set Inputs!B2=48 --read Summary!B7 --out pricing.recalculated.xlsx --json`.
-- For PR checks that only need to diagnose stale XLSX formula caches first:
-  `npx --package @bilig/xlsx-formula-recalc xlsx-cache-doctor pricing.xlsx --json`.
-  https://proompteng.github.io/bilig/xlsx-cache-doctor-proof-transcript.html
-  https://github.com/proompteng/bilig/blob/main/docs/xlsx-cache-doctor-proof-transcript.md
-  https://proompteng.github.io/bilig/xlsx-cache-doctor-github-action.html
-  https://github.com/proompteng/bilig/blob/main/docs/xlsx-cache-doctor-github-action.md
 - For public SheetJS, ExcelJS, xlsx-populate, template, or CI support answers,
   use the owned non-spam answer pack before replying:
   https://proompteng.github.io/bilig/xlsx-formula-support-answers.html
   https://github.com/proompteng/bilig/blob/main/docs/xlsx-formula-support-answers.md
-- For stale external workbook caches, run the companion-workbook proof:
+- For external workbook reference recalculation, run the companion-workbook proof:
   https://proompteng.github.io/bilig/external-workbook-recalc-proof.html
 - Use `@bilig/exceljs-formula-recalc` when an existing ExcelJS workbook needs
-  fresh formula results instead of stale cached values.
-- Use `@bilig/headless` when the caller is searching for a headless spreadsheet
-  formula engine or needs lower-level WorkPaper runtime subpaths.
+  formula readback after Node input edits.
 - Use `@bilig/workpaper` when the caller needs the WorkPaper API, agent-tool
   helpers, the MCP binary, or no-key proof commands.
 - Use `@bilig/workbook` when another runtime owns calculation but an agent
@@ -232,12 +204,6 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   This is a risk inspector for unsupported functions, external links, macros,
   pivots, volatile formulas, stale caches, and uninspected formulas; it is not
   an Excel compatibility score.
-- `eval-xlsx-cache-doctor`: use when a repo, service, CI job, or agent has an
-  `.xlsx` file that may contain stale cached formula values. Read:
-  https://proompteng.github.io/bilig/eval-xlsx-cache-doctor.html
-  Run:
-  `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json`.
-  `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor pricing.xlsx --json`.
 - `eval-xlsx-recalc`: use when an `.xlsx` file has stale formula values after
   input edits in Node. Read:
   https://proompteng.github.io/bilig/eval-xlsx-recalc.html
@@ -308,7 +274,6 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/stop-driving-spreadsheets-with-screenshots.html
 - https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html
 - https://proompteng.github.io/bilig/formula-workbooks-node-services-agent-tools.html
-- https://proompteng.github.io/bilig/eval-xlsx-cache-doctor.html
 - https://proompteng.github.io/bilig/eval-xlsx-recalc.html
 - https://proompteng.github.io/bilig/eval-workpaper-service.html
 - https://proompteng.github.io/bilig/eval-agent-mcp.html
@@ -554,15 +519,15 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 - npm provenance and package trust:
   https://proompteng.github.io/bilig/npm-provenance-package-trust.html
   https://github.com/proompteng/bilig/blob/main/docs/npm-provenance-package-trust.md
-  verifies @bilig/headless registry signatures, SLSA provenance attestations,
+  verifies @bilig/workpaper registry signatures, SLSA provenance attestations,
   and the release workflow path before production adoption.
 - benchmark share card:
   https://github.com/proompteng/bilig/blob/main/docs/assets/workpaper-benchmark-card.png
 - hyperformula comparison:
   https://github.com/proompteng/bilig/blob/main/docs/hyperformula-alternative-headless-workpaper.md
-- headless spreadsheet engine comparison:
+- WorkPaper engine comparison:
   https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-comparison.md
-- headless spreadsheet engine for Node services and agents:
+- WorkPaper engine for Node services and agents:
   https://proompteng.github.io/bilig/headless-spreadsheet-engine-node-services-agents.html
   https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-node-services-agents.md
 - formula workbooks for Node services and agent tools:
@@ -593,7 +558,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 - SheetJS formula result not updating in Node.js:
   https://proompteng.github.io/bilig/sheetjs-formula-result-not-updating-node.html
   https://github.com/proompteng/bilig/blob/main/docs/sheetjs-formula-result-not-updating-node.md
-  covers the exact SheetJS / xlsx stale cached formula result failure and
+  covers the exact SheetJS / xlsx formula readback failure and
   points to the live `@bilig/sheetjs-formula-recalc` package plus the cross-library
   bridge proof.
 - ExcelJS formula recalculation in Node.js:
@@ -602,34 +567,25 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 - ExcelJS formula result not updating after Node edits:
   https://proompteng.github.io/bilig/exceljs-formula-result-not-updating-after-node-edits.html
   https://github.com/proompteng/bilig/blob/main/docs/exceljs-formula-result-not-updating-after-node-edits.md
-  Use when an ExcelJS workbook keeps stale cached formula results after a
-  service changes input cells and the Node process needs fresh readback.
+  Use when an ExcelJS workbook needs formula readback after a service changes
+  input cells.
 - Excel file as a calculation engine in Node.js:
   https://proompteng.github.io/bilig/excel-file-calculation-engine-node.html
   https://github.com/proompteng/bilig/blob/main/docs/excel-file-calculation-engine-node.md
   covers backend routes that write request inputs into an XLSX workbook,
   recalculate formulas, read output cells, and verify the exported workbook
   boundary.
-- stale XLSX formula cache in Node.js:
-  https://proompteng.github.io/bilig/stale-xlsx-formula-cache-node.html
-  https://github.com/proompteng/bilig/blob/main/docs/stale-xlsx-formula-cache-node.md
-  explains why Node XLSX readers can return old cached formula values after
-  input edits and when the backend needs a real formula runtime before readback.
 - formula bug clinic:
   https://proompteng.github.io/bilig/formula-bug-clinic.html
   https://github.com/proompteng/bilig/blob/main/docs/formula-bug-clinic.md
-  `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json`
-  starts the fixture loop for stale cached XLSX formula values before a user
-  writes a larger formula clinic report.
-  asks users to reduce stale cached XLSX values, ExcelJS shared-formula
-  failures, unsupported formulas, WorkPaper restore mismatches, and agent
-  readback blockers into public fixtures that can become tests, examples, or
-  docs proof.
+  asks users to reduce formula/import failures, ExcelJS shared-formula failures,
+  unsupported formulas, WorkPaper restore mismatches, and agent readback
+  blockers into public fixtures that can become tests, examples, or docs proof.
 - formula clinic report command and script:
   https://proompteng.github.io/bilig/formula-clinic-report.ts
   https://github.com/proompteng/bilig/blob/main/docs/formula-clinic-report.ts
   `npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"` runs locally against a reduced XLSX file,
-  imports it with @bilig/headless, reads requested output cells, and prints a
+  imports it with @bilig/workpaper, reads requested output cells, and prints a
   Markdown report for the fixture issue form.
 - Microsoft Graph Excel recalculation in Node.js:
   https://proompteng.github.io/bilig/microsoft-graph-excel-recalculation-node.html
@@ -671,7 +627,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 - evaluate Excel formulas in Node.js with TypeScript:
   https://proompteng.github.io/bilig/evaluate-excel-formulas-in-node-typescript.html
   https://github.com/proompteng/bilig/blob/main/docs/evaluate-excel-formulas-in-node-typescript.md
-- stale XLSX cache and fresh Excel oracle checks:
+- saved-file oracle checks:
   https://proompteng.github.io/bilig/xlsx-corpus-verifier-walkthrough.html
   https://github.com/proompteng/bilig/blob/main/docs/xlsx-corpus-verifier-walkthrough.md
 - public workbook corpus report:
@@ -959,7 +915,6 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-stdio-server.ts
 - packaged MCP stdio WorkPaper server:
   npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp
-  npm exec --package @bilig/headless@latest -- bilig-workpaper-mcp
   mcpName: io.github.proompteng/bilig-workpaper
   https://github.com/proompteng/bilig/blob/main/packages/headless/server.json
 - official MCP Registry entry:
@@ -1025,7 +980,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
   https://github.com/proompteng/bilig/discussions/335
 - benchmark critique discussion:
   https://github.com/proompteng/bilig/discussions/340
-- stale xlsx cache and excel oracle feedback discussion:
+- saved-file oracle feedback discussion:
   https://github.com/proompteng/bilig/discussions/382
 - older agent API shape discussion:
   https://github.com/proompteng/bilig/discussions/115

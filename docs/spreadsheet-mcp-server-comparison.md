@@ -209,7 +209,7 @@ File-backed mode exposes tools such as `list_sheets`, `read_range`,
 - Is the source of truth an Excel file, a Google Sheet, or service-owned
   workbook state?
 - Does the agent need to write cells, or only inspect them?
-- Is stale cached formula data acceptable, or must the tool recalculate before
+- Is stored formula data acceptable, or must the tool recalculate before
   responding?
 - Does the workflow need exact file fidelity, or only auditable formula
   readback?

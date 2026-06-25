@@ -367,7 +367,6 @@ If any readback step fails, report the blocker instead of claiming the workbook 
 - Kestra Node flow: https://proompteng.github.io/bilig/kestra-workpaper-flow.html
 - Prefect flow: https://proompteng.github.io/bilig/prefect-workpaper-flow.html
 - Formula clinic: https://proompteng.github.io/bilig/formula-bug-clinic.html
-- Workbook cache diagnostic command: npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json
 - Compatibility limits: https://proompteng.github.io/bilig/where-bilig-is-not-excel-compatible-yet.html
 - Repository: https://github.com/proompteng/bilig
 
@@ -643,12 +642,6 @@ persistence gap, generate the fixture report:
 
 ```sh
 npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
-```
-
-For saved-file cache diagnostics on the same reduced fixture:
-
-```sh
-npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json
 ```
 
 Handing a spreadsheet task to another coding agent? Start with the
@@ -988,7 +981,6 @@ boundary:
 ```sh
 npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json
 npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibility-report workbook.xlsx --json
-npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor pricing.xlsx --json
 npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json
 npm exec --package @bilig/sheetjs-formula-recalc@latest -- sheetjs-recalc --demo --json
 ```
@@ -1179,7 +1171,7 @@ file-backed WorkPaper tools:
   before promoting a WorkPaper-backed workflow beyond evaluation.
 - For XLSX accuracy audits, use the
   [Excel oracle harness](docs/xlsx-corpus-verifier-walkthrough.md#run-the-excel-oracle-harness).
-  It separates import success, timeouts, stale cached formula values, and fresh
+  It separates import success, timeouts, cached workbook values, and fresh
   Microsoft Excel recalculation results.
 - The WorkPaper MCP server is listed in the
   [official MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper)
@@ -1439,7 +1431,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./
 That imports the workbook into an in-memory WorkPaper server. In this mode,
 `tools/list` also includes `analyze_workbook_risk`, a fixed-source diagnostic
 for unsupported functions, external links, macro payloads, pivots, volatile
-formulas, stale cached formulas, and concrete risk reasons. It does not certify
+formulas, stored formula results, and concrete risk reasons. It does not certify
 Excel compatibility.
 
 Persist the imported WorkPaper only when the workflow needs a durable sidecar:
@@ -1705,10 +1697,7 @@ desktop Excel UI behavior. Do not add `compatibilityScore`,
 
 - [Agent XLSX risk preflight](agent-xlsx-risk-preflight.md)
 - [Workbook Compatibility Report transcript](workbook-compatibility-report-transcript.md)
-- [Evaluate stale XLSX formula caches](eval-xlsx-cache-doctor.md)
-- [XLSX Cache Doctor proof transcript](xlsx-cache-doctor-proof-transcript.md)
 - [Where Bilig is not Excel-compatible yet](where-bilig-is-not-excel-compatible-yet.md)
-- [Stale formula readback chooser](stale-formula-readback-chooser.md)
 
 ---
 
@@ -1821,8 +1810,6 @@ parity percentage.
 ## Related
 
 - [Workbook Compatibility Report](workbook-compatibility-report.md)
-- [Evaluate stale XLSX formula caches](eval-xlsx-cache-doctor.md)
-- [XLSX Cache Doctor proof transcript](xlsx-cache-doctor-proof-transcript.md)
 
 ---
 
@@ -1998,46 +1985,27 @@ If you already have the workbook but do not know the right output cells yet,
 start with inspection:
 
 ```sh
-npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor pricing.xlsx --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibility-report pricing.xlsx --json
 ```
 
-That command does not write `pricing.recalculated.xlsx`. It imports the
-workbook, lists formula cells, recomputes every formula by default, reports
-stale cached values, and suggests `--read` targets for the real proof command.
-If you intentionally pass `--inspect-limit`, require
-`uninspectedFormulaCellCount: 0` before treating the report as complete
-coverage.
+That command does not write `pricing.recalculated.xlsx`. It inspects the
+workbook for unsupported functions, external links, macros, pivots, volatile
+formulas, stored formula results, and risk reasons before you pick the exact
+input and output cells for the proof command. If you intentionally pass
+`--inspect-limit`, require `uninspectedFormulaCellCount: 0` before treating the
+report as complete coverage.
 
 Expected shape:
 
 ```json
 {
-  "formulaCellCount": 12,
-  "inspectedFormulaCellCount": 12,
-  "uninspectedFormulaCellCount": 0,
-  "inspectionLimit": "all",
-  "staleCachedFormulaCount": 3,
-  "cacheStatusSummary": {
-    "inspected": 12,
-    "stale": 3,
-    "fresh": 9,
-    "missingCache": 0,
-    "unsupportedRecalculation": 0
-  },
-  "suggestedReads": ["Summary!B7"],
-  "formulas": [
-    {
-      "target": "Summary!B7",
-      "formula": "=Inputs!B2*Inputs!B3",
-      "cachedValue": 60000,
-      "literalRecalculatedValue": 72000,
-      "cacheStatus": "stale",
-      "staleCachedValue": true
-    }
-  ],
+  "input": "pricing.xlsx",
+  "output": "pricing.recalculated.xlsx",
+  "sets": [{ "cell": "Inputs!B2", "value": 48 }],
+  "reads": [{ "cell": "Summary!B7", "displayValue": "72000" }],
   "commandSucceeded": true,
-  "inspectionCompleted": true,
   "recalculationCompleted": true,
+  "verified": true,
   "excelParity": "not_proven"
 }
 ```
@@ -2058,22 +2026,16 @@ known output cells, and tests around the exported workbook.
 
 ## Put it in CI
 
-Use the repository action when stale cached formula values should block a pull
+Use the compatibility report in CI when workbook risk should block a pull
 request:
 
 ```yaml
-- uses: proompteng/bilig@v1
-  with:
-    workbook: fixtures/pricing.xlsx
-    fail-on-stale: 'true'
+- run: npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibility-report fixtures/pricing.xlsx --json
 ```
 
-The action writes JSON and Markdown reports, adds a job summary, and exposes
-`formula-count`, `stale-count`, `uninspected-count`, `suggested-reads`, `json`,
-and `markdown` outputs. See
-[XLSX Cache Doctor GitHub Action](xlsx-cache-doctor-github-action.md), also
-published on GitHub Marketplace at
-<https://github.com/marketplace/actions/xlsx-cache-doctor>.
+Keep the recalculation proof separate from the compatibility report: the report
+decides whether the file is safe to trust, and `xlsx-recalc` proves the exact
+input edit and output readback you intend to automate.
 
 ## What this proves
 
@@ -2356,7 +2318,7 @@ queue worker must trust the value before Excel or Sheets opens the file:
 This is the shortest rule to paste into another agent:
 
 ```text
-Do not grade workbook automation from stale formula caches. After a formula or
+Do not grade workbook automation from unchecked stored formula results. After a formula or
 input edit, prove the dependent calculated cell changed through WorkPaper
 readback or an XLSX recalculation bridge before reporting success or failure.
 ```
@@ -3030,9 +2992,8 @@ Expected invariants:
 | WorkPaper service | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json` | `door: "workpaper-service"`, `verified: true` | Node can edit a WorkPaper input, recalculate a formula, export JSON, restore it, and verify readback. | MCP discovery, private workbook compatibility, macros, pivots, charts, or Excel UI behavior. |
 | Agent MCP evaluator | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json` | `door: "agent-mcp"`, `listedResourcesAndPrompts`, `restartReadbackMatchesAfter` | A coding agent or MCP client can discover workbook tools, write a cell, read a formula value, persist state, and restart from disk. | Hosted auth, arbitrary client UX, or full workbook compatibility. |
 | Provider-backed formula boundary | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json` | `scenario: "provider-backed"`, `provider-backed-adapter-missing`, `adapterBackedDiagnosticsCleared` | Provider formulas such as `IMPORTRANGE` fail closed until the host supplies an adapter, then verify readback. | Live Google Sheets authorization or remote provider availability. |
-| Workbook Compatibility Report | `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json` | `door: "workbook-compatibility"`, `riskLevel`, `unsupportedFunctions`, `noCompatibilityScore` | A saved `.xlsx` can be inspected for unsupported functions, external links, macros, pivots, volatile functions, stale caches, and risk reasons before an agent trusts it. | Excel compatibility certification, macro execution, pivot refresh, or a defensible compatibility percentage. |
+| Workbook Compatibility Report | `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json` | `door: "workbook-compatibility"`, `riskLevel`, `unsupportedFunctions`, `noCompatibilityScore` | A saved `.xlsx` can be inspected for unsupported functions, external links, macros, pivots, volatile functions, stored formula results, and risk reasons before an agent trusts it. | Excel compatibility certification, macro execution, pivot refresh, or a defensible compatibility percentage. |
 | Agent XLSX risk preflight | `pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight` | `schemaVersion: "bilig-agent-xlsx-risk-preflight.v1"`, `analyze_workbook_risk`, `afterExpectedArr: 96000` | A local MCP client can inspect real XLSX risk, then edit an imported WorkPaper, read a dependent formula back, persist state, and export the WorkPaper JSON. | Excel compatibility certification, desktop Excel UI behavior, or safe continuation when risk findings require Excel, Graph, LibreOffice, or oracle review. |
-| XLSX cache detector | `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json` | `door: "xlsx-cache"`, `verified: true` | A saved `.xlsx` can be inspected for stale cached formula values without mutating the file. | In-process business state or JSON WorkPaper persistence. |
 | XLSX recalculation | `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json` | `recalculationCompleted: true` | An XLSX file boundary can be edited, recalculated, exported, and reimported for readback. | A full Excel clone, macro execution, charts, pivots, or desktop layout fidelity. |
 | ExcelJS recalculation | `npx --package @bilig/exceljs-formula-recalc exceljs-recalc --demo --json` | `commandSucceeded: true`, `recalculationCompleted: true`, `expectedValueMatched: true` | An existing ExcelJS workbook can get fresh formula readback after Node edits. | ExcelJS styling/export behavior, desktop Excel parity, or every Excel formula. |
 | MCP Inspector | `npx -y @modelcontextprotocol/inspector@latest --cli npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --method tools/list` | tool names such as `read_workpaper_summary`, `set_workpaper_input_cell` | A neutral MCP client can inspect the packaged stdio server before a user adds it to an agent host. | Private workbook persistence unless the file-backed config is used. |
@@ -3648,7 +3609,7 @@ Source: https://github.com/proompteng/bilig/blob/main/packages/workpaper/README.
 
 # @bilig/workpaper
 
-Bilig WorkPaper is an API, CLI evaluator, and MCP server for headless spreadsheet formulas in Node.js services and agents.
+Bilig WorkPaper is an API, CLI evaluator, and MCP server for workbook formulas in Node.js services and agents.
 
 Use this when business logic is easiest to review as workbook cells and
 formulas, but the calculation needs to run in a backend service, queue worker,
@@ -5558,7 +5519,7 @@ File-backed mode exposes tools such as `list_sheets`, `read_range`,
 - Is the source of truth an Excel file, a Google Sheet, or service-owned
   workbook state?
 - Does the agent need to write cells, or only inspect them?
-- Is stale cached formula data acceptable, or must the tool recalculate before
+- Is stored formula data acceptable, or must the tool recalculate before
   responding?
 - Does the workflow need exact file fidelity, or only auditable formula
   readback?
@@ -7692,7 +7653,7 @@ Source: https://github.com/proompteng/bilig/blob/main/docs/windmill-workpaper-sc
 
 Use this when a Windmill workflow needs spreadsheet-shaped business logic, but
 the formula state should be edited and verified through a TypeScript API instead
-of Excel UI automation, browser grid clicks, or stale cached XLSX formula
+of Excel UI automation, browser grid clicks, or unchecked workbook readback
 values.
 
 Windmill's TypeScript scripts run with a `main` entrypoint. Windmill documents
@@ -7844,7 +7805,7 @@ Source: https://github.com/proompteng/bilig/blob/main/docs/triggerdev-workpaper-
 
 Use this when a Trigger.dev task needs spreadsheet-shaped business logic, but
 the formula state should be edited and verified through a TypeScript API instead
-of Excel UI automation, browser grid clicks, or stale cached XLSX formula
+of Excel UI automation, browser grid clicks, or unchecked workbook readback
 values.
 
 Trigger.dev's current task API defines resilient TypeScript functions with
@@ -8155,8 +8116,8 @@ Source: https://github.com/proompteng/bilig/blob/main/docs/airbyte-workpaper-val
 
 Use this when an Airbyte sync has produced records and state, but the post-sync
 business validation should run through reviewable formulas with readback proof
-instead of Excel UI automation, browser grid clicks, or stale cached XLSX
-formula values.
+instead of Excel UI automation, browser grid clicks, or unchecked workbook
+readback.
 
 The Airbyte Protocol describes record and state messages as JSON envelopes. A
 source `read` emits `AirbyteRecordMessage` values and `AirbyteStateMessage`
@@ -8573,7 +8534,7 @@ Source: https://github.com/proompteng/bilig/blob/main/docs/airflow-workpaper-dag
 
 Use this when an Apache Airflow DAG needs formula-backed task outputs, but the
 calculation should run through a Node package with a proof object instead of
-Excel UI automation, browser grid clicks, or stale cached XLSX formula values.
+Excel UI automation, browser grid clicks, or unchecked workbook readback.
 
 Airflow's TaskFlow API lets DAG authors write tasks as decorated Python
 functions and passes task outputs through XCom. This example keeps that
@@ -8729,7 +8690,7 @@ Source: https://github.com/proompteng/bilig/blob/main/docs/dagster-workpaper-ass
 
 Use this when a Dagster asset needs formula-backed materialization metadata, but
 the calculation should run through a Node WorkPaper subprocess with proof instead
-of Excel UI automation, browser grid clicks, or stale cached XLSX formula values.
+of Excel UI automation, browser grid clicks, or unchecked workbook readback.
 
 Dagster's JavaScript pipeline docs recommend `PipesSubprocessClient` for running
 Node processes and mention the `@dagster-io/dagster-pipes` npm package for
@@ -8888,8 +8849,8 @@ Source: https://github.com/proompteng/bilig/blob/main/docs/kestra-workpaper-flow
 
 Use this when a Kestra flow needs formula-backed workflow fields, but the
 calculation should run through a Node package and leave a proof artifact instead
-of relying on Excel UI automation, browser grid clicks, or stale cached XLSX
-formula values.
+of relying on Excel UI automation, browser grid clicks, or unchecked workbook
+readback.
 
 Kestra's Node plugin runs JavaScript or TypeScript code inline or from files,
 can install npm packages, and can expose output files for downstream tasks.
@@ -9043,7 +9004,7 @@ Source: https://github.com/proompteng/bilig/blob/main/docs/prefect-workpaper-flo
 
 Use this when a Prefect flow needs formula-backed workflow fields, but the
 calculation should run through a Node package with a proof object instead of
-Excel UI automation, browser grid clicks, or stale cached XLSX formula values.
+Excel UI automation, browser grid clicks, or unchecked workbook readback.
 
 Prefect flows and tasks are Python functions. This example keeps that boundary:
 Prefect owns orchestration, retries, logs, deployments, and scheduling, while a
@@ -9495,7 +9456,7 @@ Source: https://github.com/proompteng/bilig/blob/main/docs/lobehub-workpaper-mcp
 
 Use this when a LobeHub agent needs spreadsheet-shaped business logic, but the
 formula truth should live in a WorkPaper API instead of Excel UI automation,
-browser grid clicks, or stale XLSX cached values.
+browser grid clicks, or unchecked workbook readback.
 
 LobeHub's Custom MCP flow supports:
 
@@ -9655,7 +9616,7 @@ Source: https://github.com/proompteng/bilig/blob/main/docs/anythingllm-workpaper
 
 Use this when an AnythingLLM agent needs spreadsheet-shaped business logic, but
 the formula state should live behind explicit WorkPaper tools instead of Excel
-UI automation, browser grid clicks, or stale XLSX cached values.
+UI automation, browser grid clicks, or unchecked workbook readback.
 
 AnythingLLM loads MCP servers from `plugins/anythingllm_mcp_servers.json` in the
 AnythingLLM storage directory. Its MCP integration exposes tools to agents; it
@@ -10939,8 +10900,8 @@ OpenCode supports markdown agents under `.opencode/agents/`. Add:
 ```
 
 The generated file tells OpenCode to invoke the WorkPaper proof path when a
-task mentions pricing, quotes, payouts, budgets, imports, forecasts, stale XLSX
-formula caches, or formula readback after cell edits. It also allows
+task mentions pricing, quotes, payouts, budgets, imports, forecasts, workbook
+validation, or formula readback after cell edits. It also allows
 `bilig-workpaper_*` MCP tools while keeping shell commands reviewable.
 
 The Bilig starter writes `opencode.jsonc` and the OpenCode agent file for a
@@ -11013,8 +10974,8 @@ Source: https://github.com/proompteng/bilig/blob/main/docs/aider-workpaper-conve
 # Aider WorkPaper Conventions
 
 Use this when Aider is editing a repo that contains workbook-shaped business
-logic: pricing, approvals, payouts, budgets, forecasts, import validation, stale
-XLSX formula caches, or spreadsheet formula readback after changing cells.
+logic: pricing, approvals, payouts, budgets, forecasts, import validation,
+workbook-file formula diagnostics, or formula readback after changing cells.
 
 Aider's official convention flow is a good fit for this: load a small
 `CONVENTIONS.md` file as read-only context with `/read CONVENTIONS.md` or
@@ -11677,7 +11638,7 @@ Source: https://github.com/proompteng/bilig/blob/main/docs/sim-workpaper-mcp.md
 
 Use this when a Sim workflow needs spreadsheet-shaped business logic, but the
 formula state should live behind explicit WorkPaper tools instead of Excel UI
-automation, browser grid clicks, or stale XLSX cached values.
+automation, browser grid clicks, or unchecked workbook readback.
 
 Sim's MCP tool setup adds external MCP servers from **Settings -> MCP Tools**.
 Sim documents Streamable HTTP server URLs, connection testing, Agent-block tool
@@ -13356,7 +13317,6 @@ Related:
 
 - [curlable XLSX recalculation proof](xlsx-recalculation-proof.md)
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
-- [stale XLSX formula cache in Node.js](stale-xlsx-formula-cache-node.md)
 - [agent spreadsheet tool-call loop](agent-spreadsheet-tool-call-loop.md)
 - [MCP spreadsheet tool server](mcp-workpaper-tool-server.md)
 - [compatibility limits](where-bilig-is-not-excel-compatible-yet.md)
@@ -13491,25 +13451,23 @@ public case that proves it. The goal is not to collect private spreadsheets.
 The goal is to turn real failures into public fixtures that future evaluators
 can run.
 
-Start with the cache check when the symptom is "Node changed cells, but the
-formula output stayed old":
+Start with the WorkPaper clinic report when the blocker is an import, formula,
+persistence, or agent readback gap:
 
 ```sh
-npm exec --package @bilig/xlsx-formula-recalc@latest -- \
-  xlsx-cache-doctor ./reduced.xlsx --json
+npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx \
+  --cells "Summary!B7,Inputs!B2"
 ```
 
-That command runs locally, does not upload the workbook, and reports exact
-stale-cache evidence: `target`, `formula`, `cachedValue`,
-`literalRecalculatedValue`, `cacheStatus`, and `suggestedReads`. If it finds a
-stale cell, paste the relevant JSON object into the fixture form or discussion
-instead of describing the bug in prose.
+That command runs locally, does not upload the workbook, imports the file into
+WorkPaper, samples formulas, reads the requested cells, and prints a Markdown
+report you can paste into the fixture form or discussion.
 
 Good cases:
 
-- an ExcelJS, SheetJS, or `xlsx-populate` pipeline writes inputs but keeps a
-  stale cached formula value;
-- an ExcelJS workflow writes inputs but formula readback is stale;
+- an ExcelJS, SheetJS, or `xlsx-populate` pipeline writes inputs but cannot prove
+  formula readback;
+- an ExcelJS workflow writes inputs but needs recalculated output evidence;
 - an XLSX uses shared formulas and the imported formula text is wrong;
 - a workbook works in Excel but fails in a local Node formula runtime;
 - a WorkPaper JSON restore changes a calculated value;
@@ -13528,16 +13486,15 @@ Use the narrowest command that matches the blocker:
 
 | Blocker | First local command | What to paste |
 | --- | --- | --- |
-| Stale cached XLSX formula value after Node edits | `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json` | The stale formula object with cell address, cached value, recalculated value, and `suggestedReads`. |
-| Pull requests can commit stale workbook fixtures | `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor --print-github-action "**/*.xlsx"` | The generated report-only workflow, or the GitHub Action report artifact. |
-| WorkPaper import, formula, or persistence mismatch | `npm exec --package @bilig/headless@0.164.1 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"` | The Markdown clinic report with requested cells, formula samples, warnings, and actual readback. |
+| WorkPaper import, formula, or persistence mismatch | `npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"` | The Markdown clinic report with requested cells, formula samples, warnings, and actual readback. |
+| Saved workbook compatibility question | `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibility-report ./reduced.xlsx --json` | The compatibility report with unsupported functions, external links, volatile formulas, and inspected formula counts. |
 
-If the workbook is already reduced and the stale-cache check is not enough, run
-the clinic reporter locally and paste the Markdown output into the fixture form.
-It reads the file on your machine and does not upload workbook contents.
+If the workbook is already reduced, run the clinic reporter locally and paste
+the Markdown output into the fixture form. It reads the file on your machine and
+does not upload workbook contents.
 
 ```sh
-npm exec --package @bilig/headless@0.164.1 -- bilig-formula-clinic ./reduced.xlsx \
+npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx \
   --cells "Summary!B7,Inputs!B2"
 ```
 
@@ -13552,7 +13509,7 @@ mkdir bilig-formula-clinic
 cd bilig-formula-clinic
 npm init -y
 npm pkg set type=module
-npm install @bilig/headless
+npm install @bilig/workpaper
 npm install --save-dev tsx typescript @types/node
 curl -fsSLo formula-clinic-report.ts \
   https://proompteng.github.io/bilig/formula-clinic-report.ts
@@ -13575,9 +13532,7 @@ Include:
 - input values before and after the edit;
 - expected output from Excel, LibreOffice, Graph, an existing service, or a
   manual check;
-- actual Bilig output, import error, stale cached value, or missing API;
-- for stale-cache cases: the exact `target`, `formula`, `cachedValue`,
-  `literalRecalculatedValue`, and `cacheStatus` from `xlsx-cache-doctor`;
+- actual Bilig output, import error, unsupported function, or missing API;
 - the shortest command or script that maintainers can run.
 
 Do not attach confidential workbooks, customer data, financial models, or files
@@ -13587,9 +13542,9 @@ with neutral values while keeping the same formula shape.
 Good discussion summary:
 
 ```text
-Reduced public workbook attached or linked. xlsx-cache-doctor reports stale
-Sheet1!B61: formula =A61*10, cached 999, recalculated 600. The service reads
-Sheet1!B61 after changing Sheet1!A61. Expected output comes from Excel save.
+Reduced public workbook attached or linked. The clinic report reads Summary!B7
+as "review" after the input edit, while Excel returns "approved" for the same
+fixture. The service should return "approved".
 ```
 
 Bad discussion summary:
@@ -13616,18 +13571,15 @@ before adopting the package.
 
 ## Fast local check
 
-For stale cached XLSX values, first verify whether the backend is reading an old
-stored value instead of a fresh calculation:
+For saved workbook boundaries, first inspect compatibility risks:
 
 ```sh
-npm exec --package @bilig/xlsx-formula-recalc@latest -- \
-  xlsx-cache-doctor ./reduced.xlsx --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- \
+  workbook-compatibility-report ./reduced.xlsx --json
 ```
 
-If you need to see the exact output shape first, use the committed transcript:
-[XLSX Cache Doctor proof transcript](xlsx-cache-doctor-proof-transcript.md).
-If the check belongs in pull requests, start from the report-only
-[XLSX Cache Doctor GitHub Action](xlsx-cache-doctor-github-action.md).
+If the report shows unsupported formulas, external links, macros, pivots, or
+volatile formulas, include that output with the reduced fixture.
 
 For a pure WorkPaper case, reduce it to a script:
 
@@ -13636,7 +13588,7 @@ mkdir bilig-fixture-check
 cd bilig-fixture-check
 npm init -y
 npm pkg set type=module
-npm install @bilig/headless
+npm install @bilig/workpaper
 npm install --save-dev tsx typescript @types/node
 ```
 
@@ -13647,7 +13599,6 @@ fixture.
 
 - [Submit a workbook fixture](submit-workbook-fixture.md)
 - [ExcelJS shared formulas and Node.js recalculation](exceljs-shared-formula-recalculation-node.md)
-- [Fix stale XLSX formula values in Node.js](stale-xlsx-formula-cache-node.md)
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
 - [Where Bilig is not Excel-compatible yet](where-bilig-is-not-excel-compatible-yet.md)
 
@@ -14176,7 +14127,7 @@ npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibi
 ```
 
 That report lists unsupported functions, external links, macro payloads,
-pivots, volatile formulas, stale cached formula values, and risk reasons. It is
+pivots, volatile formulas, stored formula results, and risk reasons. It is
 not an Excel compatibility certification and does not include a compatibility
 score.
 

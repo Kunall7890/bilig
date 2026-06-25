@@ -11,7 +11,7 @@ image: /assets/github-social-preview.png
 
 Use this when a Trigger.dev task needs spreadsheet-shaped business logic, but
 the formula state should be edited and verified through a TypeScript API instead
-of Excel UI automation, browser grid clicks, or stale cached XLSX formula
+of Excel UI automation, browser grid clicks, or unchecked workbook readback
 values.
 
 Trigger.dev's current task API defines resilient TypeScript functions with

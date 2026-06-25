@@ -1,6 +1,6 @@
 # @bilig/workpaper
 
-Bilig WorkPaper is an API, CLI evaluator, and MCP server for headless spreadsheet formulas in Node.js services and agents.
+Bilig WorkPaper is an API, CLI evaluator, and MCP server for workbook formulas in Node.js services and agents.
 
 Use this when business logic is easiest to review as workbook cells and
 formulas, but the calculation needs to run in a backend service, queue worker,

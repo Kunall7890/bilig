@@ -111,7 +111,6 @@ Related:
 
 - [curlable XLSX recalculation proof](xlsx-recalculation-proof.md)
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
-- [stale XLSX formula cache in Node.js](stale-xlsx-formula-cache-node.md)
 - [agent spreadsheet tool-call loop](agent-spreadsheet-tool-call-loop.md)
 - [MCP spreadsheet tool server](mcp-workpaper-tool-server.md)
 - [compatibility limits](where-bilig-is-not-excel-compatible-yet.md)

@@ -50,20 +50,9 @@
       "source": "https://github.com/proompteng/bilig/blob/main/docs/workbook-compatibility-report.md",
       "package": "@bilig/xlsx-formula-recalc",
       "command": "npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json",
-      "expected_result": "bilig-evaluator.v1 JSON with unsupported functions, volatile functions, stale cache counts, risk reasons, no compatibility score, and verified true",
+      "expected_result": "bilig-evaluator.v1 JSON with unsupported functions, volatile functions, stored formula result counts, risk reasons, no compatibility score, and verified true",
       "proof_schema": "bilig-evaluator.v1",
       "canonical_door": "workbook-compatibility"
-    },
-    {
-      "name": "eval-xlsx-cache-doctor",
-      "audience": "A repo, service, CI job, or agent has XLSX files that may contain stale cached formula values.",
-      "docs": "https://proompteng.github.io/bilig/eval-xlsx-cache-doctor.html",
-      "source": "https://github.com/proompteng/bilig/blob/main/docs/eval-xlsx-cache-doctor.md",
-      "package": "@bilig/xlsx-formula-recalc",
-      "command": "npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json",
-      "expected_result": "bilig-evaluator.v1 JSON with stale cached formula count, suggested reads, recalculated value, and verified true without Excel or LibreOffice",
-      "proof_schema": "bilig-evaluator.v1",
-      "canonical_door": "xlsx-cache"
     },
     {
       "name": "eval-xlsx-recalc",
@@ -210,7 +199,7 @@
       "command": "npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json",
       "docs": "https://proompteng.github.io/bilig/workbook-compatibility-report.html",
       "source": "https://github.com/proompteng/bilig/blob/main/docs/workbook-compatibility-report.md",
-      "expected_result": "bilig-evaluator.v1 JSON with workbook risk reasons, unsupported functions, external links, VBA payloads, pivots, volatile functions, stale cache counts, no compatibility score, and verified true",
+      "expected_result": "bilig-evaluator.v1 JSON with workbook risk reasons, unsupported functions, external links, VBA payloads, pivots, volatile functions, stored formula result counts, no compatibility score, and verified true",
       "boundary": "Diagnoses workbook risks before agent or service use; does not certify Excel compatibility, execute macros, refresh pivots or external data, or assign a compatibility percentage."
     },
     {
@@ -556,9 +545,7 @@
     "https://proompteng.github.io/bilig/workbook-compatibility-report.json",
     "https://proompteng.github.io/bilig/agent-xlsx-risk-preflight.html",
     "https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-xlsx-risk-preflight.ts",
-    "https://proompteng.github.io/bilig/eval-xlsx-cache-doctor.html",
     "https://proompteng.github.io/bilig/eval-xlsx-recalc.html",
-    "https://proompteng.github.io/bilig/xlsx-cache-doctor-github-action.html",
     "https://proompteng.github.io/bilig/agent-adoption-kit.html",
     "https://proompteng.github.io/bilig/agent-proof-transcripts.html",
     "https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html",

@@ -11,7 +11,7 @@ image: /assets/github-social-preview.png
 
 Use this when a Windmill workflow needs spreadsheet-shaped business logic, but
 the formula state should be edited and verified through a TypeScript API instead
-of Excel UI automation, browser grid clicks, or stale cached XLSX formula
+of Excel UI automation, browser grid clicks, or unchecked workbook readback
 values.
 
 Windmill's TypeScript scripts run with a `main` entrypoint. Windmill documents

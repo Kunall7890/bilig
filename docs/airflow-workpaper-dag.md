@@ -11,7 +11,7 @@ image: /assets/github-social-preview.png
 
 Use this when an Apache Airflow DAG needs formula-backed task outputs, but the
 calculation should run through a Node package with a proof object instead of
-Excel UI automation, browser grid clicks, or stale cached XLSX formula values.
+Excel UI automation, browser grid clicks, or unchecked workbook readback.
 
 Airflow's TaskFlow API lets DAG authors write tasks as decorated Python
 functions and passes task outputs through XCom. This example keeps that

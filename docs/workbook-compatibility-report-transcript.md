@@ -113,5 +113,3 @@ parity percentage.
 ## Related
 
 - [Workbook Compatibility Report](workbook-compatibility-report.md)
-- [Evaluate stale XLSX formula caches](eval-xlsx-cache-doctor.md)
-- [XLSX Cache Doctor proof transcript](xlsx-cache-doctor-proof-transcript.md)

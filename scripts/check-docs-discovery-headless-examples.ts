@@ -164,7 +164,6 @@ export async function requireHeadlessExampleDiscovery({
     `npm exec --package ${workpaperReadmePackageSpec}@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"`,
     'README.md',
   )
-  requireIncludes(readme, 'npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json', 'README.md')
   requireIncludes(
     headlessReadme,
     'npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json',

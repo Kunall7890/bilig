@@ -146,7 +146,4 @@ desktop Excel UI behavior. Do not add `compatibilityScore`,
 
 - [Agent XLSX risk preflight](agent-xlsx-risk-preflight.md)
 - [Workbook Compatibility Report transcript](workbook-compatibility-report-transcript.md)
-- [Evaluate stale XLSX formula caches](eval-xlsx-cache-doctor.md)
-- [XLSX Cache Doctor proof transcript](xlsx-cache-doctor-proof-transcript.md)
 - [Where Bilig is not Excel-compatible yet](where-bilig-is-not-excel-compatible-yet.md)
-- [Stale formula readback chooser](stale-formula-readback-chooser.md)

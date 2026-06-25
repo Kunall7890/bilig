@@ -11,8 +11,8 @@ image: /assets/github-social-preview.png
 # Aider WorkPaper Conventions
 
 Use this when Aider is editing a repo that contains workbook-shaped business
-logic: pricing, approvals, payouts, budgets, forecasts, import validation, stale
-XLSX formula caches, or spreadsheet formula readback after changing cells.
+logic: pricing, approvals, payouts, budgets, forecasts, import validation,
+workbook-file formula diagnostics, or formula readback after changing cells.
 
 Aider's official convention flow is a good fit for this: load a small
 `CONVENTIONS.md` file as read-only context with `/read CONVENTIONS.md` or

@@ -183,7 +183,7 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
           docs: `${siteRoot}/workbook-compatibility-report.html`,
           source: `${repositoryUrl}/blob/main/docs/workbook-compatibility-report.md`,
           expected_result:
-            'bilig-evaluator.v1 JSON with workbook risk reasons, unsupported functions, external links, VBA payloads, pivots, volatile functions, stale cache counts, no compatibility score, and verified true',
+            'bilig-evaluator.v1 JSON with workbook risk reasons, unsupported functions, external links, VBA payloads, pivots, volatile functions, stored formula result counts, no compatibility score, and verified true',
           boundary:
             'Diagnoses workbook risks before agent or service use; does not certify Excel compatibility, execute macros, refresh pivots or external data, or assign a compatibility percentage.',
         },
@@ -524,9 +524,7 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
         `${siteRoot}/workbook-compatibility-report.json`,
         `${siteRoot}/agent-xlsx-risk-preflight.html`,
         `${repositoryUrl}/blob/main/examples/headless-workpaper/mcp-xlsx-risk-preflight.ts`,
-        `${siteRoot}/eval-xlsx-cache-doctor.html`,
         `${siteRoot}/eval-xlsx-recalc.html`,
-        `${siteRoot}/xlsx-cache-doctor-github-action.html`,
         `${siteRoot}/agent-adoption-kit.html`,
         `${siteRoot}/agent-proof-transcripts.html`,
         `${siteRoot}/headless-workpaper-agent-handbook.html`,

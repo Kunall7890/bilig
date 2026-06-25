@@ -64,46 +64,27 @@ If you already have the workbook but do not know the right output cells yet,
 start with inspection:
 
 ```sh
-npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor pricing.xlsx --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibility-report pricing.xlsx --json
 ```
 
-That command does not write `pricing.recalculated.xlsx`. It imports the
-workbook, lists formula cells, recomputes every formula by default, reports
-stale cached values, and suggests `--read` targets for the real proof command.
-If you intentionally pass `--inspect-limit`, require
-`uninspectedFormulaCellCount: 0` before treating the report as complete
-coverage.
+That command does not write `pricing.recalculated.xlsx`. It inspects the
+workbook for unsupported functions, external links, macros, pivots, volatile
+formulas, stored formula results, and risk reasons before you pick the exact
+input and output cells for the proof command. If you intentionally pass
+`--inspect-limit`, require `uninspectedFormulaCellCount: 0` before treating the
+report as complete coverage.
 
 Expected shape:
 
 ```json
 {
-  "formulaCellCount": 12,
-  "inspectedFormulaCellCount": 12,
-  "uninspectedFormulaCellCount": 0,
-  "inspectionLimit": "all",
-  "staleCachedFormulaCount": 3,
-  "cacheStatusSummary": {
-    "inspected": 12,
-    "stale": 3,
-    "fresh": 9,
-    "missingCache": 0,
-    "unsupportedRecalculation": 0
-  },
-  "suggestedReads": ["Summary!B7"],
-  "formulas": [
-    {
-      "target": "Summary!B7",
-      "formula": "=Inputs!B2*Inputs!B3",
-      "cachedValue": 60000,
-      "literalRecalculatedValue": 72000,
-      "cacheStatus": "stale",
-      "staleCachedValue": true
-    }
-  ],
+  "input": "pricing.xlsx",
+  "output": "pricing.recalculated.xlsx",
+  "sets": [{ "cell": "Inputs!B2", "value": 48 }],
+  "reads": [{ "cell": "Summary!B7", "displayValue": "72000" }],
   "commandSucceeded": true,
-  "inspectionCompleted": true,
   "recalculationCompleted": true,
+  "verified": true,
   "excelParity": "not_proven"
 }
 ```
@@ -124,22 +105,16 @@ known output cells, and tests around the exported workbook.
 
 ## Put it in CI
 
-Use the repository action when stale cached formula values should block a pull
+Use the compatibility report in CI when workbook risk should block a pull
 request:
 
 ```yaml
-- uses: proompteng/bilig@v1
-  with:
-    workbook: fixtures/pricing.xlsx
-    fail-on-stale: 'true'
+- run: npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibility-report fixtures/pricing.xlsx --json
 ```
 
-The action writes JSON and Markdown reports, adds a job summary, and exposes
-`formula-count`, `stale-count`, `uninspected-count`, `suggested-reads`, `json`,
-and `markdown` outputs. See
-[XLSX Cache Doctor GitHub Action](xlsx-cache-doctor-github-action.md), also
-published on GitHub Marketplace at
-<https://github.com/marketplace/actions/xlsx-cache-doctor>.
+Keep the recalculation proof separate from the compatibility report: the report
+decides whether the file is safe to trust, and `xlsx-recalc` proves the exact
+input edit and output readback you intend to automate.
 
 ## What this proves
 

@@ -102,7 +102,6 @@ const fileBackedMcpArgsNeedles = [
   `"--package",\n        "${workpaperPackageSpec}",\n        "--",\n        "bilig-workpaper-mcp",\n        "--workpaper",\n        "./pricing.workpaper.json",\n        "--init-demo-workpaper",\n        "--writable"`,
 ] as const
 const xlsxRecalcCli = 'xlsx-recalc --demo --json'
-const xlsxCacheDoctorCli = 'xlsx-cache-doctor pricing.xlsx --json'
 const liveSheetjsRecalcCli = 'sheetjs-recalc --demo --json'
 const liveSheetjsRecalcPackage = '@bilig/sheetjs-formula-recalc'
 
@@ -388,10 +387,8 @@ for (const required of [
   requireIncludes(staleXlsxFormulaCacheNode, required, 'docs/stale-xlsx-formula-cache-node.md')
 }
 requireIncludes(headlessReadme, 'docs/stale-xlsx-formula-cache-node.md', 'packages/headless/README.md')
-requireIncludes(llms, 'https://proompteng.github.io/bilig/stale-xlsx-formula-cache-node.html', 'docs/llms.txt')
-requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/stale-xlsx-formula-cache-node.md', 'docs/llms.txt')
 await requireXlsxFormulaSupportAnswersDiscovery({ docsRoot, index, llms, readme })
-await requireStaleFormulaReadbackChooserDiscovery({ docsRoot, repoRoot, llms })
+await requireStaleFormulaReadbackChooserDiscovery({ docsRoot, repoRoot })
 
 for (const required of [
   'title: SheetJS formula result not updating in Node.js',
@@ -496,7 +493,6 @@ requireIncludes(
   'npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json',
   'docs/llms.txt',
 )
-requireIncludes(llms, 'https://proompteng.github.io/bilig/eval-xlsx-cache-doctor.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/eval-xlsx-recalc.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/eval-workpaper-service.html', 'docs/llms.txt')
 requireIncludes(llms, 'npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-challenge --json', 'docs/llms.txt')
@@ -879,7 +875,6 @@ requireXlsxRecalcPublicDiscovery({
   workbookCompatibilityReportTranscript,
   xlsxFormulaRecalculationNode,
   xlsxCacheDoctorProofTranscript,
-  xlsxCacheDoctorCli,
   xlsxRecalcCli,
 })
 await requireExternalWorkbookRecalcProofDiscovery({ docsRoot, index, llms, xlsxRecalcPackageReadme })

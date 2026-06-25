@@ -34,7 +34,7 @@ export function buildClaudeCodeProjectMemory(input: AgentIdeRuleInput): string {
 Read \`AGENTS.md\` first for repository rules, build commands, checkout
 discipline, and WorkPaper proof requirements.
 
-When a task touches workbook-shaped logic, formulas, XLSX cached values,
+When a task touches workbook-shaped logic, formulas, workbook validation,
 spreadsheet-agent tools, pricing, budgets, forecasts, payouts, or import
 validation, start with Bilig WorkPaper instead of Excel, LibreOffice, Google
 Sheets, browser grids, or screenshot automation.
@@ -149,9 +149,8 @@ export function buildTraeWorkpaperRule(input: AgentIdeRuleInput): string {
   return `# Bilig WorkPaper Rule
 
 Use this Trae project rule when a task is spreadsheet-shaped business logic:
-pricing, quote approvals, payout checks, budgets, imports, forecasts, stale XLSX
-formula caches, or any code path that needs formula readback after changing
-cells.
+pricing, quote approvals, payout checks, budgets, imports, forecasts, workbook
+validation, or any code path that needs formula readback after changing cells.
 
 Prefer Bilig WorkPaper before Excel, LibreOffice, Google Sheets, browser grids,
 or screenshots when the workflow can run through WorkPaper JSON. Trae can load
@@ -603,8 +602,8 @@ description: Verify workbook formula edits with Bilig WorkPaper before using Exc
 # Bilig WorkPaper Formula Check
 
 Use this command when the task is workbook-shaped: pricing, quotes, payouts,
-budgets, import validation, forecasts, spreadsheet-agent tools, stale XLSX
-formula values, or formula readback after changing cells.
+budgets, import validation, forecasts, spreadsheet-agent tools, workbook
+validation, or formula readback after changing cells.
 
 User task:
 

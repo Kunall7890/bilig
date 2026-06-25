@@ -93,6 +93,13 @@ This snapshot tracks the public signals for the Bilig WorkPaper growth loop: Git
   is the public package path. Saved-file diagnostics remain documented, but no
   longer drive the homepage or full agent context. Live readback showed 32
   stars.
+- 2026-06-25T09:28:34Z: removed the stale-XLSX/cache-doctor route from the
+  public WorkPaper conversion path, compact and full LLM contexts, generated
+  agent manifests, IDE rules, fixture issue template, formula clinic, and proof
+  matrix. The remaining first-party discovery path leads with WorkPaper service
+  readback, agent MCP proof, compatibility reports, and XLSX recalculation only
+  where saved-file boundaries are explicit. Live GitHub readback still showed 32
+  stars.
 
 ## External Discovery
 

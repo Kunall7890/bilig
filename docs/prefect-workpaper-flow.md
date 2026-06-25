@@ -11,7 +11,7 @@ image: /assets/github-social-preview.png
 
 Use this when a Prefect flow needs formula-backed workflow fields, but the
 calculation should run through a Node package with a proof object instead of
-Excel UI automation, browser grid clicks, or stale cached XLSX formula values.
+Excel UI automation, browser grid clicks, or unchecked workbook readback.
 
 Prefect flows and tasks are Python functions. This example keeps that boundary:
 Prefect owns orchestration, retries, logs, deployments, and scheduling, while a

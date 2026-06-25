@@ -37,7 +37,7 @@ describe('agent discovery agent.json manifest', () => {
         type: 'local-cli-evaluator',
         command: 'npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json',
         expected_result:
-          'bilig-evaluator.v1 JSON with workbook risk reasons, unsupported functions, external links, VBA payloads, pivots, volatile functions, stale cache counts, no compatibility score, and verified true',
+          'bilig-evaluator.v1 JSON with workbook risk reasons, unsupported functions, external links, VBA payloads, pivots, volatile functions, stored formula result counts, no compatibility score, and verified true',
         boundary:
           'Diagnoses workbook risks before agent or service use; does not certify Excel compatibility, execute macros, refresh pivots or external data, or assign a compatibility percentage.',
       }),

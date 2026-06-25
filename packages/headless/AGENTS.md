@@ -153,7 +153,6 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
-npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
 npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight

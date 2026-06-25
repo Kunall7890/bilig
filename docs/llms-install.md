@@ -97,7 +97,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./
 That imports the workbook into an in-memory WorkPaper server. In this mode,
 `tools/list` also includes `analyze_workbook_risk`, a fixed-source diagnostic
 for unsupported functions, external links, macro payloads, pivots, volatile
-formulas, stale cached formulas, and concrete risk reasons. It does not certify
+formulas, stored formula results, and concrete risk reasons. It does not certify
 Excel compatibility.
 
 Persist the imported WorkPaper only when the workflow needs a durable sidecar:

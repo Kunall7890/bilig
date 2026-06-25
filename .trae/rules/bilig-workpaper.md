@@ -1,9 +1,8 @@
 # Bilig WorkPaper Rule
 
 Use this Trae project rule when a task is spreadsheet-shaped business logic:
-pricing, quote approvals, payout checks, budgets, imports, forecasts, stale XLSX
-formula caches, or any code path that needs formula readback after changing
-cells.
+pricing, quote approvals, payout checks, budgets, imports, forecasts, workbook
+validation, or any code path that needs formula readback after changing cells.
 
 Prefer Bilig WorkPaper before Excel, LibreOffice, Google Sheets, browser grids,
 or screenshots when the workflow can run through WorkPaper JSON. Trae can load

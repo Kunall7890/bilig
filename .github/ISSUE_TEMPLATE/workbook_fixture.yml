@@ -67,12 +67,11 @@ body:
       label: Actual output
       description: Paste the Bilig output, mismatch report, error, missing API, or current workaround.
       placeholder: |
-        target:
-        formula:
-        cachedValue:
-        literalRecalculatedValue:
-        cacheStatus:
-        suggestedReads:
+        Requested cells:
+        Actual WorkPaper display value:
+        Compatibility report warnings:
+        unsupported functions:
+        volatile formulas:
         Actual display value:
         Error:
         Current workaround:
@@ -85,11 +84,11 @@ body:
       label: Reproduction command or script
       description: Include the shortest command, test, or script maintainers can run.
       placeholder: |
-        npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json
+        npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 
         or:
 
-        pnpm workpaper:xlsx-corpus:check ./path/to/reduced.xlsx -- --from-import-snapshot
+        npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibility-report ./reduced.xlsx --json
 
         or:
 

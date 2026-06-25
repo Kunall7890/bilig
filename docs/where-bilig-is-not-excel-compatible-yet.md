@@ -50,7 +50,7 @@ npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibi
 ```
 
 That report lists unsupported functions, external links, macro payloads,
-pivots, volatile formulas, stale cached formula values, and risk reasons. It is
+pivots, volatile formulas, stored formula results, and risk reasons. It is
 not an Excel compatibility certification and does not include a compatibility
 score.
 

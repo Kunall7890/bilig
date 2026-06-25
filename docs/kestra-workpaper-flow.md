@@ -11,8 +11,8 @@ image: /assets/github-social-preview.png
 
 Use this when a Kestra flow needs formula-backed workflow fields, but the
 calculation should run through a Node package and leave a proof artifact instead
-of relying on Excel UI automation, browser grid clicks, or stale cached XLSX
-formula values.
+of relying on Excel UI automation, browser grid clicks, or unchecked workbook
+readback.
 
 Kestra's Node plugin runs JavaScript or TypeScript code inline or from files,
 can install npm packages, and can expose output files for downstream tasks.

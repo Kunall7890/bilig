@@ -11,7 +11,7 @@ image: /assets/github-social-preview.png
 
 Use this when a LobeHub agent needs spreadsheet-shaped business logic, but the
 formula truth should live in a WorkPaper API instead of Excel UI automation,
-browser grid clicks, or stale XLSX cached values.
+browser grid clicks, or unchecked workbook readback.
 
 LobeHub's Custom MCP flow supports:
 

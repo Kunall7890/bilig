@@ -69,13 +69,13 @@ export async function requireSharedPublicDocsDiscovery(args: {
     benchmarkEvidence.p95HoldoutRatio,
     'compatibility limits',
     'Excel oracle harness',
-    'stale cached formula values',
     'https://github.com/proompteng/bilig/discussions/307',
     'https://github.com/proompteng/bilig/discussions/308',
     'SECURITY.md',
     'SUPPORT.md',
     'production-adoption-checklist-headless-workpaper',
   ])
+  requireDocumentIncludes({ path: 'README.md', content: args.readme }, ['cached workbook values'])
   requireDocumentIncludes({ path: 'README.md', content: args.readme }, [
     'buildA1WorkPaper({',
     "book.editAndReadback('Inputs!B2', 32, {",
@@ -143,11 +143,7 @@ export async function requireSharedPublicDocsDiscovery(args: {
   ])
   requireDocumentIncludes({ path: 'docs/llms.txt', content: args.llms }, ['while a case is still being reduced before the issue form'])
   requireDocumentsInclude(
-    [
-      { path: 'README.md', content: args.readme },
-      { path: 'packages/headless/README.md', content: args.headlessReadme },
-      { path: 'docs/llms.txt', content: args.llms },
-    ],
+    [{ path: 'packages/headless/README.md', content: args.headlessReadme }],
     ['xlsx-cache-doctor ./reduced.xlsx --json'],
   )
   requireIncludes(args.index, 'formula-bug-clinic.html', 'docs/index.html')
@@ -157,9 +153,9 @@ export async function requireSharedPublicDocsDiscovery(args: {
       { path: 'docs/formula-bug-clinic.md', content: formulaBugClinic },
     ],
     [
-      'xlsx-cache-doctor ./reduced.xlsx --json',
-      'cachedValue',
-      'literalRecalculatedValue',
+      'workbook-compatibility-report ./reduced.xlsx --json',
+      'unsupported functions',
+      'volatile formulas',
       'https://github.com/proompteng/bilig/discussions/414',
     ],
   )

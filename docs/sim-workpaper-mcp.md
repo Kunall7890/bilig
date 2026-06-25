@@ -11,7 +11,7 @@ image: /assets/github-social-preview.png
 
 Use this when a Sim workflow needs spreadsheet-shaped business logic, but the
 formula state should live behind explicit WorkPaper tools instead of Excel UI
-automation, browser grid clicks, or stale XLSX cached values.
+automation, browser grid clicks, or unchecked workbook readback.
 
 Sim's MCP tool setup adds external MCP servers from **Settings -> MCP Tools**.
 Sim documents Streamable HTTP server URLs, connection testing, Agent-block tool

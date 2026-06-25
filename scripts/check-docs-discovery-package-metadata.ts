@@ -63,7 +63,7 @@ export function requirePackageMetadataDiscovery(args: {
   )
   requireIncludes(
     args.scopedWorkpaperPackageJson,
-    '"description": "Bilig WorkPaper API, CLI evaluator, and MCP server for headless spreadsheet formulas in Node.js services and agents."',
+    '"description": "Bilig WorkPaper API, CLI evaluator, and MCP server for workbook formulas in Node.js services and agents."',
     'packages/workpaper/package.json',
   )
   requireIncludes(

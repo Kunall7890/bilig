@@ -1,7 +1,7 @@
 ---
 title: Bilig formula bug clinic
 published: true
-description: Send a reduced public XLSX, ExcelJS shared-formula, stale cached formula, or WorkPaper blocker so it can become a Bilig fixture, test, docs page, or example.
+description: Send a reduced public workbook, ExcelJS shared-formula, import, formula, or WorkPaper blocker so it can become a Bilig fixture, test, docs page, or example.
 tags: typescript, node, exceljs, xlsx, formulas, open source
 canonical_url: https://proompteng.github.io/bilig/formula-bug-clinic.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -15,25 +15,23 @@ public case that proves it. The goal is not to collect private spreadsheets.
 The goal is to turn real failures into public fixtures that future evaluators
 can run.
 
-Start with the cache check when the symptom is "Node changed cells, but the
-formula output stayed old":
+Start with the WorkPaper clinic report when the blocker is an import, formula,
+persistence, or agent readback gap:
 
 ```sh
-npm exec --package @bilig/xlsx-formula-recalc@latest -- \
-  xlsx-cache-doctor ./reduced.xlsx --json
+npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx \
+  --cells "Summary!B7,Inputs!B2"
 ```
 
-That command runs locally, does not upload the workbook, and reports exact
-stale-cache evidence: `target`, `formula`, `cachedValue`,
-`literalRecalculatedValue`, `cacheStatus`, and `suggestedReads`. If it finds a
-stale cell, paste the relevant JSON object into the fixture form or discussion
-instead of describing the bug in prose.
+That command runs locally, does not upload the workbook, imports the file into
+WorkPaper, samples formulas, reads the requested cells, and prints a Markdown
+report you can paste into the fixture form or discussion.
 
 Good cases:
 
-- an ExcelJS, SheetJS, or `xlsx-populate` pipeline writes inputs but keeps a
-  stale cached formula value;
-- an ExcelJS workflow writes inputs but formula readback is stale;
+- an ExcelJS, SheetJS, or `xlsx-populate` pipeline writes inputs but cannot prove
+  formula readback;
+- an ExcelJS workflow writes inputs but needs recalculated output evidence;
 - an XLSX uses shared formulas and the imported formula text is wrong;
 - a workbook works in Excel but fails in a local Node formula runtime;
 - a WorkPaper JSON restore changes a calculated value;
@@ -52,16 +50,15 @@ Use the narrowest command that matches the blocker:
 
 | Blocker | First local command | What to paste |
 | --- | --- | --- |
-| Stale cached XLSX formula value after Node edits | `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json` | The stale formula object with cell address, cached value, recalculated value, and `suggestedReads`. |
-| Pull requests can commit stale workbook fixtures | `npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor --print-github-action "**/*.xlsx"` | The generated report-only workflow, or the GitHub Action report artifact. |
-| WorkPaper import, formula, or persistence mismatch | `npm exec --package @bilig/headless@0.164.1 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"` | The Markdown clinic report with requested cells, formula samples, warnings, and actual readback. |
+| WorkPaper import, formula, or persistence mismatch | `npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"` | The Markdown clinic report with requested cells, formula samples, warnings, and actual readback. |
+| Saved workbook compatibility question | `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibility-report ./reduced.xlsx --json` | The compatibility report with unsupported functions, external links, volatile formulas, and inspected formula counts. |
 
-If the workbook is already reduced and the stale-cache check is not enough, run
-the clinic reporter locally and paste the Markdown output into the fixture form.
-It reads the file on your machine and does not upload workbook contents.
+If the workbook is already reduced, run the clinic reporter locally and paste
+the Markdown output into the fixture form. It reads the file on your machine and
+does not upload workbook contents.
 
 ```sh
-npm exec --package @bilig/headless@0.164.1 -- bilig-formula-clinic ./reduced.xlsx \
+npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx \
   --cells "Summary!B7,Inputs!B2"
 ```
 
@@ -76,7 +73,7 @@ mkdir bilig-formula-clinic
 cd bilig-formula-clinic
 npm init -y
 npm pkg set type=module
-npm install @bilig/headless
+npm install @bilig/workpaper
 npm install --save-dev tsx typescript @types/node
 curl -fsSLo formula-clinic-report.ts \
   https://proompteng.github.io/bilig/formula-clinic-report.ts
@@ -99,9 +96,7 @@ Include:
 - input values before and after the edit;
 - expected output from Excel, LibreOffice, Graph, an existing service, or a
   manual check;
-- actual Bilig output, import error, stale cached value, or missing API;
-- for stale-cache cases: the exact `target`, `formula`, `cachedValue`,
-  `literalRecalculatedValue`, and `cacheStatus` from `xlsx-cache-doctor`;
+- actual Bilig output, import error, unsupported function, or missing API;
 - the shortest command or script that maintainers can run.
 
 Do not attach confidential workbooks, customer data, financial models, or files
@@ -111,9 +106,9 @@ with neutral values while keeping the same formula shape.
 Good discussion summary:
 
 ```text
-Reduced public workbook attached or linked. xlsx-cache-doctor reports stale
-Sheet1!B61: formula =A61*10, cached 999, recalculated 600. The service reads
-Sheet1!B61 after changing Sheet1!A61. Expected output comes from Excel save.
+Reduced public workbook attached or linked. The clinic report reads Summary!B7
+as "review" after the input edit, while Excel returns "approved" for the same
+fixture. The service should return "approved".
 ```
 
 Bad discussion summary:
@@ -140,18 +135,15 @@ before adopting the package.
 
 ## Fast local check
 
-For stale cached XLSX values, first verify whether the backend is reading an old
-stored value instead of a fresh calculation:
+For saved workbook boundaries, first inspect compatibility risks:
 
 ```sh
-npm exec --package @bilig/xlsx-formula-recalc@latest -- \
-  xlsx-cache-doctor ./reduced.xlsx --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- \
+  workbook-compatibility-report ./reduced.xlsx --json
 ```
 
-If you need to see the exact output shape first, use the committed transcript:
-[XLSX Cache Doctor proof transcript](xlsx-cache-doctor-proof-transcript.md).
-If the check belongs in pull requests, start from the report-only
-[XLSX Cache Doctor GitHub Action](xlsx-cache-doctor-github-action.md).
+If the report shows unsupported formulas, external links, macros, pivots, or
+volatile formulas, include that output with the reduced fixture.
 
 For a pure WorkPaper case, reduce it to a script:
 
@@ -160,7 +152,7 @@ mkdir bilig-fixture-check
 cd bilig-fixture-check
 npm init -y
 npm pkg set type=module
-npm install @bilig/headless
+npm install @bilig/workpaper
 npm install --save-dev tsx typescript @types/node
 ```
 
@@ -171,7 +163,6 @@ fixture.
 
 - [Submit a workbook fixture](submit-workbook-fixture.md)
 - [ExcelJS shared formulas and Node.js recalculation](exceljs-shared-formula-recalculation-node.md)
-- [Fix stale XLSX formula values in Node.js](stale-xlsx-formula-cache-node.md)
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
 - [Where Bilig is not Excel-compatible yet](where-bilig-is-not-excel-compatible-yet.md)
 

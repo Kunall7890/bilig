@@ -100,7 +100,7 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
         Reflect.get(capability, 'docs') === 'https://proompteng.github.io/bilig/workbook-compatibility-report.html' &&
         Reflect.get(capability, 'source') === 'https://github.com/proompteng/bilig/blob/main/docs/workbook-compatibility-report.md' &&
         Reflect.get(capability, 'expected_result') ===
-          'bilig-evaluator.v1 JSON with workbook risk reasons, unsupported functions, external links, VBA payloads, pivots, volatile functions, stale cache counts, no compatibility score, and verified true' &&
+          'bilig-evaluator.v1 JSON with workbook risk reasons, unsupported functions, external links, VBA payloads, pivots, volatile functions, stored formula result counts, no compatibility score, and verified true' &&
         Reflect.get(capability, 'boundary') ===
           'Diagnoses workbook risks before agent or service use; does not certify Excel compatibility, execute macros, refresh pivots or external data, or assign a compatibility percentage.',
     )

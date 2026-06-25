@@ -242,6 +242,5 @@ If any readback step fails, report the blocker instead of claiming the workbook 
 - Kestra Node flow: https://proompteng.github.io/bilig/kestra-workpaper-flow.html
 - Prefect flow: https://proompteng.github.io/bilig/prefect-workpaper-flow.html
 - Formula clinic: https://proompteng.github.io/bilig/formula-bug-clinic.html
-- Workbook cache diagnostic command: npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json
 - Compatibility limits: https://proompteng.github.io/bilig/where-bilig-is-not-excel-compatible-yet.html
 - Repository: https://github.com/proompteng/bilig

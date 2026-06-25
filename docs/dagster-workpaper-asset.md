@@ -11,7 +11,7 @@ image: /assets/github-social-preview.png
 
 Use this when a Dagster asset needs formula-backed materialization metadata, but
 the calculation should run through a Node WorkPaper subprocess with proof instead
-of Excel UI automation, browser grid clicks, or stale cached XLSX formula values.
+of Excel UI automation, browser grid clicks, or unchecked workbook readback.
 
 Dagster's JavaScript pipeline docs recommend `PipesSubprocessClient` for running
 Node processes and mention the `@dagster-io/dagster-pipes` npm package for
