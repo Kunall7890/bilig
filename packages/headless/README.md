@@ -137,7 +137,7 @@ mcp:server`.
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.164.1`:
+Current checked npm footprint for `@bilig/headless@0.164.2`:
 
 - Pack dry run: `859 kB` tarball, `5.24 MB` unpacked, `835` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
@@ -222,8 +222,8 @@ building a workbook, changing an input, saving the document, restoring it, and
 checking that the dependent formula still reads back correctly.
 
 ```sh
-npm exec --package @bilig/headless@0.164.1 -- bilig-agent-challenge --json
-npm exec --package @bilig/headless@0.164.1 -- bilig-mcp-challenge --json
+npm exec --package @bilig/headless@0.164.2 -- bilig-agent-challenge --json
+npm exec --package @bilig/headless@0.164.2 -- bilig-mcp-challenge --json
 ```
 
 Expected output:
@@ -438,11 +438,11 @@ MCP examples:
 - The package ships npm-executable binaries:
 
 ```sh
-npm exec --package @bilig/headless@0.164.1 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
-npm exec --package @bilig/headless@0.164.1 -- bilig-workpaper-mcp
-npm exec --package @bilig/headless@0.164.1 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
-npm exec --package @bilig/headless@0.164.1 -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx
-npm exec --package @bilig/headless@0.164.1 -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
+npm exec --package @bilig/headless@0.164.2 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.164.2 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.164.2 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.164.2 -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx
+npm exec --package @bilig/headless@0.164.2 -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
 docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
 ```
 

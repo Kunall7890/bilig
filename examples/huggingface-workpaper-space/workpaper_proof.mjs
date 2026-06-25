@@ -6,7 +6,7 @@ import {
   serializeWorkPaperDocument,
 } from '@bilig/workpaper'
 
-const workpaperPackageVersion = '0.164.1'
+const workpaperPackageVersion = '0.164.2'
 const nextWinRate = Number(process.argv[2] ?? '0.4')
 if (!Number.isFinite(nextWinRate) || nextWinRate < 0 || nextWinRate > 1) {
   throw new Error('win rate must be a number between 0 and 1')

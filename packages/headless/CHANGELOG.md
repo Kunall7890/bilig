@@ -4,6 +4,27 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.164.2
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.164.1
+- Manual override: no
+
+## Fixes
+- fix(workpaper): clean runtime discovery metadata (38445ee8)
+
+## Internal runtime changes
+- docs(growth): remove forced star copy (cf9fc858)
+- docs(agent): make WorkPaper skill metadata primary (92c834a1)
+- docs(growth): remove stale xlsx public route (5e0946d3)
+- docs(growth): humanize feedback surfaces (8f3def07)
+- docs(growth): remove stale xlsx bias (8648ab9a)
+- docs(growth): clean remaining saved-file wording (5eb96f2f)
+- docs(growth): humanize agent handoff surfaces (44fb158b)
+- docs(growth): clean package discovery metadata (49fc5041)
+- docs(growth): retarget discovery toward tool hosts (59024d3c)
+- docs(growth): rebalance tool-host discovery copy (cface212)
+
 ## 0.164.1
 
 - Release type: patch
