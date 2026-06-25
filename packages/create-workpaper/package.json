@@ -14,13 +14,15 @@
     "model-context-protocol",
     "node-services",
     "nodejs",
-    "spreadsheet-formulas",
+    "server-side-formulas",
     "tool-integration",
     "typescript",
     "workbook-api",
+    "workbook-formulas",
     "workbook-runtime",
     "workpaper",
-    "workpaper-json"
+    "workpaper-json",
+    "workpaper-runtime"
   ],
   "homepage": "https://proompteng.github.io/bilig/",
   "bugs": {

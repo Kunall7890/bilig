@@ -72,13 +72,19 @@ function assertManifest(manifest: PackageManifest): string {
     'formula-workbook',
     'mcp-tools',
     'node-services',
+    'server-side-formulas',
     'typescript',
     'workbook-api',
+    'workbook-formulas',
     'workbook-runtime',
     'workpaper',
     'workpaper-json',
+    'workpaper-runtime',
   ]) {
     assert(keywords.includes(keyword), `package keywords must include ${keyword}`)
+  }
+  for (const keyword of ['spreadsheet-formulas', 'spreadsheet-automation', 'xlsx']) {
+    assert(!keywords.includes(keyword), `package keywords must not include stale keyword ${keyword}`)
   }
 
   assert(isRecord(manifest.bugs), 'package bugs must be an object')
