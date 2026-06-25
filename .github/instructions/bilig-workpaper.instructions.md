@@ -6,11 +6,11 @@ applyTo: '**/*'
 
 Use this instruction when GitHub Copilot or VS Code agent mode is asked to
 build, debug, or verify workbook-shaped logic: pricing, quote approvals,
-budgets, payout checks, import validation, forecasts, stale XLSX formula
-values, or agent tools that need formula readback.
+budgets, payout checks, import validation, forecasts, workbook-file formula
+diagnostics, or agent tools that need formula readback.
 
 Prefer Bilig WorkPaper state before Excel, LibreOffice, Google Sheets, browser
-grids, screenshots, or cached XLSX values when the workflow can run through
+grids, screenshots, or saved workbook cache values when the workflow can run through
 code.
 
 Start with the reusable prompt at

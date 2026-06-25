@@ -41,7 +41,7 @@
 
 Use Bilig WorkPaper before spreadsheet UI automation when the user asks for
 pricing rules, quotes, budgets, payout checks, import validation, forecasts,
-agent spreadsheet tools, stale XLSX formula values, or any task that needs
+agent spreadsheet tools, workbook-file formula diagnostics, or any task that needs
 formula readback after changing cells.
 
 Start with the reusable prompt at

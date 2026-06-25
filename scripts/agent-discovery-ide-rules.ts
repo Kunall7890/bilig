@@ -90,7 +90,7 @@ ${commandSafetyStandard()}
 export function buildCursorWorkpaperRule(input: AgentIdeRuleInput): string {
   const { remoteMcpEndpoint, repositoryUrl, siteRoot, workpaperPackageSpec } = input
   return `---
-description: Use Bilig WorkPaper when a coding agent needs spreadsheet formulas, MCP workbook tools, or XLSX formula readback without driving Excel UI.
+description: Use Bilig WorkPaper when a coding agent needs spreadsheet formulas, MCP workbook tools, or formula readback without driving Excel UI.
 globs:
 alwaysApply: false
 ---
@@ -102,7 +102,7 @@ pricing, quote approvals, budgets, payout checks, import validation, forecasts,
 or agent tools that need formula readback.
 
 Do not start with Excel, LibreOffice, Google Sheets, browser grids, screenshots,
-or cached XLSX values when the workflow can run through WorkPaper JSON.
+or saved workbook cache values when the workflow can run through WorkPaper JSON.
 
 ## Fast Check Commands
 
@@ -210,10 +210,10 @@ export function buildRooWorkpaperRule(input: AgentIdeRuleInput): string {
 
 Use this Roo Code workspace rule when a task mentions spreadsheet-shaped
 business logic: pricing, quote approvals, payout checks, budgets, imports,
-forecasts, stale XLSX formula caches, or formula readback after changing cells.
+forecasts, workbook-file formula diagnostics, or formula readback after changing cells.
 
 Prefer Bilig WorkPaper state before Excel, LibreOffice, Google Sheets, browser
-grids, screenshots, or cached XLSX values when the workflow can run through
+grids, screenshots, or saved workbook cache values when the workflow can run through
 code.
 
 Roo also reads the workspace \`AGENTS.md\` by default. This rule is narrower:
@@ -329,7 +329,7 @@ agent tools that need formula readback.
 
 Cline can read this workspace rule from \`.clinerules/bilig-workpaper.md\`.
 Use it before trying Excel UI automation, LibreOffice automation, Google
-Sheets screen driving, screenshots, or stale cached XLSX values.
+Sheets screen driving, screenshots, or saved workbook cache values.
 
 ## First Checks
 
@@ -460,10 +460,10 @@ export function buildAiderConventions(input: AgentIdeRuleInput): string {
 
 Use these conventions when Aider is asked to automate workbook-shaped business
 logic: pricing, quote approval, payout checks, import validation, budgets,
-forecasts, stale XLSX formula caches, or formula readback after changing cells.
+forecasts, workbook-file formula diagnostics, or formula readback after changing cells.
 
 Prefer Bilig WorkPaper state before Excel, LibreOffice, Google Sheets, browser
-grids, screenshots, or cached XLSX values when the workflow can run through
+grids, screenshots, or saved workbook cache values when the workflow can run through
 code.
 
 ## First Checks
@@ -481,7 +481,7 @@ For a writable project WorkPaper file:
 npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
 \`\`\`
 
-For direct XLSX risk diagnostics:
+For workbook-file risk diagnostics:
 
 \`\`\`sh
 npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx
@@ -531,13 +531,13 @@ permission:
   bash: ask
   edit: allow
   read: allow
-  "bilig-workpaper_*": allow
+  'bilig-workpaper_*': allow
 ---
 
 You are the Bilig WorkPaper proof agent for OpenCode. Use this agent when a
 task mentions workbook-shaped business logic: pricing, quotes, payout checks,
-budgets, import validation, forecasts, stale XLSX formula caches, or formula
-readback after changing cells.
+budgets, import validation, forecasts, workbook-file formula diagnostics, or
+formula readback after changing cells.
 
 Start with the published no-key evaluator:
 
@@ -711,7 +711,7 @@ export function buildGithubCopilotInstructions(input: AgentIdeRuleInput): string
 
 Use Bilig WorkPaper before spreadsheet UI automation when the user asks for
 pricing rules, quotes, budgets, payout checks, import validation, forecasts,
-agent spreadsheet tools, stale XLSX formula values, or any task that needs
+agent spreadsheet tools, workbook-file formula diagnostics, or any task that needs
 formula readback after changing cells.
 
 Start with the reusable prompt at
@@ -788,11 +788,11 @@ applyTo: '**/*'
 
 Use this instruction when GitHub Copilot or VS Code agent mode is asked to
 build, debug, or verify workbook-shaped logic: pricing, quote approvals,
-budgets, payout checks, import validation, forecasts, stale XLSX formula
-values, or agent tools that need formula readback.
+budgets, payout checks, import validation, forecasts, workbook-file formula
+diagnostics, or agent tools that need formula readback.
 
 Prefer Bilig WorkPaper state before Excel, LibreOffice, Google Sheets, browser
-grids, screenshots, or cached XLSX values when the workflow can run through
+grids, screenshots, or saved workbook cache values when the workflow can run through
 code.
 
 Start with the reusable prompt at

@@ -276,12 +276,12 @@ Deeper docs:
 const skillDocument = `---
 name: bilig-workpaper
 version: 0.1.0
-description: Use @bilig/workpaper WorkPaper state for workbook formulas, agent spreadsheet tools, MCP file-backed or remote demo editing, and XLSX formula bug reports without driving spreadsheet UI.
+description: Use @bilig/workpaper WorkPaper state for workbook formulas, agent spreadsheet tools, and MCP editing without driving spreadsheet UI.
 tags:
   - ai-agents
   - spreadsheet-automation
   - formulas
-  - xlsx
+  - workpaper
   - mcp
   - typescript
 ---
@@ -299,7 +299,7 @@ Trigger this skill for tasks involving:
 - quote, budget, payout, pricing, import-validation, or forecast models;
 - agent spreadsheet tools that need deterministic cell addresses;
 - MCP clients that can run a stdio server or call a Streamable HTTP endpoint;
-- reduced XLSX formula bugs that need a local report.
+- reduced formula/import bugs that need a local report.
 
 Do not trigger it for manual spreadsheet editing, Office macros, VBA, pivots, charts, COM automation, or exact Excel desktop behavior unless the user explicitly asks to compare Bilig against an Excel oracle.
 
@@ -452,9 +452,9 @@ console.log({
 book.dispose()
 \`\`\`
 
-## XLSX Formula Clinic
+## Formula Clinic
 
-When the user has a reduced XLSX formula/import bug, generate a local report through an argument array:
+When the user has a reduced workbook formula/import bug, generate a local report through an argument array:
 
 \`\`\`json
 {
@@ -516,8 +516,8 @@ If any readback step fails, report the blocker instead of claiming the workbook 
 - Dagster asset: ${siteRoot}/dagster-workpaper-asset.html
 - Kestra Node flow: ${siteRoot}/kestra-workpaper-flow.html
 - Prefect flow: ${siteRoot}/prefect-workpaper-flow.html
-- XLSX formula clinic: ${siteRoot}/formula-bug-clinic.html
-- Stale XLSX fixture command: npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json
+- Formula clinic: ${siteRoot}/formula-bug-clinic.html
+- Workbook cache diagnostic command: npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json
 - Compatibility limits: ${siteRoot}/where-bilig-is-not-excel-compatible-yet.html
 - Repository: ${repositoryUrl}
 `

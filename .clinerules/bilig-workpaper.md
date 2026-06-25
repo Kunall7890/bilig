@@ -6,7 +6,7 @@ agent tools that need formula readback.
 
 Cline can read this workspace rule from `.clinerules/bilig-workpaper.md`.
 Use it before trying Excel UI automation, LibreOffice automation, Google
-Sheets screen driving, screenshots, or stale cached XLSX values.
+Sheets screen driving, screenshots, or saved workbook cache values.
 
 ## First Checks
 

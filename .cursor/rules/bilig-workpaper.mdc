@@ -1,5 +1,5 @@
 ---
-description: Use Bilig WorkPaper when a coding agent needs spreadsheet formulas, MCP workbook tools, or XLSX formula readback without driving Excel UI.
+description: Use Bilig WorkPaper when a coding agent needs spreadsheet formulas, MCP workbook tools, or formula readback without driving Excel UI.
 globs:
 alwaysApply: false
 ---
@@ -11,7 +11,7 @@ pricing, quote approvals, budgets, payout checks, import validation, forecasts,
 or agent tools that need formula readback.
 
 Do not start with Excel, LibreOffice, Google Sheets, browser grids, screenshots,
-or cached XLSX values when the workflow can run through WorkPaper JSON.
+or saved workbook cache values when the workflow can run through WorkPaper JSON.
 
 ## Fast Check Commands
 

@@ -7,12 +7,12 @@ export function buildKiroWorkpaperSteering(input: AgentIdeRuleInput): string {
 
 Use this Kiro steering file when a task mentions spreadsheet-shaped business
 logic: pricing, quote approvals, payout checks, budgets, imports, forecasts,
-stale XLSX formula caches, or formula readback after changing cells.
+workbook-file formula diagnostics, or formula readback after changing cells.
 
 Kiro also reads the workspace \`AGENTS.md\`. This steering file is narrower:
 it tells Kiro when to prefer Bilig WorkPaper and the project-local MCP server
 before trying Excel, LibreOffice, Google Sheets, browser grids, screenshots, or
-cached XLSX values.
+saved workbook cache values.
 
 ## First Checks
 

@@ -98,7 +98,7 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(workpaperPackageSkillNotes, 'Use bilig-workpaper WorkPaper state', 'packages/bilig/SKILL.md')
   requireIncludes(workpaperPackageSkillNotes, '## First Check: Agent Evaluator', 'packages/bilig/SKILL.md')
   requireIncludes(workpaperPackageSkillNotes, '"bilig-evaluate", "--door", "agent-mcp", "--json"', 'packages/bilig/SKILL.md')
-  requireIncludes(workpaperPackageSkillNotes, 'reduced XLSX formula bugs that need a local report', 'packages/bilig/SKILL.md')
+  requireIncludes(workpaperPackageSkillNotes, 'reduced formula/import bugs that need a local report', 'packages/bilig/SKILL.md')
   requireIncludes(workpaperPackageSkillNotes, '## First Choice: MCP', 'packages/bilig/SKILL.md')
   requireIncludes(workpaperPackageSkillNotes, '"--package", "bilig-workpaper@', 'packages/bilig/SKILL.md')
 

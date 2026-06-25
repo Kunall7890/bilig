@@ -2,10 +2,10 @@
 
 Use this Roo Code workspace rule when a task mentions spreadsheet-shaped
 business logic: pricing, quote approvals, payout checks, budgets, imports,
-forecasts, stale XLSX formula caches, or formula readback after changing cells.
+forecasts, workbook-file formula diagnostics, or formula readback after changing cells.
 
 Prefer Bilig WorkPaper state before Excel, LibreOffice, Google Sheets, browser
-grids, screenshots, or cached XLSX values when the workflow can run through
+grids, screenshots, or saved workbook cache values when the workflow can run through
 code.
 
 Roo also reads the workspace `AGENTS.md` by default. This rule is narrower:

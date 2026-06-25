@@ -21,7 +21,7 @@ file automatically from the repo. Bilig keeps that path boring and explicit:
 
 - `.aider.conf.yml` reads `CONVENTIONS.md`.
 - `CONVENTIONS.md` tells Aider to prefer WorkPaper state before Excel,
-  LibreOffice, Google Sheets, browser grids, screenshots, or cached XLSX values
+  LibreOffice, Google Sheets, browser grids, screenshots, or saved workbook cache values
   when the workflow can run through code.
 - The conventions require before/after formula readback, serialized or exported
   WorkPaper evidence, and explicit limitations before Aider reports success.
