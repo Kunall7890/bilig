@@ -1,6 +1,6 @@
 # Community Growth Snapshot
 
-Captured at: `2026-06-25T14:39:17.222Z`
+Captured at: `2026-06-25T14:58:24.579Z`
 
 This snapshot tracks the public signals for the `@bilig/workpaper` growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
 
@@ -12,7 +12,7 @@ This snapshot tracks the public signals for the `@bilig/workpaper` growth loop: 
 - Watchers: 1
 - Open issues: 4
 - Default branch: `main`
-- Topics: `formula-engine`, `formula-recalculation`, `mcp`, `mcp-server`, `mcp-tools`, `model-context-protocol`, `node-formulas`, `node-services`, `nodejs`, `server-side-formulas`, `spreadsheet`, `spreadsheet-api`, `spreadsheet-automation`, `typescript`, `workbook-api`, `workbook-automation`, `workbook-runtime`, `workflow-automation`, `workpaper`, `workpaper-json`
+- Topics: `formula-engine`, `formula-recalculation`, `formula-workbook`, `mcp`, `mcp-server`, `mcp-tools`, `model-context-protocol`, `node-formulas`, `node-services`, `nodejs`, `server-side-formulas`, `typescript`, `workbook-api`, `workbook-automation`, `workbook-formulas`, `workbook-runtime`, `workflow-automation`, `workpaper`, `workpaper-json`, `workpaper-runtime`
 
 ## npm
 
@@ -53,7 +53,7 @@ This snapshot tracks the public signals for the `@bilig/workpaper` growth loop: 
 
 ## Execution Log
 
-- 2026-06-25T14:39:17.222Z: refreshed live GitHub/npm readback for `@bilig/workpaper@0.164.3`; GitHub shows 33 / 100 stars (67 remaining), 22 forks, and 1 watcher.
+- 2026-06-25T14:58:24.579Z: refreshed live GitHub/npm readback for `@bilig/workpaper@0.164.3`; GitHub shows 33 / 100 stars (67 remaining), 22 forks, and 1 watcher.
 - Public copy guard for this pass: keep distribution surfaces WorkPaper service, MCP tool proof, and current release state first; use saved-file diagnostics only when files are the boundary.
 - Use this snapshot as evidence, not reusable launch copy.
 

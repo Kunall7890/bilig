@@ -1,4 +1,4 @@
-export const skillTags = ['agents', 'spreadsheet-automation', 'formulas', 'workpaper', 'mcp', 'typescript'] as const
+export const skillTags = ['agents', 'workbook-runtime', 'formulas', 'workpaper', 'mcp', 'typescript'] as const
 
 export const mcpPromptNames = ['edit_and_verify_workpaper', 'debug_workpaper_formula'] as const
 

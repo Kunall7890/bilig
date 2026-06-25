@@ -39,22 +39,25 @@ if (displayValue !== '24000') {
 
 const requiredDescription = 'Lower-level WorkPaper formula runtime for Node services with JSON persistence and verified formula readback.'
 const requiredKeywords = [
+  'bilig',
   'workpaper',
+  'workpaper-json',
+  'workbook',
   'workbook-api',
-  'excel-formulas',
+  'workbook-formulas',
+  'workbook-runtime',
   'formula-engine',
-  'spreadsheet-engine',
-  'spreadsheet-formula-engine',
-  'spreadsheet-formulas',
+  'formula-recalculation',
+  'formula-workbook',
   'node',
-  'node-spreadsheet',
-  'node-spreadsheet-formulas',
+  'node-services',
   'server-side-formula-engine',
+  'server-side-formulas',
+  'tool-integration',
   'typescript',
-  'excel',
   'mcp',
   'mcp-server',
-  'xlsx',
+  'mcp-tools',
 ] as const
 const forbiddenDescriptionFragments = [
   'Headless spreadsheet engine',

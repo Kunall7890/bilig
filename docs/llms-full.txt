@@ -129,7 +129,7 @@ version: 0.1.0
 description: Use @bilig/workpaper WorkPaper state for workbook formulas, MCP editing, and tool integrations without driving spreadsheet UI.
 tags:
   - agents
-  - spreadsheet-automation
+  - workbook-runtime
   - formulas
   - workpaper
   - mcp

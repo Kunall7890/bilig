@@ -7,26 +7,26 @@
     "nodeEngine": ">=22.0.0",
     "keywordCount": 20,
     "keywords": [
-      "excel",
-      "excel-formulas",
+      "bilig",
       "formula-engine",
       "formula-recalculation",
-      "headless-spreadsheet",
+      "formula-workbook",
       "hyperformula",
       "mcp",
       "mcp-server",
+      "mcp-tools",
       "node",
-      "node-spreadsheet",
-      "node-spreadsheet-formulas",
+      "node-services",
       "server-side-formula-engine",
-      "spreadsheet-automation",
-      "spreadsheet-engine",
-      "spreadsheet-formula-engine",
-      "spreadsheet-formulas",
+      "server-side-formulas",
+      "tool-integration",
       "typescript",
+      "workbook",
       "workbook-api",
+      "workbook-formulas",
+      "workbook-runtime",
       "workpaper",
-      "xlsx"
+      "workpaper-json"
     ],
     "dependencyNames": [
       "@bilig/core",
@@ -43,11 +43,11 @@
     "hasMcpBinary": true
   },
   "npmPackDryRun": {
-    "tarballBytes": 859193,
-    "unpackedBytes": 5243643,
+    "tarballBytes": 859196,
+    "unpackedBytes": 5243599,
     "entryCount": 835,
     "readmeBytes": 50147,
-    "packageJsonBytes": 3309
+    "packageJsonBytes": 3273
   },
   "coldStartProbe": {
     "runtime": "node",
