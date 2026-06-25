@@ -1,8 +1,10 @@
 # Community Growth Snapshot
 
-Captured at: `2026-06-25T12:19:47.449Z`
+Captured at: `2026-06-25T13:25:16Z`
 
-This snapshot tracks the public signals for the `@bilig/workpaper` growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
+This snapshot tracks the public signals for the `@bilig/workpaper` Node runtime
+growth loop: GitHub conversion, npm demand, contributor on-ramp health,
+discussion activity, and traffic quality.
 
 ## GitHub
 
@@ -16,9 +18,9 @@ This snapshot tracks the public signals for the `@bilig/workpaper` growth loop: 
 
 ## npm
 
-- Package: `@bilig/workpaper@0.164.1`
+- Package: `@bilig/workpaper@0.164.2`
 - License: `MIT`
-- Modified: `2026-06-12T17:59:54.469Z`
+- Modified: `2026-06-25T13:19:41.310Z`
 - Downloads last week: 519 (2026-06-18 to 2026-06-24)
 - Downloads last month: 11,441 (2026-05-26 to 2026-06-24)
 
@@ -55,12 +57,17 @@ This snapshot tracks the public signals for the `@bilig/workpaper` growth loop: 
 
 - 2026-06-25T12:19:47Z: cleaned the next public package metadata pass for
   `@bilig/workpaper` and `@bilig/workbook`: moved package homepages away from
-  agent-first routes, added a clean workbook runtime intent page, changed the
+  tool-host-first routes, added a clean workbook runtime intent page, changed the
   homepage GitHub CTA to "Star on GitHub", regenerated discovery manifests, and
   retargeted live GitHub topics from `excel`, `headless-spreadsheet`,
   `node-library`, and `spreadsheet-engine` to `mcp-tools`,
   `server-side-formulas`, `workpaper-json`, and `node-formulas`. Live readback
   showed 33 stars, 22 forks, 1 watcher, and 67 stars remaining.
+- 2026-06-25T13:25:16Z: tightened the root README first page around the
+  WorkPaper service/runtime proof, reduced host/vendor sprawl above the fold,
+  and made file compatibility diagnostics an explicit import/export path instead
+  of the default story. Live readback still showed 33 stars, 22 forks, 1 watcher,
+  and 67 stars remaining.
 
 ## External Discovery
 
