@@ -1047,6 +1047,12 @@ including its worst p95 row.
   first-patch list capped at 15 scoped issues.
 - current first patch shortlist: see docs/starter-issues.md#start-here-this-week
   before browsing the full issue queue.
+- WorkPaper service proof transcript starter:
+  https://github.com/proompteng/bilig/issues/452
+- Hono WorkPaper route smoke starter:
+  https://github.com/proompteng/bilig/issues/453
+- starter issue page sync task:
+  https://github.com/proompteng/bilig/issues/454
 - good first issue search:
   https://github.com/proompteng/bilig/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22
 - first-timers-only issue search:

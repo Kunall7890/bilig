@@ -1,6 +1,6 @@
 import { requireIncludes, requireNotIncludes } from './check-docs-discovery-core.ts'
 
-const currentStarterIssueNumbers: readonly number[] = []
+const currentStarterIssueNumbers: readonly number[] = [452, 453, 454]
 
 const closedStarterIssueNumbers = [
   137, 138, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 154, 224, 231, 199, 200, 201, 202, 203, 204, 205, 228, 229, 246,
@@ -35,19 +35,22 @@ export function requireStarterIssueDiscovery(inputsOrStarterIssues: StarterIssue
   requireIncludes(contributing, 'pull requests on GitHub are welcome; maintainers', 'CONTRIBUTING.md')
   requireIncludes(starterIssues, 'new-contributor-guide.md#first-time-command-checklist', 'docs/starter-issues.md')
   requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/blob/main/CONTRIBUTING.md', 'docs/starter-issues.md')
-  requireIncludes(starterIssues, 'Current starter queue as of June 3, 2026:', 'docs/starter-issues.md')
-  requireIncludes(starterIssues, '0 open `good first issue` issues.', 'docs/starter-issues.md')
-  requireIncludes(starterIssues, '0 open `first-timers-only` issues.', 'docs/starter-issues.md')
-  requireIncludes(starterIssues, '0 open `help wanted` issues.', 'docs/starter-issues.md')
-  requireIncludes(starterIssues, '0 starter issues are code or test tasks.', 'docs/starter-issues.md')
-  requireIncludes(starterIssues, '0 starter issues are focused docs or integration transcript tasks.', 'docs/starter-issues.md')
+  requireIncludes(starterIssues, 'Current starter queue as of June 25, 2026:', 'docs/starter-issues.md')
+  requireIncludes(starterIssues, '3 open `good first issue` issues.', 'docs/starter-issues.md')
+  requireIncludes(starterIssues, '3 open `first-timers-only` issues.', 'docs/starter-issues.md')
+  requireIncludes(starterIssues, '3 open `help wanted` issues.', 'docs/starter-issues.md')
+  requireIncludes(starterIssues, '1 starter issue is a code or test task.', 'docs/starter-issues.md')
+  requireIncludes(starterIssues, '2 starter issues are focused docs or integration transcript tasks.', 'docs/starter-issues.md')
   requireIncludes(starterIssues, '0 starter issues are currently under active review.', 'docs/starter-issues.md')
   requireIncludes(starterIssues, '## Start Here This Week', 'docs/starter-issues.md')
-  requireIncludes(starterIssues, 'There are no open first-patch issues right now.', 'docs/starter-issues.md')
+  requireIncludes(starterIssues, '#452 docs(starter): add current WorkPaper service proof transcript', 'docs/starter-issues.md')
+  requireIncludes(starterIssues, '#453 examples(starter): add Hono WorkPaper route smoke', 'docs/starter-issues.md')
+  requireIncludes(starterIssues, '#454 docs(starter): keep starter issue page synced with live labels', 'docs/starter-issues.md')
   requireIncludes(starterIssues, '## Code And Test Starters', 'docs/starter-issues.md')
-  requireIncludes(starterIssues, 'No code or test starter issues are currently open.', 'docs/starter-issues.md')
+  requireIncludes(starterIssues, '#453 examples(starter): add Hono WorkPaper route smoke', 'docs/starter-issues.md')
   requireIncludes(starterIssues, '## Integration Docs Starters', 'docs/starter-issues.md')
-  requireIncludes(starterIssues, 'No integration-docs starter issues are currently open.', 'docs/starter-issues.md')
+  requireIncludes(starterIssues, '#452 docs(starter): add current WorkPaper service proof transcript', 'docs/starter-issues.md')
+  requireIncludes(starterIssues, '#454 docs(starter): keep starter issue page synced with live labels', 'docs/starter-issues.md')
   requireIncludes(starterIssues, 'Add `help wanted` only when an external contributor can make progress', 'docs/starter-issues.md')
   requireNotIncludes(starterIssues, '115 open `first-timers-only` issues.', 'docs/starter-issues.md')
   requireNotIncludes(

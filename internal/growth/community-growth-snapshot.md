@@ -1,6 +1,6 @@
 # Community Growth Snapshot
 
-Captured at: `2026-06-25T07:54:06.141Z`
+Captured at: `2026-06-25T07:59:46.827Z`
 
 This snapshot tracks the public signals for the `@bilig/headless` growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
 
@@ -12,7 +12,7 @@ This snapshot tracks the public signals for the `@bilig/headless` growth loop: G
 - Watchers: 1
 - Open issues: 4
 - Default branch: `main`
-- Topics: `agent-tools`, `ai-agents`, `excel`, `excel-formulas`, `formula-engine`, `formula-recalculation`, `github-actions`, `headless-spreadsheet`, `mcp`, `mcp-server`, `model-context-protocol`, `nodejs`, `spreadsheet`, `spreadsheet-api`, `spreadsheet-automation`, `typescript`, `workbook-api`, `xlsx`, `xlsx-cache`, `xlsx-recalculation`
+- Topics: `agent-tools`, `ai-agents`, `excel`, `excel-formulas`, `formula-engine`, `formula-recalculation`, `headless-spreadsheet`, `mcp`, `mcp-server`, `model-context-protocol`, `nodejs`, `spreadsheet`, `spreadsheet-api`, `spreadsheet-automation`, `typescript`, `workbook-api`, `workbook-runtime`, `workpaper`, `xlsx`, `xlsx-recalculation`
 
 ## npm
 

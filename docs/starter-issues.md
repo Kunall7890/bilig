@@ -24,7 +24,7 @@ Current starter queue as of June 25, 2026:
 
 ## Start Here This Week
 
-- [#452 docs(starter): add current xlsx-cache-doctor demo transcript](https://github.com/proompteng/bilig/issues/452)
+- [#452 docs(starter): add current WorkPaper service proof transcript](https://github.com/proompteng/bilig/issues/452)
 - [#453 examples(starter): add Hono WorkPaper route smoke](https://github.com/proompteng/bilig/issues/453)
 - [#454 docs(starter): keep starter issue page synced with live labels](https://github.com/proompteng/bilig/issues/454)
 
@@ -34,7 +34,7 @@ Current starter queue as of June 25, 2026:
 
 ## Integration Docs Starters
 
-- [#452 docs(starter): add current xlsx-cache-doctor demo transcript](https://github.com/proompteng/bilig/issues/452)
+- [#452 docs(starter): add current WorkPaper service proof transcript](https://github.com/proompteng/bilig/issues/452)
 - [#454 docs(starter): keep starter issue page synced with live labels](https://github.com/proompteng/bilig/issues/454)
 
 ## Claim A Starter Issue
