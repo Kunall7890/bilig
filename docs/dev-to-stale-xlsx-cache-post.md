@@ -43,7 +43,7 @@ That usually means one of these:
   the formulas directly.
 
 I maintain one of those smaller runtimes:
-[`@bilig/headless`](https://www.npmjs.com/package/@bilig/headless). The narrow
+[`@bilig/workpaper`](https://www.npmjs.com/package/@bilig/workpaper). The narrow
 thing it tries to do well is: keep workbook-shaped formula logic in Node, write
 known inputs, read calculated outputs, and save the workbook state as JSON so
 tests can restore it.
@@ -78,10 +78,10 @@ For a backend decision path, put a tiny adapter around the workbook:
 - persist the workbook state used for the decision;
 - export `.xlsx` only when a human needs the artifact.
 
-Here is the small local shape with `@bilig/headless`:
+Here is the small local shape with `@bilig/workpaper`:
 
 ```ts
-import { WorkPaper } from '@bilig/headless'
+import { WorkPaper } from '@bilig/workpaper'
 
 const workbook = new WorkPaper()
 const inputs = workbook.addSheet('Inputs')

@@ -139,6 +139,11 @@ This snapshot tracks public signals for Bilig WorkPaper: GitHub conversion, npm 
   `@bilig/workpaper` proof links. Discovery checks now enforce the cleaner
   product-surface standard. Live GitHub readback before the edit showed 33 stars
   and 22 forks.
+- 2026-06-25T10:43:27Z: cleaned the published workbook-API note and adjacent
+  community drafts: replaced stale lower-level package links with
+  `@bilig/workpaper`, moved the headline away from agent-first framing, and
+  kept the n8n draft focused on workflow readback instead of launch copy. Live
+  GitHub readback before the edit showed 33 stars and 22 forks.
 
 ## External Discovery
 

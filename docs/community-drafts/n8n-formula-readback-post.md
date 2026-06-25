@@ -1,31 +1,26 @@
-# n8n Forum Draft: Formula Readback Without Spreadsheet UI Automation
+# n8n Formula Readback Notes
 
-Title:
+Use this note when answering a specific n8n workflow thread about spreadsheet
+formula recalculation or readback. Do not paste it as a launch announcement.
 
-```text
-Write an Excel-style formula in n8n, recalculate it, and verify the computed value without Excel
-```
+## Workflow Boundary
 
-Post:
+The common n8n spreadsheet boundary is not writing workbook-shaped data. It is
+proving the formula result changed after the workflow edits an input.
 
-```markdown
-I hit a common n8n spreadsheet boundary: generating an XLSX/workbook-shaped workflow is easy, but proving the formula result changed is usually where things get awkward.
+The maintained example is here:
 
-If you write `=B2*B3*B4` into a file, you still need something to calculate it. The usual options are Excel, LibreOffice, Google Sheets, or browser automation. That is a lot of moving parts for a workflow step.
+<https://github.com/proompteng/bilig/tree/main/examples/n8n-workpaper-formula-readback>
 
-I made a small importable n8n workflow that does the direct version:
+It uses a public Bilig WorkPaper endpoint to:
 
-1. sends one forecast input edit to a public Bilig WorkPaper endpoint
-2. recalculates the dependent formulas
-3. returns before/after computed values
-4. exports and restores the WorkPaper JSON
-5. fails the workflow unless the restored output still matches
+1. send one forecast input edit;
+2. recalculate dependent formulas;
+3. return before and after computed values;
+4. export and restore WorkPaper JSON;
+5. fail unless restored output still matches.
 
-Workflow JSON:
-
-https://github.com/proompteng/bilig/tree/main/examples/n8n-workpaper-formula-readback
-
-The hosted proof endpoint it calls:
+Endpoint:
 
 ```text
 POST https://bilig.proompteng.ai/api/workpaper/n8n/forecast
@@ -41,7 +36,7 @@ Example request:
 }
 ```
 
-Example proof fields:
+Proof fields to mention:
 
 ```json
 {
@@ -55,14 +50,12 @@ Example proof fields:
 }
 ```
 
-This is not trying to replace Excel as a UI. The use case is backend or agent workflows where the spreadsheet is the business-logic model, and the automation needs a direct readback check before it keeps going.
+The point is narrow: backend workflows and tool integrations need direct
+formula readback before continuing. This is not a replacement for Excel as a
+human spreadsheet UI.
 
-I’m also working on a scoped n8n community node for the same endpoint, but the workflow above uses only built-in n8n nodes so it is easier to inspect.
-```
+## Posting Rule
 
-Notes before posting:
-
-- Post under n8n Community `Tips & Tricks` or equivalent workflow-building category.
-- Do not post as a launch announcement.
-- Reply only in exact-match threads where the problem is formula recalculation,
-  XLSX cached formula values, or avoiding spreadsheet UI automation.
+Reply only in exact-match threads where the problem is formula recalculation,
+cached formula values, or avoiding spreadsheet UI automation. Keep the answer
+short and link the runnable workflow.

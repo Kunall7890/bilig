@@ -1,8 +1,8 @@
 ---
-title: Why agents need workbook APIs instead of spreadsheet screenshots
+title: Why workbook automation needs APIs instead of spreadsheet screenshots
 published: true
 description: A maintainer note about using workbook state, not screenshots, as the boundary for spreadsheet automation in Node.
-tags: typescript, node, opensource, ai
+tags: typescript, node, opensource, spreadsheets
 canonical_url: https://proompteng.github.io/bilig/dev-to-workbook-apis-post.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png
@@ -10,8 +10,8 @@ image: /assets/github-social-preview.png
 
 I keep running into the same spreadsheet automation failure.
 
-The screenshot looks fine. The total changed. The agent says it edited the right
-input. Then you ask the boring questions and the story falls apart:
+The screenshot looks fine. The total changed. The automation says it edited the
+right input. Then you ask the boring questions and the story falls apart:
 
 - was that cell a literal or a formula?
 - did dependent formulas recalculate?
@@ -21,9 +21,9 @@ input. Then you ask the boring questions and the story falls apart:
 That is the point where a screenshot stops being evidence.
 
 I maintain [`bilig`](https://github.com/proompteng/bilig). The public package is
-[`@bilig/headless`](https://www.npmjs.com/package/@bilig/headless). It is a
-small TypeScript runtime for workbook-shaped business logic in Node services and
-agent tools.
+[`@bilig/workpaper`](https://www.npmjs.com/package/@bilig/workpaper). It is a
+small TypeScript runtime for workbook-shaped business logic in Node services,
+MCP tools, and tool integrations.
 
 It is not an Excel clone. The promise is smaller: build or load a workbook,
 write inputs, recalculate formulas, read the answer back, and save the state as
@@ -33,13 +33,13 @@ JSON.
 
 Spreadsheet UIs are good for people. They are a weak runtime boundary for code.
 
-If an agent has to click cells and inspect pixels, it can easily produce a
+If automation has to click cells and inspect pixels, it can produce a
 plausible-looking result without proving the workbook state is right. The grid
 does not tell you whether hidden formulas moved, whether a structural edit
 retargeted references, or whether the saved document still round-trips.
 
-For backend jobs and agent tools, the rendered spreadsheet should be inspection
-only. The contract should be the workbook state.
+For backend jobs and tool integrations, the rendered spreadsheet should be
+inspection only. The contract should be the workbook state.
 
 ## The boundary I want
 
@@ -52,7 +52,7 @@ A useful workbook API should let code do this without opening a browser:
 5. export a workbook document
 6. restore that document and check the same result again
 
-That gives an agent a loggable operation instead of a screenshot and a shrug.
+That gives the caller a loggable operation instead of a screenshot and a shrug.
 
 ## Run The Small Proof
 
@@ -63,7 +63,7 @@ mkdir bilig-workpaper-eval
 cd bilig-workpaper-eval
 npm init -y
 npm pkg set type=module
-npm install @bilig/headless
+npm install @bilig/workpaper
 npm install -D tsx typescript @types/node
 curl -fsSLo eval.ts https://proompteng.github.io/bilig/npm-eval.ts
 npx tsx eval.ts
@@ -97,7 +97,7 @@ import {
   exportWorkPaperDocument,
   parseWorkPaperDocument,
   serializeWorkPaperDocument,
-} from '@bilig/headless'
+} from '@bilig/workpaper'
 
 const workbook = WorkPaper.buildFromSheets({
   Inputs: [
@@ -136,7 +136,7 @@ console.log({
 })
 ```
 
-That is the loop I want exposed to agents:
+That is the loop I want exposed to tool hosts:
 
 - make the edit
 - read the formula output
@@ -153,7 +153,7 @@ This is useful when a workbook is really business logic:
 - payout checks
 - import validation
 - finance sanity checks
-- MCP or coding-agent tools that need read-after-write proof
+- MCP clients or tool integrations that need read-after-write proof
 
 It is a bad fit when the job is human collaboration, macros, chart fidelity, or
 full desktop Excel behavior. For those jobs, use Excel, Google Sheets, or a
@@ -191,7 +191,7 @@ The best feedback is a concrete rejection reason:
 Links:
 
 - repo: <https://github.com/proompteng/bilig>
-- npm: <https://www.npmjs.com/package/@bilig/headless>
+- npm: <https://www.npmjs.com/package/@bilig/workpaper>
 - empty-directory eval:
   <https://proompteng.github.io/bilig/try-bilig-headless-in-node.html>
 - runnable examples:
