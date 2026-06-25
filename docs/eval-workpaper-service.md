@@ -87,7 +87,7 @@ the source of truth.
   <https://github.com/proompteng/bilig>
 - Watch releases for API and formula runtime updates:
   <https://github.com/proompteng/bilig/subscription>
-- Report the exact adoption blocker:
+- Report the exact implementation gap:
   <https://github.com/proompteng/bilig/discussions/new?category=general>
 
 ## Related

@@ -146,5 +146,5 @@ installation issues from server protocol issues.
 - [GitHub repository](https://github.com/proompteng/bilig)
 
 If this saves you a custom spreadsheet-tool spike but misses a Claude Desktop
-workflow, open one concrete adoption blocker:
+workflow, open one concrete implementation gap:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.

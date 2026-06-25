@@ -144,7 +144,7 @@ export async function requireSharedPublicDocsDiscovery(args: {
   requireDocumentIncludes({ path: 'docs/llms.txt', content: args.llms }, ['while a case is still being reduced before the issue form'])
   requireDocumentsInclude(
     [{ path: 'packages/headless/README.md', content: args.headlessReadme }],
-    ['xlsx-cache-doctor ./reduced.xlsx --json'],
+    ['bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"'],
   )
   requireIncludes(args.index, 'formula-bug-clinic.html', 'docs/index.html')
   requireDocumentsInclude(

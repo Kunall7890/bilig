@@ -1,7 +1,7 @@
 {
   "name": "bilig-serverless-workpaper-api-example",
   "private": true,
-  "description": "Runnable serverless-style API route example for @bilig/headless.",
+  "description": "Runnable serverless-style API route example for @bilig/workpaper.",
   "type": "module",
   "scripts": {
     "test": "npm run smoke && npm run framework-adapters && npm run quote-approval-api && npm run next-route-handler && npm run vercel-function",
@@ -18,7 +18,7 @@
     "vercel-function": "tsx vercel-function.ts"
   },
   "dependencies": {
-    "@bilig/headless": "latest"
+    "@bilig/workpaper": "latest"
   },
   "devDependencies": {
     "@types/node": "25.5.0",

@@ -196,5 +196,5 @@ Links:
   <https://proompteng.github.io/bilig/try-bilig-headless-in-node.html>
 - runnable examples:
   <https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper>
-- adoption blocker discussion:
+- implementation gap discussion:
   <https://github.com/proompteng/bilig/discussions/new?category=general>

@@ -1,14 +1,14 @@
 ---
-title: 'Show HN: Bilig - formula WorkPapers for Node services and agents'
+title: 'Bilig maintainer note: formula WorkPapers for Node services and agents'
 published: true
 description: A plain maintainer note for Bilig with the WorkPaper npm check, benchmark artifact, limits, and open questions.
-tags: show-hn, typescript, node, spreadsheet, agents
+tags: typescript, node, spreadsheet, agents, workpaper
 canonical_url: https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png
 ---
 
-# Show HN: Bilig - formula WorkPapers for Node services and agents
+# Bilig maintainer note: formula WorkPapers for Node services and agents
 
 I built Bilig for the rules that live in cells long after the product around
 them moved to code: quotes, payout checks, approvals, import validation, budget
@@ -18,9 +18,9 @@ Those workflows should not need Excel screen driving. A service or coding agent
 should be able to change an input cell, recalculate the workbook, read the
 answer, and keep the workbook state under test.
 
-Bilig is the WorkPaper runtime for that loop. `@bilig/headless` owns the
-formula-backed workbook state. `@bilig/workpaper` packages the CLI, MCP server,
-and no-key evaluators around the same model.
+Bilig is the WorkPaper runtime for that loop. `@bilig/workpaper` is the
+canonical package for service code, CLI evaluators, MCP tools, and no-key
+readback checks.
 
 That is the whole pitch: cells stay reviewable, Node gets an API, and agents get
 readback instead of screenshots.
@@ -51,11 +51,11 @@ matches.
 For direct library use:
 
 ```sh
-npm install @bilig/headless
+npm install @bilig/workpaper
 ```
 
 The 90-second quickstart is here:
-[try Bilig headless in Node](try-bilig-headless-in-node.md).
+[try Bilig WorkPaper in Node](try-bilig-headless-in-node.md).
 
 ## What Bilig is
 
@@ -66,8 +66,8 @@ The 90-second quickstart is here:
 - restore the workbook later and check the answer again
 
 The API is built around a `WorkPaper` object because the workbook state is the
-artifact under test. The XLSX cache tools are useful when a file boundary is the
-problem, but the product is the WorkPaper runtime.
+artifact under test. Saved-file tools are useful when an existing workbook file
+is the contract, but the product is the WorkPaper runtime.
 
 ## Current numbers
 
@@ -91,7 +91,7 @@ If you mainly need a mature broad formula engine, start with HyperFormula. If
 the problem is XLSX reading, writing, or styling, start with SheetJS or ExcelJS.
 If the product is a shared hosted spreadsheet, use Google Sheets.
 
-Use `@bilig/headless` when your Node code can own workbook state and needs
+Use `@bilig/workpaper` when your Node code can own workbook state and needs
 formula readback, persistence, and restore checks.
 
 ## What would help
@@ -107,33 +107,15 @@ I am looking for rejection reasons:
 Open feedback here:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
 
-## Shareable post
+## Review checklist
 
-Suggested HN title:
+Before adopting it, verify the narrow path you need:
 
-```text
-Show HN: Bilig - formula WorkPapers for Node services and agents
-```
-
-Suggested first comment, only if the story is live and the maintainer can stay
-in the thread:
-
-```text
-I built Bilig because a lot of pricing, approval, payout, and import rules are
-still workbook-shaped, but backend services and coding agents need a state API
-rather than screenshots.
-
-The quickest check is:
-
-`npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`
-
-It writes an input cell, recalculates, reads a dependent formula, saves and
-restores WorkPaper JSON, and returns `verified: true`.
-
-There is also a public no-key Hugging Face Space for the MCP readback path:
-https://huggingface.co/spaces/gregkonush/bilig-workpaper-mcp-readback
-
-Useful feedback: API friction, missing formula semantics, MCP/readback shape, or
-real workbook cases that should become fixtures. This is not a full Excel
-clone; XLSX cache doctor is one doorway into the WorkPaper runtime.
-```
+- `bilig-evaluate --door workpaper-service --json` passes for service-owned
+  WorkPaper state.
+- `bilig-evaluate --door agent-mcp --json` passes for tool discovery, write,
+  readback, export, and restore.
+- The benchmark page matches the checked artifact instead of an isolated number.
+- The compatibility page rules out any Excel-only feature your workflow needs.
+- Any real blocked workbook is reduced into a fixture before it becomes an
+  accuracy claim.

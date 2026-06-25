@@ -123,7 +123,7 @@ curl -X POST http://localhost:8788/api/quote/approval \
   [quote approval WorkPaper API](quote-approval-workpaper-api.md)
 
 If this starter almost matches a service or agent workflow you maintain, open
-one concrete adoption blocker so the package becomes easier to evaluate:
+one concrete implementation gap so the package becomes easier to evaluate:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
 
 If the proof already matches your workflow, watch releases for API and formula

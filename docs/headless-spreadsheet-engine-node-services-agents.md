@@ -101,7 +101,7 @@ Bilig is indexed on the
 [LibHunt headless-spreadsheet topic](https://www.libhunt.com/topic/headless-spreadsheet),
 but the repo is the current source of truth for releases, limitations, and API
 examples. If one proof almost maps but fails on a real formula, import, or
-workflow boundary, open an adoption blocker with the smallest reproducer you can
+workflow boundary, open an implementation gap with the smallest reproducer you can
 share.
 
 ## Backend service shape

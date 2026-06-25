@@ -253,7 +253,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Published npm package         | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                                                                                                                   | `@bilig/workpaper` edits one input, recalculates, persists JSON, restores, and prints `verified: true`.   |
 | Backend service shape         | [Quote approval WorkPaper API](docs/quote-approval-workpaper-api.md)                                                                                                                                                                                                                                              | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`.               |
 | Agent or MCP tools            | [WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md), [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md), [Gemini CLI extension](docs/gemini-cli-workpaper-extension.md), and [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md)                                  | The agent installs a tool path, uses the handoff prompt, then proves write/readback/persist.              |
-| Public WorkPaper review       | [Show HN WorkPaper maintainer note](docs/show-hn-formula-workbooks-node-services.md)                                                                                                                                                                                                                              | One shareable page has the npm check, benchmark caveat, known limits, and open questions.                 |
+| Technical WorkPaper review    | [WorkPaper maintainer proof note](docs/show-hn-formula-workbooks-node-services.md)                                                                                                                                                                                                                                 | One compact page has the npm check, benchmark caveat, known limits, and open questions.                   |
 | Trust and performance         | [npm provenance](docs/npm-provenance-package-trust.md) and [benchmark evidence](docs/what-workpaper-benchmark-proves.md)                                                                                                                                                                                          | npm shows SLSA provenance, and benchmark claims match the checked artifact.                               |
 | Saved workbook files          | [Workbook Compatibility Report](docs/workbook-compatibility-report.md), [XLSX formula recalculation](docs/xlsx-formula-recalculation-node.md), and [ExcelJS formula recalculation](docs/exceljs-formula-recalculation-node.md)                                                                                    | The file boundary is inspected before a service, CI job, or agent trusts imported formulas.               |
 | Almost a fit                  | [implementation gap discussion](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                                                                                                                                             | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.                  |
@@ -762,20 +762,20 @@ file-backed WorkPaper tools:
   It starts from an empty Node directory, downloads one maintained TypeScript
   route smoke, writes quote inputs, recalculates an approval decision, persists
   JSON, and verifies restored readback.
-- For an XLSX formula recalculation example, run
+- For a shorter evaluation page, read
+  [formula workbooks for Node services and agent tools](docs/formula-workbooks-node-services-agent-tools.md).
+  It compresses the WorkPaper boundary, MCP file-backed mode, benchmark caveat,
+  and alternative-tool guidance into one evaluation path.
+- For a compact review note, use the
+  [WorkPaper maintainer proof note](docs/show-hn-formula-workbooks-node-services.md).
+  It keeps the empty npm-project command, `verified: true` output, benchmark
+  caveat, known limits, and open questions together.
+- For saved-file integration, run the XLSX formula recalculation example:
   [`examples/xlsx-recalculation-node`](examples/xlsx-recalculation-node). It
   imports a generated XLSX pricing workbook, edits input cells, reads the
   recalculated approval decision, exports XLSX, reimports it, and verifies the
   formulas survived the round trip. The public decision page is
   [XLSX formula recalculation in Node.js](docs/xlsx-formula-recalculation-node.md).
-- For a shorter evaluation page, read
-  [formula workbooks for Node services and agent tools](docs/formula-workbooks-node-services-agent-tools.md).
-  It compresses the WorkPaper boundary, MCP file-backed mode, benchmark caveat,
-  and alternative-tool guidance into one evaluation path.
-- For HN, Lobsters, Reddit, or newsletter review, use the
-  [Show HN maintainer note](docs/show-hn-formula-workbooks-node-services.md).
-  It keeps the empty npm-project command, `verified: true` output, benchmark
-  caveat, known limits, and open questions together.
 - Run `pnpm workpaper:bench:competitive:check`. The checked-in artifact shows
   [`100/100` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
   and `100/100` mean+p95 wins; the current worst p95 row is

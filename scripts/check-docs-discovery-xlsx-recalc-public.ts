@@ -24,15 +24,8 @@ export function requireXlsxRecalcPublicDiscovery(args: {
   requireIncludes(args.readme, args.liveSheetjsRecalcCli, 'README.md')
   requireIncludes(args.headlessReadme, 'examples/xlsx-recalculation-node', 'packages/headless/README.md')
   requireIncludes(args.headlessReadme, 'docs/xlsx-formula-recalculation-node.md', 'packages/headless/README.md')
-  requireIncludes(args.headlessReadme, args.xlsxRecalcCli, 'packages/headless/README.md')
-  requireIncludes(args.headlessReadme, args.liveSheetjsRecalcCli, 'packages/headless/README.md')
-  requireIncludes(
-    args.headlessReadme,
-    'https://proompteng.github.io/bilig/agent-xlsx-formula-recalculation-without-libreoffice.html',
-    'packages/headless/README.md',
-  )
-  requireIncludes(args.headlessReadme, 'docs/excel-file-calculation-engine-node.md', 'packages/headless/README.md')
-  requireIncludes(args.headlessReadme, 'docs/exceljs-shared-formula-recalculation-node.md', 'packages/headless/README.md')
+  requireIncludes(args.headlessReadme, 'file boundary is the product contract', 'packages/headless/README.md')
+  requireIncludes(args.headlessReadme, 'workbook-compatibility-report.md', 'packages/headless/README.md')
   requireIncludes(args.index, 'examples/xlsx-recalculation-node', 'docs/index.html')
   requireIncludes(args.index, 'Use saved-file packages only when', 'docs/index.html')
   requireIncludes(args.index, './workbook-compatibility-report.html', 'docs/index.html')

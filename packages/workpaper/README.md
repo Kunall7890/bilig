@@ -355,7 +355,7 @@ Watch releases if this is close to a production path:
 <https://github.com/proompteng/bilig/subscription>.
 
 If the model is close but blocked by a formula, import/export, persistence,
-framework, MCP, or package-boundary gap, open the smallest adoption blocker:
+framework, MCP, or package-boundary gap, open the smallest implementation gap:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
 
 Full docs: <https://proompteng.github.io/bilig/>

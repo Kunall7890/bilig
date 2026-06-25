@@ -844,7 +844,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     '[XLSX recalculation proof](xlsx-recalculation-proof.md)',
     '[LibHunt headless-spreadsheet topic](https://www.libhunt.com/topic/headless-spreadsheet)',
     'repo is the current source of truth for releases',
-    'open an adoption blocker',
+    'open an implementation gap',
   ]) {
     requireIncludes(headlessSpreadsheetEngineNodeServicesAgents, required, 'docs/headless-spreadsheet-engine-node-services-agents.md')
   }

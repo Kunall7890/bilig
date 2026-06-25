@@ -101,17 +101,23 @@ This snapshot tracks the public signals for the Bilig WorkPaper growth loop: Git
   where saved-file boundaries are explicit. Live GitHub readback still showed 32
   stars.
 - 2026-06-25T09:38:22Z: cleaned growth-oriented wording from public and agent
-  surfaces: replaced "adoption blocker" labels with implementation-gap language,
+  surfaces: replaced old blocker labels with implementation-gap language,
   removed "non-spam", "not vibes", "feedback ask", and star-mechanics phrasing,
   and regenerated the skill, `llms.txt`, `llms-full.txt`, and well-known mirrors.
   Live GitHub readback still showed 32 stars.
+- 2026-06-25T09:52:00Z: removed the remaining stale saved-file and launch-review
+  bias from public proof surfaces: the WorkPaper proof note is no longer a
+  social post template, the quote approval example installs `@bilig/workpaper`,
+  the serverless example imports the canonical package, and discovery checks no
+  longer force cache-doctor commands into the `@bilig/headless` README. Live
+  GitHub readback still showed 32 stars.
 
 ## External Discovery
 
 - A legacy LibHunt crawler surface still indexes Bilig on the
   `headless-spreadsheet` topic page:
   <https://www.libhunt.com/topic/headless-spreadsheet>.
-- That surface came from the May 7 Show HN discovery path and should not drive
+- That surface came from the May 7 developer discovery path and should not drive
   current positioning.
 - Keep GitHub repository topics, npm keywords, and proof-page copy aligned with
   WorkPaper, MCP tools, Node services, agent workflows, and workbook automation
@@ -129,13 +135,13 @@ This snapshot tracks the public signals for the Bilig WorkPaper growth loop: Git
 
 - The visible May 7-11 star jump still lines up with external developer traffic, not broad social posting.
 - The strongest current external referrer is Google with 6 views from 6 unique visitors.
-- Replication plan: do not repost the same launch. Ship one sharper proof page,
-  then ask HN/X/MCP audiences for a concrete adoption blocker around service
-  persistence, hosted MCP, formula coverage, or agent writeback verification.
+- Replication plan: ship one sharper proof page, then ask service and agent-tool
+  audiences for a concrete implementation gap around service persistence, hosted
+  MCP, formula coverage, or agent writeback verification.
 
 ## Read This Snapshot
 
 - Stars are the primary lagging goal; npm downloads, clone traffic, and external issues are leading signals.
 - If downloads or clones rise without stars, improve README and npm post-proof adoption paths.
-- If traffic comes from a channel but discussions stay quiet, switch from launch copy to a specific workflow question.
+- If traffic comes from a channel but discussions stay quiet, switch from broad copy to a specific workflow question.
 - If the starter queue drops below three current issues, open scoped example tasks before the next distribution push.

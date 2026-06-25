@@ -536,7 +536,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 - screenshot automation boundary:
   https://proompteng.github.io/bilig/stop-driving-spreadsheets-with-screenshots.html
   https://github.com/proompteng/bilig/blob/main/docs/stop-driving-spreadsheets-with-screenshots.md
-- HN-style proof page:
+- WorkPaper maintainer proof note:
   https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html
   https://github.com/proompteng/bilig/blob/main/docs/show-hn-formula-workbooks-node-services.md
   compresses the empty npm project proof, WorkPaper JSON restore check,
@@ -940,7 +940,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 - xlsx verifier walkthrough:
   https://proompteng.github.io/bilig/xlsx-corpus-verifier-walkthrough.html
   https://github.com/proompteng/bilig/blob/main/docs/xlsx-corpus-verifier-walkthrough.md
-- xlsx oracle design feedback discussion:
+- saved-workbook oracle design discussion:
   https://github.com/proompteng/bilig/discussions/382
 - xlookup exact fixture:
   https://github.com/proompteng/bilig/blob/main/docs/formula-edge-xlookup-exact-fixture.md
@@ -952,7 +952,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 
 - discussions:
   https://github.com/proompteng/bilig/discussions
-- structured implementation gap discussion for formula, xlsx, persistence, mcp,
+- structured implementation gap discussion for formula, saved-file, persistence, mcp,
   framework, package, benchmark, documentation, or example gaps:
   https://github.com/proompteng/bilig/discussions/new?category=general
 - submit a workbook fixture: reduced public workbook cases that should become tests,

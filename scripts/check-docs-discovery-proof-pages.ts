@@ -25,7 +25,7 @@ export function requireFormulaProofDiscovery({
 }): void {
   for (const required of [
     'title: Formula workbooks for Node services and agent tools',
-    'npm install @bilig/headless',
+    'npm install @bilig/workpaper',
     'quote-approval-api.ts',
     '"restoredMatchesAfter": true',
     'bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable',
@@ -36,7 +36,7 @@ export function requireFormulaProofDiscovery({
     benchmarkEvidence.p95HoldoutWorkload,
     'https://github.com/proompteng/bilig',
     'https://github.com/proompteng/bilig/discussions/new?category=general',
-    'adoption-blocker form',
+    'concrete implementation-gap discussion',
   ] as const) {
     requireIncludes(formulaWorkbooksProof, required, 'docs/formula-workbooks-node-services-agent-tools.md')
   }
@@ -57,16 +57,18 @@ export function requireFormulaProofDiscovery({
   )
 
   for (const required of [
-    "title: 'Show HN: Bilig - formula WorkPapers for Node services and agents'",
+    "title: 'Bilig maintainer note: formula WorkPapers for Node services and agents'",
     'uses the latest published package',
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
-    'npm install @bilig/headless',
+    'npm install @bilig/workpaper',
     '"verified": true',
     `wins \`${benchmarkEvidence.meanWinHeadline}\` comparable`,
     `\`${benchmarkEvidence.meanAndP95Headline}\` on both mean and p95`,
     `\`${benchmarkEvidence.p95HoldoutWorkload}\` is the current worst p95`,
-    'Show HN: Bilig - formula WorkPapers for Node services and agents',
-    'https://huggingface.co/spaces/gregkonush/bilig-workpaper-mcp-readback',
+    'Bilig maintainer note: formula WorkPapers for Node services and agents',
+    '## Review checklist',
+    'bilig-evaluate --door workpaper-service --json',
+    'bilig-evaluate --door agent-mcp --json',
   ] as const) {
     requireIncludes(showHnFormulaWorkbooksProof, required, 'docs/show-hn-formula-workbooks-node-services.md')
   }

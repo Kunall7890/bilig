@@ -6,7 +6,7 @@ import {
   exportWorkPaperDocument,
   parseWorkPaperDocument,
   serializeWorkPaperDocument,
-} from '@bilig/headless'
+} from '@bilig/workpaper'
 
 const state = {
   workbookJson: serializeWorkbook(createInitialWorkbook()),

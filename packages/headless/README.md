@@ -26,12 +26,12 @@ same calculated value again.
 
 Choose the narrow package by the state you own:
 
-| You own...                                  | Start with                                                    | First proof                                                                                  |
-| ------------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| WorkPaper state inside a service or agent   | `npm install @bilig/workpaper`                                | `bilig-evaluate --door workpaper-service --json`                                             |
-| Agent or MCP spreadsheet tools              | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | `bilig-evaluate --door agent-mcp --json`                                                     |
-| A saved `.xlsx` file with stale read values | `npm install @bilig/xlsx-formula-recalc`                      | `bilig-evaluate --door xlsx-cache --json`                                                    |
-| Lower-level runtime subpaths                | `npm install @bilig/headless`                                 | The examples below prove WorkPaper JSON, XLSX import/export, provenance, and package weight. |
+| You own...                                | Start with                                                    | First proof                                                                              |
+| ----------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| WorkPaper state inside a service or agent | `npm install @bilig/workpaper`                                | `bilig-evaluate --door workpaper-service --json`                                         |
+| Agent or MCP spreadsheet tools            | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | `bilig-evaluate --door agent-mcp --json`                                                 |
+| Lower-level runtime subpaths              | `npm install @bilig/headless`                                 | The examples below prove WorkPaper JSON, provenance, and package weight.                 |
+| A saved `.xlsx` file remains the contract | `npm install @bilig/xlsx-formula-recalc`                      | `bilig-evaluate --door workbook-compatibility --json`                                    |
 
 Use `@bilig/headless` when the spreadsheet is the business logic, but
 production needs API readback, tests, persistence, and agent-readable proof
@@ -52,10 +52,10 @@ locally. The public docs expose the same path through
 [`AI spreadsheet agent tool`](https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html), and
 [`llms-full.txt`](https://proompteng.github.io/bilig/llms-full.txt).
 
-This package is not a browser grid, desktop Excel automation, or a source of
-truth for stale XLSX cached formula values. XLSX import/export is available from
-the `@bilig/headless/xlsx` subpath for services that need workbook ingestion
-around the same WorkPaper model.
+This package is not a browser grid, desktop Excel automation, or the default
+saved-file diagnostic path. XLSX import/export is available from the
+`@bilig/workpaper/xlsx` and `@bilig/headless/xlsx` subpaths for services that
+need workbook ingestion around the same WorkPaper model.
 
 The `bilig-workpaper-mcp` binary still ships for hosts that specifically need an
 MCP stdio boundary. It is not the default evaluation path; prove the direct npm
@@ -63,15 +63,11 @@ or TypeScript path first unless your tool host requires MCP.
 The `bilig-formula-clinic` binary turns a reduced XLSX into a fixture report
 without uploading workbook contents.
 
-Saved XLSX files are a separate entrypoint. Start with
-[`examples/xlsx-recalculation-node`](https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node)
-or [`docs/xlsx-formula-recalculation-node.md`](https://github.com/proompteng/bilig/blob/main/docs/xlsx-formula-recalculation-node.md),
-then run `xlsx-recalc --demo --json`. SheetJS users can run
-`sheetjs-recalc --demo --json`. For broader boundaries, see
-[`docs/excel-file-calculation-engine-node.md`](https://github.com/proompteng/bilig/blob/main/docs/excel-file-calculation-engine-node.md),
-[`docs/exceljs-shared-formula-recalculation-node.md`](https://github.com/proompteng/bilig/blob/main/docs/exceljs-shared-formula-recalculation-node.md),
-and
-<https://proompteng.github.io/bilig/agent-xlsx-formula-recalculation-without-libreoffice.html>.
+Saved workbook files are a separate entrypoint. Use the compatibility report or
+XLSX recalculation example only when the file boundary is the product contract:
+[`docs/workbook-compatibility-report.md`](https://github.com/proompteng/bilig/blob/main/docs/workbook-compatibility-report.md),
+[`examples/xlsx-recalculation-node`](https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node),
+and [`docs/xlsx-formula-recalculation-node.md`](https://github.com/proompteng/bilig/blob/main/docs/xlsx-formula-recalculation-node.md).
 
 ## Choose An Evaluation Path
 
@@ -80,28 +76,21 @@ and
 | Basic fit                | [Why use Bilig?](https://proompteng.github.io/bilig/why-use-bilig.html)                                                                                                                                             | The problem is workbook-shaped business logic that needs API readback and persistence.         |
 | Published npm package    | [90-second Node quickstart](https://proompteng.github.io/bilig/try-bilig-headless-in-node.html)                                                                                                                     | It edits one input, recalculates, persists JSON, restores, and prints `verified: true`.        |
 | Backend service shape    | [Quote approval WorkPaper API](https://proompteng.github.io/bilig/quote-approval-workpaper-api.html)                                                                                                                | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`.    |
-| XLSX import/export       | [XLSX formula recalculation example](https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node)                                                                                                | It imports XLSX, edits inputs, recalculates, exports XLSX, reimports, and verifies formulas.   |
+| Saved workbook files     | [Workbook Compatibility Report](https://proompteng.github.io/bilig/workbook-compatibility-report.html) and [XLSX formula recalculation example](https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node)                                                   | Use this only when a workbook file remains the integration contract.                            |
 | Agent or MCP tools       | [Headless WorkPaper agent handbook](https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html) and [MCP spreadsheet tool server](https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html) | The agent can pick MCP, direct TypeScript, or route tools and prove write/readback/persist.    |
 | Agent intent contracts   | [Workbook agent intent API](https://proompteng.github.io/bilig/workbook-agent-intent-api.html)                                                                                                                      | `@bilig/workbook` can describe plans, receipts, and strict runtime proof without owning state. |
 | Agent-owned XLSX files   | [Agent XLSX recalculation without LibreOffice](https://proompteng.github.io/bilig/agent-xlsx-formula-recalculation-without-libreoffice.html)                                                                        | A tool can edit XLSX inputs, recalculate, export, reimport, and return `verified: true`.       |
-| Public technical review  | [Show HN maintainer note](https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html)                                                                                                          | One shareable page has the npm check, benchmark caveat, known limits, and open questions.      |
+| Technical review note    | [WorkPaper maintainer proof note](https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html)                                                                                                  | One compact page has the npm check, benchmark caveat, known limits, and open questions.        |
 | Trust and performance    | [npm provenance](https://proompteng.github.io/bilig/npm-provenance-package-trust.html) and [benchmark evidence](https://proompteng.github.io/bilig/what-workpaper-benchmark-proves.html)                            | npm shows SLSA provenance, and benchmark claims match the checked artifact.                    |
 | Almost a fit             | [implementation gap discussion](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                                               | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.       |
 | Formula or XLSX bug      | [formula bug clinic](https://proompteng.github.io/bilig/formula-bug-clinic.html) and [submit a workbook fixture](https://proompteng.github.io/bilig/submit-workbook-fixture.html)                                  | Share one reduced public fixture that maintainers can turn into a test.                       |
 | Real workbook blocked    | [submit a workbook fixture](https://proompteng.github.io/bilig/submit-workbook-fixture.html)                                                                                                                        | Use the structured form when a reduced workbook is ready.                                      |
 
-Reduced workbook already in hand? Start with the stale-cache diagnostic when a
-Node process changed cells but formula output stayed old:
+Reduced workbook already in hand? If the blocker is an import, formula, or
+persistence gap, generate the fixture report:
 
 ```sh
-npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json
-```
-
-If the blocker is an import, formula, or persistence gap, generate the fixture
-report:
-
-```sh
-npm exec --package @bilig/headless@0.164.1 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
 Handing a spreadsheet task to another coding agent?
@@ -657,19 +646,19 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
   It starts from an empty Node directory, downloads one maintained TypeScript
   route smoke, writes quote inputs, recalculates an approval decision, persists
   JSON, and verifies restored readback.
-- For XLSX import/export evaluation, run
-  [`examples/xlsx-recalculation-node`](https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node).
-  It imports a generated XLSX pricing workbook, edits input cells, reads the
-  recalculated approval decision, exports XLSX, reimports it, and verifies the
-  formulas survived the round trip.
 - For a shorter evaluation page, read
   [formula workbooks for Node services and agent tools](https://github.com/proompteng/bilig/blob/main/docs/formula-workbooks-node-services-agent-tools.md).
   It compresses the WorkPaper boundary, MCP file-backed mode, benchmark caveat,
   and alternative-tool guidance into one evaluation path.
-- For HN, Lobsters, Reddit, or newsletter review, use the
-  [Show HN maintainer note](https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html).
+- For a compact review note, use the
+  [WorkPaper maintainer proof note](https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html).
   It keeps the empty npm-project command, `verified: true` output, benchmark
   caveat, known limits, and open questions together.
+- For saved-file integration, run
+  [`examples/xlsx-recalculation-node`](https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node).
+  It imports a generated XLSX pricing workbook, edits input cells, reads the
+  recalculated approval decision, exports XLSX, reimports it, and verifies the
+  formulas survived the round trip.
 - Auditing imported Excel files is a separate workflow. Cached formula values
   embedded in `.xlsx` files are useful for triage, but Bilig accuracy claims
   should be checked against a fresh Microsoft Excel recalculation.
@@ -702,8 +691,8 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
 If it almost matches but a gap blocks adoption, open an implementation gap discussion:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
 If the fixture is already reduced and public, submit it through the public
-fixture form. For stale-cache cases, include the exact cell address, formula,
-cached value, recalculated value, and command output:
+fixture form with the exact cell address, formula, expected value, observed
+value, and command output:
 <https://github.com/proompteng/bilig/issues/new?template=workbook_fixture.yml>.
 If you are still reducing the fixture, discuss the shape first:
 <https://github.com/proompteng/bilig/discussions/414>.

@@ -1,7 +1,7 @@
 ---
 title: Formula workbooks for Node services and agent tools
 published: true
-description: A runnable @bilig/headless proof for backend services and agent tools that need formula cell edits, recalculation, JSON persistence, and restored readback.
+description: A runnable @bilig/workpaper proof for backend services and agent tools that need formula cell edits, recalculation, JSON persistence, and restored readback.
 tags: typescript, node, spreadsheet, agents, formulas
 canonical_url: https://proompteng.github.io/bilig/formula-workbooks-node-services-agent-tools.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -10,7 +10,7 @@ image: /assets/github-social-preview.png
 
 # Formula workbooks for Node services and agent tools
 
-`@bilig/headless` is for one specific job: keep workbook-shaped business logic
+`@bilig/workpaper` is for one specific job: keep workbook-shaped business logic
 as cells and formulas, but run it from a Node service, queue worker, serverless
 route, test, or agent tool.
 
@@ -27,7 +27,7 @@ mkdir bilig-quote-approval
 cd bilig-quote-approval
 npm init -y
 npm pkg set type=module
-npm install @bilig/headless
+npm install @bilig/workpaper
 npm install -D tsx typescript @types/node
 curl -fsSLo quote-approval-api.ts \
   https://raw.githubusercontent.com/proompteng/bilig/main/examples/serverless-workpaper-api/quote-approval-api.ts
@@ -115,7 +115,7 @@ WorkPaper runtime boundary.
 Use Google Sheets API first when a shared hosted spreadsheet, permissions,
 comments, and human collaboration are the actual product requirement.
 
-Use `@bilig/headless` when a Node service or agent tool owns the workbook state
+Use `@bilig/workpaper` when a Node service or agent tool owns the workbook state
 and needs formula readback, persistence, and restore proof.
 
 ## Evidence and limits
@@ -133,7 +133,7 @@ the compatibility page before importing real workbooks.
 ## Start here
 
 - [Quote approval WorkPaper API proof](quote-approval-workpaper-api.md)
-- [Try `@bilig/headless` in Node](try-bilig-headless-in-node.md)
+- [Try `@bilig/workpaper` in Node](try-bilig-headless-in-node.md)
 - [MCP spreadsheet tool server](mcp-workpaper-tool-server.md)
 - [What the WorkPaper benchmark proves](what-workpaper-benchmark-proves.md)
 - [Where bilig is not Excel-compatible yet](where-bilig-is-not-excel-compatible-yet.md)
@@ -141,8 +141,7 @@ the compatibility page before importing real workbooks.
 Repository and release notes:
 <https://github.com/proompteng/bilig>.
 
-If it does not match yet, use the adoption-blocker form instead of a vague
-comment:
+If it does not match yet, open a concrete implementation-gap discussion:
 <https://github.com/proompteng/bilig/discussions/new?category=general>. The
 most useful feedback names the workflow, blocker type, proof already tried, and
 the smallest example, benchmark, or compatibility note that would unblock a

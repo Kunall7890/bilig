@@ -1,7 +1,7 @@
 ---
 title: Quote approval WorkPaper API in Node
 published: true
-description: Run a quote approval API smoke from an empty Node.js directory with @bilig/headless, formula recalculation, JSON persistence, and restored readback.
+description: Run a quote approval API smoke from an empty Node.js directory with @bilig/workpaper, formula recalculation, JSON persistence, and restored readback.
 tags: typescript, node, spreadsheet, formulas, api
 canonical_url: https://proompteng.github.io/bilig/quote-approval-workpaper-api.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -32,7 +32,7 @@ mkdir bilig-quote-approval
 cd bilig-quote-approval
 npm init -y
 npm pkg set type=module
-npm install @bilig/headless
+npm install @bilig/workpaper
 npm install -D tsx typescript @types/node
 curl -fsSLo quote-approval-api.ts \
   https://raw.githubusercontent.com/proompteng/bilig/main/examples/serverless-workpaper-api/quote-approval-api.ts
@@ -138,7 +138,7 @@ pnpm --dir examples/serverless-workpaper-api run persistence-adapters
 
 ## Next Pages
 
-- [Try `@bilig/headless` in Node](try-bilig-headless-in-node.md)
+- [Try `@bilig/workpaper` in Node](try-bilig-headless-in-node.md)
 - [Serverless WorkPaper API route](serverless-workpaper-api-route.md)
 - [Node service WorkPaper recipe](node-service-workpaper-recipe.md)
 - [Five Node.js workbook automation examples](workbook-automation-examples-node.md)

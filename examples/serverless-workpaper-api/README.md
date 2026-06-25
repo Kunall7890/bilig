@@ -1,6 +1,6 @@
 # Serverless WorkPaper API Example
 
-This is a runnable `@bilig/headless` example for HTTP routes, serverless
+This is a runnable `@bilig/workpaper` example for HTTP routes, serverless
 functions, queue workers, and agent tools that need spreadsheet formulas behind
 a JSON boundary.
 

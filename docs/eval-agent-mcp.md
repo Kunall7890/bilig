@@ -140,7 +140,7 @@ no blind write-only success, and no missing persistence proof.
   <https://github.com/proompteng/bilig>
 - Watch releases for MCP and agent-tool updates:
   <https://github.com/proompteng/bilig/subscription>
-- Report the exact adoption blocker:
+- Report the exact implementation gap:
   <https://github.com/proompteng/bilig/discussions/new?category=general>
 
 ## Related

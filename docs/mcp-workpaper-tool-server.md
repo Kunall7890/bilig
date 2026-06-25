@@ -48,7 +48,7 @@ printf '%s\n' \
 ## Copy-Paste JSON-RPC Transcript
 
 Use the maintained transcript smoke when reviewing the server from an MCP
-client, directory submission, or HN-style launch thread:
+client, directory submission, or integration review:
 
 ```sh
 pnpm --dir examples/headless-workpaper install --ignore-workspace

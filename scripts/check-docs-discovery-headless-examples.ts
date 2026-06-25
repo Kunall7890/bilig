@@ -164,11 +164,7 @@ export async function requireHeadlessExampleDiscovery({
     `npm exec --package ${workpaperReadmePackageSpec}@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"`,
     'README.md',
   )
-  requireIncludes(
-    headlessReadme,
-    'npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json',
-    'packages/headless/README.md',
-  )
+  requireIncludes(headlessReadme, 'Saved workbook files are a separate entrypoint.', 'packages/headless/README.md')
   requireIncludes(readme, 'bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable', 'README.md')
   requireIncludes(readme, '`export_workpaper_document`, and `validate_formula`', 'README.md')
   requireIncludes(headlessServerJson, '"name": "io.github.proompteng/bilig-workpaper"', 'packages/headless/server.json')

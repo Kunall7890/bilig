@@ -137,7 +137,7 @@ and an Excel or LibreOffice oracle test for customer-critical file flows.
   <https://github.com/proompteng/bilig>
 - Watch releases if you want compatibility and formula updates:
   <https://github.com/proompteng/bilig/subscription>
-- Report the exact adoption blocker:
+- Report the exact implementation gap:
   <https://github.com/proompteng/bilig/discussions/new?category=general>
 
 ## Related

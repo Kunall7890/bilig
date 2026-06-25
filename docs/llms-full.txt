@@ -631,7 +631,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Published npm package         | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                                                                                                                   | `@bilig/workpaper` edits one input, recalculates, persists JSON, restores, and prints `verified: true`.   |
 | Backend service shape         | [Quote approval WorkPaper API](docs/quote-approval-workpaper-api.md)                                                                                                                                                                                                                                              | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`.               |
 | Agent or MCP tools            | [WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md), [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md), [Gemini CLI extension](docs/gemini-cli-workpaper-extension.md), and [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md)                                  | The agent installs a tool path, uses the handoff prompt, then proves write/readback/persist.              |
-| Public WorkPaper review       | [Show HN WorkPaper maintainer note](docs/show-hn-formula-workbooks-node-services.md)                                                                                                                                                                                                                              | One shareable page has the npm check, benchmark caveat, known limits, and open questions.                 |
+| Technical WorkPaper review    | [WorkPaper maintainer proof note](docs/show-hn-formula-workbooks-node-services.md)                                                                                                                                                                                                                                 | One compact page has the npm check, benchmark caveat, known limits, and open questions.                   |
 | Trust and performance         | [npm provenance](docs/npm-provenance-package-trust.md) and [benchmark evidence](docs/what-workpaper-benchmark-proves.md)                                                                                                                                                                                          | npm shows SLSA provenance, and benchmark claims match the checked artifact.                               |
 | Saved workbook files          | [Workbook Compatibility Report](docs/workbook-compatibility-report.md), [XLSX formula recalculation](docs/xlsx-formula-recalculation-node.md), and [ExcelJS formula recalculation](docs/exceljs-formula-recalculation-node.md)                                                                                    | The file boundary is inspected before a service, CI job, or agent trusts imported formulas.               |
 | Almost a fit                  | [implementation gap discussion](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                                                                                                                                             | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.                  |
@@ -1140,20 +1140,20 @@ file-backed WorkPaper tools:
   It starts from an empty Node directory, downloads one maintained TypeScript
   route smoke, writes quote inputs, recalculates an approval decision, persists
   JSON, and verifies restored readback.
-- For an XLSX formula recalculation example, run
+- For a shorter evaluation page, read
+  [formula workbooks for Node services and agent tools](docs/formula-workbooks-node-services-agent-tools.md).
+  It compresses the WorkPaper boundary, MCP file-backed mode, benchmark caveat,
+  and alternative-tool guidance into one evaluation path.
+- For a compact review note, use the
+  [WorkPaper maintainer proof note](docs/show-hn-formula-workbooks-node-services.md).
+  It keeps the empty npm-project command, `verified: true` output, benchmark
+  caveat, known limits, and open questions together.
+- For saved-file integration, run the XLSX formula recalculation example:
   [`examples/xlsx-recalculation-node`](examples/xlsx-recalculation-node). It
   imports a generated XLSX pricing workbook, edits input cells, reads the
   recalculated approval decision, exports XLSX, reimports it, and verifies the
   formulas survived the round trip. The public decision page is
   [XLSX formula recalculation in Node.js](docs/xlsx-formula-recalculation-node.md).
-- For a shorter evaluation page, read
-  [formula workbooks for Node services and agent tools](docs/formula-workbooks-node-services-agent-tools.md).
-  It compresses the WorkPaper boundary, MCP file-backed mode, benchmark caveat,
-  and alternative-tool guidance into one evaluation path.
-- For HN, Lobsters, Reddit, or newsletter review, use the
-  [Show HN maintainer note](docs/show-hn-formula-workbooks-node-services.md).
-  It keeps the empty npm-project command, `verified: true` output, benchmark
-  caveat, known limits, and open questions together.
 - Run `pnpm workpaper:bench:competitive:check`. The checked-in artifact shows
   [`100/100` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
   and `100/100` mean+p95 wins; the current worst p95 row is
@@ -2058,7 +2058,7 @@ and an Excel or LibreOffice oracle test for customer-critical file flows.
   <https://github.com/proompteng/bilig>
 - Watch releases if you want compatibility and formula updates:
   <https://github.com/proompteng/bilig/subscription>
-- Report the exact adoption blocker:
+- Report the exact implementation gap:
   <https://github.com/proompteng/bilig/discussions/new?category=general>
 
 ## Related
@@ -2247,7 +2247,7 @@ the source of truth.
   <https://github.com/proompteng/bilig>
 - Watch releases for API and formula runtime updates:
   <https://github.com/proompteng/bilig/subscription>
-- Report the exact adoption blocker:
+- Report the exact implementation gap:
   <https://github.com/proompteng/bilig/discussions/new?category=general>
 
 ## Related
@@ -2930,7 +2930,7 @@ no blind write-only success, and no missing persistence proof.
   <https://github.com/proompteng/bilig>
 - Watch releases for MCP and agent-tool updates:
   <https://github.com/proompteng/bilig/subscription>
-- Report the exact adoption blocker:
+- Report the exact implementation gap:
   <https://github.com/proompteng/bilig/discussions/new?category=general>
 
 ## Related
@@ -3964,7 +3964,7 @@ Watch releases if this is close to a production path:
 <https://github.com/proompteng/bilig/subscription>.
 
 If the model is close but blocked by a formula, import/export, persistence,
-framework, MCP, or package-boundary gap, open the smallest adoption blocker:
+framework, MCP, or package-boundary gap, open the smallest implementation gap:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
 
 Full docs: <https://proompteng.github.io/bilig/>
@@ -12631,7 +12631,7 @@ printf '%s\n' \
 ## Copy-Paste JSON-RPC Transcript
 
 Use the maintained transcript smoke when reviewing the server from an MCP
-client, directory submission, or HN-style launch thread:
+client, directory submission, or integration review:
 
 ```sh
 pnpm --dir examples/headless-workpaper install --ignore-workspace
@@ -13963,7 +13963,7 @@ mkdir bilig-quote-approval
 cd bilig-quote-approval
 npm init -y
 npm pkg set type=module
-npm install @bilig/headless
+npm install @bilig/workpaper
 npm install -D tsx typescript @types/node
 curl -fsSLo quote-approval-api.ts \
   https://raw.githubusercontent.com/proompteng/bilig/main/examples/serverless-workpaper-api/quote-approval-api.ts
@@ -14069,7 +14069,7 @@ pnpm --dir examples/serverless-workpaper-api run persistence-adapters
 
 ## Next Pages
 
-- [Try `@bilig/headless` in Node](try-bilig-headless-in-node.md)
+- [Try `@bilig/workpaper` in Node](try-bilig-headless-in-node.md)
 - [Serverless WorkPaper API route](serverless-workpaper-api-route.md)
 - [Node service WorkPaper recipe](node-service-workpaper-recipe.md)
 - [Five Node.js workbook automation examples](workbook-automation-examples-node.md)

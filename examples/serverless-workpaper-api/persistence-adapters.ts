@@ -1,6 +1,6 @@
 import { pathToFileURL } from 'node:url'
 
-import { parseWorkPaperDocument } from '@bilig/headless'
+import { parseWorkPaperDocument } from '@bilig/workpaper'
 
 import { createInMemoryWorkbookStorage, createWorkPaperRequestHandler, type WorkPaperJsonStorage } from './route.ts'
 

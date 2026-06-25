@@ -194,6 +194,6 @@ Watch releases if this is close to a production dependency:
 <https://github.com/proompteng/bilig/subscription>.
 
 If a real workbook is close but blocked by a formula, external-link, import,
-export, or round-trip edge case, open the smallest adoption blocker you can
+export, or round-trip edge case, open the smallest implementation gap you can
 share:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.

@@ -112,5 +112,5 @@ the workbook state without opening a spreadsheet app.
 Repository and release notes:
 <https://github.com/proompteng/bilig>.
 
-If the shape is close but blocked, open a concrete adoption blocker:
+If the shape is close but blocked, open a concrete implementation gap:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.

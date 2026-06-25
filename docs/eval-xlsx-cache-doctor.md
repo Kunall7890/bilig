@@ -168,7 +168,7 @@ external-link freshness, or exact desktop Excel UI behavior.
   <https://github.com/proompteng/bilig>
 - Watch releases if you want formula and XLSX compatibility updates:
   <https://github.com/proompteng/bilig/subscription>
-- Report the exact adoption blocker:
+- Report the exact implementation gap:
   <https://github.com/proompteng/bilig/discussions/new?category=general>
 
 ## Related

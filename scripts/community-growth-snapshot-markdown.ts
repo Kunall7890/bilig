@@ -97,8 +97,8 @@ function renderConversionPressureMarkdown(snapshot: CommunityGrowthSnapshot): re
 function renderExternalDiscoveryMarkdown(): readonly string[] {
   return [
     '- LibHunt indexes Bilig on the `headless-spreadsheet` topic page: <https://www.libhunt.com/topic/headless-spreadsheet>.',
-    '- That surface came from the May 7 Show HN discovery path and classifies the project near TypeScript, Spreadsheet, Excel, Agents, and `ai-agents` audiences.',
-    '- Keep GitHub repository topics, npm keywords, and proof-page copy aligned with `headless-spreadsheet`, `excel`, `ai-agents`, and formula-recalculation terms while waiting for crawler refreshes.',
+    '- That surface came from the May 7 developer discovery path and classifies the project near TypeScript, Spreadsheet, Excel, Agents, and `ai-agents` audiences.',
+    '- Keep GitHub repository topics, npm keywords, and proof-page copy aligned with WorkPaper service readback, agent tools, and formula-recalculation terms while waiting for crawler refreshes.',
   ]
 }
 
@@ -135,7 +135,7 @@ function renderSpikeReadMarkdown(snapshot: CommunityGrowthSnapshot): readonly st
   if (!snapshot.traffic.available) {
     return [
       '- Traffic referrers are unavailable in this snapshot, so the spike read cannot be refreshed from live GitHub traffic.',
-      '- Keep the next distribution move narrow: one proof URL, one adoption-blocker question, and a before/after traffic snapshot.',
+      '- Keep the next distribution move narrow: one proof URL, one implementation-gap question, and a before/after traffic snapshot.',
     ]
   }
 
@@ -159,7 +159,7 @@ function renderSpikeReadMarkdown(snapshot: CommunityGrowthSnapshot): readonly st
   }
 
   lines.push(
-    '- Replication plan: do not repost the same launch. Ship one sharper proof page, then ask HN/X/MCP audiences for a concrete adoption blocker: formula family, XLSX cache behavior, persistence shape, or agent writeback verification.',
+    '- Replication plan: ship one sharper proof page, then ask service and agent-tool audiences for a concrete implementation gap: formula family, persistence shape, deployment target, or agent writeback verification.',
   )
 
   return lines
@@ -172,7 +172,7 @@ export function renderCommunityGrowthSnapshotMarkdown(snapshot: CommunityGrowthS
     '',
     `Captured at: \`${snapshot.capturedAt}\``,
     '',
-    'This snapshot tracks the public signals for the `@bilig/headless` growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.',
+    'This snapshot tracks the public signals for the `@bilig/workpaper` growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.',
     '',
     '## GitHub',
     '',
