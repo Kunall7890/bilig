@@ -202,9 +202,9 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json`.
   `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibility-report workbook.xlsx --json`.
   This is a risk inspector for unsupported functions, external links, macros,
-  pivots, volatile formulas, stale caches, and uninspected formulas; it is not
-  an Excel compatibility score.
-- `eval-xlsx-recalc`: use when an `.xlsx` file has stale formula values after
+  pivots, volatile formulas, stored formula results, and uninspected formulas;
+  it is not an Excel compatibility score.
+- `eval-xlsx-recalc`: use when a saved `.xlsx` file must be recalculated after
   input edits in Node. Read:
   https://proompteng.github.io/bilig/eval-xlsx-recalc.html
   Run:
@@ -640,7 +640,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 - XLSX formula recalculation in Node:
   https://proompteng.github.io/bilig/xlsx-formula-recalculation-node.html
   https://github.com/proompteng/bilig/blob/main/docs/xlsx-formula-recalculation-node.md
-- SheetJS stale formula readback fix:
+- SheetJS formula readback fix:
   https://proompteng.github.io/bilig/sheetjs-formula-result-not-updating-node.html
   https://github.com/proompteng/bilig/blob/main/docs/sheetjs-formula-result-not-updating-node.md
   https://www.npmjs.com/package/@bilig/sheetjs-formula-recalc

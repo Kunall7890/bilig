@@ -476,8 +476,8 @@ Use `@bilig/workpaper` when:
 
 Use something else when you need a visual spreadsheet grid, Office macros,
 desktop Excel automation, or a one-off arithmetic helper. Do not treat embedded
-XLSX cached formula values as truth; use the Excel oracle workflow when accuracy
-matters.
+XLSX stored formula results as truth; use the Excel oracle workflow when
+accuracy matters.
 
 ## Package Boundary
 
@@ -902,7 +902,7 @@ work.
 3. Use public exports from `@bilig/workpaper`; do not reach into `src/` or
    `dist/` when writing consumer examples.
 4. Keep examples TypeScript-first.
-5. Do not call embedded XLSX cached formula values an accuracy oracle.
+5. Do not call embedded XLSX stored formula results an accuracy oracle.
 6. Add focused tests before changing formulas, persistence, range bounds,
    config rebuilds, events, row/column moves, or sheet lifecycle.
 7. Run the focused package tests first, then broaden to `pnpm run ci`.

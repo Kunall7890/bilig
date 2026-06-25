@@ -93,7 +93,7 @@ This snapshot tracks the public signals for the Bilig WorkPaper growth loop: Git
   is the public package path. Saved-file diagnostics remain documented, but no
   longer drive the homepage or full agent context. Live readback showed 32
   stars.
-- 2026-06-25T09:28:34Z: removed the stale-XLSX/cache-doctor route from the
+- 2026-06-25T09:28:34Z: removed the old saved-file diagnostic route from the
   public WorkPaper conversion path, compact and full LLM contexts, generated
   agent manifests, IDE rules, fixture issue template, formula clinic, and proof
   matrix. The remaining first-party discovery path leads with WorkPaper service
@@ -105,11 +105,11 @@ This snapshot tracks the public signals for the Bilig WorkPaper growth loop: Git
   removed "non-spam", "not vibes", "feedback ask", and star-mechanics phrasing,
   and regenerated the skill, `llms.txt`, `llms-full.txt`, and well-known mirrors.
   Live GitHub readback still showed 32 stars.
-- 2026-06-25T09:52:00Z: removed the remaining stale saved-file and launch-review
+- 2026-06-25T09:52:00Z: removed the remaining saved-file and launch-review
   bias from public proof surfaces: the WorkPaper proof note is no longer a
   social post template, the quote approval example installs `@bilig/workpaper`,
   the serverless example imports the canonical package, and discovery checks no
-  longer force cache-doctor commands into the `@bilig/headless` README. Live
+  longer force saved-file diagnostic commands into the package README. Live
   GitHub readback still showed 32 stars.
 
 ## External Discovery

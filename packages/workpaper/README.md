@@ -92,8 +92,8 @@ the closest runtime:
 - Workflow engines: Trigger.dev, Inngest, Temporal, Airflow, Dagster, Kestra,
   Prefect, Windmill.
 - Low-code and data tools: n8n, Pipedream, Directus, Airbyte, Meltano.
-- Existing `.xlsx` files: use `@bilig/xlsx-formula-recalc` for stale formula
-  caches and exported workbook readback.
+- Existing `.xlsx` files: use `@bilig/xlsx-formula-recalc` for saved-file
+  recalculation and exported workbook readback.
 
 ## Searchable Example Guides
 

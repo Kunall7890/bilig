@@ -55,7 +55,7 @@ export function buildEvaluatorDoors(args: AgentDiscoveryEvaluatorDoorInputs): re
     },
     {
       name: 'eval-xlsx-recalc',
-      audience: 'A service has an XLSX file with stale formula results after editing inputs in Node.js.',
+      audience: 'A service must keep an XLSX file as the contract after editing inputs in Node.js.',
       docs: `${siteRoot}/eval-xlsx-recalc.html`,
       source: `${args.repositoryUrl}/blob/main/docs/eval-xlsx-recalc.md`,
       package: '@bilig/xlsx-formula-recalc',
