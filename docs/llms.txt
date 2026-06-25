@@ -691,6 +691,9 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 - Next.js Server Action validation-error WorkPaper smoke:
   npm run next-server-action-validation
   https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#nextjs-server-action-validation-smoke
+- Hono WorkPaper route smoke:
+  npm run hono-route
+  https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#hono-route-smoke
 - Express, Fastify, Hono, Oak, Hapi, and AdonisJS WorkPaper adapters:
   https://proompteng.github.io/bilig/node-framework-workpaper-adapters.html
   https://github.com/proompteng/bilig/blob/main/docs/node-framework-workpaper-adapters.md
@@ -1005,8 +1008,6 @@ including its worst p95 row.
   before browsing the full issue queue.
 - WorkPaper service proof transcript starter:
   https://github.com/proompteng/bilig/issues/452
-- Hono WorkPaper route smoke starter:
-  https://github.com/proompteng/bilig/issues/453
 - good first issue search:
   https://github.com/proompteng/bilig/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22
 - first-timers-only issue search:

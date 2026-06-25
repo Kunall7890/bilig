@@ -533,7 +533,8 @@ npm exec --package @bilig/sheetjs-formula-recalc@latest -- sheetjs-recalc --demo
 
 The serverless example also includes `npm run next-route-handler`,
 `npm run next-server-action`, `npm run next-server-action-formdata`,
-`npm run framework-adapters`, and `npm run persistence-adapters` for
+`npm run hono-route`, `npm run framework-adapters`, and
+`npm run persistence-adapters` for
 framework-specific boundary checks.
 
 The MCP server is also listed in the official registry:
@@ -586,6 +587,7 @@ pnpm --dir examples/headless-workpaper run agent:openai-responses
 pnpm --dir examples/headless-workpaper run agent:ai-sdk-generate-text
 pnpm --dir examples/headless-workpaper run agent:ai-sdk-stream-text
 pnpm --dir examples/headless-workpaper run agent:framework-adapters
+pnpm --dir examples/serverless-workpaper-api run hono-route
 pnpm --dir examples/mastra-workpaper-tool run smoke
 pnpm --dir examples/langgraph-workpaper-tool-state run smoke
 pnpm --dir examples/langchain-mcp-workpaper-toolnode run smoke

@@ -19,6 +19,7 @@ export async function requireServerlessWorkPaperApiDiscovery({
   repoRoot,
 }: ServerlessDiscoveryInput): Promise<void> {
   await requireFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'framework-adapters.ts'))
+  await requireFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'hono-route.ts'))
   await requireFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'next-route-handler.ts'))
   await requireFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'next-server-action.ts'))
   await requireFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'next-server-action-formdata.ts'))
@@ -29,6 +30,7 @@ export async function requireServerlessWorkPaperApiDiscovery({
     serverlessExampleReadme,
     serverlessExamplePackage,
     serverlessFrameworkAdapters,
+    serverlessHonoRoute,
     serverlessWorkPaperApiRouteDoc,
     nodeFrameworkAdapterDoc,
     persistenceDoc,
@@ -36,6 +38,7 @@ export async function requireServerlessWorkPaperApiDiscovery({
     readFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'README.md'), 'utf8'),
     readFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'package.json'), 'utf8'),
     readFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'framework-adapters.ts'), 'utf8'),
+    readFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'hono-route.ts'), 'utf8'),
     readFile(join(docsRoot, 'serverless-workpaper-api-route.md'), 'utf8'),
     readFile(join(docsRoot, 'node-framework-workpaper-adapters.md'), 'utf8'),
     readFile(join(docsRoot, 'persisting-formula-backed-workpaper-documents-in-node.md'), 'utf8'),
@@ -80,6 +83,21 @@ export async function requireServerlessWorkPaperApiDiscovery({
   requireIncludes(serverlessWorkPaperApiRouteDoc, '## Next.js Server Action Validation Adapter', 'docs/serverless-workpaper-api-route.md')
   requireIncludes(llms, 'Next.js Server Action validation-error WorkPaper smoke', 'docs/llms.txt')
   requireIncludes(llms, 'npm run next-server-action-validation', 'docs/llms.txt')
+  requireIncludes(serverlessExampleReadme, 'npm run hono-route', 'examples/serverless-workpaper-api/README.md')
+  requireIncludes(serverlessExampleReadme, '## Hono Route Smoke', 'examples/serverless-workpaper-api/README.md')
+  requireIncludes(serverlessExampleReadme, '"route": "Hono WorkPaper Route"', 'examples/serverless-workpaper-api/README.md')
+  requireIncludes(serverlessExampleReadme, '"inputCell": "Revenue!A2:D5"', 'examples/serverless-workpaper-api/README.md')
+  requireIncludes(serverlessExampleReadme, '"readbackCell": "Summary!B2"', 'examples/serverless-workpaper-api/README.md')
+  requireIncludes(llms, 'Hono WorkPaper route smoke', 'docs/llms.txt')
+  requireIncludes(llms, 'npm run hono-route', 'docs/llms.txt')
+  requireIncludes(llms, 'https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#hono-route-smoke', 'docs/llms.txt')
+  requireIncludes(readme, 'pnpm --dir examples/serverless-workpaper-api run hono-route', 'README.md')
+  requireIncludes(headlessReadme, 'pnpm --dir examples/serverless-workpaper-api run hono-route', 'packages/headless/README.md')
+  requireIncludes(serverlessHonoRoute, "route: 'Hono WorkPaper Route'", 'examples/serverless-workpaper-api/hono-route.ts')
+  requireIncludes(serverlessHonoRoute, "inputCell: 'Revenue!A2:D5'", 'examples/serverless-workpaper-api/hono-route.ts')
+  requireIncludes(serverlessHonoRoute, "readbackCell: 'Summary!B2'", 'examples/serverless-workpaper-api/hono-route.ts')
+  requireIncludes(serverlessHonoRoute, 'createHonoWorkPaperHandler(handler)', 'examples/serverless-workpaper-api/hono-route.ts')
+  requireIncludes(serverlessHonoRoute, 'app.fetch', 'examples/serverless-workpaper-api/hono-route.ts')
 
   requireIncludes(serverlessExampleReadme, 'npm run framework-adapters', 'examples/serverless-workpaper-api/README.md')
   requireIncludes(serverlessExampleReadme, '## Framework Adapters', 'examples/serverless-workpaper-api/README.md')
@@ -167,9 +185,11 @@ export async function requireServerlessWorkPaperApiDiscovery({
 
   requireIncludes(
     serverlessExamplePackage,
-    '"test": "npm run smoke && npm run framework-adapters && npm run quote-approval-api && npm run next-route-handler && npm run vercel-function"',
+    '"test": "npm run smoke && npm run framework-adapters && npm run hono-route && npm run quote-approval-api && npm run next-route-handler && npm run vercel-function"',
     'examples/serverless-workpaper-api/package.json',
   )
+  requireIncludes(serverlessExamplePackage, '"hono-route": "tsx hono-route.ts"', 'examples/serverless-workpaper-api/package.json')
+  requireIncludes(serverlessExamplePackage, '"hono": "4.12.27"', 'examples/serverless-workpaper-api/package.json')
   requireIncludes(
     serverlessExamplePackage,
     '"next-route-handler": "tsx next-route-handler.ts"',

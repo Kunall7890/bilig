@@ -4,8 +4,9 @@
   "description": "Runnable serverless-style API route example for @bilig/workpaper.",
   "type": "module",
   "scripts": {
-    "test": "npm run smoke && npm run framework-adapters && npm run quote-approval-api && npm run next-route-handler && npm run vercel-function",
+    "test": "npm run smoke && npm run framework-adapters && npm run hono-route && npm run quote-approval-api && npm run next-route-handler && npm run vercel-function",
     "framework-adapters": "tsx framework-adapters.ts",
+    "hono-route": "tsx hono-route.ts",
     "next-route-handler": "tsx next-route-handler.ts",
     "next-server-action": "tsx next-server-action.ts",
     "next-server-action-formdata": "tsx next-server-action-formdata.ts",
@@ -18,7 +19,8 @@
     "vercel-function": "tsx vercel-function.ts"
   },
   "dependencies": {
-    "@bilig/workpaper": "latest"
+    "@bilig/workpaper": "latest",
+    "hono": "4.12.27"
   },
   "devDependencies": {
     "@types/node": "25.5.0",

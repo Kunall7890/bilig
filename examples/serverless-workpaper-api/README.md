@@ -22,6 +22,7 @@ npm run next-route-handler
 npm run next-server-action
 npm run next-server-action-formdata
 npm run next-server-action-validation
+npm run hono-route
 npm run framework-adapters
 npm run persistence-adapters
 ```
@@ -132,6 +133,50 @@ The lower-level `createWorkPaperRequestHandler(storage)` helper accepts
 shape when the serialized WorkPaper document should live in a database, object
 store, KV namespace, Durable Object, or another durable service instead of
 module memory.
+
+## Hono Route Smoke
+
+Run this when you want the smallest Hono-specific route proof:
+
+```sh
+npm run hono-route
+```
+
+The script mounts the shared WorkPaper request handler with Hono's `c.req.raw`,
+posts revenue records through `app.fetch()`, and reads `Summary!B2` again after
+the write. Expected output:
+
+```json
+{
+  "route": "Hono WorkPaper Route",
+  "inputCell": "Revenue!A2:D5",
+  "readbackCell": "Summary!B2",
+  "before": {
+    "totalRevenue": 36900,
+    "westCustomers": 20,
+    "largestDeal": 24000
+  },
+  "edit": {
+    "records": 4,
+    "after": {
+      "totalRevenue": 48600,
+      "westCustomers": 20,
+      "largestDeal": 24000
+    },
+    "checks": {
+      "totalRevenueChanged": true,
+      "formulasPersisted": true,
+      "serializedBytes": 1194
+    }
+  },
+  "after": {
+    "totalRevenue": 48600,
+    "westCustomers": 20,
+    "largestDeal": 24000
+  },
+  "success": true
+}
+```
 
 ## Vercel Function Smoke
 
