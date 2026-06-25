@@ -116,6 +116,10 @@ This snapshot tracks the public signals for the Bilig WorkPaper growth loop: Git
   generated agent context, package scaffolding, and discovery checks. The
   GitHub topic `ai-agents` was replaced with `agent-workpaper`. Live GitHub
   readback still showed 32 stars.
+- 2026-06-25T10:06:52Z: moved the GitHub README and homepage hero to a
+  WorkPaper-first pitch: concrete Node service use cases, first-viewport social
+  preview, fewer diagnostic detours, and a workbook report link instead of a
+  competing bridge button. Live GitHub readback still showed 32 stars.
 
 ## External Discovery
 

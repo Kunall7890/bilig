@@ -161,8 +161,8 @@
           <p class="eyebrow">WorkPaper runtime</p>
           <h1 id="hero-title" class="hero-title">Run workbook rules in Node.</h1>
           <p class="hero-subtitle">
-            Bilig gives services and agents a workbook API: write inputs, recalculate formulas, read outputs, and save JSON. Use the XLSX
-            tools only when saved files are still the contract.
+            Bilig gives services and agents a workbook API for pricing models, quote approval, payout checks, import validation, forecasts,
+            and formula-backed workflow steps.
           </p>
           <div class="hero-command" aria-label="Bilig WorkPaper evaluator command">
             <span>No-clone check</span>
@@ -174,13 +174,11 @@
             <a class="button" href="./eval-workpaper-service.html">Run WorkPaper</a>
             <a class="button" href="./eval-agent-mcp.html">Agent API</a>
             <a class="button" href="./workbook-compatibility-report.html">Workbook report</a>
-            <a class="button" href="./xlsx-formula-recalculation-node.html">XLSX bridge</a>
             <a class="button" href="https://github.com/proompteng/bilig">GitHub</a>
           </div>
           <p class="hero-note">
             Start with <a href="https://www.npmjs.com/package/@bilig/workpaper">@bilig/workpaper</a> when your service or agent owns the
-            workbook state. Use <a href="https://www.npmjs.com/package/@bilig/xlsx-formula-recalc">@bilig/xlsx-formula-recalc</a> only when
-            a saved <code>.xlsx</code> file stays in the loop.
+            workbook state. Use the workbook report when a saved file stays in the loop.
           </p>
         </div>
 
@@ -368,8 +366,8 @@
   bilig-evaluate --door workpaper-service --json</code></pre>
               </div>
               <p>
-                Want a starter? Run <code>npm create @bilig/workpaper@latest pricing-workpaper</code>. Need a saved workbook file? Use the
-                <a href="./xlsx-formula-recalculation-node.html">XLSX bridge</a>.
+                Want a starter? Run <code>npm create @bilig/workpaper@latest pricing-workpaper</code>. Need a saved workbook file? Start
+                with the <a href="./workbook-compatibility-report.html">workbook report</a>.
               </p>
             </div>
 

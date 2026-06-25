@@ -6,16 +6,16 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge)](https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-**WorkPaper runtime for Node services and agents.**
+**Run workbook-shaped business rules inside Node.**
 
-Bilig gives backend code a workbook object it can edit, recalculate, read, save,
-and restore without driving a spreadsheet UI. Start with `@bilig/workpaper`
-when a service, queue worker, test, MCP server, or agent tool owns the workbook
-model.
+Bilig gives services, queue workers, tests, MCP servers, and coding agents a
+typed WorkPaper object: write inputs, recalculate formulas, read outputs,
+persist JSON, restore, and verify. It fits pricing models, quote approval,
+payout checks, import validation, forecasts, and formula-backed workflow steps.
 
-Start with the boundary you actually have. Do not drive Excel, LibreOffice,
-Google Sheets, or a screenshot UI just to learn whether a formula value is
-fresh.
+<p align="center">
+  <img src="docs/assets/github-social-preview.png" alt="bilig WorkPaper runtime preview" />
+</p>
 
 Run the two no-project checks from any Node project:
 
@@ -329,10 +329,6 @@ For another tool host, use the
 [agent workbook challenge](docs/agent-workbook-challenge.md): one input edit,
 one dependent formula readback, one serialized restore, and a `verified: true`
 object.
-
-<p align="center">
-  <img src="docs/assets/github-social-preview.png" alt="bilig headless workbook runtime for formulas in TypeScript" />
-</p>
 
 ## Try It In 90 Seconds
 
