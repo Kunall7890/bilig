@@ -16,7 +16,7 @@
     />
     <meta
       name="keywords"
-      content="WorkPaper runtime, spreadsheet formula readback, spreadsheet formulas Node.js, backend spreadsheet formulas, agent workbook automation, agent MCP tools, MCP spreadsheet tools, JSON WorkPaper persistence, @bilig/workpaper, Node service workbook automation"
+      content="WorkPaper runtime, spreadsheet formula readback, spreadsheet formulas Node.js, backend spreadsheet formulas, tool-host workbook automation, MCP tool contracts, MCP spreadsheet tools, JSON WorkPaper persistence, @bilig/workpaper, Node service workbook automation"
     />
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="theme-color" content="#151713" />
@@ -59,9 +59,9 @@
         "image": "https://proompteng.github.io/bilig/assets/github-social-preview.png?v=2026-05-15-2",
         "featureList": [
           "WorkPaper runtime for service-owned workbook models",
-          "Spreadsheet formula readback before backend code or an agent uses the result",
+          "Spreadsheet formula readback before backend code or tool hosts use the result",
           "JSON WorkPaper persistence",
-          "Agent MCP tool contracts",
+          "MCP tool contracts",
           "Saved workbook import, export, and formula recalculation when files are the boundary",
           "Report-only GitHub Action for workbook fixtures"
         ],
@@ -76,7 +76,7 @@
           "spreadsheet formula readback",
           "WorkPaper runtime",
           "backend spreadsheet formulas",
-          "agent workbook automation",
+          "tool-host workbook automation",
           "MCP spreadsheet tools",
           "JSON WorkPaper persistence",
           "@bilig/workpaper",
@@ -94,7 +94,7 @@
             "name": "Who is bilig for?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Bilig is for backend and agent-tool developers who need to read calculated workbook values from Node without driving Excel or a browser grid."
+              "text": "Bilig is for backend and tool-integration developers who need to read calculated workbook values from Node without driving Excel or a browser grid."
             }
           },
           {
@@ -147,7 +147,7 @@
         <nav class="nav" aria-label="Primary">
           <a href="#runtime">Runtime</a>
           <a href="#install">Install</a>
-          <a href="#mcp">Agents</a>
+          <a href="#mcp">MCP</a>
           <a href="#benchmark">Benchmark</a>
           <a href="#docs">Docs</a>
           <a href="https://github.com/proompteng/bilig">GitHub</a>
@@ -172,12 +172,12 @@
           <div class="hero-actions">
             <a class="button primary" href="https://www.npmjs.com/package/@bilig/workpaper">Install WorkPaper</a>
             <a class="button" href="./eval-workpaper-service.html">Run WorkPaper</a>
-            <a class="button" href="./eval-agent-mcp.html">Agent API</a>
+            <a class="button" href="./eval-agent-mcp.html">MCP tools</a>
             <a class="button" href="./workbook-compatibility-report.html">Workbook report</a>
             <a class="button" href="https://github.com/proompteng/bilig">GitHub</a>
           </div>
           <p class="hero-note">
-            Start with <a href="https://www.npmjs.com/package/@bilig/workpaper">@bilig/workpaper</a> when your service or agent owns the
+            Start with <a href="https://www.npmjs.com/package/@bilig/workpaper">@bilig/workpaper</a> when your service or tool host owns the
             workbook state. Use the workbook report when a saved file stays in the loop.
           </p>
         </div>
@@ -281,7 +281,7 @@
             </a>
             <a class="path-link" href="./agent-proof-matrix.html">
               <span>proof</span>
-              <strong>Choose the smallest agent proof.</strong>
+              <strong>Choose the smallest tool-host proof.</strong>
               <em>Compare WorkPaper service, MCP, AI SDK, OpenAI, LangGraph, Semantic Kernel, Mastra, ExcelJS, and XLSX paths.</em>
             </a>
             <a class="path-link" href="./agent-proof-transcripts.html">
@@ -413,7 +413,7 @@
                 <em>Load a WorkPaper, write inputs, read formula outputs, and save JSON without opening a spreadsheet app.</em>
               </a>
               <a class="path-link" href="./agent-workpaper-tool-calling-recipe.html">
-                <span>agent</span>
+                <span>tools</span>
                 <strong>Expose tools, not a spreadsheet screen.</strong>
                 <em>Use narrow read/write commands so automation can change cells and return the calculated answer.</em>
               </a>
@@ -546,8 +546,8 @@ console.log({ answer, restored: restored.getCellDisplayValue(outputCell) })
               <em>Create a starter, write an input, read a formula, save JSON, and restore it.</em>
             </a>
             <a class="path-link" href="./eval-agent-mcp.html">
-              <span>agent</span>
-              <strong>Give an agent a workbook API.</strong>
+              <span>tools</span>
+              <strong>Give tool hosts a workbook API.</strong>
               <em>Expose cell reads, writes, formula readback, and persistence without screen automation.</em>
             </a>
             <a class="path-link" href="./serverless-workpaper-api-route.html">
@@ -597,8 +597,8 @@ console.log({ answer, restored: restored.getCellDisplayValue(outputCell) })
               <h2 id="docs-title">Start narrow, then go deeper.</h2>
             </div>
             <p>
-              Choose by boundary. Use <code>@bilig/workpaper</code> when the service or agent owns workbook state, and saved-file tools only
-              when the file remains the contract.
+              Choose by boundary. Use <code>@bilig/workpaper</code> when the service or tool host owns workbook state, and saved-file tools
+              only when the file remains the contract.
             </p>
           </div>
 
@@ -614,7 +614,7 @@ console.log({ answer, restored: restored.getCellDisplayValue(outputCell) })
                 <li><a href="./eval-workpaper-service.html">service evaluator</a></li>
                 <li><a href="./workbook-compatibility-report.html">Workbook Compatibility Report</a></li>
                 <li><a href="./workbook-compatibility-report-transcript.html">Workbook Compatibility Report transcript</a></li>
-                <li><a href="./agent-xlsx-risk-preflight.html">Agent XLSX risk preflight</a></li>
+                <li><a href="./agent-xlsx-risk-preflight.html">XLSX risk preflight for tool hosts</a></li>
                 <li><a href="https://www.npmjs.com/package/@bilig/xlsx-formula-recalc">@bilig/xlsx-formula-recalc npm package</a></li>
                 <li><a href="./xlsx-formula-recalculation-node.html">XLSX formula recalculation in Node</a></li>
                 <li><a href="./xlsx-formula-support-answers.html">XLSX formula support answers</a></li>
@@ -660,7 +660,7 @@ console.log({ answer, restored: restored.getCellDisplayValue(outputCell) })
                 <li><a href="./agent-rule-chooser.html">coding agent rule chooser</a></li>
                 <li><a href="https://context7.com/proompteng/bilig">Context7 indexed docs</a></li>
                 <li><a href="./agent-proof-matrix.html">Agent WorkPaper proof matrix</a></li>
-                <li><a href="./agent-xlsx-risk-preflight.html">Agent XLSX risk preflight</a></li>
+                <li><a href="./agent-xlsx-risk-preflight.html">XLSX risk preflight for tool hosts</a></li>
                 <li><a href="./headless-workpaper-agent-handbook.html">WorkPaper agent handbook</a></li>
                 <li><a href="./agent-workpaper-tool-calling-recipe.html">agent tool-calling recipe</a></li>
                 <li><a href="./agent-framework-workbook-tools.html">agent framework workbook tool chooser</a></li>
@@ -741,7 +741,7 @@ console.log({ answer, restored: restored.getCellDisplayValue(outputCell) })
           <div class="final-actions">
             <a class="button primary" href="https://www.npmjs.com/package/@bilig/workpaper">Install WorkPaper</a>
             <a class="button" href="./eval-workpaper-service.html">Run WorkPaper</a>
-            <a class="button" href="./eval-agent-mcp.html">Agent API</a>
+            <a class="button" href="./eval-agent-mcp.html">MCP tools</a>
             <a class="button dark" href="https://github.com/proompteng/bilig">GitHub</a>
             <a class="button" href="https://github.com/proompteng/bilig/releases">Releases</a>
           </div>
