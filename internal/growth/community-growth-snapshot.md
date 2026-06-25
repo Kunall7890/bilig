@@ -51,6 +51,15 @@ This snapshot tracks the public signals for the Bilig WorkPaper growth loop: Git
 - Top referrers: github.com (25/17), Google (6/6), jackyst0.github.io (2/2), proompteng.github.io (2/2), DuckDuckGo (2/1)
 - Top paths: /proompteng/bilig (41/34), /proompteng/bilig/tree/main/skills/bilig-workpaper (10/9), /proompteng/bilig/blob/main/skills/bilig-workpaper/SKILL.md (4/4), /proompteng/bilig/discussions (3/3), /proompteng/bilig/pulls (3/2)
 
+## Execution Log
+
+- 2026-06-25T08:26:29Z: refreshed live Discussion #213
+  ([runnable WorkPaper examples](https://github.com/proompteng/bilig/discussions/213))
+  and #335
+  ([OpenAI Responses WorkPaper tool calls](https://github.com/proompteng/bilig/discussions/335))
+  from older clone-first or package-boundary copy to concise WorkPaper-first
+  evaluation paths with no-key evaluator commands and concrete feedback asks.
+
 ## External Discovery
 
 - LibHunt indexes Bilig on the `headless-spreadsheet` topic page: <https://www.libhunt.com/topic/headless-spreadsheet>.
