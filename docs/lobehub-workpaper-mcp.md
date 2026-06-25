@@ -2,7 +2,7 @@
 title: LobeHub WorkPaper MCP setup
 published: true
 description: Connect Bilig WorkPaper to LobeHub Custom MCP so agents can edit workbook inputs, verify formula readback, and persist JSON proof.
-tags: lobehub, mcp, spreadsheet-agent, workbook-api, custom-mcp
+tags: lobehub, mcp, spreadsheet automation, workbook-api, custom-mcp
 canonical_url: https://proompteng.github.io/bilig/lobehub-workpaper-mcp.html
 image: /assets/github-social-preview.png
 ---

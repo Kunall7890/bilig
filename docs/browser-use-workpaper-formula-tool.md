@@ -2,7 +2,7 @@
 title: Browser Use WorkPaper formula tool
 published: true
 description: Give Browser Use agents a deterministic Bilig WorkPaper tool for spreadsheet formula readback instead of clicking through Excel, Google Sheets, or browser grids.
-tags: browser-use, browser automation, spreadsheet-agent, workpaper, mcp
+tags: browser-use, browser automation, spreadsheet automation, workpaper, mcp
 canonical_url: https://proompteng.github.io/bilig/browser-use-workpaper-formula-tool.html
 image: /assets/github-social-preview.png
 ---

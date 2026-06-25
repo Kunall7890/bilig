@@ -25,7 +25,7 @@ flowchart LR
   - canonical `@bilig/workbook` run adapter for materializing generic commands and proving generic checks
   - snapshot import/export
 - `@bilig/workbook`
-  - agent-first public workbook model API
+  - WorkPaper-first public workbook model API
   - root public barrel plus smaller model/prepare/find/check/formula/verify/runtime/command/schema subpath exports
   - public JSON schema artifacts, deterministic schema hashes, and checked-in
     fixtures for non-TypeScript agent contract inspection

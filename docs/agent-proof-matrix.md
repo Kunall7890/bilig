@@ -2,7 +2,7 @@
 title: Agent WorkPaper proof matrix
 published: true
 description: Pick the smallest Bilig WorkPaper proof for coding agents, MCP clients, AI SDK tools, OpenAI tool calls, LangGraph, Microsoft Agent Framework, Semantic Kernel, Mastra, and XLSX recalculation.
-tags: ai-agents, mcp, workpaper, spreadsheet-agent, proof
+tags: agents, mcp, workpaper, spreadsheet automation, proof
 canonical_url: https://proompteng.github.io/bilig/agent-proof-matrix.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png

@@ -2,7 +2,7 @@
 title: smolagents WorkPaper Tool
 published: true
 description: Give Hugging Face smolagents a narrow Bilig WorkPaper tool that edits inputs, recalculates formulas, and returns verified readback without spreadsheet UI automation.
-tags: smolagents, hugging-face, ai-agents, workbook-api, spreadsheet-automation
+tags: smolagents, hugging-face, agents, workbook-api, spreadsheet-automation
 canonical_url: https://proompteng.github.io/bilig/smolagents-workpaper-tool.html
 image: /assets/github-social-preview.png
 ---

@@ -43,12 +43,12 @@ Latest execution snapshot on May 18, 2026 at `02:02:33Z`:
   tool-server show-and-tell thread, the AI SDK/LangChain WorkPaper agent
   announcement, the five-example show-and-tell thread, and the workflow-feedback
   thread
-- Discovery metadata: GitHub topics now include `agent-tools`, `ai-agents`,
+- Discovery metadata: GitHub topics now include `agent-tools`, `agent-workpaper`,
   `excel`, `headless-spreadsheet`, `xlsx`, `mcp-server`, and
   `formula-recalculation` alongside the spreadsheet-engine and
   workbook-automation topics.
 - npm discovery metadata now includes exact agent and formula search terms such
-  as `ai-agents`, `spreadsheet-agent`, `workbook-agent`,
+  as `agent-workpaper`, `workbook-automation`, `workbook-agent`,
   `formula-recalculation`, `mcp`, and `model-context-protocol`.
 - MCP discovery is live in the official registry as
   `io.github.proompteng/bilig-workpaper`, backed by `@bilig/headless` stdio
@@ -602,7 +602,7 @@ Latest star-jump attribution snapshot on May 17, 2026:
   Hacker News at `52/37`, ahead of `t.co` at `29/24` and Reddit at `6/4`.
 - Replication action: keep the `headless-spreadsheet` wedge that HN/LibHunt
   already understood, but make the project easier for broader classifiers to
-  place. GitHub topics now trade narrower custom tags for `ai-agents` and
+  place. GitHub topics now trade narrower custom tags for `agent-workpaper` and
   `excel`, while npm metadata keeps the exact agent and formula-recalculation
   terms.
 
@@ -611,7 +611,7 @@ Latest LibHunt discovery snapshot on May 17, 2026:
 - LibHunt has a live `headless-spreadsheet` topic page that includes Bilig:
   <https://www.libhunt.com/topic/headless-spreadsheet>.
 - The entry is explicitly tied to the May 7 Show HN mention and categorizes the
-  project under TypeScript, Spreadsheet, Excel, Agents, and `ai-agents`.
+  project under TypeScript, Spreadsheet, Excel, and Agents.
 - The LibHunt card still shows stale stars and an older broad description. The
   current GitHub repository description is the tighter WorkPaper/runtime copy:
   "Formula WorkPaper runtime for Node.js services and agent tools: edit cells,

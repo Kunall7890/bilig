@@ -2,7 +2,7 @@
 title: Agno WorkPaper MCP tools
 published: true
 description: Use Agno MCPTools to launch Bilig's WorkPaper MCP server, edit workbook inputs, and verify formula readback without spreadsheet UI automation.
-tags: agno, ai-agents, mcp, workbook-api, spreadsheet-automation
+tags: agno, agents, mcp, workbook-api, spreadsheet-automation
 canonical_url: https://proompteng.github.io/bilig/agno-workpaper-mcp.html
 image: /assets/github-social-preview.png
 ---

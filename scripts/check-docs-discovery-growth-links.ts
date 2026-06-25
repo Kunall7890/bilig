@@ -37,7 +37,7 @@ export function communityLaunchPackRequiredLinks(): readonly string[] {
     'https://mcprepository.com/proompteng/bilig',
     'https://www.libhunt.com/topic/headless-spreadsheet',
     'Latest LibHunt discovery snapshot on May 17, 2026',
-    'TypeScript, Spreadsheet, Excel, Agents, and `ai-agents`',
+    'TypeScript, Spreadsheet, Excel, and Agents',
     'MCP directory reviewer surfaces: the existing mcp.so and Cline MCP',
     '`@bilig/headless@0.21.1`, the file-backed MCP command',
     'Glama release `0.21.1`',

@@ -2,7 +2,7 @@
 title: Sim WorkPaper MCP setup
 published: true
 description: Connect Bilig WorkPaper to Sim MCP tools so workflows and agents can edit workbook inputs, verify formula readback, and pass proof into later blocks.
-tags: sim, mcp, spreadsheet-agent, workbook-api, workflow-automation
+tags: sim, mcp, spreadsheet automation, workbook-api, workflow-automation
 canonical_url: https://proompteng.github.io/bilig/sim-workpaper-mcp.html
 image: /assets/github-social-preview.png
 ---

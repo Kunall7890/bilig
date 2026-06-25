@@ -1,10 +1,11 @@
 # @bilig/workpaper
 
-Bilig WorkPaper is an API, CLI evaluator, and MCP server for workbook formulas in Node.js services and agents.
+Bilig WorkPaper is an API, CLI evaluator, and optional MCP server for
+workbook-shaped business logic in Node.js.
 
 Use this when business logic is easiest to review as workbook cells and
 formulas, but the calculation needs to run in a backend service, queue worker,
-serverless route, test, or coding-agent tool.
+serverless route, test, or tool.
 
 `@bilig/workpaper` is the canonical scoped npm entrypoint. The unscoped
 `bilig-workpaper` package remains published as a compatibility and search alias.
@@ -21,22 +22,21 @@ Pick the door that matches the state you own:
 
 | Door                       | Run first                                                                                            | What it proves                                                                                     |
 | -------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Unsure / agent handoff     | `npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --json`                       | compact decision card before the agent opens Excel, Sheets, or a browser grid.                     |
 | Node service or test       | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json` | edit input, recalculate output, persist JSON, restore, and return `verified: true`.                |
+| New project                | `npm create @bilig/workpaper@latest pricing-workpaper`                                               | a starter wired to the same WorkPaper proof loop.                                                  |
 | Coding agent or MCP client | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`         | tool discovery, cell mutation, formula readback, JSON export, restart proof, and `verified: true`. |
-| New project                | `npm create @bilig/workpaper@latest pricing-agent -- --agent`                                        | a starter with `AGENTS.md`, MCP config, and `npm run agent:verify` wired to the same proof loop.   |
+| Unsure which proof fits    | `npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --json`                       | compact routing card with proof commands, evidence fields, and public links.                       |
 
-`bilig-agent-start --json` is intentionally small. It gives an agent the
-workbook-vs-XLSX decision card, first proof commands, required evidence fields,
-expected MCP tools, and public discovery links without asking it to read the
-whole site.
+`bilig-agent-start --json` is intentionally small. It prints first proof
+commands, required evidence fields, expected MCP tools, and public discovery
+links without asking a tool host to read the whole site.
 
 ## What Success Looks Like
 
-Run the agent proof without cloning the repo:
+Run the service proof without cloning the repo:
 
 ```sh
-npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario revenue-plan --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 ```
 
 The useful output is not a write-call status. It is readback proof:
@@ -44,27 +44,18 @@ The useful output is not a write-call status. It is readback proof:
 ```json
 {
   "schemaVersion": "bilig-evaluator.v1",
-  "door": "agent-mcp",
+  "door": "workpaper-service",
   "verified": true,
   "packageVersions": {
     "@bilig/workpaper": "0.163.0"
   },
   "evidence": {
-    "scenario": "revenue-plan",
-    "editedCell": "Deals!C2",
-    "readbackRange": "Summary!B2:B8",
-    "after": {
-      "totalRevenue": 36900,
-      "westCustomers": 38
-    },
-    "checks": {
-      "totalRevenueRecalculated": true,
-      "sumifReadbackChanged": true,
-      "xlookupReadbackStable": true,
-      "filterSpillUpdated": true,
-      "persistedToDisk": true,
-      "restartReadbackMatchesAfter": true
-    }
+    "editedCell": "Inputs!B2",
+    "dependentCell": "Summary!B2",
+    "before": 24000,
+    "after": 38400,
+    "afterRestore": 38400,
+    "persistedDocumentBytes": 999
   }
 }
 ```
@@ -72,9 +63,13 @@ The useful output is not a write-call status. It is readback proof:
 If this is close to production, watch releases and review the public limits:
 <https://github.com/proompteng/bilig/subscription>.
 
-For a richer agent check, add `--scenario revenue-plan` to the `agent-mcp`
+For a richer tool check, add `--scenario revenue-plan` to the `agent-mcp`
 evaluator. It proves `SUM`, `SUMIF`, `XLOOKUP`, `FILTER`, a named expression,
 JSON persistence, and restart readback.
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario revenue-plan --json
+```
 
 If the workbook has provider-backed formulas such as `IMPORTRANGE`, run
 `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json`.
@@ -87,7 +82,7 @@ If one of those matches your workflow, keep Bilig nearby:
 Framework examples live in the repo instead of this first screen. Start with
 the closest runtime:
 
-- Agent tools: Vercel AI SDK, LangGraph, LangChain MCP adapters, Open WebUI,
+- Agent and tool runtimes: Vercel AI SDK, LangGraph, LangChain MCP adapters, Open WebUI,
   FastMCP, Agno, Pydantic AI, smolagents.
 - Workflow engines: Trigger.dev, Inngest, Temporal, Airflow, Dagster, Kestra,
   Prefect, Windmill.

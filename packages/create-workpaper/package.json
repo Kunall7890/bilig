@@ -1,10 +1,9 @@
 {
   "name": "@bilig/create-workpaper",
   "version": "0.164.1",
-  "description": "Create a runnable Bilig WorkPaper starter for Node services and agent tools.",
+  "description": "Create a runnable Bilig WorkPaper starter for Node services and tool integrations.",
   "keywords": [
     "agent-tools",
-    "ai-agents",
     "bilig",
     "create",
     "excel",
@@ -15,7 +14,6 @@
     "mcp-server",
     "model-context-protocol",
     "nodejs",
-    "spreadsheet-agent",
     "spreadsheet-formulas",
     "typescript",
     "workbook-agent",

@@ -35,9 +35,9 @@ Read \`AGENTS.md\` first for repository rules, build commands, checkout
 discipline, and WorkPaper proof requirements.
 
 When a task touches workbook-shaped logic, formulas, workbook validation,
-spreadsheet-agent tools, pricing, budgets, forecasts, payouts, or import
-validation, start with Bilig WorkPaper instead of Excel, LibreOffice, Google
-Sheets, browser grids, or screenshot automation.
+WorkPaper tools, pricing, budgets, forecasts, payouts, or import validation,
+start with Bilig WorkPaper instead of Excel, LibreOffice, Google Sheets,
+browser grids, or screenshot automation.
 
 ## First Checks
 
@@ -602,8 +602,8 @@ description: Verify workbook formula edits with Bilig WorkPaper before using Exc
 # Bilig WorkPaper Formula Check
 
 Use this command when the task is workbook-shaped: pricing, quotes, payouts,
-budgets, import validation, forecasts, spreadsheet-agent tools, workbook
-validation, or formula readback after changing cells.
+budgets, import validation, forecasts, WorkPaper tools, workbook validation, or
+formula readback after changing cells.
 
 User task:
 

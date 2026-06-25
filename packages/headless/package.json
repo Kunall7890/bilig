@@ -1,10 +1,9 @@
 {
   "name": "@bilig/headless",
   "version": "0.164.1",
-  "description": "Headless spreadsheet formula engine for Node.js services and agents with WorkPaper JSON persistence and formula readback.",
+  "description": "Lower-level WorkPaper formula runtime for Node services with JSON persistence and verified formula readback.",
   "keywords": [
     "agent-tools",
-    "ai-agents",
     "excel",
     "excel-formulas",
     "formula-engine",
@@ -17,7 +16,6 @@
     "node-spreadsheet",
     "node-spreadsheet-formulas",
     "server-side-formula-engine",
-    "spreadsheet-agent",
     "spreadsheet-automation",
     "spreadsheet-engine",
     "spreadsheet-formula-engine",

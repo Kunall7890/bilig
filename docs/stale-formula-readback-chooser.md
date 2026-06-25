@@ -2,7 +2,7 @@
 title: Stale formula readback chooser for Node.js
 published: true
 description: Pick the narrow Bilig proof for stale XLSX cached values, SheetJS, ExcelJS, xlsx-populate, CI, WorkPaper, MCP, and agent workbook tools.
-tags: typescript, node, xlsx, sheetjs, exceljs, formulas, recalculation, mcp, ai-agents
+tags: typescript, node, xlsx, sheetjs, exceljs, formulas, recalculation, mcp, agents
 canonical_url: https://proompteng.github.io/bilig/stale-formula-readback-chooser.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png

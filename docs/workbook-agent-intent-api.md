@@ -2,7 +2,7 @@
 title: Workbook agent intent API
 published: true
 description: Use @bilig/workbook when an agent framework or product runtime needs transport-neutral workbook plans, checks, and proof without owning formula calculation.
-tags: ai-agents, workbook-api, agent-intent, typescript, spreadsheet
+tags: agents, workbook-api, agent-intent, typescript, spreadsheet
 canonical_url: https://proompteng.github.io/bilig/workbook-agent-intent-api.html
 image: /assets/github-social-preview.png
 ---

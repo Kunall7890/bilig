@@ -1,20 +1,20 @@
 # Community Growth Snapshot
 
-Captured at: `2026-06-25T09:08:39Z`
+Captured at: `2026-06-25T10:19:46Z`
 
-This snapshot tracks the public signals for the Bilig WorkPaper growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
+This snapshot tracks public signals for Bilig WorkPaper: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
 
 ## GitHub
 
 - Repository: [proompteng/bilig](https://github.com/proompteng/bilig)
-- GitHub About: WorkPaper runtime for Node services and agents: edit cells,
-  recalculate formulas, read outputs, and save JSON.
-- Stars: 32 / 100 (68 remaining)
-- Forks: 21
+- GitHub About: Run workbook-shaped business rules inside Node: edit inputs,
+  recalculate formulas, read outputs, and save WorkPaper JSON.
+- Stars: 33 / 100 (67 remaining)
+- Forks: 22
 - Watchers: 1
 - Open issues: 4
 - Default branch: `main`
-- Topics: `agent-tools`, `agent-workflows`, `ai-agents`, `formula-engine`, `formula-recalculation`, `mcp`, `mcp-server`, `mcp-tools`, `model-context-protocol`, `node-services`, `nodejs`, `spreadsheet`, `spreadsheet-api`, `spreadsheet-automation`, `typescript`, `workbook-api`, `workbook-automation`, `workbook-runtime`, `workflow-automation`, `workpaper`
+- Topics: `agent-tools`, `agent-workflows`, `agent-workpaper`, `formula-engine`, `formula-recalculation`, `mcp`, `mcp-server`, `mcp-tools`, `model-context-protocol`, `node-services`, `nodejs`, `spreadsheet`, `spreadsheet-api`, `spreadsheet-automation`, `typescript`, `workbook-api`, `workbook-automation`, `workbook-runtime`, `workflow-automation`, `workpaper`
 
 ## npm
 
@@ -114,12 +114,19 @@ This snapshot tracks the public signals for the Bilig WorkPaper growth loop: Git
 - 2026-06-25T10:03:32Z: replaced remaining agent-facing labels that read like
   marketing copy with plain handoff/checklist language across the README, docs,
   generated agent context, package scaffolding, and discovery checks. The
-  GitHub topic `ai-agents` was replaced with `agent-workpaper`. Live GitHub
+  legacy GitHub agent topic was replaced with `agent-workpaper`. Live GitHub
   readback still showed 32 stars.
 - 2026-06-25T10:06:52Z: moved the GitHub README and homepage hero to a
   WorkPaper-first pitch: concrete Node service use cases, first-viewport social
   preview, fewer diagnostic detours, and a workbook report link instead of a
   competing bridge button. Live GitHub readback still showed 32 stars.
+- 2026-06-25T10:16:00Z: cleaned public package metadata and npm first screens:
+  removed legacy AI and spreadsheet automation keywords, made WorkPaper service proof the
+  first package path, refreshed generated skills/LLM mirrors, and moved
+  saved-file language out of the default npm pitch. Live GitHub readback still
+  showed 32 stars.
+- 2026-06-25T10:19:46Z: live GitHub readback after validation showed 33
+  stars, 22 forks, and the WorkPaper-first GitHub description still in place.
 
 ## External Discovery
 

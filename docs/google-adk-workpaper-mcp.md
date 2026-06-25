@@ -2,7 +2,7 @@
 title: Google ADK WorkPaper MCP tools
 published: true
 description: Use Google ADK McpToolset to launch Bilig's WorkPaper MCP server, edit workbook inputs, and verify formula readback without spreadsheet UI automation.
-tags: google-adk, ai-agents, mcp, workbook-api, spreadsheet-automation
+tags: google-adk, agents, mcp, workbook-api, spreadsheet-automation
 canonical_url: https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html
 image: /assets/github-social-preview.png
 ---

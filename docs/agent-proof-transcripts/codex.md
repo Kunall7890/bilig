@@ -2,7 +2,7 @@
 title: Codex WorkPaper proof transcript
 published: true
 description: A Codex-oriented Bilig WorkPaper transcript showing prompt, tool call, formula readback, JSON export, and restart verification.
-tags: codex, ai-agents, mcp, workpaper, proof
+tags: codex, agents, mcp, workpaper, proof
 canonical_url: https://proompteng.github.io/bilig/agent-proof-transcripts/codex.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png

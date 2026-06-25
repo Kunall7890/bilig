@@ -4,9 +4,9 @@ Read `AGENTS.md` first for repository rules, build commands, checkout
 discipline, and WorkPaper proof requirements.
 
 When a task touches workbook-shaped logic, formulas, workbook validation,
-spreadsheet-agent tools, pricing, budgets, forecasts, payouts, or import
-validation, start with Bilig WorkPaper instead of Excel, LibreOffice, Google
-Sheets, browser grids, or screenshot automation.
+WorkPaper tools, pricing, budgets, forecasts, payouts, or import validation,
+start with Bilig WorkPaper instead of Excel, LibreOffice, Google Sheets,
+browser grids, or screenshot automation.
 
 ## First Checks
 

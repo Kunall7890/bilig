@@ -14,7 +14,7 @@ If an agent edits an `.xlsx` file and then acts on a formula result, it needs a
 fresh value before the next tool call. Returning the old cached value is worse
 than an error because the agent thinks the workbook agreed with it.
 
-Many spreadsheet-agent recipes solve this by running Excel, LibreOffice,
+Many spreadsheet automation recipes solve this by running Excel, LibreOffice,
 Microsoft Graph, or a Python recalculation helper after every file write. That
 is a reasonable choice when exact Excel behavior matters. It is also a heavy
 boundary for a Node agent tool that only needs a supported formula workbook,
@@ -101,7 +101,7 @@ validation, budget gates, quote models, or fixture-driven workbook tests.
 
 ## Where this fits
 
-This page exists for the same class of problem documented by spreadsheet-agent
+This page exists for the same class of problem documented by spreadsheet automation
 tooling that shells out to a recalculation step after writing formulas. If your
 agent already has LibreOffice available and the latency is acceptable, keep it.
 If you want a TypeScript runtime that can be tested inside the agent tool loop,

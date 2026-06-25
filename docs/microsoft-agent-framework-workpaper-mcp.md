@@ -2,7 +2,7 @@
 title: Microsoft Agent Framework WorkPaper MCP tools
 published: true
 description: Use Microsoft Agent Framework MCP tools with Bilig WorkPaper so Python or .NET agents can edit workbook inputs, recalculate formulas, and verify readback without spreadsheet UI automation.
-tags: microsoft-agent-framework, ai-agents, mcp, spreadsheet-agent, workpaper
+tags: microsoft-agent-framework, agents, mcp, spreadsheet automation, workpaper
 canonical_url: https://proompteng.github.io/bilig/microsoft-agent-framework-workpaper-mcp.html
 image: /assets/github-social-preview.png
 ---

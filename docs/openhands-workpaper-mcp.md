@@ -2,7 +2,7 @@
 title: OpenHands WorkPaper MCP setup
 published: true
 description: Configure OpenHands with Bilig's WorkPaper MCP server and repository skill so workbook edits return formula readback instead of spreadsheet UI status.
-tags: openhands, ai-agents, mcp, workbook-api, spreadsheet-automation
+tags: openhands, agents, mcp, workbook-api, spreadsheet-automation
 canonical_url: https://proompteng.github.io/bilig/openhands-workpaper-mcp.html
 image: /assets/github-social-preview.png
 ---

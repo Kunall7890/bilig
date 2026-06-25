@@ -2,7 +2,7 @@
 title: Cursor WorkPaper proof transcript
 published: true
 description: A Cursor-oriented Bilig WorkPaper transcript showing rule-file routing, tool call, formula readback, JSON export, and restart verification.
-tags: cursor, ai-agents, mcp, workpaper, proof
+tags: cursor, agents, mcp, workpaper, proof
 canonical_url: https://proompteng.github.io/bilig/agent-proof-transcripts/cursor.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png

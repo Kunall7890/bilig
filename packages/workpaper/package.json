@@ -1,10 +1,9 @@
 {
   "name": "@bilig/workpaper",
   "version": "0.164.1",
-  "description": "Bilig WorkPaper API, CLI evaluator, and MCP server for workbook formulas in Node.js services and agents.",
+  "description": "Run workbook-shaped business rules in Node services: edit inputs, recalculate formulas, read outputs, and save WorkPaper JSON.",
   "keywords": [
     "agent-tools",
-    "ai-agents",
     "bilig",
     "bilig-workpaper",
     "excel-formulas",
@@ -19,7 +18,6 @@
     "server-side-formula-engine",
     "server-side-spreadsheet",
     "spreadsheet",
-    "spreadsheet-agent",
     "spreadsheet-automation",
     "spreadsheet-engine",
     "spreadsheet-formula-engine",

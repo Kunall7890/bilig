@@ -7,40 +7,38 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge)](https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/proompteng/bilig/blob/main/LICENSE)
 
-`@bilig/headless` is a headless spreadsheet formula engine for Node.js services
-and agent tools. It is the lower-level WorkPaper runtime behind the scoped
-`@bilig/workpaper` entrypoint.
+`@bilig/headless` is the lower-level formula and WorkPaper runtime behind the
+scoped `@bilig/workpaper` entrypoint.
 
 If this npm page is the first thing you found, run the package proof before
 reading the full API docs:
 
 ```sh
-npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 ```
 
-The first command prints the workbook-vs-XLSX decision card for agents. The
-second should print `verified: true` after editing an input cell, recalculating
-a dependent formula, exporting WorkPaper JSON, restoring it, and reading the
-same calculated value again.
+It should print `verified: true` after editing an input cell, recalculating a
+dependent formula, exporting WorkPaper JSON, restoring it, and reading the same
+calculated value again.
 
 Choose the narrow package by the state you own:
 
-| You own...                                | Start with                                                    | First proof                                                                              |
-| ----------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| WorkPaper state inside a service or agent | `npm install @bilig/workpaper`                                | `bilig-evaluate --door workpaper-service --json`                                         |
-| Agent or MCP spreadsheet tools            | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | `bilig-evaluate --door agent-mcp --json`                                                 |
-| Lower-level runtime subpaths              | `npm install @bilig/headless`                                 | The examples below prove WorkPaper JSON, provenance, and package weight.                 |
-| A saved `.xlsx` file remains the contract | `npm install @bilig/xlsx-formula-recalc`                      | `bilig-evaluate --door workbook-compatibility --json`                                    |
+| You own...                                | Start with                                                    | First proof                                                             |
+| ----------------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| WorkPaper state inside a service          | `npm install @bilig/workpaper`                                | `bilig-evaluate --door workpaper-service --json`                        |
+| A new service or route                    | `npm create @bilig/workpaper@latest pricing-workpaper`        | `npm run smoke`                                                         |
+| Tool or MCP integration                   | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | `bilig-evaluate --door agent-mcp --json`                                |
+| Lower-level runtime subpaths              | `npm install @bilig/headless`                                 | The examples below prove WorkPaper JSON, provenance, and package weight. |
+| A saved workbook file remains the contract | `npm install @bilig/xlsx-formula-recalc`                     | `bilig-evaluate --door workbook-compatibility --json`                   |
 
-Use `@bilig/headless` when the spreadsheet is the business logic, but
-production needs API readback, tests, persistence, and agent-readable proof
-instead of a person opening a spreadsheet app.
+Use `@bilig/headless` when the workbook is the business logic, but production
+needs API readback, tests, persistence, and deterministic proof instead of a
+person opening a spreadsheet app.
 
 Your code owns a `WorkPaper`: build sheets, write inputs, recalculate formulas,
 read the cell value, and save the workbook as JSON. Product code gets
-reviewable workbook-shaped logic without shipping a spreadsheet UI. Coding
-agents get narrow tools such as `readRange` and `setInputCell` instead of
+reviewable workbook-shaped logic without shipping a spreadsheet UI. Tool hosts
+can expose narrow operations such as `readRange` and `setInputCell` instead of
 guessing state from screenshots.
 
 The npm tarball also includes `AGENTS.md` and `SKILL.md` so coding agents
@@ -52,10 +50,10 @@ locally. The public docs expose the same path through
 [`WorkPaper agent tool`](https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html), and
 [`llms-full.txt`](https://proompteng.github.io/bilig/llms-full.txt).
 
-This package is not a browser grid, desktop Excel automation, or the default
-saved-file diagnostic path. XLSX import/export is available from the
-`@bilig/workpaper/xlsx` and `@bilig/headless/xlsx` subpaths for services that
-need workbook ingestion around the same WorkPaper model.
+This package is not a browser grid or desktop Excel automation. Workbook file
+import/export is available from the `@bilig/workpaper/xlsx` and
+`@bilig/headless/xlsx` subpaths for services that need ingestion around the
+same WorkPaper model.
 
 The `bilig-workpaper-mcp` binary still ships for hosts that specifically need an
 MCP stdio boundary. It is not the default evaluation path; prove the direct npm
@@ -63,8 +61,8 @@ or TypeScript path first unless your tool host requires MCP.
 The `bilig-formula-clinic` binary turns a reduced XLSX into a fixture report
 without uploading workbook contents.
 
-Saved workbook files are a separate entrypoint. Use the compatibility report or
-XLSX recalculation example only when the file boundary is the product contract:
+Saved workbook files are supported, but separate. Use the compatibility report
+or recalculation example only when the file boundary is the product contract:
 [`docs/workbook-compatibility-report.md`](https://github.com/proompteng/bilig/blob/main/docs/workbook-compatibility-report.md),
 [`examples/xlsx-recalculation-node`](https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node),
 and [`docs/xlsx-formula-recalculation-node.md`](https://github.com/proompteng/bilig/blob/main/docs/xlsx-formula-recalculation-node.md).
@@ -79,7 +77,7 @@ and [`docs/xlsx-formula-recalculation-node.md`](https://github.com/proompteng/bi
 | Saved workbook files     | [Workbook Compatibility Report](https://proompteng.github.io/bilig/workbook-compatibility-report.html) and [XLSX formula recalculation example](https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node)                                                   | Use this only when a workbook file remains the integration contract.                            |
 | Agent or MCP tools       | [Headless WorkPaper agent handbook](https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html) and [MCP spreadsheet tool server](https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html) | The agent can pick MCP, direct TypeScript, or route tools and prove write/readback/persist.    |
 | Agent intent contracts   | [Workbook agent intent API](https://proompteng.github.io/bilig/workbook-agent-intent-api.html)                                                                                                                      | `@bilig/workbook` can describe plans, receipts, and strict runtime proof without owning state. |
-| Agent-owned XLSX files   | [Agent XLSX recalculation without LibreOffice](https://proompteng.github.io/bilig/agent-xlsx-formula-recalculation-without-libreoffice.html)                                                                        | A tool can edit XLSX inputs, recalculate, export, reimport, and return `verified: true`.       |
+| Tool-owned workbook files | [Workbook Compatibility Report](https://proompteng.github.io/bilig/workbook-compatibility-report.html)                                                                                                             | A tool can inspect file risks before the service trusts imported formulas.                    |
 | Technical review note    | [WorkPaper maintainer proof note](https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html)                                                                                                  | One compact page has the npm check, benchmark caveat, known limits, and open questions.        |
 | Trust and performance    | [npm provenance](https://proompteng.github.io/bilig/npm-provenance-package-trust.html) and [benchmark evidence](https://proompteng.github.io/bilig/what-workpaper-benchmark-proves.html)                            | npm shows SLSA provenance, and benchmark claims match the checked artifact.                    |
 | Almost a fit             | [implementation gap discussion](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                                               | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.       |
@@ -141,7 +139,7 @@ mcp:server`.
 
 Current checked npm footprint for `@bilig/headless@0.164.1`:
 
-- Pack dry run: `860 kB` tarball, `5.24 MB` unpacked, `835` package entries.
+- Pack dry run: `859 kB` tarball, `5.24 MB` unpacked, `835` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper; reduced workbook reports use the

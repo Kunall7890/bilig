@@ -2,7 +2,7 @@
 title: GitHub Copilot WorkPaper proof transcript
 published: true
 description: A GitHub Copilot and VS Code agent mode Bilig WorkPaper transcript showing prompt, MCP tool proof, formula readback, JSON export, and restart verification.
-tags: github-copilot, vscode, ai-agents, mcp, workpaper, proof
+tags: github-copilot, vscode, agents, mcp, workpaper, proof
 canonical_url: https://proompteng.github.io/bilig/agent-proof-transcripts/copilot.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png

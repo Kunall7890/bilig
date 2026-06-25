@@ -37,7 +37,6 @@ export function requirePackageMetadataDiscovery(args: {
     args.scopedWorkpaperPackageJson,
     [
       'agent-tools',
-      'ai-agents',
       'bilig-workpaper',
       'excel-formulas',
       'formula-engine',
@@ -49,7 +48,6 @@ export function requirePackageMetadataDiscovery(args: {
       'node-spreadsheet-formulas',
       'server-side-formula-engine',
       'server-side-spreadsheet',
-      'spreadsheet-agent',
       'spreadsheet-automation',
       'spreadsheet-engine',
       'spreadsheet-formula-engine',
@@ -63,12 +61,12 @@ export function requirePackageMetadataDiscovery(args: {
   )
   requireIncludes(
     args.scopedWorkpaperPackageJson,
-    '"description": "Bilig WorkPaper API, CLI evaluator, and MCP server for workbook formulas in Node.js services and agents."',
+    '"description": "Run workbook-shaped business rules in Node services: edit inputs, recalculate formulas, read outputs, and save WorkPaper JSON."',
     'packages/workpaper/package.json',
   )
   requireIncludes(
     args.scopedWorkpaperPackageReadme,
-    'Bilig WorkPaper is an API, CLI evaluator, and MCP server',
+    'Bilig WorkPaper is an API, CLI evaluator, and optional MCP server',
     'packages/workpaper/README.md',
   )
   requireIncludes(

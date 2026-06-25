@@ -2,7 +2,7 @@
 title: Goose WorkPaper MCP recipe
 published: true
 description: Use Goose recipes and MCP extensions with Bilig WorkPaper to edit workbook inputs, recalculate formulas, and verify readback without spreadsheet UI automation.
-tags: goose, ai-agents, mcp, spreadsheet-agent, workpaper
+tags: goose, agents, mcp, spreadsheet automation, workpaper
 canonical_url: https://proompteng.github.io/bilig/goose-workpaper-mcp.html
 image: /assets/github-social-preview.png
 ---

@@ -5,8 +5,8 @@ description: Verify workbook formula edits with Bilig WorkPaper before using Exc
 # Bilig WorkPaper Formula Check
 
 Use this command when the task is workbook-shaped: pricing, quotes, payouts,
-budgets, import validation, forecasts, spreadsheet-agent tools, workbook
-validation, or formula readback after changing cells.
+budgets, import validation, forecasts, WorkPaper tools, workbook validation, or
+formula readback after changing cells.
 
 User task:
 

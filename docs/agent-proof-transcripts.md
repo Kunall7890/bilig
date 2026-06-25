@@ -2,7 +2,7 @@
 title: Agent proof transcripts
 published: true
 description: Real Bilig WorkPaper proof transcripts for coding agents that need formula readback, JSON persistence, and restart verification without spreadsheet UI automation.
-tags: ai-agents, mcp, workpaper, spreadsheet-agent, proof
+tags: agents, mcp, workpaper, spreadsheet automation, proof
 canonical_url: https://proompteng.github.io/bilig/agent-proof-transcripts.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png

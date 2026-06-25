@@ -59,7 +59,7 @@ function assertManifest(manifest: PackageManifest): string {
   assert(manifest.name === packageName, `packages/create-workpaper/package.json.name must be ${packageName}`)
   assert(typeof manifest.version === 'string' && /^\d+\.\d+\.\d+$/u.test(manifest.version), 'package version must be stable semver')
   assert(
-    manifest.description === 'Create a runnable Bilig WorkPaper starter for Node services and agent tools.',
+    manifest.description === 'Create a runnable Bilig WorkPaper starter for Node services and tool integrations.',
     'package description must keep the starter promise specific',
   )
   assert(manifest.homepage === 'https://proompteng.github.io/bilig/', 'package homepage must point to public docs')

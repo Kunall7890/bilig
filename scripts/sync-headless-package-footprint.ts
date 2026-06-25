@@ -37,8 +37,7 @@ if (displayValue !== '24000') {
 }
 `
 
-const requiredDescription =
-  'Headless spreadsheet formula engine for Node.js services and agents with WorkPaper JSON persistence and formula readback.'
+const requiredDescription = 'Lower-level WorkPaper formula runtime for Node services with JSON persistence and verified formula readback.'
 const requiredKeywords = [
   'workpaper',
   'workbook-api',
@@ -53,11 +52,9 @@ const requiredKeywords = [
   'server-side-formula-engine',
   'typescript',
   'agent-tools',
-  'ai-agents',
   'excel',
   'mcp',
   'mcp-server',
-  'spreadsheet-agent',
   'workbook-agent',
   'xlsx',
 ] as const

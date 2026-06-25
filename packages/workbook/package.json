@@ -1,11 +1,9 @@
 {
   "name": "@bilig/workbook",
   "version": "0.164.1",
-  "description": "Transport-neutral workbook intent API for agent plans, command receipts, and formula readback checks.",
+  "description": "Transport-neutral workbook intent API for plans, command receipts, and formula readback checks.",
   "keywords": [
-    "agent-first",
     "agent-tools",
-    "ai-agents",
     "bilig",
     "command-receipts",
     "formula-readback",
@@ -13,7 +11,6 @@
     "models",
     "plan-data",
     "spreadsheet",
-    "spreadsheet-agent",
     "transport-neutral",
     "workbook"
   ],

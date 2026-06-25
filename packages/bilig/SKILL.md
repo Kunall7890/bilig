@@ -1,9 +1,9 @@
 ---
 name: bilig-workpaper
 version: 0.1.0
-description: Use bilig-workpaper WorkPaper state for workbook formulas, agent spreadsheet tools, and MCP editing without driving spreadsheet UI.
+description: Use bilig-workpaper WorkPaper state for workbook formulas, MCP editing, and tool integrations without driving spreadsheet UI.
 tags:
-  - ai-agents
+  - agents
   - spreadsheet-automation
   - formulas
   - workpaper

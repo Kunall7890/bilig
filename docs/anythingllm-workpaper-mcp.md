@@ -2,7 +2,7 @@
 title: AnythingLLM WorkPaper MCP setup
 published: true
 description: Connect Bilig WorkPaper to AnythingLLM Agent Skills so agents can edit workbook inputs, verify formula readback, and persist JSON proof.
-tags: anythingllm, mcp, spreadsheet-agent, workbook-api, agent-skills
+tags: anythingllm, mcp, spreadsheet automation, workbook-api, agent-skills
 canonical_url: https://proompteng.github.io/bilig/anythingllm-workpaper-mcp.html
 image: /assets/github-social-preview.png
 ---

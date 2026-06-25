@@ -2,7 +2,7 @@
 title: Open Multi-Agent WorkPaper MCP example
 published: true
 description: Connect Open Multi-Agent to Bilig WorkPaper MCP tools so an agent can edit workbook inputs, verify formula readback, and persist JSON without spreadsheet UI automation.
-tags: open-multi-agent, mcp, spreadsheet-agent, workbook-api, typescript
+tags: open-multi-agent, mcp, spreadsheet automation, workbook-api, typescript
 canonical_url: https://proompteng.github.io/bilig/open-multi-agent-workpaper-mcp.html
 image: /assets/github-social-preview.png
 ---

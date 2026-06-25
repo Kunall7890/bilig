@@ -2,7 +2,7 @@
 title: Open WebUI WorkPaper tool setup
 published: true
 description: Connect Bilig WorkPaper to Open WebUI through hosted OpenAPI tools, native Streamable HTTP MCP, or mcpo so chats can edit workbook inputs and verify formula readback.
-tags: open-webui, openapi, mcp, mcpo, spreadsheet-agent, workbook-api
+tags: open-webui, openapi, mcp, mcpo, spreadsheet automation, workbook-api
 canonical_url: https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html
 image: /assets/github-social-preview.png
 ---

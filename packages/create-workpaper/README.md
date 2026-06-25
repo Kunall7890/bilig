@@ -1,6 +1,6 @@
 # @bilig/create-workpaper
 
-Create a runnable Bilig WorkPaper starter for Node services and agent tools.
+Create a runnable Bilig WorkPaper starter for Node services and tool integrations.
 
 ```sh
 npm create @bilig/workpaper@latest pricing-workpaper

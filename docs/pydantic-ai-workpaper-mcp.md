@@ -2,7 +2,7 @@
 title: Pydantic AI WorkPaper MCP tools
 published: true
 description: Use Pydantic AI MCPToolset to launch Bilig's WorkPaper MCP server, edit workbook inputs, and validate typed formula readback.
-tags: pydantic-ai, ai-agents, mcp, workbook-api, spreadsheet-automation
+tags: pydantic-ai, agents, mcp, workbook-api, spreadsheet-automation
 canonical_url: https://proompteng.github.io/bilig/pydantic-ai-workpaper-mcp.html
 image: /assets/github-social-preview.png
 ---

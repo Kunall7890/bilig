@@ -2,7 +2,7 @@
 title: Continue WorkPaper proof transcript
 published: true
 description: A Continue-oriented Bilig WorkPaper transcript showing rule-file routing, prompt, tool call, formula readback, JSON export, and restart verification.
-tags: continue, ai-agents, mcp, workpaper, proof
+tags: continue, agents, mcp, workpaper, proof
 canonical_url: https://proompteng.github.io/bilig/agent-proof-transcripts/continue.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png

@@ -2,7 +2,7 @@
 title: Workbook tools for agent frameworks
 published: true
 description: Pick the Bilig WorkPaper integration path for Codex, Claude, Cursor, Kiro, Roo Code, Trae, Qodo IDE, Zed, Junie, OpenHands, OpenCode, Aider, Goose, Browser Use, OpenAI Agents, Microsoft Agent Framework, Vercel AI SDK, LangChain, LangGraph, LlamaIndex, and MCP clients.
-tags: ai-agents, mcp, spreadsheet-agent, workbook-api, typescript
+tags: agents, mcp, spreadsheet automation, workbook-api, typescript
 canonical_url: https://proompteng.github.io/bilig/agent-framework-workbook-tools.html
 image: /assets/github-social-preview.png
 ---

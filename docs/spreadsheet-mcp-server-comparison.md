@@ -87,7 +87,7 @@ no-key local WorkPaper proof.
 
 ## CLI And API Runtime Boundary
 
-Some spreadsheet-agent tools do not try to be MCP servers. Witan is the current
+Some spreadsheet automation tools do not try to be MCP servers. Witan is the current
 public example: its spreadsheet surface is a CLI, SDK, and API path around
 commands such as `witan xlsx exec`, `render`, `calc`, and `lint`. That can be a
 good fit when an agent can run scripts directly against Excel files and the

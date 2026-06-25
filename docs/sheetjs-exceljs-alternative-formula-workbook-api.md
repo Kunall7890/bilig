@@ -247,9 +247,9 @@ Expected output:
 ```
 
 That check is intentionally small. It proves the part that file libraries and
-the narrow XLSX bridges do not try to own: a Node process changed an input,
-read a dependent formula value, serialized the workbook document, restored it,
-and read the same calculated value again.
+workbook-file adapters do not try to own: a Node process changed an input, read
+a dependent formula value, serialized the workbook document, restored it, and
+read the same calculated value again.
 
 The maintained repository example adds more workflows:
 

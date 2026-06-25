@@ -2,7 +2,7 @@
 title: Claude Code WorkPaper proof transcript
 published: true
 description: A Claude Code-oriented Bilig WorkPaper transcript showing project memory, prompt, tool call, formula readback, JSON export, and restart verification.
-tags: claude-code, ai-agents, mcp, workpaper, proof
+tags: claude-code, agents, mcp, workpaper, proof
 canonical_url: https://proompteng.github.io/bilig/agent-proof-transcripts/claude-code.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png

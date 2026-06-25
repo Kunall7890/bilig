@@ -97,8 +97,8 @@ function renderConversionPressureMarkdown(snapshot: CommunityGrowthSnapshot): re
 function renderExternalDiscoveryMarkdown(): readonly string[] {
   return [
     '- LibHunt indexes Bilig on the `headless-spreadsheet` topic page: <https://www.libhunt.com/topic/headless-spreadsheet>.',
-    '- That surface came from the May 7 developer discovery path and classifies the project near TypeScript, Spreadsheet, Excel, Agents, and `ai-agents` audiences.',
-    '- Keep GitHub repository topics, npm keywords, and proof-page copy aligned with WorkPaper service readback, agent tools, and formula-recalculation terms while waiting for crawler refreshes.',
+    '- That surface came from the May 7 developer discovery path and classifies the project near TypeScript, Spreadsheet, Excel, and Agents audiences.',
+    '- Keep GitHub repository topics, npm keywords, and proof-page copy aligned with WorkPaper service readback, tool integrations, and formula-recalculation terms while waiting for crawler refreshes.',
   ]
 }
 

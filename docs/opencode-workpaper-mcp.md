@@ -2,7 +2,7 @@
 title: OpenCode WorkPaper MCP setup
 published: true
 description: Configure OpenCode with Bilig's WorkPaper MCP server and project subagent so workbook edits return formula readback instead of spreadsheet UI status.
-tags: opencode, ai-agents, mcp, workbook-api, spreadsheet-automation
+tags: opencode, agents, mcp, workbook-api, spreadsheet-automation
 canonical_url: https://proompteng.github.io/bilig/opencode-workpaper-mcp.html
 image: /assets/github-social-preview.png
 ---

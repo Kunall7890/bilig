@@ -1,10 +1,9 @@
 {
   "name": "bilig-workpaper",
   "version": "0.164.1",
-  "description": "Bilig WorkPaper runtime for Node.js services, agent tools, and server-side spreadsheet formulas.",
+  "description": "Bilig WorkPaper runtime for Node services: edit inputs, recalculate formulas, read outputs, and save JSON.",
   "keywords": [
     "agent-tools",
-    "ai-agents",
     "bilig",
     "bilig-workpaper",
     "excel",

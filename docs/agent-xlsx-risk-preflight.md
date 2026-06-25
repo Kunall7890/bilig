@@ -2,7 +2,7 @@
 title: Agent XLSX Risk Preflight
 published: true
 description: Run a local MCP XLSX risk diagnostic before a coding agent edits formulas, then require formula readback and WorkPaper export proof.
-tags: ai-agents, mcp, xlsx, formulas, workpaper
+tags: agents, mcp, xlsx, formulas, workpaper
 canonical_url: https://proompteng.github.io/bilig/agent-xlsx-risk-preflight.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png
