@@ -389,19 +389,20 @@ For a generated project from a blank directory, run
 `@bilig/create-workpaper` package. The package source lives in
 [`packages/create-workpaper`](packages/create-workpaper), and the publish gate
 is documented in [create a Bilig WorkPaper starter](docs/create-bilig-workpaper.md).
-For an agent-ready project with `AGENTS.md`, `CONVENTIONS.md`,
-`.aider.conf.yml`, `CLAUDE.md`, `GEMINI.md`,
-Copilot / Cursor / Kiro / Roo Code / Trae / Zed / Junie / OpenHands / OpenCode / Aider / Cline / Continue / Windsurf rules, MCP client
-configs, and an `agent:verify` script, run
+For an MCP-enabled project with host integration files, MCP client configs, and
+an `agent:verify` script, run
 `npm create @bilig/workpaper@latest pricing-agent -- --agent`.
+Representative host files include `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
+`.claude/skills/bilig-workpaper/SKILL.md`, `.cursor/rules/bilig-workpaper.mdc`,
+`.trae/mcp.json`, and `.zed/settings.json`.
 For an existing repo, run
-`npm create @bilig/workpaper@latest . -- --add-agent`; it adds Bilig agent and
-MCP instructions without replacing your app template or editing `package.json`.
-If an agent policy already exists, it writes `BILIG_WORKPAPER_INSTALL.md` with
-the skipped paths and a short handoff block.
+`npm create @bilig/workpaper@latest . -- --add-agent`; it adds Bilig MCP and
+host instructions without replacing your app template or editing
+`package.json`. If a host policy already exists, it writes
+`BILIG_WORKPAPER_INSTALL.md` with the skipped paths and a short handoff block.
 
-If that proof almost matches a service or agent workflow you maintain, the useful next
-step is a concrete gap report in
+If that proof almost matches a service or integration workflow you maintain, the
+useful next step is a concrete gap report in
 [Discussions](https://github.com/proompteng/bilig/discussions/new?category=general):
 formula coverage, service persistence, MCP setup, agent writeback, import/export
 boundary, or benchmark coverage.

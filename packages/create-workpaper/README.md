@@ -25,7 +25,8 @@ If it almost works, open one concrete blocker or integration note:
 Use this when you want to evaluate `@bilig/workpaper` from a blank directory
 without cloning the full monorepo.
 
-For agent and MCP evaluation, generate the agent-ready starter:
+For an MCP-enabled starter with host integration files, use the `--agent`
+template:
 
 ```sh
 npm create @bilig/workpaper@latest pricing-agent -- --agent
@@ -35,21 +36,22 @@ npm run agent:verify
 npm run mcp:server
 ```
 
-The agent template adds `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, a Claude Code
-project skill and proof command, GitHub Copilot / VS Code instructions, Cursor,
-Kiro, Roo Code, Trae, Qodo setup docs, Zed, Junie, Aider conventions, Cline, Continue, Cascade/Devin, Windsurf rules, an OpenHands skill at
-`.agents/skills/bilig-workpaper/SKILL.md`, OpenCode files at `opencode.jsonc`
-and `.opencode/agents/bilig-workpaper.md`, a project-root `.mcp.json` for
-Claude Code, Cursor, Kiro, Roo Code, Trae (`.trae/mcp.json`), Qodo IDE Agentic Tools, Zed (`.zed/settings.json`), Junie,
-Continue, and VS Code MCP configs, a generic MCP config at
-`mcp/bilig-workpaper.mcp.json`, and an `agent:verify` script that runs the
-service smoke plus the package-owned basic and revenue-plan agent evaluator
-proofs. The revenue-plan evaluator checks MCP tool discovery, mutation,
-recalculated `SUM`, `SUMIF`, `XLOOKUP`, `FILTER`, a named expression,
+The integration template keeps the service smoke test and adds project-local
+MCP config, host rule files, and an `agent:verify` script. That verification
+script runs the service smoke plus the package-owned basic and revenue-plan MCP
+evaluator proofs. The revenue-plan evaluator checks MCP tool discovery,
+mutation, recalculated `SUM`, `SUMIF`, `XLOOKUP`, `FILTER`, a named expression,
 persistence, and restart readback. The raw MCP challenge remains available as
 `npm run mcp:challenge` when you need the lower-level JSON-RPC transcript.
 
-To add the same agent and MCP proof loop to an existing Node repo without
+Included host files cover `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Claude Code,
+GitHub Copilot / VS Code, Cursor, Kiro, Roo Code, Trae, Qodo, Zed, Junie,
+Aider, Cline, Continue, Cascade/Devin, Windsurf, OpenHands, and OpenCode. The
+shared MCP command is also written to `mcp/bilig-workpaper.mcp.json`.
+Representative host config files include `.kiro/settings/mcp.json`,
+`.trae/mcp.json`, `.zed/settings.json`, and `.junie/mcp/mcp.json`.
+
+To add the same MCP proof loop and host files to an existing Node repo without
 replacing its app, run:
 
 ```sh
@@ -58,15 +60,15 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-
 npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
-That writes Bilig-specific agent files, keeps an existing `README.md`, does
-not edit `package.json`, keeps WorkPaper state under
+That writes Bilig-specific host files, keeps an existing `README.md`, does not
+edit `package.json`, keeps WorkPaper state under
 `./.bilig/pricing.workpaper.json`, and skips existing files unless you pass
-`--force`. When existing agent instruction files block part of the install, the
+`--force`. When existing host instruction files block part of the install, the
 CLI writes `BILIG_WORKPAPER_INSTALL.md` with the skipped paths and a short
-handoff snippet you can paste into your current agent policy. The overlay uses
+handoff snippet you can paste into your current policy. The overlay uses
 your existing `package.json` name for `BILIG_WORKPAPER.md` instead of rendering
 the directory argument.
 
-For an existing agent or MCP client that does not need a generated project yet,
-use the handoff checklist first:
+For an existing MCP client or host integration that does not need a generated
+project yet, use the handoff checklist first:
 <https://proompteng.github.io/bilig/agent-adoption-kit.html>.

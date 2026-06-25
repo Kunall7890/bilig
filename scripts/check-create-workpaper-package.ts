@@ -67,7 +67,17 @@ function assertManifest(manifest: PackageManifest): string {
   assert(manifest.type === 'module', 'package type must be module')
 
   const keywords = stringArray(manifest.keywords)
-  for (const keyword of ['formula-engine', 'spreadsheet-formulas', 'typescript', 'workbook-api', 'workpaper', 'xlsx-recalculation']) {
+  for (const keyword of [
+    'formula-engine',
+    'formula-workbook',
+    'mcp-tools',
+    'node-services',
+    'typescript',
+    'workbook-api',
+    'workbook-runtime',
+    'workpaper',
+    'workpaper-json',
+  ]) {
     assert(keywords.includes(keyword), `package keywords must include ${keyword}`)
   }
 

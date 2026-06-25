@@ -1,8 +1,8 @@
 ---
 title: Bilig WorkPaper install context for tool hosts
 published: true
-description: Short install and verification path for OpenCode, Aider, Cline, Cursor, Kiro, Roo Code, Trae, Qodo IDE, Zed, Junie, Copilot, Claude Code, Continue, Windsurf, VS Code MCP, and other tool hosts that need workbook formulas without spreadsheet UI automation.
-tags: ai agents, mcp, workpaper, spreadsheet formulas, node
+description: Short install and verification path for MCP clients and tool hosts that need workbook formulas without spreadsheet UI automation.
+tags: mcp, workpaper, spreadsheet formulas, node
 canonical_url: https://proompteng.github.io/bilig/llms-install.html
 ---
 
@@ -17,7 +17,7 @@ the workbook can run as WorkPaper JSON.
 
 ## Fast check
 
-Run this before wiring any agent:
+Run this before wiring any host integration:
 
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
@@ -28,14 +28,14 @@ A useful result has `schemaVersion: "bilig-evaluator.v1"`, `door:
 formula value, exported WorkPaper JSON, and restart readback that matches the
 post-edit value.
 
-Use the service path when the agent will call TypeScript directly instead of
+Use the service path when the integration will call TypeScript directly instead of
 MCP:
 
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 ```
 
-## Add agent files to an existing repo
+## Add host files to an existing repo
 
 ```sh
 npm create @bilig/workpaper@latest . -- --add-agent
@@ -46,7 +46,7 @@ That adds `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`, `CLAUDE.md`,
 Cline, Continue, Windsurf rules, and MCP client configs
 without replacing the app template or editing `package.json`.
 
-For a new agent-ready project:
+For a new MCP-enabled project:
 
 ```sh
 npm create @bilig/workpaper@latest pricing-agent -- --agent

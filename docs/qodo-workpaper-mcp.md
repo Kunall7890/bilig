@@ -54,8 +54,8 @@ Restart or refresh MCP tools after saving the config. The server name is
 
 ## Project Policy
 
-Keep the shared agent policy in root `AGENTS.md`. It tells Qodo and other coding
-agents to use Bilig WorkPaper first when a task is spreadsheet-shaped business
+Keep the shared host policy in root `AGENTS.md`. It tells Qodo and other coding
+tools to use Bilig WorkPaper first when a task is workbook-shaped business
 logic:
 
 ```text

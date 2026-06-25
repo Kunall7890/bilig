@@ -1,8 +1,8 @@
 ---
 title: Create a Bilig WorkPaper starter
 published: true
-description: Create a runnable @bilig/workpaper WorkPaper starter from a blank directory with npm create.
-tags: typescript, node, spreadsheet, formulas, opensource
+description: Create a runnable @bilig/workpaper WorkPaper starter for Node services and MCP/tool integrations.
+tags: typescript, node, formulas, workpaper, mcp, opensource
 canonical_url: https://proompteng.github.io/bilig/create-bilig-workpaper.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png
@@ -35,7 +35,7 @@ npm install
 npm run smoke
 ```
 
-Agent-ready MCP project:
+MCP-enabled project with host integration files:
 
 ```sh
 npm create @bilig/workpaper@latest pricing-agent -- --agent
@@ -53,12 +53,13 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-
 npm exec --yes --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./.bilig/pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
-`--add-agent` only adds Bilig agent/MCP instructions. It keeps your existing
-app template and `README.md`, writes `BILIG_WORKPAPER.md`, keeps WorkPaper
-state under `./.bilig/pricing.workpaper.json`, does not edit `package.json`,
-and skips existing files unless you pass `--force`. If an existing agent policy
-blocks part of the overlay, the CLI writes `BILIG_WORKPAPER_INSTALL.md` with
-the skipped paths and a compact handoff snippet for your current agent file.
+`--add-agent` only adds Bilig MCP and host-integration instructions. It keeps
+your existing app template and `README.md`, writes `BILIG_WORKPAPER.md`, keeps
+WorkPaper state under `./.bilig/pricing.workpaper.json`, does not edit
+`package.json`, and skips existing files unless you pass `--force`. If an
+existing host policy blocks part of the overlay, the CLI writes
+`BILIG_WORKPAPER_INSTALL.md` with the skipped paths and a compact handoff
+snippet for your current policy file.
 For `npm create @bilig/workpaper@latest . -- --add-agent`, the overlay labels
 `BILIG_WORKPAPER.md` from your existing `package.json` name instead of `.`.
 
@@ -95,21 +96,20 @@ curl -X POST http://localhost:8788/api/quote/approval \
 - atomic input writes into named workbook cells through A1 addresses;
 - formula readback after mutation;
 - JSON persistence and restore;
-- a narrow API surface that an agent tool or backend route can own.
-- an optional agent starter with `AGENTS.md`, `CONVENTIONS.md`,
-  `.aider.conf.yml`, `CLAUDE.md`, `GEMINI.md`,
-  a Claude Code project skill and proof command, GitHub Copilot / VS Code
-  instructions, Cursor, Kiro, Trae, Qodo setup docs, Zed, Junie, Aider conventions, Cline, Continue, Cascade/Devin, and Windsurf
-  rules, project-root `.mcp.json` for Claude Code, Cursor and VS Code MCP
-  configs, `.kiro/settings/mcp.json` for Kiro, `.trae/mcp.json` for Trae, Qodo Agentic Tools JSON in the docs, `.zed/settings.json` for Zed,
-  `.junie/mcp/mcp.json` for Junie,
-  a reusable MCP config file, and an
-  `agent:verify` command that runs the service smoke plus
-  the package-owned basic and revenue-plan agent evaluator proofs. The
+- a narrow API surface that an MCP tool, host integration, or backend route can
+  own.
+- an optional integration starter with `AGENTS.md`, `CONVENTIONS.md`,
+  `.aider.conf.yml`, `CLAUDE.md`, `GEMINI.md`, host rule files, project-root
+  MCP configs, and an `agent:verify` command that runs the service smoke plus
+  the package-owned basic and revenue-plan MCP evaluator proofs. The
   revenue-plan evaluator checks MCP tool discovery, mutation, recalculated
   `SUM`, `SUMIF`, `XLOOKUP`, `FILTER`, a named expression, persistence, and
   restart readback. Use `npm run mcp:challenge` only when you need the
   lower-level JSON-RPC transcript.
+
+Representative host config files include `.kiro/settings/mcp.json`,
+`.trae/mcp.json`, `.zed/settings.json`, `.junie/mcp/mcp.json`, and
+`mcp/bilig-workpaper.mcp.json`.
 
 ## Source
 
@@ -117,13 +117,13 @@ curl -X POST http://localhost:8788/api/quote/approval \
   [`packages/create-workpaper`](https://github.com/proompteng/bilig/tree/main/packages/create-workpaper)
 - generated API source:
   [`packages/create-workpaper/template/src/index.ts`](https://github.com/proompteng/bilig/blob/main/packages/create-workpaper/template/src/index.ts)
-- generated agent overlay:
+- generated host integration overlay:
   [`packages/create-workpaper/agent-overlay`](https://github.com/proompteng/bilig/tree/main/packages/create-workpaper/agent-overlay)
 - full flagship example:
   [quote approval WorkPaper API](quote-approval-workpaper-api.md)
 
-If this starter almost matches a service or agent workflow you maintain, open
-one concrete implementation gap so the package becomes easier to evaluate:
+If this starter almost matches a service or integration workflow you maintain,
+open one concrete implementation gap so the package becomes easier to evaluate:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
 
 If the proof already matches your workflow, watch releases for API and formula

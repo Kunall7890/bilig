@@ -50,7 +50,7 @@ call alone is not success.
 
 ## Existing Repo Overlay
 
-For a repo that already has app code, add only the agent and MCP files:
+For a repo that already has app code, add only the MCP and host files:
 
 ```sh
 npm create @bilig/workpaper@latest . -- --add-agent
@@ -62,7 +62,7 @@ Qodo IDE, Junie, OpenHands, OpenCode, Aider, Zed, Cline, Continue,
 Cascade/Devin and Windsurf rules, and MCP configs. It does not overwrite an existing app
 `README.md` or `package.json`.
 
-For a blank agent-ready project, use:
+For a blank MCP-enabled project, use:
 
 ```sh
 npm create @bilig/workpaper@latest pricing-agent -- --agent

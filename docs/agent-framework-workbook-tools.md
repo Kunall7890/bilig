@@ -48,7 +48,7 @@ npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
-For a generated project with agent files and MCP config:
+For a generated project with MCP config and host files:
 
 ```sh
 npm create @bilig/workpaper@latest pricing-agent -- --agent

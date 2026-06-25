@@ -5,19 +5,22 @@
   "keywords": [
     "bilig",
     "create",
-    "excel",
     "formula-engine",
     "formula-recalculation",
-    "headless-spreadsheet",
+    "formula-workbook",
     "mcp",
     "mcp-server",
+    "mcp-tools",
     "model-context-protocol",
+    "node-services",
     "nodejs",
     "spreadsheet-formulas",
+    "tool-integration",
     "typescript",
     "workbook-api",
+    "workbook-runtime",
     "workpaper",
-    "xlsx-recalculation"
+    "workpaper-json"
   ],
   "homepage": "https://proompteng.github.io/bilig/",
   "bugs": {

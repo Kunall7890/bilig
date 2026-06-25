@@ -45,7 +45,7 @@ if (options.addAgent) {
   )
 
   const targetLabel = relative(process.cwd(), targetDirectory) || '.'
-  console.log(`Added Bilig agent files to ${targetLabel}`)
+  console.log(`Added Bilig MCP and host integration files to ${targetLabel}`)
   printChangeList('Wrote', overlayResult.written)
   printChangeList('Skipped existing', overlayResult.skipped)
   if (overlayResult.installSummary !== undefined) {
@@ -159,8 +159,8 @@ Usage:
   npm exec @bilig/create-workpaper@latest <directory>
 
 Options:
-  --agent                    Add AGENTS.md, MCP client configs, and agent smoke scripts.
-  --add-agent                Add only agent/MCP files to an existing repo.
+  --agent                    Add MCP client configs, host files, and verification scripts.
+  --add-agent                Add only MCP and host files to an existing repo.
   --template service|agent   Choose the starter shape. Defaults to service.
   --force                    Allow overwriting existing generated/overlay files.
   -h, --help                 Print this help text.

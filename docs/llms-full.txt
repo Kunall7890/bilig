@@ -767,19 +767,20 @@ For a generated project from a blank directory, run
 `@bilig/create-workpaper` package. The package source lives in
 [`packages/create-workpaper`](packages/create-workpaper), and the publish gate
 is documented in [create a Bilig WorkPaper starter](docs/create-bilig-workpaper.md).
-For an agent-ready project with `AGENTS.md`, `CONVENTIONS.md`,
-`.aider.conf.yml`, `CLAUDE.md`, `GEMINI.md`,
-Copilot / Cursor / Kiro / Roo Code / Trae / Zed / Junie / OpenHands / OpenCode / Aider / Cline / Continue / Windsurf rules, MCP client
-configs, and an `agent:verify` script, run
+For an MCP-enabled project with host integration files, MCP client configs, and
+an `agent:verify` script, run
 `npm create @bilig/workpaper@latest pricing-agent -- --agent`.
+Representative host files include `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`,
+`.claude/skills/bilig-workpaper/SKILL.md`, `.cursor/rules/bilig-workpaper.mdc`,
+`.trae/mcp.json`, and `.zed/settings.json`.
 For an existing repo, run
-`npm create @bilig/workpaper@latest . -- --add-agent`; it adds Bilig agent and
-MCP instructions without replacing your app template or editing `package.json`.
-If an agent policy already exists, it writes `BILIG_WORKPAPER_INSTALL.md` with
-the skipped paths and a short handoff block.
+`npm create @bilig/workpaper@latest . -- --add-agent`; it adds Bilig MCP and
+host instructions without replacing your app template or editing
+`package.json`. If a host policy already exists, it writes
+`BILIG_WORKPAPER_INSTALL.md` with the skipped paths and a short handoff block.
 
-If that proof almost matches a service or agent workflow you maintain, the useful next
-step is a concrete gap report in
+If that proof almost matches a service or integration workflow you maintain, the
+useful next step is a concrete gap report in
 [Discussions](https://github.com/proompteng/bilig/discussions/new?category=general):
 formula coverage, service persistence, MCP setup, agent writeback, import/export
 boundary, or benchmark coverage.
@@ -1337,7 +1338,7 @@ the workbook can run as WorkPaper JSON.
 
 ## Fast check
 
-Run this before wiring any agent:
+Run this before wiring any host integration:
 
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
@@ -1348,14 +1349,14 @@ A useful result has `schemaVersion: "bilig-evaluator.v1"`, `door:
 formula value, exported WorkPaper JSON, and restart readback that matches the
 post-edit value.
 
-Use the service path when the agent will call TypeScript directly instead of
+Use the service path when the integration will call TypeScript directly instead of
 MCP:
 
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 ```
 
-## Add agent files to an existing repo
+## Add host files to an existing repo
 
 ```sh
 npm create @bilig/workpaper@latest . -- --add-agent
@@ -1366,7 +1367,7 @@ That adds `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`, `CLAUDE.md`,
 Cline, Continue, Windsurf rules, and MCP client configs
 without replacing the app template or editing `package.json`.
 
-For a new agent-ready project:
+For a new MCP-enabled project:
 
 ```sh
 npm create @bilig/workpaper@latest pricing-agent -- --agent
@@ -2362,7 +2363,7 @@ The generated project includes `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`,
 OpenHands, OpenCode, Aider, Cline, Continue, and Windsurf rules, plus local MCP
 configs and `npm run agent:verify`.
 
-For an existing repo, add only the agent/MCP files:
+For an existing repo, add only the MCP and host files:
 
 ```sh
 npm create @bilig/workpaper@latest . -- --add-agent
@@ -2370,8 +2371,8 @@ npm create @bilig/workpaper@latest . -- --add-agent
 
 That keeps the app template, existing `README.md`, and `package.json` intact.
 The generated MCP configs use direct `npm exec` and store local workbook state
-at `./.bilig/pricing.workpaper.json`, so agents can run the WorkPaper server
-without needing project scripts or a root-level state file. If an agent policy
+at `./.bilig/pricing.workpaper.json`, so hosts can run the WorkPaper server
+without needing project scripts or a root-level state file. If a host policy
 file already exists, the CLI leaves it untouched and writes
 `BILIG_WORKPAPER_INSTALL.md` with the skipped paths and the short handoff block
 to paste into the current policy.
@@ -2678,7 +2679,7 @@ call alone is not success.
 
 ## Existing Repo Overlay
 
-For a repo that already has app code, add only the agent and MCP files:
+For a repo that already has app code, add only the MCP and host files:
 
 ```sh
 npm create @bilig/workpaper@latest . -- --add-agent
@@ -2690,7 +2691,7 @@ Qodo IDE, Junie, OpenHands, OpenCode, Aider, Zed, Cline, Continue,
 Cascade/Devin and Windsurf rules, and MCP configs. It does not overwrite an existing app
 `README.md` or `package.json`.
 
-For a blank agent-ready project, use:
+For a blank MCP-enabled project, use:
 
 ```sh
 npm create @bilig/workpaper@latest pricing-agent -- --agent
@@ -5901,7 +5902,7 @@ npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
-For a generated project with agent files and MCP config:
+For a generated project with MCP config and host files:
 
 ```sh
 npm create @bilig/workpaper@latest pricing-agent -- --agent
@@ -10588,7 +10589,7 @@ npm install
 npm run agent:verify
 ```
 
-For an existing repo, add only the agent and MCP files:
+For an existing repo, add only the MCP and host files:
 
 ```sh
 npm create @bilig/workpaper@latest . -- --add-agent
@@ -10825,8 +10826,8 @@ Restart or refresh MCP tools after saving the config. The server name is
 
 ## Project Policy
 
-Keep the shared agent policy in root `AGENTS.md`. It tells Qodo and other coding
-agents to use Bilig WorkPaper first when a task is spreadsheet-shaped business
+Keep the shared host policy in root `AGENTS.md`. It tells Qodo and other coding
+tools to use Bilig WorkPaper first when a task is workbook-shaped business
 logic:
 
 ```text
@@ -11011,7 +11012,7 @@ npm install
 npm run agent:verify
 ```
 
-For an existing repo, add only the agent and MCP files:
+For an existing repo, add only the MCP and host files:
 
 ```sh
 npm create @bilig/workpaper@latest . -- --add-agent

@@ -99,7 +99,7 @@ npm install
 npm run agent:verify
 ```
 
-For an existing repo, add only the agent and MCP files:
+For an existing repo, add only the MCP and host files:
 
 ```sh
 npm create @bilig/workpaper@latest . -- --add-agent

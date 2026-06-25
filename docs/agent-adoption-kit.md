@@ -121,7 +121,7 @@ The generated project includes `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`,
 OpenHands, OpenCode, Aider, Cline, Continue, and Windsurf rules, plus local MCP
 configs and `npm run agent:verify`.
 
-For an existing repo, add only the agent/MCP files:
+For an existing repo, add only the MCP and host files:
 
 ```sh
 npm create @bilig/workpaper@latest . -- --add-agent
@@ -129,8 +129,8 @@ npm create @bilig/workpaper@latest . -- --add-agent
 
 That keeps the app template, existing `README.md`, and `package.json` intact.
 The generated MCP configs use direct `npm exec` and store local workbook state
-at `./.bilig/pricing.workpaper.json`, so agents can run the WorkPaper server
-without needing project scripts or a root-level state file. If an agent policy
+at `./.bilig/pricing.workpaper.json`, so hosts can run the WorkPaper server
+without needing project scripts or a root-level state file. If a host policy
 file already exists, the CLI leaves it untouched and writes
 `BILIG_WORKPAPER_INSTALL.md` with the skipped paths and the short handoff block
 to paste into the current policy.

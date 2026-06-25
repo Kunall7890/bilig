@@ -1,13 +1,14 @@
 # `__PROJECT_NAME__`
 
-Agent-ready formula WorkPaper starter built with `@bilig/workpaper`.
+Formula WorkPaper starter for Node services, MCP clients, and host
+integrations, built with `@bilig/workpaper`.
 
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario revenue-plan --json
 ```
 
-Generated starters also include `npm run agent:verify`, which runs the service
-smoke, the basic MCP evaluator, and the richer revenue-plan evaluator:
+This starter includes `npm run agent:verify`, which runs the service smoke, the
+basic MCP evaluator, and the richer revenue-plan evaluator:
 
 - `npm run smoke`: writes quote inputs through a service-style API handler,
   recalculates formulas, persists WorkPaper JSON, restores it, and checks
@@ -53,13 +54,14 @@ through Agentic Tools MCP settings rather than a repo-native file. Zed gets `.ze
 `.continue/mcpServers/bilig-workpaper.yaml` for Agent-mode MCP tools. Other
 clients can use the same command from `mcp/bilig-workpaper.mcp.json`.
 
-Agent instruction files are included for Claude Code, Codex/AGENTS-aware
-tools, Gemini CLI, GitHub Copilot, VS Code agent mode, Cursor, Kiro, Roo Code, Trae, Qodo IDE, OpenHands,
-OpenCode, Zed, Junie, Aider, Cline, Continue, Cascade/Devin, and Windsurf/Cascade. They all
-point at the same rule: read first, edit one cell or formula, recalculate, read the
-dependent output, persist or export, and report proof.
+Host instruction files are included for Claude Code, Codex/AGENTS-aware tools,
+Gemini CLI, GitHub Copilot, VS Code agent mode, Cursor, Kiro, Roo Code, Trae,
+Qodo IDE, OpenHands, OpenCode, Zed, Junie, Aider, Cline, Continue,
+Cascade/Devin, and Windsurf/Cascade. They all point at the same rule: read
+first, edit one cell or formula, recalculate, read the dependent output,
+persist or export, and report proof.
 
-Existing projects can add only these agent files without replacing their app
+Existing projects can add only these host files without replacing their app
 template or editing `package.json`:
 
 ```sh
@@ -70,7 +72,7 @@ For existing repos, the generated MCP configs keep WorkPaper state under
 `./.bilig/pricing.workpaper.json` so the overlay does not add a noisy root
 workbook file.
 
-Agent handoff:
+Host handoff:
 
 ```text
 Use Bilig WorkPaper tools instead of spreadsheet UI automation. Read the
@@ -80,6 +82,6 @@ report editedCell, before, after, persistence evidence, verified, and
 limitations. Do not claim success from a write call alone.
 ```
 
-Agent handoff checklist: <https://proompteng.github.io/bilig/agent-adoption-kit.html>
+Host handoff checklist: <https://proompteng.github.io/bilig/agent-adoption-kit.html>
 
 Learn more: <https://github.com/proompteng/bilig>
