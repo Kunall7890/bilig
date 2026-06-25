@@ -19,6 +19,10 @@ function formatCommentCount(value: number): string {
   return `${formatCount(value)} ${value === 1 ? 'comment' : 'comments'}`
 }
 
+function formatNounCount(value: number, singular: string, plural = `${singular}s`): string {
+  return `${formatCount(value)} ${value === 1 ? singular : plural}`
+}
+
 function renderDiscussionActivityMarkdown(discussionActivity: GitHubDiscussionActivitySnapshot): readonly string[] {
   if (!discussionActivity.available) {
     return [`- Discussion activity: unavailable. ${discussionActivity.reason}`]
@@ -212,6 +216,17 @@ export function renderCommunityGrowthSnapshotMarkdown(snapshot: CommunityGrowthS
     '## Traffic',
     '',
     ...renderTrafficMarkdown(snapshot.traffic),
+    '',
+    '## Execution Log',
+    '',
+    `- ${snapshot.capturedAt}: refreshed live GitHub/npm readback for \`${snapshot.npm.name}@${snapshot.npm.version}\`; GitHub shows ${formatCount(
+      snapshot.github.stargazerCount,
+    )} / ${formatCount(starGoal)} stars (${formatCount(starRemaining)} remaining), ${formatNounCount(
+      snapshot.github.forkCount,
+      'fork',
+    )}, and ${formatNounCount(snapshot.github.watcherCount, 'watcher')}.`,
+    '- Public copy guard for this pass: keep distribution surfaces WorkPaper service, MCP tool proof, and current release state first; use saved-file diagnostics only when files are the boundary.',
+    '- Use this snapshot as evidence, not reusable launch copy.',
     '',
     '## External Discovery',
     '',

@@ -1,6 +1,6 @@
 # bilig
 
-> spreadsheet formula readback for node services, tool integrations, workbook
+> WorkPaper formula readback for Node services, tool integrations, workbook
 > automation, and formula-backed business workflows.
 
 site: https://proompteng.github.io/bilig/

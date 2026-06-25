@@ -571,7 +571,7 @@ async function buildLlmsFull(): Promise<string> {
   const sections: string[] = [
     '# Bilig llms-full',
     '',
-    '> Full host context for Bilig, a spreadsheet formula readback runtime for Node services, MCP clients, and tool integrations.',
+    '> Full host context for Bilig, a WorkPaper formula readback runtime for Node services, MCP clients, and tool integrations.',
     '',
     `Repository: ${repositoryUrl}`,
     `Site: ${siteRoot}/`,

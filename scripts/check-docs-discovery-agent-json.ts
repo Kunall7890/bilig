@@ -7,20 +7,20 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
     throw new Error('docs/.well-known/agent.json capabilities must be an array')
   }
 
-  if (Reflect.get(parsedAgentJson, 'title') !== 'Bilig WorkPaper spreadsheet formula readback') {
-    throw new Error('docs/.well-known/agent.json must advertise the spreadsheet formula readback title')
+  if (Reflect.get(parsedAgentJson, 'title') !== 'Bilig WorkPaper formula readback') {
+    throw new Error('docs/.well-known/agent.json must advertise the WorkPaper formula readback title')
   }
   if (
     Reflect.get(parsedAgentJson, 'description') !==
-    'Spreadsheet formula readback for Node.js services and MCP tools: edit cells, recalculate, verify outputs, and persist JSON without UI automation.'
+    'WorkPaper formula readback for Node.js services and MCP tools: edit cells, recalculate, verify outputs, and persist JSON without UI automation.'
   ) {
-    throw new Error('docs/.well-known/agent.json must advertise the spreadsheet formula readback description')
+    throw new Error('docs/.well-known/agent.json must advertise the WorkPaper formula readback description')
   }
   requireStringArrayIncludes(
     Reflect.get(parsedAgentJson, 'keywords'),
     [
-      'spreadsheet formula readback',
-      'MCP spreadsheet tools',
+      'WorkPaper formula readback',
+      'MCP WorkPaper tools',
       'tool-host workbook automation',
       'JSON WorkPaper persistence',
       '@bilig/workpaper',
@@ -29,7 +29,7 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
   )
   requireStringArrayIncludes(
     Reflect.get(parsedAgentJson, 'tags'),
-    ['spreadsheet-formula-readback', 'mcp-spreadsheet-tools', 'tool-host-workbook-automation', 'json-workpaper-persistence'],
+    ['workpaper-formula-readback', 'mcp-workpaper-tools', 'tool-host-workbook-automation', 'json-workpaper-persistence'],
     'docs/.well-known/agent.json tags',
   )
 

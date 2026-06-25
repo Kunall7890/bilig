@@ -2,7 +2,7 @@
 title: Bilig product surface notes
 published: false
 description: Internal product-surface notes, assets, and proof links for presenting @bilig/workpaper without canned launch copy.
-tags: product, proof, typescript, node, spreadsheet, workpaper
+tags: product, proof, typescript, node, workbook, workpaper
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/product-hunt-thumbnail.png
 image: /assets/product-hunt-thumbnail.png
 ---
@@ -11,7 +11,7 @@ image: /assets/product-hunt-thumbnail.png
 
 Use this page when a product or directory surface needs short, factual Bilig
 copy plus the current proof links and assets. Do not use canned comments,
-generic launch copy, or vague spreadsheet-agent positioning.
+generic launch copy, or vague tool-host positioning.
 
 ## Product Copy
 

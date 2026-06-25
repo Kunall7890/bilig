@@ -471,7 +471,7 @@ permission:
   }
   if (target === 'windsurf') {
     return `---
-description: Use Bilig WorkPaper when Cascade needs workbook formulas, MCP spreadsheet tools, or formula readback without Excel UI automation.
+description: Use Bilig WorkPaper when Cascade needs workbook formulas, MCP WorkPaper tools, or formula readback without Excel UI automation.
 trigger: model_decision
 ---
 

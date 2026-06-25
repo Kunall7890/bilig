@@ -36,20 +36,20 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
     {
       schema_version: 'agent-json-0.1.0',
       name: 'bilig',
-      title: 'Bilig WorkPaper spreadsheet formula readback',
+      title: 'Bilig WorkPaper formula readback',
       description:
-        'Spreadsheet formula readback for Node.js services and MCP tools: edit cells, recalculate, verify outputs, and persist JSON without UI automation.',
+        'WorkPaper formula readback for Node.js services and MCP tools: edit cells, recalculate, verify outputs, and persist JSON without UI automation.',
       keywords: [
-        'spreadsheet formula readback',
-        'MCP spreadsheet tools',
+        'WorkPaper formula readback',
+        'MCP WorkPaper tools',
         'tool-host workbook automation',
-        'headless WorkPaper runtime',
+        'headless workbook runtime',
         'JSON WorkPaper persistence',
         '@bilig/workpaper',
       ],
       tags: [
-        'spreadsheet-formula-readback',
-        'mcp-spreadsheet-tools',
+        'workpaper-formula-readback',
+        'mcp-workpaper-tools',
         'tool-host-workbook-automation',
         'headless-workpaper',
         'json-workpaper-persistence',

@@ -2,7 +2,7 @@
   "name": "@bilig/repo",
   "version": "0.1.0",
   "private": true,
-  "description": "Production spreadsheet engine monorepo with worker-first web app, custom reconciler, and AssemblyScript/WASM fast path.",
+  "description": "WorkPaper runtime monorepo for Node services, formula readback, MCP tools, and the workbook web app.",
   "license": "MIT",
   "repository": {
     "type": "git",

@@ -1,10 +1,8 @@
 # Community Growth Snapshot
 
-Captured at: `2026-06-25T13:25:16Z`
+Captured at: `2026-06-25T14:39:17.222Z`
 
-This snapshot tracks the public signals for the `@bilig/workpaper` Node runtime
-growth loop: GitHub conversion, npm demand, contributor on-ramp health,
-discussion activity, and traffic quality.
+This snapshot tracks the public signals for the `@bilig/workpaper` growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
 
 ## GitHub
 
@@ -18,9 +16,9 @@ discussion activity, and traffic quality.
 
 ## npm
 
-- Package: `@bilig/workpaper@0.164.2`
+- Package: `@bilig/workpaper@0.164.3`
 - License: `MIT`
-- Modified: `2026-06-25T13:19:41.310Z`
+- Modified: `2026-06-25T14:28:39.601Z`
 - Downloads last week: 519 (2026-06-18 to 2026-06-24)
 - Downloads last month: 11,441 (2026-05-26 to 2026-06-24)
 
@@ -55,24 +53,14 @@ discussion activity, and traffic quality.
 
 ## Execution Log
 
-- 2026-06-25T12:19:47Z: cleaned the next public package metadata pass for
-  `@bilig/workpaper` and `@bilig/workbook`: moved package homepages away from
-  tool-host-first routes, added a clean workbook runtime intent page, changed the
-  homepage GitHub CTA to "Star on GitHub", regenerated discovery manifests, and
-  retargeted live GitHub topics from `excel`, `headless-spreadsheet`,
-  `node-library`, and `spreadsheet-engine` to `mcp-tools`,
-  `server-side-formulas`, `workpaper-json`, and `node-formulas`. Live readback
-  showed 33 stars, 22 forks, 1 watcher, and 67 stars remaining.
-- 2026-06-25T13:25:16Z: tightened the root README first page around the
-  WorkPaper service/runtime proof, reduced host/vendor sprawl above the fold,
-  and made file compatibility diagnostics an explicit import/export path instead
-  of the default story. Live readback still showed 33 stars, 22 forks, 1 watcher,
-  and 67 stars remaining.
+- 2026-06-25T14:39:17.222Z: refreshed live GitHub/npm readback for `@bilig/workpaper@0.164.3`; GitHub shows 33 / 100 stars (67 remaining), 22 forks, and 1 watcher.
+- Public copy guard for this pass: keep distribution surfaces WorkPaper service, MCP tool proof, and current release state first; use saved-file diagnostics only when files are the boundary.
+- Use this snapshot as evidence, not reusable launch copy.
 
 ## External Discovery
 
 - LibHunt indexes Bilig on the `headless-spreadsheet` topic page: <https://www.libhunt.com/topic/headless-spreadsheet>.
-- That surface came from the May 7 developer discovery path and classifies the project near TypeScript, Spreadsheet, Excel, and tool-host audiences.
+- That surface came from the May 7 developer discovery path and classifies the project near TypeScript, spreadsheet, formula-engine, and workflow audiences.
 - Keep GitHub repository topics, npm keywords, and proof-page copy aligned with WorkPaper service readback, tool integrations, and formula-recalculation terms while waiting for crawler refreshes.
 
 ## Conversion Pressure
