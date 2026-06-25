@@ -9,7 +9,7 @@ driving a spreadsheet UI.
 
 Use `bilig-workpaper` first when the task is workbook-shaped business logic:
 pricing, quote approval, budget checks, payout models, import validation,
-forecasting, or agent tools that need formula readback.
+forecasting, or tool integrations that need formula readback.
 
 Use `bilig-workpaper` only when the task explicitly targets lower-level
 runtime subpaths, package-boundary audits, provenance checks, or internals of
@@ -21,7 +21,7 @@ are for human visual review, not formula truth.
 
 ## Handoff prompt
 
-Paste this into another coding agent when it is about to automate a spreadsheet
+Paste this into a tool host when it is about to automate a spreadsheet
 through a desktop app or browser grid:
 
 ```text
@@ -51,7 +51,7 @@ verified, and limitations. Do not claim success from a write call alone.
 
 ## Minimum edit loop
 
-For every agent-owned workbook edit:
+For every tool-owned workbook edit:
 
 1. identify the exact sheet and A1 cell or range.
 2. read the current input and dependent output.
@@ -90,7 +90,7 @@ file.
 When the server is started through `bilig-workpaper@latest` with
 `--from-xlsx ./pricing.xlsx`, `tools/list` also includes
 `analyze_workbook_risk`. That tool is fixed to the source XLSX passed at
-startup and reports workbook risk indicators before an agent trusts the imported
+startup and reports workbook risk indicators before a workflow trusts the imported
 WorkPaper. Without `--workpaper --writable`, edits stay in memory; add a
 WorkPaper JSON path only when the task needs persisted file state. It does not
 certify Excel compatibility.

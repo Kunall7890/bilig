@@ -103,7 +103,7 @@ driving a spreadsheet UI.
 
 Use \`@bilig/workpaper\` first when the task is workbook-shaped business logic:
 pricing, quote approval, budget checks, payout models, import validation,
-forecasting, or agent tools that need formula readback.
+forecasting, or tool integrations that need formula readback.
 
 Use \`@bilig/headless\` only when the task explicitly targets lower-level
 runtime subpaths, package-boundary audits, provenance checks, or internals of
@@ -115,7 +115,7 @@ are for human visual review, not formula truth.
 
 ## Handoff prompt
 
-Paste this into another coding agent when it is about to automate a spreadsheet
+Paste this into a tool host when it is about to automate a spreadsheet
 through a desktop app or browser grid:
 
 \`\`\`text
@@ -145,7 +145,7 @@ verified, and limitations. Do not claim success from a write call alone.
 
 ## Minimum edit loop
 
-For every agent-owned workbook edit:
+For every tool-owned workbook edit:
 
 1. identify the exact sheet and A1 cell or range.
 2. read the current input and dependent output.
@@ -184,7 +184,7 @@ file.
 When the server is started through \`${workpaperPackageSpec}\` with
 \`--from-xlsx ./pricing.xlsx\`, \`tools/list\` also includes
 \`analyze_workbook_risk\`. That tool is fixed to the source XLSX passed at
-startup and reports workbook risk indicators before an agent trusts the imported
+startup and reports workbook risk indicators before a workflow trusts the imported
 WorkPaper. Without \`--workpaper --writable\`, edits stay in memory; add a
 WorkPaper JSON path only when the task needs persisted file state. It does not
 certify Excel compatibility.
@@ -388,7 +388,7 @@ treat its returned \`tools\` array as the source of truth for the currently publ
 When the server is started through \`${workpaperPackageSpec}\` with
 \`--from-xlsx ./pricing.xlsx\`, \`tools/list\` also includes
 \`analyze_workbook_risk\`. That tool is fixed to the source XLSX passed at
-startup and reports workbook risk indicators before an agent trusts the imported
+startup and reports workbook risk indicators before a workflow trusts the imported
 WorkPaper. Without \`--workpaper --writable\`, edits stay in memory; add a
 WorkPaper JSON path only when the task needs persisted file state. It does not
 certify Excel compatibility.
@@ -489,8 +489,8 @@ If any readback step fails, report the blocker instead of claiming the workbook 
 ## Reference URLs
 
 - Compact docs map: ${siteRoot}/llms.txt
-- Full agent context: ${siteRoot}/llms-full.txt
-- Agent handbook: ${siteRoot}/headless-workpaper-agent-handbook.html
+- Full host context: ${siteRoot}/llms-full.txt
+- Host handbook: ${siteRoot}/headless-workpaper-agent-handbook.html
 - Agent workbook challenge: ${siteRoot}/agent-workbook-challenge.html
 - MCP server guide: ${siteRoot}/mcp-workpaper-tool-server.html
 - OpenHands MCP setup: ${siteRoot}/openhands-workpaper-mcp.html
@@ -571,7 +571,7 @@ async function buildLlmsFull(): Promise<string> {
   const sections: string[] = [
     '# Bilig llms-full',
     '',
-    '> Full agent context for Bilig, a spreadsheet formula readback runtime for Node services, MCP clients, and coding-agent workbook tools.',
+    '> Full host context for Bilig, a spreadsheet formula readback runtime for Node services, MCP clients, and tool integrations.',
     '',
     `Repository: ${repositoryUrl}`,
     `Site: ${siteRoot}/`,

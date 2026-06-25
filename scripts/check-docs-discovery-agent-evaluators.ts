@@ -28,7 +28,7 @@ export async function requireAgentEvaluatorDiscovery(input: {
   requireIncludes(readme, '.zed/settings.json', 'README.md')
   requireIncludes(readme, 'opencode.jsonc', 'README.md')
   requireIncludes(readme, '.opencode/agents/bilig-workpaper.md', 'README.md')
-  requireIncludes(readme, 'agent handoff prompt', 'README.md')
+  requireIncludes(readme, 'host handoff prompt', 'README.md')
   requireIncludes(readme, 'docs/agent-adoption-kit.md', 'README.md')
   requireIncludes(readme, 'npx --yes skills@latest add https://bilig.proompteng.ai --list', 'README.md')
   requireIncludes(readme, 'npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list', 'README.md')

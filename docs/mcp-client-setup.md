@@ -19,8 +19,8 @@ tests. The local server is the published npm binary from `@bilig/workpaper`; it
 starts over stdio, owns a real WorkPaper JSON file, writes through tools,
 recalculates formulas, and persists edits back to disk.
 
-For the agent-side write/read/persist loop, use the
-[headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md).
+For the host-side write/read/persist loop, use the
+[headless WorkPaper host handbook](headless-workpaper-agent-handbook.md).
 
 ## Smithery install
 
@@ -97,7 +97,7 @@ workbook once; pass `--overwrite-workpaper` only when you intentionally want to
 replace the generated WorkPaper JSON.
 When started with `--from-xlsx`, `tools/list` also includes
 `analyze_workbook_risk`. That tool is fixed to the source XLSX passed at
-startup, returns workbook risk indicators before an agent trusts the imported
+startup, returns workbook risk indicators before a workflow trusts the imported
 WorkPaper, and does not certify Excel compatibility.
 
 Quick protocol smoke test:

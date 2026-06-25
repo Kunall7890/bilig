@@ -14,7 +14,7 @@ const xlsxWorkbookRiskToolDefinition = {
   name: 'analyze_workbook_risk',
   title: 'Analyze XLSX Workbook Risk',
   description:
-    'Analyze the XLSX file that started this MCP server and return workbook risk indicators before an agent trusts the imported WorkPaper. This diagnostic does not certify Excel compatibility.',
+    'Analyze the XLSX file that started this MCP server and return workbook risk indicators before the workflow trusts the imported WorkPaper. This diagnostic does not certify Excel compatibility.',
   inputSchema: {
     type: 'object',
     properties: {

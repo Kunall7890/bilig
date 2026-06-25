@@ -114,7 +114,7 @@ treat its returned `tools` array as the source of truth for the currently publis
 When the server is started through `bilig-workpaper@latest` with
 `--from-xlsx ./pricing.xlsx`, `tools/list` also includes
 `analyze_workbook_risk`. That tool is fixed to the source XLSX passed at
-startup and reports workbook risk indicators before an agent trusts the imported
+startup and reports workbook risk indicators before a workflow trusts the imported
 WorkPaper. Without `--workpaper --writable`, edits stay in memory; add a
 WorkPaper JSON path only when the task needs persisted file state. It does not
 certify Excel compatibility.
@@ -206,8 +206,8 @@ If any readback step fails, report the blocker instead of claiming the workbook 
 ## Reference URLs
 
 - Compact docs map: https://proompteng.github.io/bilig/llms.txt
-- Full agent context: https://proompteng.github.io/bilig/llms-full.txt
-- Agent handbook: https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html
+- Full host context: https://proompteng.github.io/bilig/llms-full.txt
+- Host handbook: https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html
 - Agent workbook challenge: https://proompteng.github.io/bilig/agent-workbook-challenge.html
 - MCP server guide: https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html
 - OpenHands MCP setup: https://proompteng.github.io/bilig/openhands-workpaper-mcp.html

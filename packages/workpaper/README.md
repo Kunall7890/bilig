@@ -20,12 +20,12 @@ npm install @bilig/workpaper
 
 Pick the door that matches the state you own:
 
-| Door                       | Run first                                                                                            | What it proves                                                                                     |
-| -------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Node service or test       | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json` | edit input, recalculate output, persist JSON, restore, and return `verified: true`.                |
-| New project                | `npm create @bilig/workpaper@latest pricing-workpaper`                                               | a starter wired to the same WorkPaper proof loop.                                                  |
-| Tool host or MCP client    | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`         | tool discovery, cell mutation, formula readback, JSON export, restart proof, and `verified: true`. |
-| Unsure which proof fits    | `npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --json`                       | compact routing card with proof commands, evidence fields, and public links.                       |
+| Door                    | Run first                                                                                            | What it proves                                                                                     |
+| ----------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Node service or test    | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json` | edit input, recalculate output, persist JSON, restore, and return `verified: true`.                |
+| New project             | `npm create @bilig/workpaper@latest pricing-workpaper`                                               | a starter wired to the same WorkPaper proof loop.                                                  |
+| Tool host or MCP client | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`         | tool discovery, cell mutation, formula readback, JSON export, restart proof, and `verified: true`. |
+| Unsure which proof fits | `npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --json`                       | compact routing card with proof commands, evidence fields, and public links.                       |
 
 `bilig-agent-start --json` is intentionally small. It prints first proof
 commands, required evidence fields, expected MCP tools, and public discovery
@@ -228,11 +228,11 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./
 
 The challenge commands edit one input, recalculate dependent formulas, export
 WorkPaper JSON, restore it, and print a `verified: true` proof object.
-Use `--from-xlsx` when the agent already has an XLSX file: Bilig imports it once
+Use `--from-xlsx` when the tool host already has an XLSX file: Bilig imports it once
 into an in-memory MCP server by default, or into persisted WorkPaper JSON when
 `--workpaper --writable` is also supplied. That XLSX-backed MCP path also lists
 `analyze_workbook_risk`, a read-only tool fixed to the source workbook passed at
-startup. It reports workbook risk indicators before an agent trusts the imported
+startup. It reports workbook risk indicators before a workflow trusts the imported
 WorkPaper and does not certify Excel compatibility.
 
 ## Agent WorkPaper Handoff

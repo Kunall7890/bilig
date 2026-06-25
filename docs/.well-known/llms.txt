@@ -1,6 +1,6 @@
 # bilig
 
-> spreadsheet formula readback for node services, agent tools, workbook
+> spreadsheet formula readback for node services, tool integrations, workbook
 > automation, and formula-backed business workflows.
 
 site: https://proompteng.github.io/bilig/
@@ -44,11 +44,11 @@ agent install context: https://proompteng.github.io/bilig/llms-install.html
 agent install source: https://github.com/proompteng/bilig/blob/main/llms-install.md
 well-known llms.txt: https://proompteng.github.io/bilig/.well-known/llms.txt
 well-known llms-full.txt: https://proompteng.github.io/bilig/.well-known/llms-full.txt
-agent handoff checklist: https://proompteng.github.io/bilig/agent-adoption-kit.html
-agent rule chooser: https://proompteng.github.io/bilig/agent-rule-chooser.html
-agent proof matrix: https://proompteng.github.io/bilig/agent-proof-matrix.html
-agent proof transcripts: https://proompteng.github.io/bilig/agent-proof-transcripts.html
-MCP spreadsheet formula server for coding agents: https://proompteng.github.io/bilig/mcp-spreadsheet-formula-server-for-coding-agents.html
+host handoff checklist: https://proompteng.github.io/bilig/agent-adoption-kit.html
+host rule chooser: https://proompteng.github.io/bilig/agent-rule-chooser.html
+tool-host proof matrix: https://proompteng.github.io/bilig/agent-proof-matrix.html
+tool-host proof transcripts: https://proompteng.github.io/bilig/agent-proof-transcripts.html
+MCP spreadsheet formula server for tool hosts: https://proompteng.github.io/bilig/mcp-spreadsheet-formula-server-for-coding-agents.html
 Vercel AI SDK formula readback: https://proompteng.github.io/bilig/vercel-ai-sdk-spreadsheet-tool-formula-readback.html
 ExcelJS formula result boundary: https://proompteng.github.io/bilig/exceljs-formula-result-not-updating-after-node-edits.html
 Workbook Compatibility Report: https://proompteng.github.io/bilig/workbook-compatibility-report.html
@@ -97,15 +97,15 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   https://github.com/proompteng/bilig/blob/main/docs/workbook-compatibility-report.md
   Use this to inspect unsupported functions, external links, macro payloads,
   pivots, volatile functions, stored formula results, and risk reasons before a
-  Node service or coding agent trusts a specific `.xlsx` workbook. It is not an
+  Node service or tool host trusts a specific `.xlsx` workbook. It is not an
   Excel compatibility certificate and must not include a compatibility score.
   Run:
   `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json`.
   `npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibility-report workbook.xlsx --json`.
-- Agent XLSX risk preflight:
+- Tool-host XLSX risk preflight:
   https://proompteng.github.io/bilig/agent-xlsx-risk-preflight.html
   https://github.com/proompteng/bilig/blob/main/docs/agent-xlsx-risk-preflight.md
-  Use this when an MCP client or coding agent already has a real `.xlsx` file.
+  Use this when an MCP client or tool host already has a real `.xlsx` file.
   It starts `bilig-workpaper-mcp --from-xlsx`, calls
   `analyze_workbook_risk`, edits `Inputs!B3` with
   `set_cell_contents_and_readback`, verifies `Summary!B3` changes from `60000`
@@ -116,21 +116,21 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   https://proompteng.github.io/bilig/eval-xlsx-recalc.html
 - Evaluator for Node service formulas:
   https://proompteng.github.io/bilig/eval-workpaper-service.html
-- Evaluator for agent and MCP workbook tools:
+- Evaluator for MCP workbook tools:
   https://proompteng.github.io/bilig/eval-agent-mcp.html
-- Agent WorkPaper proof matrix:
+- Tool-host proof matrix:
   https://proompteng.github.io/bilig/agent-proof-matrix.html
   https://github.com/proompteng/bilig/blob/main/docs/agent-proof-matrix.md
-  Use this to choose among WorkPaper service, agent MCP, provider-backed MCP,
+  Use this to choose among WorkPaper service, MCP, provider-backed MCP,
   saved-file diagnostics, ExcelJS recalculation, MCP Inspector, file-backed MCP, Vercel AI SDK, OpenAI,
   LangGraph, Semantic Kernel, and Mastra proof paths.
-- Agent proof transcripts:
+- Tool-host proof transcripts:
   https://proompteng.github.io/bilig/agent-proof-transcripts.html
   https://github.com/proompteng/bilig/blob/main/docs/agent-proof-transcripts.md
   Use this to inspect prompt, tool call, result, workbook state change, formula readback,
   JSON export, and restart readback verification for Codex, Claude Code, Copilot, Cursor, Roo Code,
   and Continue.
-- MCP spreadsheet formula server for coding agents:
+- MCP spreadsheet formula server for tool hosts:
   https://proompteng.github.io/bilig/mcp-spreadsheet-formula-server-for-coding-agents.html
   https://github.com/proompteng/bilig/blob/main/docs/mcp-spreadsheet-formula-server-for-coding-agents.md
   Start with `bilig-evaluate --door agent-mcp --json` and require
@@ -215,12 +215,12 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
   https://proompteng.github.io/bilig/eval-workpaper-service.html
   Run:
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json`.
-- `eval-agent-mcp`: use when a coding agent, MCP client, or tool host needs
+- `eval-agent-mcp`: use when an MCP client or tool host needs
   spreadsheet operations without UI automation. Read:
   https://proompteng.github.io/bilig/eval-agent-mcp.html
   Run:
   `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`.
-- `eval-agent-mcp-provider-backed`: use when a coding agent sees
+- `eval-agent-mcp-provider-backed`: use when a tool host sees
   provider-backed formulas such as `IMPORTRANGE` and needs fail-closed
   diagnostics before wiring an adapter. Read:
   https://proompteng.github.io/bilig/eval-agent-mcp.html
@@ -229,7 +229,7 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 - Every proof path must return readback evidence, persisted or exported state,
   `verified: true`, and limitations. A write call by itself is not success.
 
-## agent handoff prompt
+## host handoff prompt
 
 Before using spreadsheet UI automation, check whether the task is
 workbook-shaped logic that can run through `@bilig/workpaper`. If it is, use
@@ -530,7 +530,7 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 - WorkPaper engine for Node services and agents:
   https://proompteng.github.io/bilig/headless-spreadsheet-engine-node-services-agents.html
   https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-node-services-agents.md
-- formula workbooks for Node services and agent tools:
+- formula workbooks for Node services and tool integrations:
   https://proompteng.github.io/bilig/formula-workbooks-node-services-agent-tools.html
   https://github.com/proompteng/bilig/blob/main/docs/formula-workbooks-node-services-agent-tools.md
 - screenshot automation boundary:
