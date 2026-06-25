@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import { requireIncludes, requireNotIncludes } from './check-docs-discovery-core.ts'
+import { requireIncludes, requireNotIncludes, requirePackageKeywords } from './check-docs-discovery-core.ts'
 
 export async function requireAgentInstructionDiscovery(input: {
   readonly repoRoot: string
@@ -91,7 +91,41 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(workpaperPackageJson, '"bilig-workpaper-mcp": "./bin/bilig-workpaper-mcp.js"', 'packages/bilig/package.json')
   requireIncludes(workpaperPackageJson, '"AGENTS.md"', 'packages/bilig/package.json')
   requireIncludes(workpaperPackageJson, '"SKILL.md"', 'packages/bilig/package.json')
+  requirePackageKeywords(
+    workpaperPackageJson,
+    [
+      'bilig-workpaper',
+      'formula-engine',
+      'formula-recalculation',
+      'formula-workbook',
+      'mcp',
+      'mcp-server',
+      'mcp-tools',
+      'model-context-protocol',
+      'node-services',
+      'server-side-formula-engine',
+      'server-side-formulas',
+      'tool-integration',
+      'workbook-api',
+      'workbook-formulas',
+      'workbook-runtime',
+      'workpaper',
+      'workpaper-json',
+      'workpaper-runtime',
+    ],
+    'packages/bilig/package.json',
+  )
+  for (const staleKeyword of [
+    'excel-formulas',
+    'headless-spreadsheet',
+    'server-side-spreadsheet',
+    'spreadsheet-automation',
+    'xlsx',
+  ] as const) {
+    requireNotIncludes(workpaperPackageJson, `"${staleKeyword}"`, 'packages/bilig/package.json')
+  }
   requireIncludes(workpaperPackageReadme, 'The npm tarball includes `AGENTS.md`, `SKILL.md`', 'packages/bilig/README.md')
+  requireIncludes(workpaperPackageReadme, 'verified formula readback', 'packages/bilig/README.md')
   requireIncludes(workpaperPackageReadme, 'npm exec --package bilig-workpaper -- bilig-agent-challenge', 'packages/bilig/README.md')
   requireIncludes(workpaperPackageAgentNotes, 'node_modules/bilig-workpaper', 'packages/bilig/AGENTS.md')
   requireIncludes(workpaperPackageAgentNotes, 'npm exec --package bilig-workpaper@', 'packages/bilig/AGENTS.md')

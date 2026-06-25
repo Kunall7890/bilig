@@ -1,6 +1,6 @@
 # bilig-workpaper
 
-Bilig WorkPaper runtime for Node.js services, tool integrations, and server-side spreadsheet formulas.
+Bilig WorkPaper runtime for Node.js services, tool integrations, and verified formula readback.
 
 This is the unscoped npm entrypoint for the Bilig headless runtime. Use it when business logic is easiest to review as workbook cells and formulas, but the calculation needs to run in a backend service, queue worker, serverless route, test, or tool integration.
 
