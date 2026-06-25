@@ -17,11 +17,10 @@ payout checks, import validation, forecasts, and formula-backed workflow steps.
   <img src="docs/assets/github-social-preview.png" alt="bilig WorkPaper runtime preview" />
 </p>
 
-Run the two no-project checks from any Node project:
+Run the no-project service check from any Node project:
 
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
-npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
 Expected WorkPaper service result:
@@ -51,8 +50,12 @@ npm install
 npm run smoke
 ```
 
-If a tool host owns the workflow, use the MCP evaluator above before adding
-host-specific config.
+If a tool host owns the workflow, run the MCP evaluator before adding
+host-specific config:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
 
 Evaluator examples live in
 [`examples/bilig-evaluator-proof`](examples/bilig-evaluator-proof).
@@ -79,7 +82,7 @@ Pick the path that matches the job:
 | You have...                                                      | Start with                                                             | You should see                                                                                                                                                                              |
 | ---------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | A Node service, route, queue, test, or tool needs workbook logic | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)     | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.                                                                                                      |
-| A tool or MCP client needs workbook commands                     | [MCP tool evaluator](docs/eval-agent-mcp.md)                           | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`.                                                                                                   |
+| A tool host or MCP client needs workbook commands                | [MCP tool evaluator](docs/eval-agent-mcp.md)                           | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`.                                                                                                   |
 | You need the smallest proof for a specific agent host            | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md)             | the shortest command or example for AI SDK, OpenAI, LangGraph, Semantic Kernel, MCP, or direct TypeScript.                                                                                  |
 | You need to see a successful agent session shape before adopting | [Agent proof transcripts](docs/agent-proof-transcripts.md)             | prompt, tool call, workbook state change, formula readback, JSON export, and restart verification.                                                                                          |
 | A coding agent needs the right repo rule or MCP config file      | [Coding agent rule chooser](docs/agent-rule-chooser.md)                | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Kiro, Roo Code, Trae, Qodo IDE, Zed, Junie, OpenHands, OpenCode, Aider, Goose, Windsurf, Cline, Continue, or Gemini. |
@@ -89,11 +92,10 @@ If you are not sure which one fits, start with the thing that owns state. Use
 WorkPaper when your service or tool should own the workbook model. Use file
 diagnostics only when a saved workbook file is still the source of truth.
 
-The shortest no-project checks are:
+The default no-project check is:
 
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
-npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
 Good fits: pricing, quote approval, payout checks, import validation, forecasts,
@@ -130,7 +132,7 @@ Expected shape:
 }
 ```
 
-If an agent or MCP client owns the workflow, run the agent door:
+If a tool host or MCP client owns the workflow, run the MCP door:
 
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
