@@ -143,7 +143,7 @@ keeps the work on Bilig-owned docs instead of creating duplicate outreach.
 
 ## Related
 
-- [Agent Adoption Kit](agent-adoption-kit.md)
+- [Agent WorkPaper handoff](agent-adoption-kit.md)
 - [Coding agent rule chooser](agent-rule-chooser.md)
 - [MCP WorkPaper tool server](mcp-workpaper-tool-server.md)
 - [Agent WorkPaper proof matrix](agent-proof-matrix.md)

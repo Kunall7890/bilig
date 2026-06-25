@@ -86,6 +86,6 @@ For a maintained transcript that starts from a real XLSX, call `analyze_workbook
 - Agent XLSX risk preflight: https://proompteng.github.io/bilig/agent-xlsx-risk-preflight.html
 - Agent instructions: https://proompteng.github.io/bilig/AGENTS.md
 - Agent manifest: https://proompteng.github.io/bilig/.well-known/agent.json
-- Agent adoption kit: https://proompteng.github.io/bilig/agent-adoption-kit.html
+- Agent handoff checklist: https://proompteng.github.io/bilig/agent-adoption-kit.html
 - Skill discovery: `npx --yes skills@latest add https://bilig.proompteng.ai --list`
 - Skill manifest: https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt

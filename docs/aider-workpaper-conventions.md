@@ -113,6 +113,6 @@ because npm publishing can lag the repository.
 ## Related
 
 - [Coding agent rule chooser](agent-rule-chooser.md)
-- [Agent adoption kit](agent-adoption-kit.md)
+- [Agent WorkPaper handoff](agent-adoption-kit.md)
 - [WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
 - [MCP spreadsheet tool server](mcp-workpaper-tool-server.md)

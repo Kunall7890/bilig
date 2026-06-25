@@ -18,7 +18,7 @@ Do the workbook edit through an API, not through a UI, and return proof that
 the calculated value changed and survived persistence.
 
 If you need the shortest path for another agent, use the
-[Agent Adoption Kit](agent-adoption-kit.md). It has the skill install command,
+[Agent WorkPaper handoff](agent-adoption-kit.md). It has the skill install command,
 MCP challenge, client config, workbook task, and expected proof in one place.
 
 ## The Task

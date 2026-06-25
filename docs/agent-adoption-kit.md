@@ -1,14 +1,14 @@
 ---
-title: Agent Adoption Kit for WorkPaper formulas
+title: Agent WorkPaper handoff for formulas
 published: true
-description: One no-key adoption path for coding agents: install the Bilig WorkPaper skill, run the agent MCP evaluator, paste the workbook task, and return verified formula readback.
-tags: ai agents, mcp, workbook formulas, spreadsheet automation, node
+description: One no-key handoff path for coding agents: install the Bilig WorkPaper skill, run the agent MCP evaluator, paste the workbook task, and return verified formula readback.
+tags: agents, mcp, workbook formulas, spreadsheet automation, node
 canonical_url: https://proompteng.github.io/bilig/agent-adoption-kit.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png
 ---
 
-# Agent Adoption Kit
+# Agent WorkPaper Handoff
 
 Use this page when you are deciding whether Bilig should be the workbook tool
 inside a coding agent, MCP client, or agent framework. The path is deliberately
@@ -27,7 +27,7 @@ machine-checkable workbook proof, not a visual session transcript.
 | Durable agent state        | The agent must export, persist, restore, or restart from persisted WorkPaper JSON and prove the same calculated value comes back. | The durable artifact is an existing Excel or Sheets file with macros, charts, pivots, add-ins, or visual layout. |
 | CI and tool-call evidence  | The result must fit logs, MCP transcripts, CI checks, or a compact proof object with `verified: true`.                            | The output is a screenshot, screen recording, manual review note, or collaboration comment in a spreadsheet app. |
 
-Run the no-key proof before adopting the path:
+Run the no-key proof before wiring the path:
 
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
@@ -38,14 +38,14 @@ For the browser/agent boundary, pair this page with the
 [headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md), and
 the [agent framework map](agent-framework-workbook-tools.md).
 
-## Avoid Stale Formula-Cache False Negatives
+## Avoid Stored-Result False Negatives
 
 Agents often test spreadsheet code by writing an `.xlsx` file with ExcelJS,
 SheetJS, openpyxl, pandas, or another file library, then reading the formula
 cell back in the same process. That is a false-negative trap: many file
-libraries can preserve or write formula records without recalculating the
-cached result. The agent may blame its own code, or claim a workbook failed,
-when it only read a stale cache.
+libraries can preserve or write formula records without recalculating the stored
+result. The agent may blame its own code, or claim a workbook failed, when it
+only read unchecked file metadata.
 
 Use Bilig at the decision boundary when the agent, CI job, route handler, or
 queue worker must trust the value before Excel or Sheets opens the file:
@@ -176,7 +176,7 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-
 ```
 
 Do not treat a manifest link, installed rule file, or MCP server listing as
-adoption by itself. The gate passes only when the evaluator returns the proof
+success by itself. The gate passes only when the evaluator returns the proof
 fields in `proof_contract`, including `editedCell`, `before`, `after`,
 `afterRestore`, `persistedDocumentBytes`, and `verified`.
 
@@ -326,10 +326,10 @@ The exact values can change, but the evaluator result should look like this:
 Reject answers that only say a cell was written. The point of Bilig is that the
 agent returns the calculated result and saved state from the workbook itself.
 
-## Maintainer-Safe Adoption
+## Upstream Maintainer Notes
 
 When you want a third-party agent host, MCP client, framework, or docs site to
-adopt Bilig, use the same proof bar and avoid duplicate outreach.
+add Bilig, use the same proof bar and avoid duplicate threads.
 
 Before opening anything upstream:
 
@@ -363,7 +363,7 @@ out of scope.
 
 Do not open duplicate issues, duplicate PRs, or broad directory submissions
 when a project already has an active Bilig thread. A merged integration, an
-accepted issue, or a maintainer-requested PR is adoption evidence; a submitted
+accepted issue, or a maintainer-requested PR is useful evidence; a submitted
 form by itself is not.
 
 ## After The Check
@@ -374,7 +374,7 @@ If the check matches your workflow, keep the repository nearby:
 If you need release notifications for agent or MCP changes, watch releases:
 <https://github.com/proompteng/bilig/subscription>.
 
-If it almost works but adoption is blocked, open the concrete blocker:
+If it almost works but the workflow is blocked, open the concrete blocker:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
 
 ## Next Pages

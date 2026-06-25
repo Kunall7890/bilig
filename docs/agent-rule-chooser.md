@@ -139,7 +139,7 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 
 ## Related
 
-- [Agent Adoption Kit](agent-adoption-kit.md)
+- [Agent WorkPaper handoff](agent-adoption-kit.md)
 - [OpenHands WorkPaper MCP setup](openhands-workpaper-mcp.md)
 - [Trae WorkPaper MCP setup](trae-workpaper-mcp.md)
 - [OpenCode WorkPaper MCP setup](opencode-workpaper-mcp.md)

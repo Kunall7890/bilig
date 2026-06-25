@@ -240,10 +240,10 @@ into an in-memory MCP server by default, or into persisted WorkPaper JSON when
 startup. It reports workbook risk indicators before an agent trusts the imported
 WorkPaper and does not certify Excel compatibility.
 
-## Agent Adoption Kit
+## Agent WorkPaper Handoff
 
 When another coding agent is about to solve a spreadsheet task by opening Excel,
-LibreOffice, Google Sheets, or a screenshot grid, hand it the adoption kit
+LibreOffice, Google Sheets, or a screenshot grid, hand it the WorkPaper checklist
 instead:
 
 ```sh

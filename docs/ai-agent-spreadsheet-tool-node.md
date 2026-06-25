@@ -1,12 +1,12 @@
 ---
-title: AI spreadsheet agent tool for Node.js
-description: Build an AI agent spreadsheet tool that edits workbook inputs, recalculates formulas, verifies readback, and persists state without driving Excel or screenshots.
-tags: ai-agents, spreadsheet-agent, excel-agent, nodejs, xlsx, formulas, workpaper
+title: WorkPaper agent tool for Node.js
+description: Build a coding-agent workbook tool that edits inputs, recalculates formulas, verifies readback, and persists state without driving Excel or screenshots.
+tags: agents, mcp, nodejs, xlsx, formulas, workpaper
 canonical_url: https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html
 image: /assets/github-social-preview.png
 ---
 
-# AI spreadsheet agent tool for Node.js
+# WorkPaper agent tool for Node.js
 
 If an agent needs to change workbook inputs and trust the formula output, do
 not start with screenshots. Give it a small tool surface that can write cells,
@@ -19,8 +19,8 @@ Bilig has three entry points for that:
 - `@bilig/workpaper` when the workbook can live as
   WorkPaper JSON inside the service or agent tool.
 - `@bilig/xlsx-formula-recalc` or `@bilig/exceljs-formula-recalc` when the user already has
-  an `.xlsx` pipeline and the immediate bug is stale formula results after
-  editing inputs in Node.
+  an `.xlsx` pipeline and needs saved-file recalculation after editing inputs in
+  Node.
 
 ## Use WorkPaper instead of browser-driving Excel when
 
@@ -179,4 +179,4 @@ formulas. It is not a replacement for every Excel feature.
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
 - [ExcelJS formula recalculation in Node.js](exceljs-formula-recalculation-node.md)
 - [GitHub repo](https://github.com/proompteng/bilig)
-- [Adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)
+- [Implementation gap form](https://github.com/proompteng/bilig/discussions/new?category=general)

@@ -757,7 +757,7 @@ external links, locale-specific Excel behavior, or exact desktop UI behavior.
 References:
 
 - Docs map: ${siteRoot}/llms.txt
-- Agent adoption kit: ${siteRoot}/agent-adoption-kit.html
+- Agent handoff checklist: ${siteRoot}/agent-adoption-kit.html
 - Agent handbook: ${siteRoot}/headless-workpaper-agent-handbook.html
 - MCP setup: ${siteRoot}/mcp-client-setup.html
 - Repository: ${repositoryUrl}

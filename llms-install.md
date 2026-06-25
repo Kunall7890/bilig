@@ -215,6 +215,6 @@ Reject answers that only say a cell was written.
 - Full context: <https://proompteng.github.io/bilig/llms-full.txt>
 - Agent start: <https://proompteng.github.io/bilig/agent-start.txt>
 - Agent manifest: <https://proompteng.github.io/bilig/.well-known/agent.json>
-- Agent adoption kit: <https://proompteng.github.io/bilig/agent-adoption-kit.html>
+- Agent handoff checklist: <https://proompteng.github.io/bilig/agent-adoption-kit.html>
 - MCP server guide: <https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html>
 - Repository: <https://github.com/proompteng/bilig>

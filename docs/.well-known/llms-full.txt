@@ -547,12 +547,11 @@ transport-neutral plan data and command receipts, and
 
 ## Agent And WorkPaper Proof
 
-For agent adoption, use the
-[Agent Adoption Kit](docs/agent-adoption-kit.md): install the skill, run the
-no-key agent MCP evaluator, paste one workbook task into the agent, and require
-`verified: true` before trusting the result.
-For marketplace reviewers and agent hosts that want one copyable install file,
-use [`llms-install.md`](llms-install.md).
+For agent handoff, use the
+[Agent WorkPaper handoff](docs/agent-adoption-kit.md): install the skill, run
+the no-key agent MCP evaluator, paste one workbook task into the agent, and
+require `verified: true` before trusting the result.
+For agent hosts that want one install file, use [`llms-install.md`](llms-install.md).
 
 Coding agent? Do not start by driving Excel, LibreOffice, Google Sheets, or a
 browser grid. Use the headless WorkPaper proof instead:
@@ -1549,7 +1548,7 @@ Reject answers that only say a cell was written.
 - Full context: <https://proompteng.github.io/bilig/llms-full.txt>
 - Agent start: <https://proompteng.github.io/bilig/agent-start.txt>
 - Agent manifest: <https://proompteng.github.io/bilig/.well-known/agent.json>
-- Agent adoption kit: <https://proompteng.github.io/bilig/agent-adoption-kit.html>
+- Agent handoff checklist: <https://proompteng.github.io/bilig/agent-adoption-kit.html>
 - MCP server guide: <https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html>
 - Repository: <https://github.com/proompteng/bilig>
 
@@ -2259,11 +2258,11 @@ the source of truth.
 
 ---
 
-## Agent Adoption Kit
+## Agent WorkPaper Handoff
 
 Source: https://github.com/proompteng/bilig/blob/main/docs/agent-adoption-kit.md
 
-# Agent Adoption Kit
+# Agent WorkPaper Handoff
 
 Use this page when you are deciding whether Bilig should be the workbook tool
 inside a coding agent, MCP client, or agent framework. The path is deliberately
@@ -2282,7 +2281,7 @@ machine-checkable workbook proof, not a visual session transcript.
 | Durable agent state        | The agent must export, persist, restore, or restart from persisted WorkPaper JSON and prove the same calculated value comes back. | The durable artifact is an existing Excel or Sheets file with macros, charts, pivots, add-ins, or visual layout. |
 | CI and tool-call evidence  | The result must fit logs, MCP transcripts, CI checks, or a compact proof object with `verified: true`.                            | The output is a screenshot, screen recording, manual review note, or collaboration comment in a spreadsheet app. |
 
-Run the no-key proof before adopting the path:
+Run the no-key proof before wiring the path:
 
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
@@ -2293,14 +2292,14 @@ For the browser/agent boundary, pair this page with the
 [headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md), and
 the [agent framework map](agent-framework-workbook-tools.md).
 
-## Avoid Stale Formula-Cache False Negatives
+## Avoid Stored-Result False Negatives
 
 Agents often test spreadsheet code by writing an `.xlsx` file with ExcelJS,
 SheetJS, openpyxl, pandas, or another file library, then reading the formula
 cell back in the same process. That is a false-negative trap: many file
-libraries can preserve or write formula records without recalculating the
-cached result. The agent may blame its own code, or claim a workbook failed,
-when it only read a stale cache.
+libraries can preserve or write formula records without recalculating the stored
+result. The agent may blame its own code, or claim a workbook failed, when it
+only read unchecked file metadata.
 
 Use Bilig at the decision boundary when the agent, CI job, route handler, or
 queue worker must trust the value before Excel or Sheets opens the file:
@@ -2431,7 +2430,7 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-
 ```
 
 Do not treat a manifest link, installed rule file, or MCP server listing as
-adoption by itself. The gate passes only when the evaluator returns the proof
+success by itself. The gate passes only when the evaluator returns the proof
 fields in `proof_contract`, including `editedCell`, `before`, `after`,
 `afterRestore`, `persistedDocumentBytes`, and `verified`.
 
@@ -2581,10 +2580,10 @@ The exact values can change, but the evaluator result should look like this:
 Reject answers that only say a cell was written. The point of Bilig is that the
 agent returns the calculated result and saved state from the workbook itself.
 
-## Maintainer-Safe Adoption
+## Upstream Maintainer Notes
 
 When you want a third-party agent host, MCP client, framework, or docs site to
-adopt Bilig, use the same proof bar and avoid duplicate outreach.
+add Bilig, use the same proof bar and avoid duplicate threads.
 
 Before opening anything upstream:
 
@@ -2618,7 +2617,7 @@ out of scope.
 
 Do not open duplicate issues, duplicate PRs, or broad directory submissions
 when a project already has an active Bilig thread. A merged integration, an
-accepted issue, or a maintainer-requested PR is adoption evidence; a submitted
+accepted issue, or a maintainer-requested PR is useful evidence; a submitted
 form by itself is not.
 
 ## After The Check
@@ -2629,7 +2628,7 @@ If the check matches your workflow, keep the repository nearby:
 If you need release notifications for agent or MCP changes, watch releases:
 <https://github.com/proompteng/bilig/subscription>.
 
-If it almost works but adoption is blocked, open the concrete blocker:
+If it almost works but the workflow is blocked, open the concrete blocker:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
 
 ## Next Pages
@@ -2781,7 +2780,7 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 
 ## Related
 
-- [Agent Adoption Kit](agent-adoption-kit.md)
+- [Agent WorkPaper handoff](agent-adoption-kit.md)
 - [OpenHands WorkPaper MCP setup](openhands-workpaper-mcp.md)
 - [Trae WorkPaper MCP setup](trae-workpaper-mcp.md)
 - [OpenCode WorkPaper MCP setup](opencode-workpaper-mcp.md)
@@ -2834,7 +2833,7 @@ exports WorkPaper JSON, restarts from disk, and verifies the diagnostic is
 gone. It does not call Google Sheets or prove remote authorization.
 
 If you are handing this to another coding agent, start from the
-[Agent Adoption Kit](agent-adoption-kit.md). It includes the installable skill,
+[Agent WorkPaper handoff](agent-adoption-kit.md). It includes the installable skill,
 one MCP config, a workbook task, and the pass/fail proof object.
 
 If you need the raw JSON-RPC challenge output, run:
@@ -3849,10 +3848,10 @@ into an in-memory MCP server by default, or into persisted WorkPaper JSON when
 startup. It reports workbook risk indicators before an agent trusts the imported
 WorkPaper and does not certify Excel compatibility.
 
-## Agent Adoption Kit
+## Agent WorkPaper Handoff
 
 When another coding agent is about to solve a spreadsheet task by opening Excel,
-LibreOffice, Google Sheets, or a screenshot grid, hand it the adoption kit
+LibreOffice, Google Sheets, or a screenshot grid, hand it the WorkPaper checklist
 instead:
 
 ```sh
@@ -4068,7 +4067,7 @@ For the full host-to-file map, use the
 
 ## Installable Agent Skill
 
-Use the [Agent Adoption Kit](agent-adoption-kit.md) when the agent should learn
+Use the [Agent WorkPaper handoff](agent-adoption-kit.md) when the agent should learn
 the Bilig workflow before touching a real workbook:
 
 ```sh
@@ -4310,7 +4309,7 @@ Do the workbook edit through an API, not through a UI, and return proof that
 the calculated value changed and survived persistence.
 
 If you need the shortest path for another agent, use the
-[Agent Adoption Kit](agent-adoption-kit.md). It has the skill install command,
+[Agent WorkPaper handoff](agent-adoption-kit.md). It has the skill install command,
 MCP challenge, client config, workbook task, and expected proof in one place.
 
 ## The Task
@@ -5406,8 +5405,8 @@ boundary.
 
 That is still a different product shape from an MCP server. MCP tool discovery,
 host approval, transport configuration, and tool-call readback are part of the
-adoption surface for Cursor, VS Code, Claude Desktop, Codex, ChatGPT Apps, and
-other clients. If the workflow wants a scriptable Excel-file runtime, start with
+client integration work for Cursor, VS Code, Claude Desktop, Codex, ChatGPT Apps,
+and other clients. If the workflow wants a scriptable Excel-file runtime, start with
 the CLI/API tool. If the workflow wants an MCP client to discover tools, edit a
 known WorkPaper input, read a dependent formula, export state, restore it, and
 return `verified: true`, use Bilig WorkPaper MCP.
@@ -5694,11 +5693,11 @@ agent continues.
 
 ---
 
-## AI Spreadsheet Agent Tool For Node.js
+## WorkPaper Agent Tool For Node.js
 
 Source: https://github.com/proompteng/bilig/blob/main/docs/ai-agent-spreadsheet-tool-node.md
 
-# AI spreadsheet agent tool for Node.js
+# WorkPaper agent tool for Node.js
 
 If an agent needs to change workbook inputs and trust the formula output, do
 not start with screenshots. Give it a small tool surface that can write cells,
@@ -5711,8 +5710,8 @@ Bilig has three entry points for that:
 - `@bilig/workpaper` when the workbook can live as
   WorkPaper JSON inside the service or agent tool.
 - `@bilig/xlsx-formula-recalc` or `@bilig/exceljs-formula-recalc` when the user already has
-  an `.xlsx` pipeline and the immediate bug is stale formula results after
-  editing inputs in Node.
+  an `.xlsx` pipeline and needs saved-file recalculation after editing inputs in
+  Node.
 
 ## Use WorkPaper instead of browser-driving Excel when
 
@@ -5871,7 +5870,7 @@ formulas. It is not a replacement for every Excel feature.
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
 - [ExcelJS formula recalculation in Node.js](exceljs-formula-recalculation-node.md)
 - [GitHub repo](https://github.com/proompteng/bilig)
-- [Adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)
+- [Implementation gap form](https://github.com/proompteng/bilig/discussions/new?category=general)
 
 ---
 
@@ -5913,7 +5912,7 @@ the product: manual review, macros, pivots, charts, add-ins, or layout fidelity.
 ## Start here
 
 For a coding agent that only needs the shortest no-key path, use the
-[Agent Adoption Kit](agent-adoption-kit.md):
+[Agent WorkPaper handoff](agent-adoption-kit.md):
 
 ```sh
 npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
@@ -6016,7 +6015,7 @@ Do not claim success from a write call alone.
 
 ## Links
 
-- [AI spreadsheet agent tool for Node.js](ai-agent-spreadsheet-tool-node.md)
+- [WorkPaper agent tool for Node.js](ai-agent-spreadsheet-tool-node.md)
 - [Workbook agent intent API](workbook-agent-intent-api.md)
 - [WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
 - [Agent WorkPaper tool-calling recipe](agent-workpaper-tool-calling-recipe.md)
@@ -6036,7 +6035,7 @@ Do not claim success from a write call alone.
 - [Node framework WorkPaper adapters](node-framework-workpaper-adapters.md)
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
 - [GitHub repo](https://github.com/proompteng/bilig)
-- [Adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)
+- [Implementation gap form](https://github.com/proompteng/bilig/discussions/new?category=general)
 
 ---
 
@@ -6223,7 +6222,7 @@ The current upstream PR shape adds:
 
 ## Related
 
-- [Agent Adoption Kit](agent-adoption-kit.md)
+- [Agent WorkPaper handoff](agent-adoption-kit.md)
 - [Evaluate Bilig as an agent MCP workbook tool](eval-agent-mcp.md)
 - [Why agents need workbook APIs](why-agents-need-workbook-apis.md)
 - [Stop driving spreadsheets with screenshots](stop-driving-spreadsheets-with-screenshots.md)
@@ -6355,7 +6354,7 @@ console.log(describeRunResult(result));
 | Package | Owns | Best first proof |
 | --- | --- | --- |
 | `@bilig/workbook` | Agent intent, plan data, requirements, checks, schemas, and runtime proof. | [workbook-agent-model](https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model) |
-| `@bilig/workpaper` | WorkPaper state, recalculation, JSON persistence, MCP, and service tools. | [AI spreadsheet agent tool](ai-agent-spreadsheet-tool-node.md) |
+| `@bilig/workpaper` | WorkPaper state, recalculation, JSON persistence, MCP, and service tools. | [WorkPaper agent tool](ai-agent-spreadsheet-tool-node.md) |
 | `@bilig/xlsx-formula-recalc` | File-level XLSX formula recalculation after input edits. | [XLSX recalculation evaluator](eval-xlsx-recalc.md) |
 
 ## Handoff Prompt
@@ -10673,7 +10672,7 @@ path before asking Trae maintainers to accept a third-party listing.
 
 - [Coding agent rule chooser](agent-rule-chooser.md)
 - [MCP client setup](mcp-client-setup.md)
-- [Agent Adoption Kit](agent-adoption-kit.md)
+- [Agent WorkPaper handoff](agent-adoption-kit.md)
 - [Evaluate Bilig as an agent MCP workbook tool](eval-agent-mcp.md)
 
 ---
@@ -10813,7 +10812,7 @@ local MCP workbook tool. Bilig does not claim that Qodo reads a repo-native
 
 - [Coding agent rule chooser](agent-rule-chooser.md)
 - [MCP client setup](mcp-client-setup.md)
-- [Agent Adoption Kit](agent-adoption-kit.md)
+- [Agent WorkPaper handoff](agent-adoption-kit.md)
 - [Evaluate Bilig as an agent MCP workbook tool](eval-agent-mcp.md)
 
 ---
@@ -11076,7 +11075,7 @@ because npm publishing can lag the repository.
 ## Related
 
 - [Coding agent rule chooser](agent-rule-chooser.md)
-- [Agent adoption kit](agent-adoption-kit.md)
+- [Agent WorkPaper handoff](agent-adoption-kit.md)
 - [WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
 - [MCP spreadsheet tool server](mcp-workpaper-tool-server.md)
 
@@ -11222,7 +11221,7 @@ keeps the work on Bilig-owned docs instead of creating duplicate outreach.
 
 ## Related
 
-- [Agent Adoption Kit](agent-adoption-kit.md)
+- [Agent WorkPaper handoff](agent-adoption-kit.md)
 - [Coding agent rule chooser](agent-rule-chooser.md)
 - [MCP WorkPaper tool server](mcp-workpaper-tool-server.md)
 - [Agent WorkPaper proof matrix](agent-proof-matrix.md)
@@ -13773,7 +13772,7 @@ Workspace.
 
 - [Google Sheets API boundary](google-sheets-api-alternative-node-workpaper.md)
 - [Formula language notes](formula-language.md)
-- [Agent adoption kit](agent-adoption-kit.md)
+- [Agent WorkPaper handoff](agent-adoption-kit.md)
 - [Evaluate Bilig as an Agent MCP workbook tool](eval-agent-mcp.md)
 - [Where Bilig is not Excel-compatible yet](where-bilig-is-not-excel-compatible-yet.md)
 

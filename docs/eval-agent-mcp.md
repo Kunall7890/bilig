@@ -44,7 +44,7 @@ exports WorkPaper JSON, restarts from disk, and verifies the diagnostic is
 gone. It does not call Google Sheets or prove remote authorization.
 
 If you are handing this to another coding agent, start from the
-[Agent Adoption Kit](agent-adoption-kit.md). It includes the installable skill,
+[Agent WorkPaper handoff](agent-adoption-kit.md). It includes the installable skill,
 one MCP config, a workbook task, and the pass/fail proof object.
 
 If you need the raw JSON-RPC challenge output, run:

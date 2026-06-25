@@ -169,7 +169,7 @@ Workspace.
 
 - [Google Sheets API boundary](google-sheets-api-alternative-node-workpaper.md)
 - [Formula language notes](formula-language.md)
-- [Agent adoption kit](agent-adoption-kit.md)
+- [Agent WorkPaper handoff](agent-adoption-kit.md)
 - [Evaluate Bilig as an Agent MCP workbook tool](eval-agent-mcp.md)
 - [Where Bilig is not Excel-compatible yet](where-bilig-is-not-excel-compatible-yet.md)
 

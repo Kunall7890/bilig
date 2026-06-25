@@ -101,7 +101,7 @@ For the full host-to-file map, use the
 
 ## Installable Agent Skill
 
-Use the [Agent Adoption Kit](agent-adoption-kit.md) when the agent should learn
+Use the [Agent WorkPaper handoff](agent-adoption-kit.md) when the agent should learn
 the Bilig workflow before touching a real workbook:
 
 ```sh

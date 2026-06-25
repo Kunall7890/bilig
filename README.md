@@ -169,12 +169,11 @@ transport-neutral plan data and command receipts, and
 
 ## Agent And WorkPaper Proof
 
-For agent adoption, use the
-[Agent Adoption Kit](docs/agent-adoption-kit.md): install the skill, run the
-no-key agent MCP evaluator, paste one workbook task into the agent, and require
-`verified: true` before trusting the result.
-For marketplace reviewers and agent hosts that want one copyable install file,
-use [`llms-install.md`](llms-install.md).
+For agent handoff, use the
+[Agent WorkPaper handoff](docs/agent-adoption-kit.md): install the skill, run
+the no-key agent MCP evaluator, paste one workbook task into the agent, and
+require `verified: true` before trusting the result.
+For agent hosts that want one install file, use [`llms-install.md`](llms-install.md).
 
 Coding agent? Do not start by driving Excel, LibreOffice, Google Sheets, or a
 browser grid. Use the headless WorkPaper proof instead:

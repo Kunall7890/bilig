@@ -157,11 +157,11 @@ function assertDocs(): void {
   assert(docs.includes('.kiro/settings/mcp.json'), 'starter docs must document the Kiro MCP config')
   assert(readme.includes('Trae') && readme.includes('.trae/mcp.json'), 'starter README must document the Trae MCP config')
   assert(docs.includes('.trae/mcp.json'), 'starter docs must document the Trae MCP config')
-  assert(agentDocs.includes('.trae/rules/bilig-workpaper.md'), 'agent adoption kit must document the Trae project rule')
+  assert(agentDocs.includes('.trae/rules/bilig-workpaper.md'), 'agent handoff checklist must document the Trae project rule')
   assert(readme.includes('Zed') && readme.includes('.zed/settings.json'), 'starter README must document the Zed MCP config')
   assert(docs.includes('.zed/settings.json'), 'starter docs must document the Zed MCP config')
-  assert(agentDocs.includes('.zed/settings.json'), 'agent adoption kit must document the Zed MCP config')
-  assert(agentDocs.includes('.kiro/steering/bilig-workpaper.md'), 'agent adoption kit must document the Kiro steering file')
+  assert(agentDocs.includes('.zed/settings.json'), 'agent handoff checklist must document the Zed MCP config')
+  assert(agentDocs.includes('.kiro/steering/bilig-workpaper.md'), 'agent handoff checklist must document the Kiro steering file')
   assert(
     readme.includes('bilig-evaluate --door agent-mcp --scenario revenue-plan --json'),
     'starter README must document the revenue-plan agent evaluator command',
@@ -188,7 +188,7 @@ function assertDocs(): void {
   )
   assert(readme.includes(existingRepoWorkpaperPath), 'starter README must document the existing-repo WorkPaper state path')
   assert(docs.includes(existingRepoWorkpaperPath), 'starter docs must document the existing-repo WorkPaper state path')
-  assert(agentDocs.includes(existingRepoWorkpaperPath), 'agent adoption kit must document the existing-repo WorkPaper state path')
+  assert(agentDocs.includes(existingRepoWorkpaperPath), 'agent handoff checklist must document the existing-repo WorkPaper state path')
 }
 
 function assertPackedTarball(): void {

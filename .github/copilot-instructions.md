@@ -88,7 +88,7 @@ external links, locale-specific Excel behavior, or exact desktop UI behavior.
 References:
 
 - Docs map: https://proompteng.github.io/bilig/llms.txt
-- Agent adoption kit: https://proompteng.github.io/bilig/agent-adoption-kit.html
+- Agent handoff checklist: https://proompteng.github.io/bilig/agent-adoption-kit.html
 - Agent handbook: https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html
 - MCP setup: https://proompteng.github.io/bilig/mcp-client-setup.html
 - Repository: https://github.com/proompteng/bilig

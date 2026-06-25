@@ -134,5 +134,5 @@ path before asking Trae maintainers to accept a third-party listing.
 
 - [Coding agent rule chooser](agent-rule-chooser.md)
 - [MCP client setup](mcp-client-setup.md)
-- [Agent Adoption Kit](agent-adoption-kit.md)
+- [Agent WorkPaper handoff](agent-adoption-kit.md)
 - [Evaluate Bilig as an agent MCP workbook tool](eval-agent-mcp.md)

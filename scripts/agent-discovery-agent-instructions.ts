@@ -233,7 +233,7 @@ For a maintained transcript that starts from a real XLSX, call \`analyze_workboo
 - Agent XLSX risk preflight: ${siteRoot}/agent-xlsx-risk-preflight.html
 - Agent instructions: ${siteRoot}/AGENTS.md
 - Agent manifest: ${siteRoot}/.well-known/agent.json
-- Agent adoption kit: ${siteRoot}/agent-adoption-kit.html
+- Agent handoff checklist: ${siteRoot}/agent-adoption-kit.html
 - Skill discovery: \`npx --yes skills@latest add ${skillDiscoveryRoot} --list\`
 - Skill manifest: ${skillManifestUrl}
 `

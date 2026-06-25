@@ -41,7 +41,7 @@ the product: manual review, macros, pivots, charts, add-ins, or layout fidelity.
 ## Start here
 
 For a coding agent that only needs the shortest no-key path, use the
-[Agent Adoption Kit](agent-adoption-kit.md):
+[Agent WorkPaper handoff](agent-adoption-kit.md):
 
 ```sh
 npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
@@ -144,7 +144,7 @@ Do not claim success from a write call alone.
 
 ## Links
 
-- [AI spreadsheet agent tool for Node.js](ai-agent-spreadsheet-tool-node.md)
+- [WorkPaper agent tool for Node.js](ai-agent-spreadsheet-tool-node.md)
 - [Workbook agent intent API](workbook-agent-intent-api.md)
 - [WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
 - [Agent WorkPaper tool-calling recipe](agent-workpaper-tool-calling-recipe.md)
@@ -164,4 +164,4 @@ Do not claim success from a write call alone.
 - [Node framework WorkPaper adapters](node-framework-workpaper-adapters.md)
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
 - [GitHub repo](https://github.com/proompteng/bilig)
-- [Adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)
+- [Implementation gap form](https://github.com/proompteng/bilig/discussions/new?category=general)

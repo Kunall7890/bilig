@@ -204,15 +204,15 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     requireIncludes(whyAgentsDoc, required, 'docs/why-agents-need-workbook-apis.md')
   }
   for (const required of [
-    'title: AI spreadsheet agent tool for Node.js',
-    'description: Build an AI agent spreadsheet tool that edits workbook inputs, recalculates formulas, verifies readback, and persists state without driving Excel or screenshots.',
+    'title: WorkPaper agent tool for Node.js',
+    'description: Build a coding-agent workbook tool that edits inputs, recalculates formulas, verifies readback, and persists state without driving Excel or screenshots.',
     'npm create @bilig/workpaper@latest pricing-agent -- --agent',
     'npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json',
     'npx --package @bilig/xlsx-formula-recalc xlsx-recalc quote.xlsx',
     'npx --package @bilig/exceljs-formula-recalc exceljs-recalc --demo --json',
     'OpenAI Agents SDK function tools',
     'LangChain.js tools and LangGraph.js `ToolNode`',
-    'Adoption blocker form',
+    'Implementation gap form',
   ] as const) {
     requireIncludes(aiAgentSpreadsheetToolNode, required, 'docs/ai-agent-spreadsheet-tool-node.md')
   }
@@ -258,7 +258,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'LlamaIndex.TS',
     'SpreadsheetAgentProof',
     'Do not claim success from a write call alone.',
-    'Adoption blocker form',
+    'Implementation gap form',
   ] as const) {
     requireIncludes(agentFrameworkWorkbookToolsDoc, required, 'docs/agent-framework-workbook-tools.md')
   }
@@ -268,7 +268,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'description: A compact playbook for agents that need workbook formulas without opening Excel',
     '## Copy-Paste Prompt For Another Agent',
     'Return a compact proof object with editedCell, before, after, afterRestore',
-    '[Agent Adoption Kit](agent-adoption-kit.md)',
+    '[Agent WorkPaper handoff](agent-adoption-kit.md)',
     'npx --yes skills@latest add https://bilig.proompteng.ai --list',
     'npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list',
     '/bilig-workpaper-proof',

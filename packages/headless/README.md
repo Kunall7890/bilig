@@ -49,7 +49,7 @@ locally. The public docs expose the same path through
 [`AGENTS.md`](https://proompteng.github.io/bilig/AGENTS.md),
 [`agent.json`](https://proompteng.github.io/bilig/.well-known/agent.json),
 [`skill.txt`](https://bilig.proompteng.ai/.well-known/agent-skills/bilig-workpaper/SKILL.txt),
-[`AI spreadsheet agent tool`](https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html), and
+[`WorkPaper agent tool`](https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html), and
 [`llms-full.txt`](https://proompteng.github.io/bilig/llms-full.txt).
 
 This package is not a browser grid, desktop Excel automation, or the default
@@ -865,7 +865,7 @@ When the sanity check passes, these are the next useful pages.
 - Website: <https://proompteng.github.io/bilig/>
 - GitHub: <https://github.com/proompteng/bilig>
 - npm: <https://www.npmjs.com/package/@bilig/headless>
-- Adoption blockers: <https://github.com/proompteng/bilig/discussions/new?category=general>
+- Implementation gaps: <https://github.com/proompteng/bilig/discussions/new?category=general>
 - Watch releases: <https://github.com/proompteng/bilig/subscription>
 - Security policy: <https://github.com/proompteng/bilig/blob/main/SECURITY.md>
 - Support policy: <https://github.com/proompteng/bilig/blob/main/SUPPORT.md>

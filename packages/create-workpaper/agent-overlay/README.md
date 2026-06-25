@@ -80,6 +80,6 @@ report editedCell, before, after, persistence evidence, verified, and
 limitations. Do not claim success from a write call alone.
 ```
 
-Agent adoption kit: <https://proompteng.github.io/bilig/agent-adoption-kit.html>
+Agent handoff checklist: <https://proompteng.github.io/bilig/agent-adoption-kit.html>
 
 Learn more: <https://github.com/proompteng/bilig>

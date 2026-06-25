@@ -96,8 +96,8 @@ boundary.
 
 That is still a different product shape from an MCP server. MCP tool discovery,
 host approval, transport configuration, and tool-call readback are part of the
-adoption surface for Cursor, VS Code, Claude Desktop, Codex, ChatGPT Apps, and
-other clients. If the workflow wants a scriptable Excel-file runtime, start with
+client integration work for Cursor, VS Code, Claude Desktop, Codex, ChatGPT Apps,
+and other clients. If the workflow wants a scriptable Excel-file runtime, start with
 the CLI/API tool. If the workflow wants an MCP client to discover tools, edit a
 known WorkPaper input, read a dependent formula, export state, restore it, and
 return `verified: true`, use Bilig WorkPaper MCP.

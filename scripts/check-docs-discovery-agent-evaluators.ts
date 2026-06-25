@@ -60,10 +60,10 @@ export async function requireAgentEvaluatorDiscovery(input: {
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json',
     'docs/agent-adoption-kit.md',
   )
-  requireIncludes(agentAdoptionKit, '## Avoid Stale Formula-Cache False Negatives', 'docs/agent-adoption-kit.md')
+  requireIncludes(agentAdoptionKit, '## Avoid Stored-Result False Negatives', 'docs/agent-adoption-kit.md')
   requireIncludes(agentAdoptionKit, 'Do not grade workbook automation from unchecked stored formula results.', 'docs/agent-adoption-kit.md')
   requireIncludes(agentAdoptionKit, '@bilig/exceljs-formula-recalc', 'docs/agent-adoption-kit.md')
-  requireIncludes(agentAdoptionKit, '## Maintainer-Safe Adoption', 'docs/agent-adoption-kit.md')
+  requireIncludes(agentAdoptionKit, '## Upstream Maintainer Notes', 'docs/agent-adoption-kit.md')
   requireIncludes(agentAdoptionKit, 'keep one thread per project and update it in place', 'docs/agent-adoption-kit.md')
   requireIncludes(agentAdoptionKit, 'pnpm agent:public-rules:check', 'docs/agent-adoption-kit.md')
   requireIncludes(agentAdoptionKit, 'The first upstream message should be a maintainer question', 'docs/agent-adoption-kit.md')

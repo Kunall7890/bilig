@@ -102,15 +102,20 @@ This snapshot tracks the public signals for the Bilig WorkPaper growth loop: Git
   stars.
 - 2026-06-25T09:38:22Z: cleaned growth-oriented wording from public and agent
   surfaces: replaced old blocker labels with implementation-gap language,
-  removed "non-spam", "not vibes", "feedback ask", and star-mechanics phrasing,
-  and regenerated the skill, `llms.txt`, `llms-full.txt`, and well-known mirrors.
-  Live GitHub readback still showed 32 stars.
+  removed brittle outreach phrasing, and regenerated the skill, `llms.txt`,
+  `llms-full.txt`, and well-known mirrors. Live GitHub readback still showed
+  32 stars.
 - 2026-06-25T09:52:00Z: removed the remaining saved-file and launch-review
   bias from public proof surfaces: the WorkPaper proof note is no longer a
   social post template, the quote approval example installs `@bilig/workpaper`,
   the serverless example imports the canonical package, and discovery checks no
   longer force saved-file diagnostic commands into the package README. Live
   GitHub readback still showed 32 stars.
+- 2026-06-25T10:03:32Z: replaced remaining agent-facing labels that read like
+  marketing copy with plain handoff/checklist language across the README, docs,
+  generated agent context, package scaffolding, and discovery checks. The
+  GitHub topic `ai-agents` was replaced with `agent-workpaper`. Live GitHub
+  readback still showed 32 stars.
 
 ## External Discovery
 

@@ -186,7 +186,7 @@ The current upstream PR shape adds:
 
 ## Related
 
-- [Agent Adoption Kit](agent-adoption-kit.md)
+- [Agent WorkPaper handoff](agent-adoption-kit.md)
 - [Evaluate Bilig as an agent MCP workbook tool](eval-agent-mcp.md)
 - [Why agents need workbook APIs](why-agents-need-workbook-apis.md)
 - [Stop driving spreadsheets with screenshots](stop-driving-spreadsheets-with-screenshots.md)

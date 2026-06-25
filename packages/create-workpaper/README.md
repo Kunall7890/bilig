@@ -68,5 +68,5 @@ your existing `package.json` name for `BILIG_WORKPAPER.md` instead of rendering
 the directory argument.
 
 For an existing agent or MCP client that does not need a generated project yet,
-use the adoption kit first:
+use the handoff checklist first:
 <https://proompteng.github.io/bilig/agent-adoption-kit.html>.
