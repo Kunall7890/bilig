@@ -47,7 +47,7 @@ The useful output is not a write-call status. It is readback proof:
   "door": "workpaper-service",
   "verified": true,
   "packageVersions": {
-    "@bilig/workpaper": "0.163.0"
+    "@bilig/workpaper": "0.164.5"
   },
   "evidence": {
     "editedCell": "Inputs!B2",
@@ -59,6 +59,9 @@ The useful output is not a write-call status. It is readback proof:
   }
 }
 ```
+
+For recompute and output boundaries, see
+<https://proompteng.github.io/bilig/eval-workpaper-service.html#recompute-and-output-boundaries>.
 
 If this is close to production, watch releases and review the public limits:
 <https://github.com/proompteng/bilig/subscription>.

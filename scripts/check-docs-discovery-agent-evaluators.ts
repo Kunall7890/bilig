@@ -107,8 +107,14 @@ export async function requireAgentEvaluatorDiscovery(input: {
   requireIncludes(workpaperServiceEvaluator, '"exportedWorkPaperDocument": true', 'docs/eval-workpaper-service.md')
   requireIncludes(workpaperServiceEvaluator, '"restoredMatchesAfter": true', 'docs/eval-workpaper-service.md')
   requireIncludes(workpaperServiceEvaluator, '"verified": true', 'docs/eval-workpaper-service.md')
+  requireIncludes(workpaperServiceEvaluator, '## Recompute And Output Boundaries', 'docs/eval-workpaper-service.md')
+  requireIncludes(workpaperServiceEvaluator, 'single-cell mini-runs', 'docs/eval-workpaper-service.md')
+  requireIncludes(workpaperServiceEvaluator, 'final WorkPaper state plus proof fields', 'docs/eval-workpaper-service.md')
+  requireIncludes(workpaperServiceEvaluator, 'structured and batch-oriented today', 'docs/eval-workpaper-service.md')
+  requireIncludes(workpaperServiceEvaluator, 'cell-by-cell progressive streaming', 'docs/eval-workpaper-service.md')
   requireIncludes(llms, 'https://proompteng.github.io/bilig/eval-agent-mcp.html', 'docs/llms.txt')
   requireIncludes(llms, 'https://proompteng.github.io/bilig/agent-adoption-kit.html', 'docs/llms.txt')
+  requireIncludes(llms, 'https://proompteng.github.io/bilig/eval-workpaper-service.html', 'docs/llms.txt')
   requireIncludes(llms, 'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json', 'docs/llms.txt')
   requireIncludes(
     llms,

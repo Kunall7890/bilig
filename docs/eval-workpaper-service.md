@@ -116,11 +116,27 @@ The byte count can change by package version. The invariants are
 - exported WorkPaper state can be restored and re-read
 - the proof object is small enough for tests, logs, or agent handoff
 
+## Recompute And Output Boundaries
+
+WorkPaper edits are isolated at the request and state boundary, not as
+independent single-cell mini-runs. A write mutates the WorkPaper model,
+recalculates dependent formulas, and returns a coherent post-edit readback.
+Ordinary input edits use tracked dependency paths where possible, but the public
+contract is the final WorkPaper state plus proof fields such as `after`,
+`afterRestore`, and `checks.restoredMatchesAfter`.
+
+Public headless WorkPaper execution is structured and batch-oriented today. The
+service evaluator, Node helpers, and MCP tools return after write, recalculation,
+readback, JSON export, and restore verification. They do not expose formula
+evaluation as line-by-line or cell-by-cell progressive streaming. For partial
+dashboard rendering, split the dashboard into explicit update steps and read the
+needed cells after each committed edit batch.
+
 ## What this does not prove
 
-This does not prove full XLSX fidelity, desktop Excel behavior, database
-durability, or a visual spreadsheet editor. Use this path when the service owns
-the formulas and JSON state. Use the XLSX evaluator when a real `.xlsx` file is
+This does not prove desktop spreadsheet compatibility, database durability, or a
+visual editor. Use this path when the service owns the formulas and JSON state.
+Use the saved-file compatibility evaluator only when a saved workbook file is
 the source of truth.
 
 ## After the proof
