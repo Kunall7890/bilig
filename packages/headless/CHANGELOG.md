@@ -4,6 +4,19 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.164.4
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.164.3
+- Manual override: no
+
+## Fixes
+- fix(discovery): retarget unscoped runtime package metadata (76601f5b)
+
+## Internal runtime changes
+- docs(discovery): align workpaper public surfaces (aff81268)
+- docs(discovery): retarget runtime package metadata (9387f24b)
+
 ## 0.164.3
 
 - Release type: patch
