@@ -1,6 +1,6 @@
 {
   "name": "bilig-workpaper",
-  "version": "0.164.7",
+  "version": "0.164.8",
   "description": "Bilig WorkPaper runtime for Node services: edit inputs, recalculate formulas, read outputs, and save JSON.",
   "keywords": [
     "bilig",

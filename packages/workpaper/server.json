@@ -3,7 +3,7 @@
   "name": "io.github.proompteng/bilig-workpaper",
   "title": "Bilig WorkPaper",
   "description": "Formula readback, input edits, JSON persistence, and workbook risk preflight for agents.",
-  "version": "0.164.7",
+  "version": "0.164.8",
   "repository": {
     "url": "https://github.com/proompteng/bilig",
     "source": "github"
@@ -18,7 +18,7 @@
     {
       "registryType": "npm",
       "identifier": "@bilig/workpaper",
-      "version": "0.164.7",
+      "version": "0.164.8",
       "transport": {
         "type": "stdio"
       }

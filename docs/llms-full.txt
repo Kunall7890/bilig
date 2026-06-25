@@ -2116,7 +2116,7 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpa
 ## Current evaluator transcript
 
 This transcript was captured on June 25, 2026 against
-`@bilig/workpaper@0.164.7`. It is the shortest current proof for service-owned
+`@bilig/workpaper@0.164.8`. It is the shortest current proof for service-owned
 WorkPaper state:
 
 ```json
@@ -2125,7 +2125,7 @@ WorkPaper state:
   "door": "workpaper-service",
   "doorName": "WorkPaper service proof",
   "packageVersions": {
-    "@bilig/workpaper": "0.164.7"
+    "@bilig/workpaper": "0.164.8"
   },
   "evidence": {
     "editedCell": "Inputs!B2",
@@ -2539,8 +2539,8 @@ The exact values can change, but the evaluator result should look like this:
   "door": "agent-mcp",
   "verified": true,
   "packageVersions": {
-    "@bilig/workpaper": "0.164.7",
-    "xlsx-formula-recalc": "0.164.7"
+    "@bilig/workpaper": "0.164.8",
+    "xlsx-formula-recalc": "0.164.8"
   },
   "evidence": {
     "editedCell": "Inputs!B3",
@@ -2838,8 +2838,8 @@ The evaluator prints this shape:
   "doorName": "Agent MCP proof",
   "verified": true,
   "packageVersions": {
-    "@bilig/workpaper": "0.164.7",
-    "xlsx-formula-recalc": "0.164.7"
+    "@bilig/workpaper": "0.164.8",
+    "xlsx-formula-recalc": "0.164.8"
   },
   "evidence": {
     "editedCell": "Inputs!B3",
@@ -3641,7 +3641,7 @@ The useful output is not a write-call status. It is readback proof:
   "door": "workpaper-service",
   "verified": true,
   "packageVersions": {
-    "@bilig/workpaper": "0.164.7"
+    "@bilig/workpaper": "0.164.8"
   },
   "evidence": {
     "editedCell": "Inputs!B2",
