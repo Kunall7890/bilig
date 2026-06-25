@@ -389,7 +389,9 @@ const generatedSourceChecks: readonly CiTask[] = [
     'packages/benchmarks/baselines/ui-same-corpus',
     '--check',
   ),
-  bunScript('UI responsiveness live browser scorecard check', 'scripts/gen-ui-responsiveness-live-browser-scorecard.ts', '--check'),
+  ...(skipBrowserGates
+    ? []
+    : [bunScript('UI responsiveness live browser scorecard check', 'scripts/gen-ui-responsiveness-live-browser-scorecard.ts', '--check')]),
   bunScript('security posture scorecard check', 'scripts/gen-security-posture-scorecard.ts', '--check'),
   tsxScript('WorkPaper TrueCalc scalar benchmark check', 'scripts/gen-workpaper-vs-truecalc-benchmark.ts', '--check'),
   tsxScript('WorkPaper xlsx-calc benchmark check', 'scripts/gen-workpaper-vs-xlsx-calc-benchmark.ts', '--check'),

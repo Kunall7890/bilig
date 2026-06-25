@@ -450,7 +450,7 @@ describe('sync-server agent skill discovery', () => {
       expect(skillResponse.headers.location).toBeUndefined()
       expect(skillResponse.headers['content-type']).toContain('text/plain')
       expect(skillResponse.body).toContain('---\nname: bilig-workpaper')
-      expect(skillResponse.body).toContain('Return readback, not vibes.')
+      expect(skillResponse.body).toContain('Return readback, not a write-only claim.')
       expect(indexResponse.json()).toEqual(createAgentSkillDiscoveryIndex(skillResponse.body))
     } finally {
       await app.close()

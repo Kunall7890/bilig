@@ -72,6 +72,10 @@ describe('run-ci', () => {
     expect(source).toContain(
       "directPackageScript('public workbook corpus synthetic memory gate', 'public-workbook-corpus:memory-gate:synthetic')",
     )
+    expect(source).toContain('...(skipBrowserGates')
+    expect(source).toContain(
+      "bunScript('UI responsiveness live browser scorecard check', 'scripts/gen-ui-responsiveness-live-browser-scorecard.ts', '--check')",
+    )
     expect(source).toContain("bunScript('agent discovery docs check', 'scripts/sync-agent-discovery-docs.ts', '--check')")
     expect(source).toContain("await runSequential('static direct checks'")
     expect(source).toMatch(
