@@ -1,27 +1,25 @@
 ---
-title: Spreadsheet APIs for AI agents
+title: Workbook APIs for Node services and tool hosts
 published: true
-description: Why coding agents should edit workbook formulas through a Node.js WorkPaper API instead of spreadsheet screenshots, with a runnable @bilig/workpaper example.
-tags: ai agents, spreadsheet, node, workpaper, typescript
+description: Why backend workflows and MCP tool hosts should edit workbook formulas through a Node.js WorkPaper API instead of spreadsheet screenshots, with a runnable @bilig/workpaper example.
+tags: spreadsheet, node, workpaper, typescript, mcp
 canonical_url: https://proompteng.github.io/bilig/why-agents-need-workbook-apis.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png
 ---
 
-# Why Agents Need Workbook APIs, Not Spreadsheet Screenshots
+# Why Workbook Automation Needs APIs, Not Spreadsheet Screenshots
 
-Agents can click through a spreadsheet UI. That does not make the UI a good
-runtime boundary.
+A spreadsheet UI is useful for human review. It is a weak runtime boundary.
 
 Screenshots hide formulas, make structural edits ambiguous, and turn
 verification into a visual guess. If the workflow depends on workbook state, the
-agent needs an API that can read formulas, write cells, recalculate, and prove
+runtime needs an API that can read formulas, write cells, recalculate, and prove
 what changed.
 
 `@bilig/workpaper` is the public WorkPaper runtime from `bilig`. It is the
-canonical scoped npm package for Node services, coding agents, and local
-workbook automation that need spreadsheet behavior without opening a browser
-grid.
+canonical scoped npm package for Node services, MCP tool hosts, and local
+workflow automation that need workbook behavior without opening a browser grid.
 
 ## The Problem With Screen-Driven Spreadsheets
 
@@ -29,21 +27,22 @@ Spreadsheets are useful because they combine a document model, formulas,
 structural editing, validation, and persistence. A grid UI is only one way to
 operate that model.
 
-When an agent drives the UI directly, several useful facts become hard to
+When automation drives the UI directly, several useful facts become hard to
 trust:
 
 - whether the displayed value came from a literal or a formula
 - whether a formula was recalculated after an edit
 - whether an inserted row moved the intended references
 - whether hidden sheets, named expressions, or persisted state changed
-- whether the agent verified the workbook or just saw plausible pixels
+- whether the workflow verified the workbook or just saw plausible pixels
 
 Screenshots are still useful for final human inspection. They should not be the
-main contract between an agent and workbook logic.
+main contract between automation and workbook logic.
 
 ## The Better Boundary
 
-A workbook API gives the agent explicit operations and explicit readback:
+A workbook API gives service code or a tool host explicit operations and
+explicit readback:
 
 - create sheets and cells from data
 - write formulas as formulas
@@ -52,8 +51,8 @@ A workbook API gives the agent explicit operations and explicit readback:
 - export and restore persisted workbook documents
 - test the behavior without launching a browser
 
-That shape fits backend jobs, coding-agent tools, and local-first workflows
-better than asking a model to infer state from a rendered grid.
+That shape fits backend jobs, MCP tools, and local-first workflows better than
+asking automation to infer state from a rendered grid.
 
 ## Run The Maintained Eval First
 
@@ -150,7 +149,7 @@ The maintained external-consumer example is in
 
 ## MCP In 30 Seconds
 
-If the agent already supports MCP, skip the TypeScript wrapper and start the
+If the host already supports MCP, skip the TypeScript wrapper and start the
 published stdio server in file-backed mode:
 
 ```sh
@@ -172,7 +171,7 @@ Expected tools:
 - `export_workpaper_document`
 - `validate_formula`
 
-Ask the agent for this proof object after an edit:
+Ask the host for this proof object after an edit:
 
 ```json
 {
@@ -191,13 +190,14 @@ Ask the agent for this proof object after an edit:
 }
 ```
 
-The important distinction is that the agent is not reporting “clicked” or
+The important distinction is that the tool path is not reporting “clicked” or
 “updated.” It is reporting the exact edited cell, the recalculated dependent
 value, and persistence evidence.
 
 ## What This Enables
 
-For an agent tool, a WorkPaper API can expose a small set of reliable commands:
+For a tool integration, a WorkPaper API can expose a small set of reliable
+commands:
 
 - `buildWorkbookFromSheets`
 - `setCellContents`
@@ -208,7 +208,7 @@ For an agent tool, a WorkPaper API can expose a small set of reliable commands:
 
 Those commands produce deterministic outputs that can be tested, logged, and
 replayed. The rendered spreadsheet can stay a human-facing view instead of the
-agent's source of truth.
+automation source of truth.
 
 For a Node service, the same model supports formula-backed business logic
 without bundling a spreadsheet application into the service path.

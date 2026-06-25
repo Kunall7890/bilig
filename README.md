@@ -45,28 +45,24 @@ Expected WorkPaper service result:
 For TypeScript services that should own the workbook model:
 
 ```sh
-npm create @bilig/workpaper@latest pricing-agent -- --agent
-cd pricing-agent
+npm create @bilig/workpaper@latest pricing-workpaper
+cd pricing-workpaper
 npm install
-npm run agent:verify
+npm run smoke
 ```
 
-Direct diagnostic commands remain available:
-
-```sh
-npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-challenge --json
-npm exec --yes --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
-```
+If a tool host owns the workflow, use the MCP evaluator above before adding
+host-specific config.
 
 Evaluator examples live in
 [`examples/bilig-evaluator-proof`](examples/bilig-evaluator-proof).
-Agent and framework evaluators are ranked in the
+Tool-host and framework evaluators are ranked in the
 [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md).
 The [agent proof transcripts](docs/agent-proof-transcripts.md) show the
 successful prompt, tool call, workbook state change, formula readback, JSON
 export, and restart verification shape.
-Use the [coding agent rule chooser](docs/agent-rule-chooser.md) when you need
-the exact instruction, rule, prompt, or MCP config file for Codex, Claude Code,
+Use the [coding agent rule chooser](docs/agent-rule-chooser.md) only when you
+need the exact instruction, rule, prompt, or MCP config file for Codex, Claude Code,
 GitHub Copilot, VS Code, Cursor, Kiro, Roo Code, Trae, Qodo IDE, Zed, Junie, OpenHands, OpenCode, Aider,
 Goose, Windsurf/Cascade, Cline, Continue, or Gemini CLI.
 Existing workbook file diagnostics live under
@@ -246,7 +242,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | Node service formulas         | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)                                                                                                                                                                                                                                                | A starter writes one input, recalculates, persists JSON, restores, and prints `verified: true`.           |
 | Agent MCP contract            | [Agent MCP workbook evaluator](docs/eval-agent-mcp.md)                                                                                                                                                                                                                                                            | MCP tool discovery, input edit, formula readback, persistence, and restart proof all pass.                |
-| Agent proof chooser           | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md), [agent proof transcripts](docs/agent-proof-transcripts.md), [MCP spreadsheet formula server](docs/mcp-spreadsheet-formula-server-for-coding-agents.md), and [Vercel AI SDK formula readback](docs/vercel-ai-sdk-spreadsheet-tool-formula-readback.md) | The agent path starts with the smallest verified proof and avoids write-only or UI-only claims.           |
+| Tool-host proof chooser       | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md), [agent proof transcripts](docs/agent-proof-transcripts.md), [MCP spreadsheet formula server](docs/mcp-spreadsheet-formula-server-for-coding-agents.md), and [Vercel AI SDK formula readback](docs/vercel-ai-sdk-spreadsheet-tool-formula-readback.md) | The tool-host path starts with the smallest verified proof and avoids write-only or UI-only claims.       |
 | Runtime intent adapters       | [Workbook agent intent API](docs/workbook-agent-intent-api.md) and [workbook-agent-model example](https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model)                                                                                                                                    | A model prepares transport-neutral plan data, strict runtime proof, command receipts, and check evidence. |
 | Basic fit                     | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                                                                                                                                                                                           | The problem is workbook-shaped business logic that needs API readback and persistence.                    |
 | Published npm package         | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                                                                                                                   | `@bilig/workpaper` edits one input, recalculates, persists JSON, restores, and prints `verified: true`.   |

@@ -189,7 +189,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   }
   requireIncludes(
     whyAgentsDoc,
-    'description: Why coding agents should edit workbook formulas through a Node.js WorkPaper API',
+    'description: Why backend workflows and MCP tool hosts should edit workbook formulas through a Node.js WorkPaper API',
     'docs/why-agents-need-workbook-apis.md',
   )
   for (const required of [
