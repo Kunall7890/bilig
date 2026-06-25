@@ -5,7 +5,7 @@ import type {
   GitHubTrafficSnapshot,
 } from './community-growth-snapshot.ts'
 
-const starGoal = 1000
+const starGoal = 100
 
 function formatCount(value: number): string {
   return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ',')

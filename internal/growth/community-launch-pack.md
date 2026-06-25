@@ -1,7 +1,7 @@
 # Bilig Community Launch Pack
 
 This is the working growth text for moving `proompteng/bilig` from a tiny
-public footprint to `1,000` legitimate GitHub stars without fake accounts,
+public footprint to `100` legitimate GitHub stars without fake accounts,
 paid stars, spam, or inflated claims.
 
 Baseline verified on May 8, 2026:
@@ -1087,7 +1087,7 @@ package version, and npm download windows.
 
 Primary:
 
-- `1,000` legitimate GitHub stars on <https://github.com/proompteng/bilig>
+- `100` legitimate GitHub stars on <https://github.com/proompteng/bilig>
 
 Leading indicators:
 

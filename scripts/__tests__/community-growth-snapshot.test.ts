@@ -721,7 +721,7 @@ describe('community growth snapshot', () => {
     })
 
     expect(markdown).toContain('# Community Growth Snapshot')
-    expect(markdown).toContain('- Stars: 24 / 1,000 (976 remaining)')
+    expect(markdown).toContain('- Stars: 24 / 100 (76 remaining)')
     expect(markdown).toContain('- Topics: `headless-spreadsheet`, `typescript`')
     expect(markdown).toContain('- Downloads last week: 13,427 (2026-05-05 to 2026-05-11)')
     expect(markdown).toContain('- Open good first issues: 22')

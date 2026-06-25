@@ -29,6 +29,10 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-
 npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 ```
 
+If one of these proofs maps to a real Node, agent, or CI workflow you own,
+star or bookmark Bilig so the workbook readback path is easy to find again:
+<https://github.com/proompteng/bilig/stargazers>.
+
 Evaluate a real workbook before integrating it:
 
 ```sh
