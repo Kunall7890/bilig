@@ -100,7 +100,7 @@ This is the service boundary that matters for backend adoption:
 - a restored WorkPaper returns the same decision
 
 That is the shape behind pricing rules, discount approval, payout checks,
-budget guardrails, import validation, and agent tools that need exact readback.
+budget guardrails, import validation, and tool integrations that need exact readback.
 
 ## What This Does Not Prove
 

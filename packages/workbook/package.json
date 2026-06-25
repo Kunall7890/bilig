@@ -3,7 +3,6 @@
   "version": "0.164.1",
   "description": "Transport-neutral workbook intent API for plans, command receipts, and formula readback checks.",
   "keywords": [
-    "agent-tools",
     "bilig",
     "command-receipts",
     "formula-readback",

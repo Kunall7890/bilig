@@ -3,7 +3,6 @@
   "version": "0.164.1",
   "description": "Run workbook-shaped business rules in Node services: edit inputs, recalculate formulas, read outputs, and save WorkPaper JSON.",
   "keywords": [
-    "agent-tools",
     "bilig",
     "bilig-workpaper",
     "excel-formulas",
@@ -23,7 +22,6 @@
     "spreadsheet-formula-engine",
     "spreadsheet-formulas",
     "workbook",
-    "workbook-agent",
     "workbook-api",
     "workpaper",
     "xlsx"

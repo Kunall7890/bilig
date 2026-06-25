@@ -13,7 +13,7 @@ image: /assets/github-social-preview.png
 Status: public compatibility boundary for `@bilig/headless`
 
 `bilig` is not a complete Excel clone. The current adoption wedge is narrower:
-`@bilig/headless` gives Node services and agents a workbook API with formulas,
+`@bilig/workpaper` gives Node services and tool hosts a workbook API with formulas,
 structural edits, persistence, validation, and auditable benchmark artifacts.
 
 This page names the main compatibility boundaries so people can evaluate the

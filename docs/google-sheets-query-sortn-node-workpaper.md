@@ -158,7 +158,7 @@ Use this path for:
 
 - pricing or quote models that group rows by region, tier, or customer segment
 - import validation that filters suspicious rows before accepting a file
-- agent tools that need spreadsheet formulas without driving a browser grid
+- tool integrations that need spreadsheet formulas without driving a browser grid
 - backend tests where Google credentials would make the run flaky
 
 Use Google Sheets or its API when the sheet is a shared hosted document,

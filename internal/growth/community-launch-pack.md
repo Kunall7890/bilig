@@ -37,19 +37,19 @@ Latest execution snapshot on May 18, 2026 at `02:02:33Z`:
   loan amortization, cohort retention, commission payout, cash runway, currency
   sensitivity, payroll accrual, and deferred revenue workflows. Issues `#227`
   through `#233` and `#238` through `#240` add a small MCP starter track for
-  contributors who prefer agent tool-server docs, client recipes, and tests to
+  contributors who prefer tool-server docs, client recipes, and tests to
   business examples.
 - Discussion activity: `8` GitHub Discussions, including the MCP spreadsheet
   tool-server show-and-tell thread, the AI SDK/LangChain WorkPaper agent
   announcement, the five-example show-and-tell thread, and the workflow-feedback
   thread
-- Discovery metadata: GitHub topics now include `agent-tools`, `agent-workpaper`,
-  `excel`, `headless-spreadsheet`, `xlsx`, `mcp-server`, and
-  `formula-recalculation` alongside the spreadsheet-engine and
-  workbook-automation topics.
-- npm discovery metadata now includes exact agent and formula search terms such
-  as `agent-workpaper`, `workbook-automation`, `workbook-agent`,
-  `formula-recalculation`, `mcp`, and `model-context-protocol`.
+- Discovery metadata: GitHub topics now include `workpaper`,
+  `workbook-runtime`, `workpaper-json`, `node-services`, `node-formulas`,
+  `server-side-formulas`, `mcp`, `mcp-server`, `mcp-tools`, and
+  `model-context-protocol` alongside workbook automation topics.
+- npm discovery metadata now leads with WorkPaper, Node services, server-side
+  formulas, MCP, model-context-protocol, workbook API, and formula readback
+  terms.
 - MCP discovery is live in the official registry as
   `io.github.proompteng/bilig-workpaper`, backed by `@bilig/headless` stdio
   package metadata and the packaged `bilig-workpaper-mcp` binary.
@@ -511,12 +511,11 @@ Latest contributor-funnel action on May 14, 2026:
   request: it points contributors at existing scoped tasks and asks them to
   comment on the target issue before opening a PR.
 
-Latest XLSX oracle feedback action on May 14, 2026:
+Latest saved-file oracle feedback action on May 14, 2026:
 
 - GitHub Discussion `#382` asks people who evaluate spreadsheet engines how a
-  headless runtime should handle stale XLSX cached formula values, fresh Excel
-  recalculation oracles, cache-only diagnostics, and CI-safe private workbook
-  reports:
+  runtime should separate saved-file cache diagnostics, fresh Excel
+  recalculation oracles, and CI-safe private workbook reports:
   <https://github.com/proompteng/bilig/discussions/382>.
 - Starter issue `#383` turns that feedback thread into a small first-time
   contribution: add a sanitized sample `summary.md` or issue draft so evaluators
@@ -614,12 +613,12 @@ Latest LibHunt discovery snapshot on May 17, 2026:
   project under TypeScript, Spreadsheet, Excel, and Agents.
 - The LibHunt card still shows stale stars and an older broad description. The
   current GitHub repository description is the tighter WorkPaper/runtime copy:
-  "Formula WorkPaper runtime for Node.js services and agent tools: edit cells,
-  recalculate, verify readback, persist JSON."
-- Replication action: treat LibHunt as evidence that the HN/topic classifier
-  path worked. Keep the repo and npm package metadata aligned to the same
-  classifier vocabulary so LibHunt-style indexers refresh toward the sharper
-  positioning.
+  "Run workbook-shaped business rules inside Node: edit inputs, recalculate
+  formulas, read outputs, and save WorkPaper JSON."
+- Replication action: treat LibHunt as historical evidence, not current
+  positioning. Keep repo and npm package metadata aligned to WorkPaper, Node
+  services, MCP tools, and server-side formulas while stale crawler pages
+  refresh.
 
 Product Hunt launch surface note from May 14, 2026:
 
@@ -637,8 +636,8 @@ Product Hunt launch surface note from May 14, 2026:
 ## Goal Text
 
 Grow `proompteng/bilig` from `8` to `1,000` legitimate GitHub stars by making
-`@bilig/headless` the obvious headless spreadsheet engine for Node services,
-coding agents, and workbook automation.
+`@bilig/workpaper` the obvious WorkPaper runtime for Node services, MCP tool
+hosts, server-side formulas, and workbook automation.
 
 Execution update: use Atlas or Dia through Computer Use, plus authenticated
 personal accounts where they are relevant, to research, stage, and execute
@@ -810,14 +809,14 @@ reject this library in five minutes?
 
 ### Short Evidence-Led Post
 
-Use this when the audience already cares about Node services, coding agents,
+Use this when the audience already cares about Node services, tool hosts,
 spreadsheet automation, or headless formula engines. Do not post it unchanged
 to every channel.
 
 ```text
-I maintain Bilig. The public npm package is @bilig/headless.
+I maintain Bilig. The public npm package is @bilig/workpaper.
 
-It exists because I do not want backend jobs or coding agents clicking around a
+It exists because I do not want backend jobs or tool hosts clicking around a
 spreadsheet UI and then treating a screenshot as proof.
 
 The quickest way to judge the package starts from an empty directory:
@@ -876,7 +875,7 @@ agent-MCP evaluator, and the public no-key Hugging Face readback fixture.
 Title:
 
 ```text
-Show HN: Bilig - formula WorkPapers for Node services and agents
+Show HN: Bilig - formula WorkPapers for Node services and tool hosts
 ```
 
 URL:
@@ -890,7 +889,7 @@ can stay around:
 
 ```text
 I built Bilig because a lot of pricing, approval, payout, and import rules are
-still workbook-shaped, but backend services and coding agents need a state API
+still workbook-shaped, but backend services and tool hosts need a state API
 rather than screenshots.
 
 The quickest check is:
@@ -926,17 +925,17 @@ Body:
 Hi Cooperpress editors,
 
 I maintain Bilig, an MIT TypeScript library with a published Node package:
-https://www.npmjs.com/package/@bilig/headless
+https://www.npmjs.com/package/@bilig/workpaper
 
 The shortest decision page is here:
 https://proompteng.github.io/bilig/formula-workbooks-node-services-agent-tools.html
 
 It shows a runnable empty-directory Node proof for formula-backed WorkPaper
-documents: install @bilig/headless, write quote inputs into cells, recalculate
+documents: install @bilig/workpaper, write quote inputs into cells, recalculate
 net revenue / gross margin / approval decision, serialize the workbook JSON,
 restore it, and verify restoredMatchesAfter.
 
-This is aimed at backend services and coding-agent tools where spreadsheet
+This is aimed at backend services and tool integrations where spreadsheet
 formulas are business logic but opening Excel, Google Sheets, or a browser grid
 is the wrong runtime boundary. The page also includes benchmark caveats and
 explicit notes on when HyperFormula, SheetJS, ExcelJS, or Google Sheets API are

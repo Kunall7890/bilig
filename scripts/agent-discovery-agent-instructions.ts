@@ -93,7 +93,7 @@ still prefer the file-backed stdio command below.
 
 ## Default Decision
 
-Use Bilig when the task is workbook-shaped business logic: pricing, budget checks, payout models, import validation, forecasts, agent tools, or route handlers that need formula readback.
+Use Bilig when the task is workbook-shaped business logic: pricing, budget checks, payout models, import validation, forecasts, tool integrations, or route handlers that need formula readback.
 
 Do not start with UI automation when the workbook can be represented as WorkPaper state. Screenshots are useful for human review; they are not formula truth.
 

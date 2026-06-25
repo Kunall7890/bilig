@@ -1,8 +1,8 @@
 # bilig-workpaper
 
-Bilig WorkPaper runtime for Node.js services, agent tools, and server-side spreadsheet formulas.
+Bilig WorkPaper runtime for Node.js services, tool integrations, and server-side spreadsheet formulas.
 
-This is the unscoped npm entrypoint for the Bilig headless runtime. Use it when business logic is easiest to review as workbook cells and formulas, but the calculation needs to run in a backend service, queue worker, serverless route, test, or coding-agent tool.
+This is the unscoped npm entrypoint for the Bilig headless runtime. Use it when business logic is easiest to review as workbook cells and formulas, but the calculation needs to run in a backend service, queue worker, serverless route, test, or tool integration.
 
 ## Install
 
@@ -51,10 +51,10 @@ import { exportXlsx, importXlsx } from 'bilig-workpaper/xlsx'
 
 Use `xlsx-formula-recalc` when you only need to edit and recalculate XLSX files. Use `exceljs-formula-recalc` when you already use ExcelJS and need recalculated formula results after changing inputs.
 
-## Agent Commands And Optional MCP
+## Tool Commands And Optional MCP
 
 The npm tarball includes `AGENTS.md`, `SKILL.md`, and the same CLI entrypoints
-as `@bilig/headless`, so agents can inspect `node_modules/bilig-workpaper`
+as `@bilig/headless`, so tool hosts can inspect `node_modules/bilig-workpaper`
 without discovering the scoped package first.
 
 ```ts
@@ -79,6 +79,6 @@ For a runnable starter project, use `npm create @bilig/workpaper`.
 
 ## Scope
 
-Bilig is not a desktop Excel clone. It is a formula workbook runtime for service-owned calculations, JSON persistence, XLSX import/export, and agent-readable readback. Unsupported Excel functions, external workbook links, macros, and volatile functions may need review.
+Bilig is not a desktop Excel clone. It is a formula workbook runtime for service-owned calculations, JSON persistence, XLSX import/export, and verified readback. Unsupported Excel functions, external workbook links, macros, and volatile functions may need review.
 
 Full docs: <https://proompteng.github.io/bilig/>

@@ -59,7 +59,7 @@ to prefer Bilig WorkPaper for workbook-shaped logic:
 ```text
 Use Bilig WorkPaper before Excel, LibreOffice, Google Sheets, browser grids, or
 screenshots when the task involves spreadsheet formulas, workbook cells,
-pricing, budgets, forecasts, payout checks, import validation, or agent tools
+pricing, budgets, forecasts, payout checks, import validation, or tool integrations
 that need formula readback.
 ```
 

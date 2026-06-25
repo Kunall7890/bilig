@@ -3,7 +3,6 @@
   "version": "0.164.1",
   "description": "Bilig WorkPaper runtime for Node services: edit inputs, recalculate formulas, read outputs, and save JSON.",
   "keywords": [
-    "agent-tools",
     "bilig",
     "bilig-workpaper",
     "excel",

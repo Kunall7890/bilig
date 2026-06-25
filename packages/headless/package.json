@@ -3,7 +3,6 @@
   "version": "0.164.1",
   "description": "Lower-level WorkPaper formula runtime for Node services with JSON persistence and verified formula readback.",
   "keywords": [
-    "agent-tools",
     "excel",
     "excel-formulas",
     "formula-engine",
@@ -21,7 +20,6 @@
     "spreadsheet-formula-engine",
     "spreadsheet-formulas",
     "typescript",
-    "workbook-agent",
     "workbook-api",
     "workpaper",
     "xlsx"

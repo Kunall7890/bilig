@@ -5,9 +5,8 @@
     "version": "0.164.1",
     "description": "Lower-level WorkPaper formula runtime for Node services with JSON persistence and verified formula readback.",
     "nodeEngine": ">=22.0.0",
-    "keywordCount": 22,
+    "keywordCount": 20,
     "keywords": [
-      "agent-tools",
       "excel",
       "excel-formulas",
       "formula-engine",
@@ -25,7 +24,6 @@
       "spreadsheet-formula-engine",
       "spreadsheet-formulas",
       "typescript",
-      "workbook-agent",
       "workbook-api",
       "workpaper",
       "xlsx"
@@ -45,11 +43,11 @@
     "hasMcpBinary": true
   },
   "npmPackDryRun": {
-    "tarballBytes": 859192,
-    "unpackedBytes": 5243682,
+    "tarballBytes": 859183,
+    "unpackedBytes": 5243645,
     "entryCount": 835,
-    "readmeBytes": 50134,
-    "packageJsonBytes": 3350
+    "readmeBytes": 50147,
+    "packageJsonBytes": 3309
   },
   "coldStartProbe": {
     "runtime": "node",

@@ -14,7 +14,7 @@ This snapshot tracks public signals for Bilig WorkPaper: GitHub conversion, npm 
 - Watchers: 1
 - Open issues: 4
 - Default branch: `main`
-- Topics: `agent-tools`, `agent-workflows`, `agent-workpaper`, `formula-engine`, `formula-recalculation`, `mcp`, `mcp-server`, `mcp-tools`, `model-context-protocol`, `node-services`, `nodejs`, `spreadsheet`, `spreadsheet-api`, `spreadsheet-automation`, `typescript`, `workbook-api`, `workbook-automation`, `workbook-runtime`, `workflow-automation`, `workpaper`
+- Topics: `formula-engine`, `formula-recalculation`, `mcp`, `mcp-server`, `mcp-tools`, `model-context-protocol`, `node-formulas`, `node-services`, `nodejs`, `server-side-formulas`, `spreadsheet`, `spreadsheet-api`, `spreadsheet-automation`, `typescript`, `workbook-api`, `workbook-automation`, `workbook-runtime`, `workflow-automation`, `workpaper`, `workpaper-json`
 
 ## npm
 
@@ -45,7 +45,7 @@ This snapshot tracks public signals for Bilig WorkPaper: GitHub conversion, npm 
 - #157 [Which WorkPaper automation workflow should Bilig prove next?](https://github.com/proompteng/bilig/discussions/157) (Ideas, 11 comments)
 - #270 [Show and tell: try @bilig/workpaper from npm in a blank Node project](https://github.com/proompteng/bilig/discussions/270) (Show and tell, 2 comments)
 - Current conversion focus: keep #213 and #335 warm around runnable WorkPaper
-  service, MCP, and agent-tool proofs. Keep cached-file import edge cases as a
+  service, MCP, and tool-host proofs. Keep saved-file import edge cases as a
   secondary diagnostic for teams that already need import/export verification.
 
 ## Traffic
@@ -127,6 +127,12 @@ This snapshot tracks public signals for Bilig WorkPaper: GitHub conversion, npm 
   showed 32 stars.
 - 2026-06-25T10:19:46Z: live GitHub readback after validation showed 33
   stars, 22 forks, and the WorkPaper-first GitHub description still in place.
+- 2026-06-25T10:27:51Z: removed the remaining generic agent positioning from
+  GitHub topics, npm keywords, README first-screen copy, docs homepage copy,
+  and public proof-page titles. The current path is WorkPaper, Node services,
+  MCP tools, tool integrations, and server-side formulas; saved-file language
+  stays in explicit import/export boundaries. Live GitHub readback showed 33
+  stars and 22 forks.
 
 ## External Discovery
 
@@ -136,8 +142,8 @@ This snapshot tracks public signals for Bilig WorkPaper: GitHub conversion, npm 
 - That surface came from the May 7 developer discovery path and should not drive
   current positioning.
 - Keep GitHub repository topics, npm keywords, and proof-page copy aligned with
-  WorkPaper, MCP tools, Node services, agent workflows, and workbook automation
-  while waiting for crawler refreshes.
+  WorkPaper, MCP tools, Node services, tool integrations, server-side formulas,
+  and workbook automation while waiting for crawler refreshes.
 
 ## Conversion Pressure
 
@@ -151,7 +157,7 @@ This snapshot tracks public signals for Bilig WorkPaper: GitHub conversion, npm 
 
 - The visible May 7-11 star jump still lines up with external developer traffic, not broad social posting.
 - The strongest current external referrer is Google with 6 views from 6 unique visitors.
-- Replication plan: ship one sharper proof page, then ask service and agent-tool
+- Replication plan: ship one sharper proof page, then ask service and tool-host
   audiences for a concrete implementation gap around service persistence, hosted
   MCP, formula coverage, or agent writeback verification.
 

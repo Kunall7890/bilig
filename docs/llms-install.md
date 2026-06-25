@@ -1,14 +1,14 @@
 ---
-title: Bilig WorkPaper install context for agents
+title: Bilig WorkPaper install context for tool hosts
 published: true
-description: Short install and verification path for OpenCode, Aider, Cline, Cursor, Kiro, Roo Code, Trae, Qodo IDE, Zed, Junie, Copilot, Claude Code, Continue, Windsurf, VS Code MCP, and other agents that need workbook formulas without spreadsheet UI automation.
+description: Short install and verification path for OpenCode, Aider, Cline, Cursor, Kiro, Roo Code, Trae, Qodo IDE, Zed, Junie, Copilot, Claude Code, Continue, Windsurf, VS Code MCP, and other tool hosts that need workbook formulas without spreadsheet UI automation.
 tags: ai agents, mcp, workpaper, spreadsheet formulas, node
 canonical_url: https://proompteng.github.io/bilig/llms-install.html
 ---
 
 # Bilig WorkPaper install context
 
-Bilig gives agents a workbook API instead of a spreadsheet screen.
+Bilig gives tool hosts a workbook API instead of a spreadsheet screen.
 
 Use it when a task needs to edit workbook inputs, recalculate formulas, read the
 computed value back, and persist the workbook state. Do not use Excel,

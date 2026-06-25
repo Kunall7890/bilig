@@ -1,18 +1,18 @@
 ---
-title: Formula workbooks for Node services and agent tools
+title: Formula workbooks for Node services and tool integrations
 published: true
-description: A runnable @bilig/workpaper proof for backend services and agent tools that need formula cell edits, recalculation, JSON persistence, and restored readback.
-tags: typescript, node, spreadsheet, agents, formulas
+description: A runnable @bilig/workpaper proof for backend services and tool integrations that need formula cell edits, recalculation, JSON persistence, and restored readback.
+tags: typescript, node, spreadsheet, mcp, formulas
 canonical_url: https://proompteng.github.io/bilig/formula-workbooks-node-services-agent-tools.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png
 ---
 
-# Formula workbooks for Node services and agent tools
+# Formula workbooks for Node services and tool integrations
 
 `@bilig/workpaper` is for one specific job: keep workbook-shaped business logic
 as cells and formulas, but run it from a Node service, queue worker, serverless
-route, test, or agent tool.
+route, test, or tool integration.
 
 The runtime boundary is a `WorkPaper`: write known input cells, recalculate,
 read known output cells, and persist the workbook as JSON. No browser grid,
@@ -76,7 +76,7 @@ A backend evaluator usually needs more than `=A1+B1`:
 - restored state can be tested without Excel, Google Sheets, or a browser
 
 That shape fits pricing rules, quote approval, payout checks, budget guardrails,
-import validation, and agent tools where the user wants a durable result rather
+import validation, and tool integrations where the user wants a durable result rather
 than a plausible screenshot.
 
 ## Agent tool boundary

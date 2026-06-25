@@ -24,7 +24,7 @@ Pick the door that matches the state you own:
 | -------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | Node service or test       | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json` | edit input, recalculate output, persist JSON, restore, and return `verified: true`.                |
 | New project                | `npm create @bilig/workpaper@latest pricing-workpaper`                                               | a starter wired to the same WorkPaper proof loop.                                                  |
-| Coding agent or MCP client | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`         | tool discovery, cell mutation, formula readback, JSON export, restart proof, and `verified: true`. |
+| Tool host or MCP client    | `npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`         | tool discovery, cell mutation, formula readback, JSON export, restart proof, and `verified: true`. |
 | Unsure which proof fits    | `npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --json`                       | compact routing card with proof commands, evidence fields, and public links.                       |
 
 `bilig-agent-start --json` is intentionally small. It prints first proof
@@ -82,7 +82,7 @@ If one of those matches your workflow, keep Bilig nearby:
 Framework examples live in the repo instead of this first screen. Start with
 the closest runtime:
 
-- Agent and tool runtimes: Vercel AI SDK, LangGraph, LangChain MCP adapters, Open WebUI,
+- Tool runtimes: Vercel AI SDK, LangGraph, LangChain MCP adapters, Open WebUI,
   FastMCP, Agno, Pydantic AI, smolagents.
 - Workflow engines: Trigger.dev, Inngest, Temporal, Airflow, Dagster, Kestra,
   Prefect, Windmill.
@@ -317,10 +317,10 @@ Use `@bilig/xlsx-formula-recalc` when you only need to edit and recalculate
 XLSX files. Use `@bilig/exceljs-formula-recalc` when you already use ExcelJS
 and need recalculated formula results after changing inputs.
 
-## Agent Commands And Optional MCP
+## Tool Commands And Optional MCP
 
-The npm tarball exposes the same CLI entrypoints through the canonical scoped package, so agents
-can install one focused package and still get the MCP stdio server:
+The npm tarball exposes the same CLI entrypoints through the canonical scoped package, so tool
+hosts can install one focused package and still get the MCP stdio server:
 
 ```ts
 import { createWorkPaperMcpServer } from '@bilig/workpaper/mcp'
@@ -336,8 +336,8 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 ## Scope
 
 Bilig is not a desktop Excel clone. It is a formula workbook runtime for
-service-owned calculations, JSON persistence, XLSX import/export, and
-agent-readable readback. Unsupported Excel functions, external workbook links,
+service-owned calculations, JSON persistence, XLSX import/export, and verified
+readback. Unsupported Excel functions, external workbook links,
 macros, and volatile functions may need review.
 
 ## After The Proof

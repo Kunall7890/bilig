@@ -41,7 +41,7 @@ reviewable workbook-shaped logic without shipping a spreadsheet UI. Tool hosts
 can expose narrow operations such as `readRange` and `setInputCell` instead of
 guessing state from screenshots.
 
-The npm tarball also includes `AGENTS.md` and `SKILL.md` so coding agents
+The npm tarball also includes `AGENTS.md` and `SKILL.md` so tool hosts
 inspecting `node_modules/@bilig/headless` can find the write/read/persist loop
 locally. The public docs expose the same path through
 [`AGENTS.md`](https://proompteng.github.io/bilig/AGENTS.md),
@@ -645,7 +645,7 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
   route smoke, writes quote inputs, recalculates an approval decision, persists
   JSON, and verifies restored readback.
 - For a shorter evaluation page, read
-  [formula workbooks for Node services and agent tools](https://github.com/proompteng/bilig/blob/main/docs/formula-workbooks-node-services-agent-tools.md).
+  [formula workbooks for Node services and tool integrations](https://github.com/proompteng/bilig/blob/main/docs/formula-workbooks-node-services-agent-tools.md).
   It compresses the WorkPaper boundary, MCP file-backed mode, benchmark caveat,
   and alternative-tool guidance into one evaluation path.
 - For a compact review note, use the
@@ -834,8 +834,8 @@ When the sanity check passes, these are the next useful pages.
   [Google Sheets API boundary](https://github.com/proompteng/bilig/blob/main/docs/google-sheets-api-alternative-node-workpaper.md),
   [Google Sheets QUERY/SORTN in Node](https://github.com/proompteng/bilig/blob/main/docs/google-sheets-query-sortn-node-workpaper.md),
   [docs/javascript-spreadsheet-library-headless-node.md](https://github.com/proompteng/bilig/blob/main/docs/javascript-spreadsheet-library-headless-node.md),
-  [formula workbooks for Node services and agent tools](https://github.com/proompteng/bilig/blob/main/docs/formula-workbooks-node-services-agent-tools.md),
-  [headless spreadsheet engine for Node services and agents](https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-node-services-agents.md),
+  [formula workbooks for Node services and tool integrations](https://github.com/proompteng/bilig/blob/main/docs/formula-workbooks-node-services-agent-tools.md),
+  [headless spreadsheet engine for Node services and tool hosts](https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-node-services-agents.md),
   [XLSX formula recalculation in Node.js](https://github.com/proompteng/bilig/blob/main/docs/xlsx-formula-recalculation-node.md),
   [Excel file as a Node calculation engine](https://github.com/proompteng/bilig/blob/main/docs/excel-file-calculation-engine-node.md),
   [stale XLSX formula cache in Node.js](https://github.com/proompteng/bilig/blob/main/docs/stale-xlsx-formula-cache-node.md),

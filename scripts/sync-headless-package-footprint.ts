@@ -51,16 +51,14 @@ const requiredKeywords = [
   'node-spreadsheet-formulas',
   'server-side-formula-engine',
   'typescript',
-  'agent-tools',
   'excel',
   'mcp',
   'mcp-server',
-  'workbook-agent',
   'xlsx',
 ] as const
 const forbiddenDescriptionFragments = [
   'Headless spreadsheet engine',
-  'XLSX import/export, agent tools, workbook JSON persistence, and service-side spreadsheet automation',
+  'XLSX import/export, workbook JSON persistence, and service-side spreadsheet automation',
 ] as const
 
 interface PackageManifest {

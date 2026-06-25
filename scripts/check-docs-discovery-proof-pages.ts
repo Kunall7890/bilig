@@ -24,7 +24,7 @@ export function requireFormulaProofDiscovery({
   readonly showHnFormulaWorkbooksProof: string
 }): void {
   for (const required of [
-    'title: Formula workbooks for Node services and agent tools',
+    'title: Formula workbooks for Node services and tool integrations',
     'npm install @bilig/workpaper',
     'quote-approval-api.ts',
     '"restoredMatchesAfter": true',
@@ -43,7 +43,7 @@ export function requireFormulaProofDiscovery({
 
   requireIncludes(readme, 'formula workbooks proof page', 'README.md')
   requireIncludes(readme, 'docs/formula-workbooks-node-services-agent-tools.md', 'README.md')
-  requireIncludes(headlessReadme, 'formula workbooks for Node services and agent tools', 'packages/headless/README.md')
+  requireIncludes(headlessReadme, 'formula workbooks for Node services and tool integrations', 'packages/headless/README.md')
   requireIncludes(headlessReadme, 'docs/formula-workbooks-node-services-agent-tools.md', 'packages/headless/README.md')
   requireIncludes(
     communityLaunchPack,
@@ -57,7 +57,7 @@ export function requireFormulaProofDiscovery({
   )
 
   for (const required of [
-    "title: 'Bilig maintainer note: formula WorkPapers for Node services and agents'",
+    "title: 'Bilig maintainer note: formula WorkPapers for Node services and tool hosts'",
     'uses the latest published package',
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
     'npm install @bilig/workpaper',
@@ -65,7 +65,7 @@ export function requireFormulaProofDiscovery({
     `wins \`${benchmarkEvidence.meanWinHeadline}\` comparable`,
     `\`${benchmarkEvidence.meanAndP95Headline}\` on both mean and p95`,
     `\`${benchmarkEvidence.p95HoldoutWorkload}\` is the current worst p95`,
-    'Bilig maintainer note: formula WorkPapers for Node services and agents',
+    'Bilig maintainer note: formula WorkPapers for Node services and tool hosts',
     '## Review checklist',
     'bilig-evaluate --door workpaper-service --json',
     'bilig-evaluate --door agent-mcp --json',

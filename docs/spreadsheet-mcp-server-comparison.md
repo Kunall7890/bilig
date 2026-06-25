@@ -53,7 +53,7 @@ somewhere else:
 | [SheetForge MCP](https://mcpservers.org/servers/iheldan/sheetforge-mcp)                        | Local-first workbook inspection, mutation, audit, diff, repair, formula-inspection, and layout-aware agent workflows                | Its docs explicitly say read tools do not recalculate Excel formulas                                                                     |
 | [CData MCP Server for Microsoft Excel](https://cdn.cdata.com/help/RXK/mcp/pg_excelformula.htm) | Commercial Excel connector with configurable read-time formula recalculation                                                        | Check connector coverage, licensing, and the `Recalculate` setting before relying on results                                             |
 | Excel file or SheetJS-style tooling                                                            | Creating, reading, or preserving `.xlsx` files                                                                                      | A file library can preserve formulas without recalculating fresh results in Node                                                         |
-| Bilig WorkPaper MCP                                                                            | Local agent tools that own WorkPaper JSON and need write, recalculate, readback, restore                                            | Not a full Excel editor; use it when formula readback is the product                                                                     |
+| Bilig WorkPaper MCP                                                                            | Local tool hosts that own WorkPaper JSON and need write, recalculate, readback, restore                                             | Not a full Excel editor; use it when formula readback is the product                                                                     |
 
 That split is useful for outreach too. Do not pitch Bilig as "another Google
 Sheets MCP server," "another Excel file editor," or "a hosted Excel control
@@ -114,7 +114,7 @@ not merely a file attachment. The useful loop is:
 5. export or persist the updated WorkPaper document.
 
 That makes it a fit for quote approvals, payout checks, budget alerts,
-import-validation workbooks, and agent tools that need proof of what changed.
+import-validation workbooks, and tool integrations that need proof of what changed.
 
 It is not a replacement for a full Excel file editor. It should not be sold as
 one.

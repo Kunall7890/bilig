@@ -1,20 +1,20 @@
 ---
-title: 'Bilig maintainer note: formula WorkPapers for Node services and agents'
+title: 'Bilig maintainer note: formula WorkPapers for Node services and tool hosts'
 published: true
 description: A plain maintainer note for Bilig with the WorkPaper npm check, benchmark artifact, limits, and open questions.
-tags: typescript, node, spreadsheet, agents, workpaper
+tags: typescript, node, spreadsheet, mcp, workpaper
 canonical_url: https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png
 ---
 
-# Bilig maintainer note: formula WorkPapers for Node services and agents
+# Bilig maintainer note: formula WorkPapers for Node services and tool hosts
 
 I built Bilig for the rules that live in cells long after the product around
 them moved to code: quotes, payout checks, approvals, import validation, budget
 guards.
 
-Those workflows should not need Excel screen driving. A service or coding agent
+Those workflows should not need Excel screen driving. A service or tool host
 should be able to change an input cell, recalculate the workbook, read the
 answer, and keep the workbook state under test.
 
@@ -22,8 +22,8 @@ Bilig is the WorkPaper runtime for that loop. `@bilig/workpaper` is the
 canonical package for service code, CLI evaluators, MCP tools, and no-key
 readback checks.
 
-That is the whole pitch: cells stay reviewable, Node gets an API, and agents get
-readback instead of screenshots.
+That is the whole pitch: cells stay reviewable, Node gets an API, and tool hosts
+get readback instead of screenshots.
 
 ## Fastest check
 

@@ -161,7 +161,7 @@
           <p class="eyebrow">WorkPaper runtime</p>
           <h1 id="hero-title" class="hero-title">Run workbook rules in Node.</h1>
           <p class="hero-subtitle">
-            Bilig gives services and agents a workbook API for pricing models, quote approval, payout checks, import validation, forecasts,
+            Bilig gives services and tools a workbook API for pricing models, quote approval, payout checks, import validation, forecasts,
             and formula-backed workflow steps.
           </p>
           <div class="hero-command" aria-label="Bilig WorkPaper evaluator command">
@@ -259,7 +259,7 @@
             <a class="path-link" href="https://www.npmjs.com/package/@bilig/workpaper">
               <span>WorkPaper</span>
               <strong><code>npm create @bilig/workpaper@latest pricing-workpaper</code></strong>
-              <em>Generate a small service or agent starter wired to the same runtime.</em>
+              <em>Generate a small service or tool starter wired to the same runtime.</em>
             </a>
             <a class="path-link" href="./node-service-workpaper-recipe.html">
               <span>service</span>
@@ -267,7 +267,7 @@
               <em>Wire formula-backed state into an API, queue worker, CLI, or tool.</em>
             </a>
             <a class="path-link" href="./eval-agent-mcp.html">
-              <span>agents</span>
+              <span>tools</span>
               <strong><code>bilig-evaluate --door agent-mcp --json</code></strong>
               <em>Expose cell reads, writes, formula readback, and JSON export over MCP.</em>
             </a>
@@ -300,8 +300,8 @@
           </div>
 
           <p class="section-note">
-            Use <code>@bilig/workpaper</code> for starters, evaluators, service code, and agent tools. Use saved-file packages only when
-            XLSX is the boundary.
+            Use <code>@bilig/workpaper</code> for starters, evaluators, service code, and tool integrations. Use saved-file packages only
+            when XLSX is the boundary.
           </p>
         </div>
       </section>
@@ -333,7 +333,7 @@
             <div class="work-row">
               <span class="step">03 / save</span>
               <h3>Persist the workbook state.</h3>
-              <p>Save WorkPaper JSON for route handlers, queue jobs, tests, agent tools, and audit trails.</p>
+              <p>Save WorkPaper JSON for route handlers, queue jobs, tests, tool integrations, and audit trails.</p>
             </div>
             <div class="work-row">
               <span class="step">04 / bridge</span>
@@ -405,7 +405,7 @@
               <a class="path-link" href="./why-use-bilig.html">
                 <span>fit</span>
                 <strong>Use Bilig when the workbook is the rulebook.</strong>
-                <em>Good fit: pricing, payouts, approvals, imports, finance checks, and agent tools that need calculated readback.</em>
+                <em>Good fit: pricing, payouts, approvals, imports, finance checks, and tools that need calculated readback.</em>
               </a>
               <a class="path-link" href="./node-service-workpaper-recipe.html">
                 <span>service</span>
@@ -414,8 +414,8 @@
               </a>
               <a class="path-link" href="./agent-workpaper-tool-calling-recipe.html">
                 <span>agent</span>
-                <strong>Give agents tools, not a spreadsheet screen.</strong>
-                <em>Expose narrow read/write commands so the agent can change cells and return the calculated answer.</em>
+                <strong>Expose tools, not a spreadsheet screen.</strong>
+                <em>Use narrow read/write commands so automation can change cells and return the calculated answer.</em>
               </a>
               <a class="path-link" href="./where-bilig-is-not-excel-compatible-yet.html">
                 <span>limits</span>
@@ -644,13 +644,13 @@ console.log({ answer, restored: restored.getCellDisplayValue(outputCell) })
             </div>
 
             <div class="docs-column">
-              <h3>Agents</h3>
+              <h3>Tool hosts</h3>
               <p>
-                Coding agent? Do not drive Excel, LibreOffice, Google Sheets, or a browser grid. Run
+                Tool host? Do not drive Excel, LibreOffice, Google Sheets, or a browser grid. Run
                 <code>npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json</code> first.
               </p>
               <p>
-                Use <code>@bilig/workbook</code> only when agents need transport-neutral plan data and command receipts. Example:
+                Use <code>@bilig/workbook</code> only when a runtime needs transport-neutral plan data and command receipts. Example:
                 https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model.
               </p>
               <ul>
@@ -665,7 +665,7 @@ console.log({ answer, restored: restored.getCellDisplayValue(outputCell) })
                 <li><a href="./agent-workpaper-tool-calling-recipe.html">agent tool-calling recipe</a></li>
                 <li><a href="./agent-framework-workbook-tools.html">agent framework workbook tool chooser</a></li>
                 <li>
-                  <a href="./mcp-spreadsheet-formula-server-for-coding-agents.html">MCP spreadsheet formula server for coding agents</a>
+                  <a href="./mcp-spreadsheet-formula-server-for-coding-agents.html">MCP spreadsheet formula server for tool hosts</a>
                 </li>
                 <li><a href="./vercel-ai-sdk-spreadsheet-tool-formula-readback.html">Vercel AI SDK formula readback</a></li>
                 <li><a href="./browser-use-workpaper-formula-tool.html">Browser Use WorkPaper formula tool</a></li>

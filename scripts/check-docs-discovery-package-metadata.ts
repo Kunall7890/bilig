@@ -8,7 +8,6 @@ export function requirePackageMetadataDiscovery(args: {
   requirePackageKeywords(
     args.headlessPackageJson,
     [
-      'agent-tools',
       'excel',
       'excel-formulas',
       'formula-recalculation',
@@ -36,7 +35,6 @@ export function requirePackageMetadataDiscovery(args: {
   requirePackageKeywords(
     args.scopedWorkpaperPackageJson,
     [
-      'agent-tools',
       'bilig-workpaper',
       'excel-formulas',
       'formula-engine',
@@ -52,7 +50,6 @@ export function requirePackageMetadataDiscovery(args: {
       'spreadsheet-engine',
       'spreadsheet-formula-engine',
       'spreadsheet-formulas',
-      'workbook-agent',
       'workbook-api',
       'workpaper',
       'xlsx',
