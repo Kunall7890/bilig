@@ -1,6 +1,6 @@
 # Community Growth Snapshot
 
-Captured at: `2026-06-25T14:58:24.579Z`
+Captured at: `2026-06-25T16:26:03.835Z`
 
 This snapshot tracks the public signals for the `@bilig/workpaper` growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
 
@@ -16,9 +16,9 @@ This snapshot tracks the public signals for the `@bilig/workpaper` growth loop: 
 
 ## npm
 
-- Package: `@bilig/workpaper@0.164.3`
+- Package: `@bilig/workpaper@0.164.5`
 - License: `MIT`
-- Modified: `2026-06-25T14:28:39.601Z`
+- Modified: `2026-06-25T16:20:23.448Z`
 - Downloads last week: 519 (2026-06-18 to 2026-06-24)
 - Downloads last month: 11,441 (2026-05-26 to 2026-06-24)
 
@@ -53,7 +53,7 @@ This snapshot tracks the public signals for the `@bilig/workpaper` growth loop: 
 
 ## Execution Log
 
-- 2026-06-25T14:58:24.579Z: refreshed live GitHub/npm readback for `@bilig/workpaper@0.164.3`; GitHub shows 33 / 100 stars (67 remaining), 22 forks, and 1 watcher.
+- 2026-06-25T16:26:03.835Z: refreshed live GitHub/npm readback for `@bilig/workpaper@0.164.5`; GitHub shows 33 / 100 stars (67 remaining), 22 forks, and 1 watcher.
 - Public copy guard for this pass: keep distribution surfaces WorkPaper service, MCP tool proof, and current release state first; use saved-file diagnostics only when files are the boundary.
 - Use this snapshot as evidence, not reusable launch copy.
 

@@ -448,12 +448,12 @@ Project site: <https://proompteng.github.io/bilig/>
 
 Pick the path that matches the job:
 
-| You have...                                                      | Start with                                                                 | You should see                                                                                         |
-| ---------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| A Node service, route, queue, test, or tool needs workbook logic | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)         | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.                 |
-| An MCP client or tool integration needs workbook commands        | [MCP tool evaluator](docs/eval-agent-mcp.md)                               | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`.              |
-| You want a starter project with the runtime installed            | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)            | a local package smoke test that edits one input, recalculates, saves JSON, and restores the WorkPaper. |
-| An imported file is the integration boundary                     | [Workbook Compatibility Report](docs/workbook-compatibility-report.md)     | unsupported functions, external links, macros, pivots, volatile formulas, and import/export risks.     |
+| You have...                                                      | Start with                                                             | You should see                                                                                         |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| A Node service, route, queue, test, or tool needs workbook logic | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)     | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.                 |
+| An MCP client or tool integration needs workbook commands        | [MCP tool evaluator](docs/eval-agent-mcp.md)                           | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`.              |
+| You want a starter project with the runtime installed            | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)        | a local package smoke test that edits one input, recalculates, saves JSON, and restores the WorkPaper. |
+| An imported file is the integration boundary                     | [Workbook Compatibility Report](docs/workbook-compatibility-report.md) | unsupported functions, external links, macros, pivots, volatile formulas, and import/export risks.     |
 
 If you are not sure which one fits, start with the thing that owns state. Use
 WorkPaper when your service or tool should own the workbook model. Use file
@@ -517,10 +517,10 @@ Trust boundaries:
 
 ## Which Path Should I Install?
 
-| Problem you have right now                                                        | Install or use                 | First proof                                                        |
-| --------------------------------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------ |
-| Formula workbook state belongs inside a Node service, route, queue, test, or tool | `npm install @bilig/workpaper` | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md) |
-| An MCP client or tool integration needs workbook tools with computed readback     | `npm install @bilig/workpaper` | [MCP tool evaluator](docs/eval-agent-mcp.md)                       |
+| Problem you have right now                                                        | Install or use                 | First proof                                                            |
+| --------------------------------------------------------------------------------- | ------------------------------ | ---------------------------------------------------------------------- |
+| Formula workbook state belongs inside a Node service, route, queue, test, or tool | `npm install @bilig/workpaper` | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)     |
+| An MCP client or tool integration needs workbook tools with computed readback     | `npm install @bilig/workpaper` | [MCP tool evaluator](docs/eval-agent-mcp.md)                           |
 | Import/export compatibility is the integration boundary                           | compatibility diagnostics      | [Workbook Compatibility Report](docs/workbook-compatibility-report.md) |
 
 Advanced adapters are still available when the boundary is already specific:
@@ -534,96 +534,79 @@ transport-neutral plan data and command receipts, and
 
 ## MCP And Tool Integrations
 
-For MCP or host integration, use the
-[WorkPaper host handoff](docs/agent-adoption-kit.md): install the local
-workflow, run the no-key MCP evaluator, execute one workbook task, and require
-`verified: true` before trusting the result. Hosts that want one install file can
-use [`llms-install.md`](llms-install.md).
+Use the [WorkPaper host handoff](docs/agent-adoption-kit.md) when a tool host
+needs workbook reads, writes, recalculation, JSON export, and restore proof.
+The first check is always the no-key MCP evaluator:
 
-Do not start by driving Excel, LibreOffice, Google Sheets, or a browser grid.
-Use the WorkPaper proof instead:
-`npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json`.
-Then follow the [MCP evaluator](docs/eval-agent-mcp.md).
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+```
 
-The published package also carries `AGENTS.md` and `SKILL.md` so tool hosts
-inspecting `node_modules/@bilig/workpaper` can find the write/read/persist loop
-locally. Cloned checkouts expose the same workflow through
-`.mcp.json`,
+That evaluator starts the published WorkPaper tool server, discovers tools,
+edits an input, reads the dependent formula, exports JSON, restarts, restores,
+and returns `verified: true`. Use
+[`llms-install.md`](llms-install.md) when a host wants one install file, and use
+the [tool-host proof matrix](docs/agent-proof-matrix.md) when the host matters
+more than the package boundary.
+
+The published package also carries `AGENTS.md` and `SKILL.md` so hosts
+inspecting `node_modules/@bilig/workpaper` can find the same proof locally.
+Cloned checkouts keep host-specific config indexed in
+[agent rule chooser](docs/agent-rule-chooser.md): `CLAUDE.md`,
 `.claude/skills/bilig-workpaper/SKILL.md`,
 `.claude/commands/bilig-workpaper-proof.md`,
-`.cursor/mcp.json`,
 `.cursor/rules/bilig-workpaper.mdc`, `.devin/rules/bilig-workpaper.md`,
 `.windsurf/rules/bilig-workpaper.md`, `.clinerules/bilig-workpaper.md`,
-`.continue/rules/bilig-workpaper.md`,
-`.zed/settings.json`,
-`opencode.jsonc`, `.opencode/agents/bilig-workpaper.md`,
-`.vscode/mcp.json`, and `mcp/bilig-workpaper.mcp.json`.
-The public docs expose the same host path through
-[`docs/.well-known/agent.json`](docs/.well-known/agent.json).
-Host-specific rule files remain indexed in
-[`docs/agent-rule-chooser.md`](docs/agent-rule-chooser.md).
+`.continue/rules/bilig-workpaper.md`, `.zed/settings.json`, `opencode.jsonc`,
+and `.opencode/agents/bilig-workpaper.md`. The public manifest is
+`docs/.well-known/agent.json`.
 
 ```sh
 npx --yes skills@latest add https://bilig.proompteng.ai --list
 npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
-npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
 ## Integration Recipes After The Proof
 
-Run one core proof above before wiring a platform-specific integration. These
-recipes are for teams that already know where the workbook tool needs to live.
+Run one evaluator first. Then use the recipe that matches the platform boundary:
 
-| Host or workflow runner                                    | Use Bilig when...                                                                                                                                                               | Guide                                                                                                                                                                                                                                                                                                                                                                                     |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Open WebUI                                                 | A local or hosted tool server should expose workbook reads, writes, and formula readback.                                                                                       | [Open WebUI WorkPaper tool setup](https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html)                                                                                                                                                                                                                                                                                       |
-| LobeHub                                                    | A LobeHub agent needs a Custom MCP server for workbook tools.                                                                                                                   | [LobeHub WorkPaper MCP setup](https://proompteng.github.io/bilig/lobehub-workpaper-mcp.html)                                                                                                                                                                                                                                                                                              |
-| AnythingLLM                                                | Agent Skills should call hosted MCP or a private file-backed stdio server.                                                                                                      | [AnythingLLM WorkPaper MCP setup](https://proompteng.github.io/bilig/anythingllm-workpaper-mcp.html)                                                                                                                                                                                                                                                                                      |
-| Sim                                                        | An Agent block or MCP Tool block should read, write, recalculate, and export proof.                                                                                             | [Sim WorkPaper MCP setup](https://proompteng.github.io/bilig/sim-workpaper-mcp.html)                                                                                                                                                                                                                                                                                                      |
-| FastMCP Python                                             | A Python client should smoke-test hosted MCP or launch a private file-backed stdio WorkPaper.                                                                                   | [FastMCP WorkPaper client](https://proompteng.github.io/bilig/fastmcp-workpaper-client.html)                                                                                                                                                                                                                                                                                              |
-| Agno                                                       | `MCPTools` should import workbook tools and return verified formula readback before the workflow trusts the result.                                                             | [Agno WorkPaper MCP tools](https://proompteng.github.io/bilig/agno-workpaper-mcp.html)                                                                                                                                                                                                                                                                                                    |
-| Pydantic AI                                                | `MCPToolset` should validate typed workbook proof before the workflow trusts spreadsheet-style calculations.                                                                    | [Pydantic AI WorkPaper MCP tools](https://proompteng.github.io/bilig/pydantic-ai-workpaper-mcp.html)                                                                                                                                                                                                                                                                                      |
-| Google ADK                                                 | `McpToolset` should import workbook MCP tools and return verified formula readback before the ADK workflow trusts the result.                                                   | [Google ADK WorkPaper MCP tools](https://proompteng.github.io/bilig/google-adk-workpaper-mcp.html)                                                                                                                                                                                                                                                                                        |
-| OpenHands                                                  | `openhands mcp add` should launch the file-backed WorkPaper server while `.agents/skills` teaches readback-first workbook edits.                                                | [OpenHands WorkPaper MCP setup](https://proompteng.github.io/bilig/openhands-workpaper-mcp.html)                                                                                                                                                                                                                                                                                          |
-| Trae                                                       | `.trae/mcp.json` should register the Project MCP server while `.trae/rules/bilig-workpaper.md` keeps workbook proof work readback-first.                                        | [Trae WorkPaper MCP setup](https://proompteng.github.io/bilig/trae-workpaper-mcp.html)                                                                                                                                                                                                                                                                                                    |
-| Qodo IDE                                                   | Qodo Agentic Tools should launch the local `bilig-workpaper` MCP server from pasted `mcpServers` JSON and keep proof tied to root `AGENTS.md`.                                  | [Qodo WorkPaper MCP setup](https://proompteng.github.io/bilig/qodo-workpaper-mcp.html)                                                                                                                                                                                                                                                                                                    |
-| OpenCode                                                   | `opencode.jsonc` should register the local WorkPaper MCP server while `.opencode/agents` keeps workbook proof work readback-first.                                              | [OpenCode WorkPaper MCP setup](https://proompteng.github.io/bilig/opencode-workpaper-mcp.html)                                                                                                                                                                                                                                                                                            |
-| Zed                                                        | `.zed/settings.json` should register the project-local `context_servers.bilig-workpaper` server while `AGENTS.md` and the project skill keep workbook edits readback-first.     | [MCP client setup](https://proompteng.github.io/bilig/mcp-client-setup.html#zed)                                                                                                                                                                                                                                                                                                          |
-| Microsoft Agent Framework                                  | `MCPStdioTool` or `MCPStreamableHTTPTool` should import workbook MCP tools and verify dependent formula readback before the workflow trusts the result.                         | [Microsoft Agent Framework WorkPaper MCP tools](https://proompteng.github.io/bilig/microsoft-agent-framework-workpaper-mcp.html)                                                                                                                                                                                                                                                          |
-| Goose                                                      | A Goose recipe should launch the file-backed WorkPaper MCP server and require formula readback, export, restore, and `verified: true`.                                          | [Goose WorkPaper MCP recipe](https://proompteng.github.io/bilig/goose-workpaper-mcp.html)                                                                                                                                                                                                                                                                                                 |
-| Microsoft Semantic Kernel                                  | `MCPStdioPlugin` should import workbook tools and verify dependent formula readback before the workflow trusts plugin calls.                                                    | [Semantic Kernel WorkPaper MCP plugin](https://proompteng.github.io/bilig/semantic-kernel-workpaper-mcp.html)                                                                                                                                                                                                                                                                             |
-| OpenAI Agents SDK                                          | `tool()`, `MCPServerStdio`, or `MCPServerStreamableHttp` should return computed WorkPaper readback before the workflow trusts workbook math.                                    | [OpenAI Agents SDK WorkPaper tools](https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html)                                                                                                                                                                                                                                                                             |
-| ChatGPT Apps / Developer Mode                              | A ChatGPT conversation should add Bilig as a no-auth remote MCP app before trying spreadsheet UI automation.                                                                    | [ChatGPT Apps WorkPaper MCP](https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html)                                                                                                                                                                                                                                                                                          |
-| Proof chooser                                              | A host integration or reviewer needs the smallest proof for WorkPaper service, MCP, AI SDK, OpenAI, LangGraph, Semantic Kernel, Mastra, ExcelJS, or file-import diagnostics.    | [Tool-host proof matrix](https://proompteng.github.io/bilig/agent-proof-matrix.html)                                                                                                                                                                                                                                                                                                      |
-| Hugging Face smolagents                                    | A `Tool` should return structured formula readback proof to a `CodeAgent`.                                                                                                      | [smolagents WorkPaper tool](https://proompteng.github.io/bilig/smolagents-workpaper-tool.html)                                                                                                                                                                                                                                                                                            |
-| Hugging Face Gradio MCP Space                              | A Space template should expose one no-key WorkPaper readback tool before a team wires private workbook state.                                                                   | [Hugging Face Gradio MCP Space](https://proompteng.github.io/bilig/huggingface-workpaper-space.html)                                                                                                                                                                                                                                                                                      |
-| n8n, Dify, Flowise, Pipedream                              | Workflow builders need formula readback without spreadsheet UI automation; use `@bilig/n8n-nodes-workpaper`, the upstream merged Dify plugin, or the reviewed Pipedream action. | [n8n](https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html), [Dify](https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html), [Flowise](https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html), [Pipedream](https://proompteng.github.io/bilig/pipedream-workpaper-formula-readback.html)                                          |
-| Vercel AI SDK                                              | `generateText()` or `streamText()` tools need before/after/restore proof.                                                                                                       | [Vercel AI SDK WorkPaper tools](https://proompteng.github.io/bilig/vercel-ai-sdk-langchain-spreadsheet-tool.html)                                                                                                                                                                                                                                                                         |
-| LangGraph.js / LangChain MCP                               | ToolNode state should carry WorkPaper proof, or MCP adapters should discover workbook tools.                                                                                    | [LangGraph](https://proompteng.github.io/bilig/langgraph-workpaper-toolnode-spreadsheet.html), [LangChain MCP example](https://github.com/proompteng/bilig/tree/main/examples/langchain-mcp-workpaper-toolnode)                                                                                                                                                                           |
-| Windmill, Trigger.dev Durable Formula Tasks, Inngest       | Durable workflow code should calculate fields from reviewable formulas.                                                                                                         | [Windmill](https://proompteng.github.io/bilig/windmill-workpaper-script.html), [Trigger.dev](https://proompteng.github.io/bilig/triggerdev-workpaper-task.html), [Inngest](https://proompteng.github.io/bilig/inngest-workpaper-step.html)                                                                                                                                                |
-| Airbyte, Meltano                                           | Post-sync or post-ELT validation should return formula-backed record/state proof.                                                                                               | [Airbyte](https://proompteng.github.io/bilig/airbyte-workpaper-validation.html), [Meltano](https://proompteng.github.io/bilig/meltano-workpaper-utility.html)                                                                                                                                                                                                                             |
-| Temporal, Airflow, Dagster Formula Assets, Kestra, Prefect | Orchestrators should own retries/history while a Node step owns workbook proof.                                                                                                 | [Temporal](https://proompteng.github.io/bilig/temporal-workpaper-activity.html), [Airflow](https://proompteng.github.io/bilig/airflow-workpaper-dag.html), [Dagster](https://proompteng.github.io/bilig/dagster-workpaper-asset.html), [Kestra](https://proompteng.github.io/bilig/kestra-workpaper-flow.html), [Prefect](https://proompteng.github.io/bilig/prefect-workpaper-flow.html) |
-| Directus Persisted Calculated Fields                       | A custom operation should persist calculated fields with formula proof.                                                                                                         | [Directus WorkPaper Flow operation](https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html)                                                                                                                                                                                                                                                                            |
-
-<!-- Source recipe docs remain in docs/open-webui-workpaper-mcp.md, docs/lobehub-workpaper-mcp.md, docs/anythingllm-workpaper-mcp.md, docs/sim-workpaper-mcp.md, docs/fastmcp-workpaper-client.md, docs/agno-workpaper-mcp.md, docs/pydantic-ai-workpaper-mcp.md, docs/google-adk-workpaper-mcp.md, docs/openhands-workpaper-mcp.md, docs/trae-workpaper-mcp.md, docs/qodo-workpaper-mcp.md, docs/opencode-workpaper-mcp.md, docs/microsoft-agent-framework-workpaper-mcp.md, docs/goose-workpaper-mcp.md, docs/semantic-kernel-workpaper-mcp.md, docs/openai-agents-sdk-workpaper-tool.md, docs/chatgpt-apps-workpaper-mcp.md, docs/smolagents-workpaper-tool.md, docs/huggingface-workpaper-space.md, docs/n8n-workpaper-formula-readback.md, docs/dify-workpaper-formula-readback.md, docs/flowise-workpaper-formula-readback.md, docs/pipedream-workpaper-formula-readback.md, docs/vercel-ai-sdk-langchain-spreadsheet-tool.md, docs/langgraph-workpaper-toolnode-spreadsheet.md, docs/windmill-workpaper-script.md, docs/triggerdev-workpaper-task.md, docs/inngest-workpaper-step.md, docs/airbyte-workpaper-validation.md, docs/meltano-workpaper-utility.md, docs/temporal-workpaper-activity.md, docs/airflow-workpaper-dag.md, docs/dagster-workpaper-asset.md, docs/kestra-workpaper-flow.md, docs/prefect-workpaper-flow.md, and docs/directus-workpaper-flow-operation.md. -->
+- Open WebUI WorkPaper MCP:
+  <https://proompteng.github.io/bilig/open-webui-workpaper-mcp.html>.
+- OpenAI Agents SDK with direct tools, stdio MCP, or
+  `MCPServerStreamableHttp`:
+  <https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html>.
+- ChatGPT Apps WorkPaper MCP:
+  <https://proompteng.github.io/bilig/chatgpt-apps-workpaper-mcp.html>.
+- Hugging Face Gradio MCP Space:
+  <https://proompteng.github.io/bilig/huggingface-workpaper-space.html>.
+- n8n self-hosted workflows can use `@bilig/n8n-nodes-workpaper`; Pipedream
+  formula readback is documented at
+  <https://proompteng.github.io/bilig/pipedream-workpaper-formula-readback.html>
+  and sourced from `docs/pipedream-workpaper-formula-readback.md`.
+- Directus Persisted Calculated Fields:
+  <https://proompteng.github.io/bilig/directus-workpaper-flow-operation.html>.
+- Trigger.dev Durable Formula Tasks and Dagster Formula Assets are covered in
+  the workflow recipe docs.
+- ELT validation recipes: `airbyte-workpaper-validation` and
+  `meltano-workpaper-utility`.
 
 ## Choose An Evaluation Path
 
-| If you are evaluating...   | Start here                                                                                                                                                                                                                                                                                                      | What should be true before you adopt                                                                      |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Node service formulas      | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)                                                                                                                                                                                                                                              | A starter writes one input, recalculates, persists JSON, restores, and prints `verified: true`.           |
-| MCP tool contract          | [MCP workbook evaluator](docs/eval-agent-mcp.md)                                                                                                                                                                                                                                                                | MCP tool discovery, input edit, formula readback, persistence, and restart proof all pass.                |
-| Integration proof chooser  | [Tool-host proof matrix](docs/agent-proof-matrix.md), [tool-host proof transcripts](docs/agent-proof-transcripts.md), [MCP spreadsheet formula server](docs/mcp-spreadsheet-formula-server-for-coding-agents.md), and [Vercel AI SDK formula readback](docs/vercel-ai-sdk-spreadsheet-tool-formula-readback.md) | The integration path starts with the smallest verified proof and avoids write-only or UI-only claims.     |
-| Runtime intent adapters    | [Workbook runtime intent API](docs/workbook-runtime-intent-api.md) and [runtime intent example](https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model)                                                                                                                                     | A model prepares transport-neutral plan data, strict runtime proof, command receipts, and check evidence. |
-| Basic fit                  | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                                                                                                                                                                                         | The problem is workbook-shaped business logic that needs API readback and persistence.                    |
-| Published npm package      | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                                                                                                                 | `@bilig/workpaper` edits one input, recalculates, persists JSON, restores, and prints `verified: true`.   |
-| Backend service shape      | [Quote approval WorkPaper API](docs/quote-approval-workpaper-api.md)                                                                                                                                                                                                                                            | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`.               |
-| MCP clients and host integrations | [WorkPaper host handbook](docs/headless-workpaper-agent-handbook.md), [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md), [Gemini CLI extension](docs/gemini-cli-workpaper-extension.md), and [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md)                          | The host installs a tool path, follows the handoff guide, then proves write/readback/persist.             |
-| Technical WorkPaper review | [WorkPaper maintainer proof note](docs/show-hn-formula-workbooks-node-services.md)                                                                                                                                                                                                                              | One compact page has the npm check, benchmark caveat, known limits, and open questions.                   |
-| Trust and performance      | [npm provenance](docs/npm-provenance-package-trust.md) and [benchmark evidence](docs/what-workpaper-benchmark-proves.md)                                                                                                                                                                                        | npm shows SLSA provenance, and benchmark claims match the checked artifact.                               |
-| Imported files             | [Workbook Compatibility Report](docs/workbook-compatibility-report.md), [file formula recalculation](docs/xlsx-formula-recalculation-node.md), and [ExcelJS formula recalculation](docs/exceljs-formula-recalculation-node.md)                                                                                  | The file boundary is inspected before a service, CI job, or workflow trusts imported formulas.            |
-| Almost a fit               | [implementation gap discussion](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                                                                                                                                           | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.                  |
-| Formula or import bug      | [formula bug clinic](docs/formula-bug-clinic.md) and [submit a workbook fixture](docs/submit-workbook-fixture.md)                                                                                                                                                                                               | Share one reduced public case that can become a fixture.                                                  |
+| If you are evaluating...          | Start here                                                                                                                                                                                                                                                                                                   | What should be true before you adopt                                                                      |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| Node service formulas             | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)                                                                                                                                                                                                                                           | A starter writes one input, recalculates, persists JSON, restores, and prints `verified: true`.           |
+| MCP tool contract                 | [MCP workbook evaluator](docs/eval-agent-mcp.md)                                                                                                                                                                                                                                                             | MCP tool discovery, input edit, formula readback, persistence, and restart proof all pass.                |
+| Integration proof chooser         | [Tool-host proof matrix](docs/agent-proof-matrix.md), [tool-host proof transcripts](docs/agent-proof-transcripts.md), [MCP spreadsheet tool server](docs/mcp-spreadsheet-formula-server-for-coding-agents.md), and [Vercel AI SDK formula readback](docs/vercel-ai-sdk-spreadsheet-tool-formula-readback.md) | The integration path starts with the smallest verified proof and avoids write-only or UI-only claims.     |
+| Runtime intent adapters           | [Workbook runtime intent API](docs/workbook-runtime-intent-api.md) and [runtime intent example](https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model)                                                                                                                                 | A model prepares transport-neutral plan data, strict runtime proof, command receipts, and check evidence. |
+| Basic fit                         | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                                                                                                                                                                                      | The problem is workbook-shaped business logic that needs API readback and persistence.                    |
+| Published npm package             | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                                                                                                              | `@bilig/workpaper` edits one input, recalculates, persists JSON, restores, and prints `verified: true`.   |
+| Backend service shape             | [Quote approval WorkPaper API](docs/quote-approval-workpaper-api.md)                                                                                                                                                                                                                                         | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`.               |
+| MCP clients and host integrations | [WorkPaper host handbook](docs/headless-workpaper-agent-handbook.md), [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md), [Gemini CLI extension](docs/gemini-cli-workpaper-extension.md), and [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md)                              | The host installs a tool path, follows the handoff guide, then proves write/readback/persist.             |
+| Technical WorkPaper review        | [WorkPaper maintainer proof note](docs/show-hn-formula-workbooks-node-services.md)                                                                                                                                                                                                                           | One compact page has the npm check, benchmark caveat, known limits, and open questions.                   |
+| Trust and performance             | [npm provenance](docs/npm-provenance-package-trust.md) and [benchmark evidence](docs/what-workpaper-benchmark-proves.md)                                                                                                                                                                                     | npm shows SLSA provenance, and benchmark claims match the checked artifact.                               |
+| Imported files                    | [Workbook Compatibility Report](docs/workbook-compatibility-report.md), [file formula recalculation](docs/xlsx-formula-recalculation-node.md), and [ExcelJS formula recalculation](docs/exceljs-formula-recalculation-node.md)                                                                               | The file boundary is inspected before a service, CI job, or workflow trusts imported formulas.            |
+| Almost a fit                      | [implementation gap discussion](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                                                                                                                                        | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.                  |
+| Formula or import bug             | [formula bug clinic](docs/formula-bug-clinic.md) and [submit a workbook fixture](docs/submit-workbook-fixture.md)                                                                                                                                                                                            | Share one reduced public case that can become a fixture.                                                  |
 
 Reduced workbook already in hand? If the blocker is an import, formula, or
 persistence gap, generate the fixture report:
@@ -637,8 +620,7 @@ Handing a workbook task to an MCP client or host integration? Start with the
 before opening Excel, LibreOffice, Google Sheets, or a screenshot UI. That
 section keeps the host handoff prompt for clients that require copy-paste
 instructions.
-To prove the package-owned MCP loop without cloning the repo or downloading a
-TypeScript file:
+To prove the package-owned MCP loop without cloning the repo:
 
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
@@ -649,55 +631,10 @@ npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
 Tool hosts that support skill manifests can start from
 [`skill.md`](docs/skill.md) or the well-known index at
 [`docs/.well-known/agent-skills/index.json`](docs/.well-known/agent-skills/index.json).
-Claude Code reads the project skill from
-[`.claude/skills/bilig-workpaper/SKILL.md`](.claude/skills/bilig-workpaper/SKILL.md)
-when the repo is cloned locally, and can invoke the explicit proof prompt from
-[`.claude/commands/bilig-workpaper-proof.md`](.claude/commands/bilig-workpaper-proof.md).
-Cursor and Windsurf/Cascade read the same proof loop from
-[`.cursor/rules/bilig-workpaper.mdc`](.cursor/rules/bilig-workpaper.mdc) and
-the Cascade rule mirrors at
-[`.devin/rules/bilig-workpaper.md`](.devin/rules/bilig-workpaper.md) and
-[`.windsurf/rules/bilig-workpaper.md`](.windsurf/rules/bilig-workpaper.md).
-Kiro reads the project steering file from
-[`.kiro/steering/bilig-workpaper.md`](.kiro/steering/bilig-workpaper.md) and the
-project MCP server from [`.kiro/settings/mcp.json`](.kiro/settings/mcp.json).
-Roo Code reads the project rule from
-[`.roo/rules/bilig-workpaper.md`](.roo/rules/bilig-workpaper.md) and the
-project MCP server from [`.roo/mcp.json`](.roo/mcp.json).
-Trae reads the project rule from
-[`.trae/rules/bilig-workpaper.md`](.trae/rules/bilig-workpaper.md) and the
-Project MCP server from [`.trae/mcp.json`](.trae/mcp.json).
-Zed reads the project context server from
-[`.zed/settings.json`](.zed/settings.json), then uses root
-[`AGENTS.md`](AGENTS.md) and
-[`.agents/skills/bilig-workpaper/SKILL.md`](.agents/skills/bilig-workpaper/SKILL.md)
-for the same WorkPaper proof loop.
-Cline reads the workspace rule from
-[`.clinerules/bilig-workpaper.md`](.clinerules/bilig-workpaper.md). Continue
-reads the workspace rule from
-[`.continue/rules/bilig-workpaper.md`](.continue/rules/bilig-workpaper.md) and
-can launch direct WorkPaper tools from
-[`.continue/mcpServers/bilig-workpaper.yaml`](.continue/mcpServers/bilig-workpaper.yaml).
-Aider loads
-[`CONVENTIONS.md`](CONVENTIONS.md) through
-[`.aider.conf.yml`](.aider.conf.yml) for the same WorkPaper proof loop.
-GitHub Copilot and VS Code agent mode read the repository instructions, prompt,
-and MCP servers from
-[`.github/copilot-instructions.md`](.github/copilot-instructions.md),
-[`.github/prompts/bilig-workpaper-proof.prompt.md`](.github/prompts/bilig-workpaper-proof.prompt.md),
-and [`.vscode/mcp.json`](.vscode/mcp.json).
-Gemini CLI users can install Bilig as an extension:
-
-```sh
-gemini extensions install https://github.com/proompteng/bilig --ref main
-```
-
-Claude Desktop users can also install the released MCPB bundle directly:
+Claude Desktop users can install the released MCPB bundle directly:
 <https://github.com/proompteng/bilig/releases/latest/download/bilig-workpaper.mcpb>.
-For another tool host, use the
-[agent workbook challenge](docs/agent-workbook-challenge.md): one input edit,
-one dependent formula readback, one serialized restore, and a `verified: true`
-object.
+For host-specific project files, use the
+[agent rule chooser](docs/agent-rule-chooser.md).
 
 ## Try It In 90 Seconds
 
