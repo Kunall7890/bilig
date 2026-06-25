@@ -1,0 +1,19 @@
+{
+  "name": "bilig-hono-workpaper-route-example",
+  "private": true,
+  "description": "Runnable Hono route smoke for @bilig/workpaper — edits an input cell and reads back a dependent formula result through c.req.raw.",
+  "type": "module",
+  "scripts": {
+    "smoke": "tsx hono-workpaper-route.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@bilig/workpaper": "latest",
+    "hono": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "25.5.0",
+    "tsx": "4.21.0",
+    "typescript": "6.0.2"
+  }
+}
