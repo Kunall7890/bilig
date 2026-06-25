@@ -12,7 +12,7 @@ This snapshot tracks the public signals for the Bilig WorkPaper growth loop: Git
 - Watchers: 1
 - Open issues: 4
 - Default branch: `main`
-- Topics: `agent-tools`, `ai-agents`, `excel`, `excel-formulas`, `formula-engine`, `formula-recalculation`, `headless-spreadsheet`, `mcp`, `mcp-server`, `model-context-protocol`, `nodejs`, `spreadsheet`, `spreadsheet-api`, `spreadsheet-automation`, `typescript`, `workbook-api`, `workbook-runtime`, `workpaper`, `xlsx`, `xlsx-recalculation`
+- Topics: `agent-tools`, `agent-workflows`, `ai-agents`, `formula-engine`, `formula-recalculation`, `headless-spreadsheet`, `mcp`, `mcp-server`, `mcp-tools`, `model-context-protocol`, `node-services`, `nodejs`, `spreadsheet`, `spreadsheet-api`, `spreadsheet-automation`, `typescript`, `workbook-api`, `workbook-automation`, `workbook-runtime`, `workpaper`
 
 ## npm
 
@@ -66,6 +66,10 @@ This snapshot tracks the public signals for the Bilig WorkPaper growth loop: Git
   README and package metadata so the first screen presents runnable WorkPaper
   service and agent examples first, while keeping `@bilig/headless` named only
   for lower-level runtime and MCP internals.
+- 2026-06-25T08:34:27Z: retargeted GitHub repository topics away from
+  import-format terms and toward WorkPaper, MCP tools, Node services, workbook
+  automation, and agent workflows. Live readback showed 32 stars after the
+  update.
 
 ## External Discovery
 
