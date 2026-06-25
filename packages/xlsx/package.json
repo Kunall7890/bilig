@@ -1,6 +1,6 @@
 {
   "name": "@bilig/xlsx",
-  "version": "0.164.6",
+  "version": "0.164.7",
   "description": "@bilig/xlsx ZIP, address, streaming formula-cache, and source-preserving patch primitives for Bilig.",
   "keywords": [
     "bilig",

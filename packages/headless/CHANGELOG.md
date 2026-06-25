@@ -4,6 +4,21 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.164.7
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.164.5
+- Manual override: no
+
+## Fixes
+- fix(headless): clarify workpaper proof limits (5d4f7a2b)
+
+## Internal runtime changes
+- examples(hono): add WorkPaper route smoke (d449b623)
+- docs(workpaper): clarify recompute boundary (414f52d1)
+- chore(release): runtime packages v0.164.6 (db4eec32)
+- docs(workpaper): refresh service proof version (55545acd)
+
 ## 0.164.6
 
 - Release type: patch
