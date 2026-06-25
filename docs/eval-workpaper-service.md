@@ -30,7 +30,7 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpa
 ## Current evaluator transcript
 
 This transcript was captured on June 25, 2026 against
-`@bilig/workpaper@0.164.5`. It is the shortest current proof for service-owned
+`@bilig/workpaper@0.164.6`. It is the shortest current proof for service-owned
 WorkPaper state:
 
 ```json
@@ -39,7 +39,7 @@ WorkPaper state:
   "door": "workpaper-service",
   "doorName": "WorkPaper service proof",
   "packageVersions": {
-    "@bilig/workpaper": "0.164.5"
+    "@bilig/workpaper": "0.164.6"
   },
   "evidence": {
     "editedCell": "Inputs!B2",
