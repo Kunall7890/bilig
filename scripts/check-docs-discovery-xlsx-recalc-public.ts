@@ -27,7 +27,7 @@ export function requireXlsxRecalcPublicDiscovery(args: {
   requireIncludes(args.headlessReadme, 'file boundary is the product contract', 'packages/headless/README.md')
   requireIncludes(args.headlessReadme, 'workbook-compatibility-report.md', 'packages/headless/README.md')
   requireIncludes(args.index, 'examples/xlsx-recalculation-node', 'docs/index.html')
-  requireIncludes(args.index, 'Use saved-file packages only when', 'docs/index.html')
+  requireIncludes(args.index, 'Use saved-file packages only', 'docs/index.html')
   requireIncludes(args.index, './workbook-compatibility-report.html', 'docs/index.html')
   requireIncludes(args.index, './workbook-compatibility-report-transcript.html', 'docs/index.html')
   requireIncludes(args.index, './agent-xlsx-risk-preflight.html', 'docs/index.html')

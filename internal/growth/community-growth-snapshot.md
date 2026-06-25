@@ -133,6 +133,12 @@ This snapshot tracks public signals for Bilig WorkPaper: GitHub conversion, npm 
   MCP tools, tool integrations, and server-side formulas; saved-file language
   stays in explicit import/export boundaries. Live GitHub readback showed 33
   stars and 22 forks.
+- 2026-06-25T10:37:25Z: replaced the repo-visible community launch pack and
+  Product Hunt launch kit with concise execution notes: no canned comments, no
+  generic launch copy, no stale lower-level package product path, and current
+  `@bilig/workpaper` proof links. Discovery checks now enforce the cleaner
+  product-surface standard. Live GitHub readback before the edit showed 33 stars
+  and 22 forks.
 
 ## External Discovery
 

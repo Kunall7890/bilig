@@ -1,70 +1,52 @@
 ---
-title: Product Hunt launch kit for bilig
+title: Bilig product surface notes
 published: false
-description: Internal launch copy, assets, proof points, and first-comment text for introducing @bilig/headless as a TypeScript WorkPaper runtime for Node services and agents.
-tags: producthunt, launch, typescript, node, spreadsheet, agents
+description: Internal product-surface notes, assets, and proof links for presenting @bilig/workpaper without canned launch copy.
+tags: product, proof, typescript, node, spreadsheet, workpaper
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/product-hunt-thumbnail.png
 image: /assets/product-hunt-thumbnail.png
 ---
 
-# Product Hunt Launch Kit For Bilig
+# Bilig Product Surface Notes
 
-Use this page when a launch surface needs the short version of what `bilig`
-does, the proof links, and the assets in one place.
-
-Do not launch with a vague "AI spreadsheet" pitch. The useful claim is smaller:
-`@bilig/headless` runs workbook formulas from TypeScript, edits cells through an
-API, reads the calculated value, and saves the WorkPaper as JSON.
+Use this page when a product or directory surface needs short, factual Bilig
+copy plus the current proof links and assets. Do not use canned comments,
+generic launch copy, or vague spreadsheet-agent positioning.
 
 ## Product Copy
 
 Name:
 
 ```text
-bilig
+Bilig
 ```
 
 Tagline:
 
 ```text
-Workbook formulas for TypeScript services and agents.
+WorkPaper formulas for TypeScript services.
 ```
 
 Short description:
 
 ```text
-bilig is a headless WorkPaper runtime for Node.js code that needs spreadsheet
-formulas without opening a browser grid. Build sheets, write an input, read the
-recalculated value, and save the workbook state as JSON.
+Bilig runs workbook-shaped business rules in Node: edit inputs, recalculate
+formulas, read outputs, and save WorkPaper JSON without opening a spreadsheet
+UI.
 ```
 
-First comment:
-
-```text
-I maintain bilig. The shortest way to judge it is the npm-only smoke test:
-start from an empty Node project, install @bilig/headless, run eval.ts, edit an
-input, read the recalculated value, save WorkPaper JSON, restore it, and check
-the value again.
-
-It is for backend and agent workflows where formulas are product logic, not for
-manual spreadsheet editing. The benchmark and compatibility gaps are public:
-100/100 comparable mean-latency rows are faster in the checked WorkPaper vs
-HyperFormula artifact, the worst p95 row is named, and UI rendering is out of
-scope.
-
-Useful feedback would be concrete: which formula family, persistence shape, MCP
-client, or import/export path would block you from trying this in a real
-service?
-```
-
-## Links
+## Proof Links
 
 - Homepage: <https://proompteng.github.io/bilig/>
-- npm smoke test: <https://proompteng.github.io/bilig/try-bilig-headless-in-node.html>
+- npm package: <https://www.npmjs.com/package/@bilig/workpaper>
 - Repository: <https://github.com/proompteng/bilig>
-- npm package: <https://www.npmjs.com/package/@bilig/headless>
-- Benchmark notes: <https://proompteng.github.io/bilig/what-workpaper-benchmark-proves.html>
-- Compatibility gaps: <https://proompteng.github.io/bilig/where-bilig-is-not-excel-compatible-yet.html>
+- Node service evaluator:
+  <https://proompteng.github.io/bilig/eval-workpaper-service.html>
+- MCP tool evaluator: <https://proompteng.github.io/bilig/eval-agent-mcp.html>
+- Benchmark scope:
+  <https://proompteng.github.io/bilig/what-workpaper-benchmark-proves.html>
+- Compatibility limits:
+  <https://proompteng.github.io/bilig/where-bilig-is-not-excel-compatible-yet.html>
 - MCP setup: <https://proompteng.github.io/bilig/mcp-client-setup.html>
 - Starter issues:
   <https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only>
@@ -73,64 +55,59 @@ service?
 
 Thumbnail:
 
-![Product Hunt thumbnail](../../docs/assets/product-hunt-thumbnail.png)
+![Product thumbnail](../../docs/assets/product-hunt-thumbnail.png)
 
 Gallery:
 
 ![Workbook API gallery image](../../docs/assets/product-hunt-gallery-01-workbook-api.png)
 
-![Agent readback gallery image](../../docs/assets/product-hunt-gallery-02-agent-readback.png)
+![Formula readback gallery image](../../docs/assets/product-hunt-gallery-02-agent-readback.png)
 
 ![Node service gallery image](../../docs/assets/product-hunt-gallery-03-node-service.png)
 
 Video:
 
-<video controls src="../../docs/assets/product-hunt-demo.webm" title="bilig Product Hunt launch demo"></video>
+<video controls src="../../docs/assets/product-hunt-demo.webm" title="Bilig product demo"></video>
 
-The WebM is for this docs page and social previews. Product Hunt accepts video
-as a YouTube link, so upload the demo to YouTube first if the launch needs
-video in the Product Hunt gallery.
+The WebM is for docs and social previews. If a launch form needs video, upload
+the demo to YouTube first or omit the video field.
 
-## Product Hunt Fit Check
+## Fit Check
 
-These checks follow Product Hunt's own launch prep guidance:
+These checks follow Product Hunt's launch prep guidance:
 <https://www.producthunt.com/launch/preparing-for-launch> and
 <https://www.producthunt.com/launch/>.
 
-- Availability: the npm smoke test is public and runnable before launch:
-  <https://proompteng.github.io/bilig/try-bilig-headless-in-node.html>.
+- Availability: the npm evaluator is public and runnable before any submission.
 - Account: submit from a personal maker account, not a company account.
 - Timing: a Product Hunt launch day starts at midnight PST.
 - Ask: invite people to check it out and leave feedback. Do not ask for
   upvotes.
-- Tagline: `53 / 60` characters.
-- Description: `214 / 500` characters.
-- Thumbnail: `240x240`, 8.6 KB, below Product Hunt's 2 MB image limit.
-- Gallery images: `1270x760`, all below Product Hunt's 5 MB image limit.
-- Video: use a YouTube link in Product Hunt. The local
-  `docs/assets/product-hunt-demo.webm` is not the launch-form video field.
+- Thumbnail: `240x240`, below Product Hunt's 2 MB image limit.
+- Gallery images: `1270x760`, below Product Hunt's 5 MB image limit.
+- Video: use a YouTube link in Product Hunt; the local WebM is not the
+  launch-form video field.
 
 ## Proof To Lead With
 
-- The smoke test installs from npm and does not clone the monorepo.
-- The example is TypeScript: `eval.ts` is maintained in
-  `examples/headless-workpaper/npm-eval.ts`.
-- The output must show `verified: true` after save and restore.
-- The public benchmark page documents the narrow `100/100` comparable mean-row
-  claim and the aggregate-overlapping-sliding-window worst p95 row.
-- The compatibility page says what is not Excel-compatible yet before a user
+- The evaluator installs from npm and does not clone the monorepo.
+- The public package is `@bilig/workpaper`.
+- A useful run returns `verified: true` after edit, recalculation, save, and
+  restore.
+- The benchmark page documents the narrow comparable-row claim and the worst
+  p95 row, currently `sheet-rename-dependencies`.
+- The compatibility page states what is not Excel-compatible yet before a user
   tries to import a real workbook.
 
 ## Launch Checklist
 
-1. Link to the npm smoke test, not only the repository.
+1. Link to a proof page, not only the repository.
 2. Upload the thumbnail and three gallery images.
 3. Use a YouTube link only if the demo has been uploaded there; otherwise omit
-   video from the Product Hunt form.
+   video from the form.
 4. Submit from a personal maker account.
-5. Pin the first comment above.
-6. Ask for feedback, not upvotes.
-7. Stay online to answer questions about Excel compatibility, XLSX import,
-   MCP setup, and benchmark scope.
-8. If somebody asks for a missing workflow, turn it into a small
-   `first-timers-only` issue or a focused example.
+5. Ask for feedback, not upvotes.
+6. Stay online to answer questions about compatibility, import/export, MCP
+   setup, and benchmark scope.
+7. If somebody asks for a missing workflow, turn it into a small issue or a
+   focused example.
