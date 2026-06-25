@@ -54,8 +54,8 @@ npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-
   },
   "verified": true,
   "limitations": [
-    "This challenge proves the file-backed MCP WorkPaper tool surface, not Excel desktop UI automation.",
-    "For XLSX-specific behavior, run bilig-formula-clinic or the XLSX recalculation example with a real workbook fixture."
+    "This challenge proves the file-backed MCP WorkPaper tool surface, not every desktop spreadsheet feature.",
+    "Use saved-file compatibility evaluators only when a workbook file is the integration contract."
   ]
 }
 ```

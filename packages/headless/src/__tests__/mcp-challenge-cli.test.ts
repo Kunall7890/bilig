@@ -11,7 +11,8 @@ import {
 
 describe('bilig-mcp-challenge', () => {
   it('builds the verified file-backed MCP proof object', () => {
-    expect(buildMcpChallengeProof()).toMatchObject({
+    const proof = buildMcpChallengeProof()
+    expect(proof).toMatchObject({
       transport: 'stdio-json-rpc',
       serverName: 'bilig-headless-workpaper',
       tools: [
@@ -54,6 +55,10 @@ describe('bilig-mcp-challenge', () => {
       },
       verified: true,
     })
+    expect(proof.limitations).toEqual([
+      'This challenge proves the file-backed MCP WorkPaper tool surface, not every desktop spreadsheet feature.',
+      'Use saved-file compatibility evaluators only when a workbook file is the integration contract.',
+    ])
   })
 
   it('prints JSON by default', () => {
@@ -84,7 +89,8 @@ describe('bilig-mcp-challenge', () => {
   })
 
   it('builds a verified revenue-plan MCP scenario with multiple formula families', () => {
-    expect(buildMcpRevenuePlanChallengeProof()).toMatchObject({
+    const proof = buildMcpRevenuePlanChallengeProof()
+    expect(proof).toMatchObject({
       transport: 'stdio-json-rpc',
       scenario: 'revenue-plan',
       serverName: 'bilig-headless-workpaper',
@@ -128,6 +134,10 @@ describe('bilig-mcp-challenge', () => {
       },
       verified: true,
     })
+    expect(proof.limitations).toEqual([
+      'This revenue-plan challenge proves a realistic file-backed MCP WorkPaper path, not every desktop spreadsheet feature.',
+      'It covers formula readback for SUM, SUMIF, XLOOKUP, FILTER spills, and a named expression; use real workbook fixtures for domain-specific parity.',
+    ])
   })
 
   it('builds a verified provider-backed MCP scenario with blocked diagnostics and adapter readback', () => {

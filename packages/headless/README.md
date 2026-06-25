@@ -244,8 +244,8 @@ Expected output:
   },
   "verified": true,
   "limitations": [
-    "This challenge proves the WorkPaper write/read/persist loop, not full Excel desktop compatibility.",
-    "For XLSX-specific behavior, run bilig-formula-clinic or the XLSX recalculation example with a real workbook fixture."
+    "This challenge proves the WorkPaper write/read/persist loop for service-owned JSON state, not every desktop spreadsheet feature.",
+    "Use saved-file compatibility evaluators only when a workbook file is the integration contract."
   ]
 }
 ```

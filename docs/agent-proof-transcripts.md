@@ -29,15 +29,15 @@ Observed package versions in the transcript:
 
 The important proof shape is the same for every agent host:
 
-| Step | Evidence |
-| --- | --- |
-| Prompt | Ask the agent to prove a workbook-shaped formula edit before driving Excel, LibreOffice, Google Sheets, or a browser grid. |
-| Tool call | Run `bilig-evaluate --door agent-mcp --json` or the local MCP equivalent. |
-| Result | Return `schemaVersion: "bilig-evaluator.v1"`, `door: "agent-mcp"`, and `verified: true`. |
-| Workbook state change | `Inputs!B3` changes the dependent `Summary!B3` value from `60000` to `96000`. |
-| Formula readback | `after`, `afterRestore`, and `afterRestart` all read `96000`. |
-| JSON export | `persistedDocumentBytes` is `1162`, and the exported WorkPaper document is restored. |
-| Restart readback verification | `restartReadbackMatchesAfter: true`. |
+| Step                          | Evidence                                                                                                                   |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Prompt                        | Ask the agent to prove a workbook-shaped formula edit before driving Excel, LibreOffice, Google Sheets, or a browser grid. |
+| Tool call                     | Run `bilig-evaluate --door agent-mcp --json` or the local MCP equivalent.                                                  |
+| Result                        | Return `schemaVersion: "bilig-evaluator.v1"`, `door: "agent-mcp"`, and `verified: true`.                                   |
+| Workbook state change         | `Inputs!B3` changes the dependent `Summary!B3` value from `60000` to `96000`.                                              |
+| Formula readback              | `after`, `afterRestore`, and `afterRestart` all read `96000`.                                                              |
+| JSON export                   | `persistedDocumentBytes` is `1162`, and the exported WorkPaper document is restored.                                       |
+| Restart readback verification | `restartReadbackMatchesAfter: true`.                                                                                       |
 
 Pick the host transcript that matches the agent you are using:
 
@@ -89,8 +89,9 @@ The transcript proves that a coding agent can discover the WorkPaper MCP tool
 surface, write a cell, read a dependent formula, export JSON, restore the
 document, and verify restart readback.
 
-It does not prove Excel desktop UI automation, macro execution, pivot refresh,
-chart layout, private workbook compatibility, or hosted multi-user storage.
+It does not prove every desktop spreadsheet feature, macro execution, pivot
+refresh, chart layout, private workbook compatibility, or hosted multi-user
+storage.
 
 ## Related
 

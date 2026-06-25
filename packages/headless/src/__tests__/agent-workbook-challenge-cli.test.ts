@@ -9,7 +9,8 @@ import {
 
 describe('bilig-agent-challenge', () => {
   it('builds the verified WorkPaper proof object', () => {
-    expect(buildAgentWorkbookChallengeProof()).toMatchObject({
+    const proof = buildAgentWorkbookChallengeProof()
+    expect(proof).toMatchObject({
       editedCell: 'Inputs!B2',
       dependentCell: 'Summary!B2',
       before: 24_000,
@@ -22,6 +23,10 @@ describe('bilig-agent-challenge', () => {
       },
       verified: true,
     })
+    expect(proof.limitations).toEqual([
+      'This challenge proves the WorkPaper write/read/persist loop for service-owned JSON state, not every desktop spreadsheet feature.',
+      'Use saved-file compatibility evaluators only when a workbook file is the integration contract.',
+    ])
   })
 
   it('prints JSON by default', () => {

@@ -103,7 +103,7 @@ export async function requireAgentProofMatrixDiscovery({
     '[Cursor](agent-proof-transcripts/cursor.md)',
     '[Continue](agent-proof-transcripts/continue.md)',
     '"verified": true',
-    'It does not prove Excel desktop UI automation',
+    'It does not prove every desktop spreadsheet feature',
   ] as const) {
     requireIncludes(agentProofTranscriptsDoc, required, 'docs/agent-proof-transcripts.md')
   }
