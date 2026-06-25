@@ -1,9 +1,13 @@
-# Headless WorkPaper Example
+# WorkPaper Examples For Node Services
 
-This example shows `@bilig/headless` running as a Node library with no browser
-UI. It builds a small revenue workbook, evaluates formulas, uses a named
-expression in the revenue plan, applies an agent-style edit, persists the
-workbook, restores it, and prints the verified summary.
+This folder has runnable WorkPaper examples for Node services, agent tools, and
+MCP clients. They run without a browser UI, edit workbook inputs through code,
+recalculate formulas, persist WorkPaper JSON, restore it, and print verified
+readback.
+
+Use `@bilig/workpaper` for the package-level service and agent API. The
+lower-level examples still use `@bilig/headless` where they need direct runtime
+or MCP internals.
 
 Run it from a cloned checkout:
 

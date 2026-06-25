@@ -1,7 +1,7 @@
 {
   "name": "bilig-headless-workpaper-example",
   "private": true,
-  "description": "Runnable Node example for the @bilig/headless WorkPaper API.",
+  "description": "Runnable WorkPaper examples for Node services and agent tools.",
   "type": "module",
   "scripts": {
     "agent:ai-sdk-generate-text": "node --disable-warning=DEP0205 --import tsx ai-sdk-generate-text-tool-smoke.ts",

@@ -42,7 +42,9 @@ This snapshot tracks the public signals for the Bilig WorkPaper growth loop: Git
 - #421 [Show and tell: using GPT for Sheets for spreadsheet enrichment and content ops](https://github.com/proompteng/bilig/discussions/421) (Show and tell, 0 comments)
 - #157 [Which Node workbook automation workflow should @bilig/headless prove next?](https://github.com/proompteng/bilig/discussions/157) (Ideas, 11 comments)
 - #270 [Show and tell: try @bilig/headless from npm in an empty Node project](https://github.com/proompteng/bilig/discussions/270) (Show and tell, 2 comments)
-- #382 [How should headless spreadsheet engines handle stale XLSX cached values?](https://github.com/proompteng/bilig/discussions/382) (Ideas, 2 comments)
+- Current conversion focus: keep #213 and #335 warm around runnable WorkPaper
+  service, MCP, and agent-tool proofs. Keep cached-file import edge cases as a
+  secondary diagnostic for teams that already need import/export verification.
 
 ## Traffic
 
@@ -59,6 +61,11 @@ This snapshot tracks the public signals for the Bilig WorkPaper growth loop: Git
   ([OpenAI Responses WorkPaper tool calls](https://github.com/proompteng/bilig/discussions/335))
   from older clone-first or package-boundary copy to concise WorkPaper-first
   evaluation paths with no-key evaluator commands and concrete feedback asks.
+- 2026-06-25T08:28:48Z: updated the high-traffic
+  [`examples/headless-workpaper`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper)
+  README and package metadata so the first screen presents runnable WorkPaper
+  service and agent examples first, while keeping `@bilig/headless` named only
+  for lower-level runtime and MCP internals.
 
 ## External Discovery
 
@@ -78,7 +85,9 @@ This snapshot tracks the public signals for the Bilig WorkPaper growth loop: Git
 
 - The visible May 7-11 star jump still lines up with external developer traffic, not broad social posting.
 - The strongest current external referrer is Google with 6 views from 6 unique visitors.
-- Replication plan: do not repost the same launch. Ship one sharper proof page, then ask HN/X/MCP audiences for a concrete adoption blocker: formula family, XLSX cache behavior, persistence shape, or agent writeback verification.
+- Replication plan: do not repost the same launch. Ship one sharper proof page,
+  then ask HN/X/MCP audiences for a concrete adoption blocker around service
+  persistence, hosted MCP, formula coverage, or agent writeback verification.
 
 ## Read This Snapshot
 
