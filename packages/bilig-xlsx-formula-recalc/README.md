@@ -365,9 +365,9 @@ explicitly.
 
 ## After The Proof
 
-If the recalculation proof matches the Node/XLSX workflow you need, star or
-bookmark the repo so you can find it again:
-<https://github.com/proompteng/bilig/stargazers>.
+If the recalculation proof matches the Node/XLSX workflow you need, keep the
+repository and release feed nearby:
+<https://github.com/proompteng/bilig>.
 
 Watch releases if the package is close to a production path:
 <https://github.com/proompteng/bilig/subscription>.

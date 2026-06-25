@@ -704,8 +704,8 @@ Result: ${proof.verified ? 'verified' : 'failed'}.
 
 The important invariant is that \`${proof.editedCell}\` changed the dependent formula cell \`${proof.dependentCell}\`, the edit persisted to WorkPaper JSON, and a restarted file-backed MCP server read the same computed value.
 
-If this proof matched your workflow, star or bookmark Bilig after the JSON proof is clean:
-https://github.com/proompteng/bilig/stargazers
+If this proof matched your workflow, keep the repository and release feed nearby:
+https://github.com/proompteng/bilig
 
 If it almost worked, open the concrete MCP or workbook blocker:
 https://github.com/proompteng/bilig/discussions/new?category=general

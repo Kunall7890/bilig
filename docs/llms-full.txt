@@ -380,9 +380,9 @@ Source: https://github.com/proompteng/bilig/blob/main/README.md
 # bilig
 
 [![CI](https://github.com/proompteng/bilig/actions/workflows/ci.yml/badge.svg)](https://github.com/proompteng/bilig/actions/workflows/ci.yml)
-[![npm: @bilig/xlsx-formula-recalc](https://img.shields.io/npm/v/@bilig/xlsx-formula-recalc?label=%40bilig%2Fxlsx-formula-recalc)](https://www.npmjs.com/package/@bilig/xlsx-formula-recalc)
-[![npm: @bilig/headless](https://img.shields.io/npm/v/@bilig/headless?label=%40bilig%2Fheadless)](https://www.npmjs.com/package/@bilig/headless)
 [![npm: @bilig/workpaper](https://img.shields.io/npm/v/@bilig/workpaper?label=%40bilig%2Fworkpaper)](https://www.npmjs.com/package/@bilig/workpaper)
+[![npm: @bilig/headless](https://img.shields.io/npm/v/@bilig/headless?label=%40bilig%2Fheadless)](https://www.npmjs.com/package/@bilig/headless)
+[![npm: @bilig/xlsx-formula-recalc](https://img.shields.io/npm/v/@bilig/xlsx-formula-recalc?label=%40bilig%2Fxlsx-formula-recalc)](https://www.npmjs.com/package/@bilig/xlsx-formula-recalc)
 [![CodeQL](https://github.com/proompteng/bilig/actions/workflows/codeql.yml/badge.svg)](https://github.com/proompteng/bilig/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge)](https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -399,12 +399,12 @@ Start with the boundary you actually have. Do not drive Excel, LibreOffice,
 Google Sheets, or a screenshot UI just to learn whether a formula value is
 fresh.
 
-Run the no-clone checks:
+Run these from any Node project:
 
 ```sh
-npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json
 npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 ```
 
@@ -507,18 +507,18 @@ Pick the path that matches the job:
 
 | You have...                                                                                             | Start with                                                                       | You should see                                                                                                                                                                              |
 | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A Node service, route, queue, test, or tool needs workbook logic                                        | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)               | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.                                                                                                      |
+| A coding agent or MCP client needs workbook tools without UI automation                                 | [Agent MCP evaluator](docs/eval-agent-mcp.md)                                    | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`.                                                                                                   |
+| You need to choose among agent, MCP, AI SDK, OpenAI, LangGraph, Semantic Kernel, or XLSX proof          | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md)                       | the smallest command or example for the host boundary, plus what it does and does not prove.                                                                                                |
+| You need to see a successful agent session shape before adopting                                        | [Agent proof transcripts](docs/agent-proof-transcripts.md)                       | prompt, tool call, result, workbook state change, formula readback, JSON export, and restart verification.                                                                                  |
+| A coding agent needs the right repo rule or MCP config file                                             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                          | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Kiro, Roo Code, Trae, Qodo IDE, Zed, Junie, OpenHands, OpenCode, Aider, Goose, Windsurf, Cline, Continue, or Gemini. |
 | You are not sure whether XLSX, SheetJS, ExcelJS, xlsx-populate, CI, WorkPaper, or an agent owns the fix | [Stale formula readback chooser](docs/stale-formula-readback-chooser.md)         | the smallest proof command for the boundary, plus when not to use it.                                                                                                                       |
 | You need to know whether a specific workbook has Bilig integration risks                                | [Workbook Compatibility Report](docs/workbook-compatibility-report.md)           | unsupported functions, external links, macros, pivots, volatile formulas, cache risks, and no compatibility score.                                                                          |
 | A coding agent already has a real `.xlsx` and needs MCP before edits                                    | [Agent XLSX risk preflight](docs/agent-xlsx-risk-preflight.md)                   | `analyze_workbook_risk`, `Inputs!B3`, `Summary!B3`, `60000 -> 96000`, export, and `verified: true`.                                                                                         |
 | A real `.xlsx` file has stale formula results after Node edits                                          | [XLSX Cache Doctor evaluator](docs/eval-xlsx-cache-doctor.md)                    | stale cells, cached values, recalculated values, suggested reads, and JSON output.                                                                                                          |
 | You need to see the exact stale-cache output before adopting                                            | [XLSX Cache Doctor proof transcript](docs/xlsx-cache-doctor-proof-transcript.md) | `Summary!B2` and `Sheet1!B61` cached-vs-recalculated proof, plus CI boundary.                                                                                                               |
 | Pull requests can commit XLSX fixtures with stale cached values                                         | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md)       | report-only workbook findings before the workflow blocks anything.                                                                                                                          |
-| A Node service, route, queue, test, or tool needs workbook logic                                        | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)               | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.                                                                                                      |
-| A coding agent or MCP client needs workbook tools without UI automation                                 | [Agent MCP evaluator](docs/eval-agent-mcp.md)                                    | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`.                                                                                                   |
-| A coding agent needs the right repo rule or MCP config file                                             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                          | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Kiro, Roo Code, Trae, Qodo IDE, Zed, Junie, OpenHands, OpenCode, Aider, Goose, Windsurf, Cline, Continue, or Gemini. |
 | You are comparing Excel MCP servers, hosted spreadsheet agents, or file-first XLSX tools                | [Spreadsheet MCP server comparison](docs/spreadsheet-mcp-server-comparison.md)   | the account/session/file/runtime boundary before an agent trusts formula readback.                                                                                                          |
-| You need to choose among agent, MCP, AI SDK, OpenAI, LangGraph, Semantic Kernel, or XLSX proof          | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md)                       | the smallest command or example for the host boundary, plus what it does and does not prove.                                                                                                |
-| You need to see a successful agent session shape before adopting                                        | [Agent proof transcripts](docs/agent-proof-transcripts.md)                       | prompt, tool call, result, workbook state change, formula readback, JSON export, and restart verification.                                                                                  |
 | Existing XLSX outputs need refreshed cached results                                                     | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)                         | changed input, recalculated output, output workbook, and `recalculationCompleted: true`.                                                                                                    |
 
 If you are not sure which one fits, start with the thing that owns state. Use
@@ -710,9 +710,9 @@ formula-value problem without asking you to adopt WorkPaper state first.
 
 | Problem you have right now                                                        | Install or use                           | First proof                                                                      |
 | --------------------------------------------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------- |
+| Formula workbook state belongs inside a Node service, route, queue, test, or tool | `npm install @bilig/workpaper`           | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)               |
 | Pull requests can commit XLSX fixtures with stale formula caches                  | `uses: proompteng/bilig@v1`              | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md)       |
 | Generic XLSX bytes changed in Node; formula outputs must refresh before returning | `npm install @bilig/xlsx-formula-recalc` | [XLSX formula recalculation in Node.js](docs/xlsx-formula-recalculation-node.md) |
-| Formula workbook state belongs inside a Node service, route, queue, test, or tool | `npm install @bilig/workpaper`           | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)               |
 
 Advanced adapters are still available when the boundary is already specific:
 [SheetJS](docs/sheetjs-formula-result-not-updating-node.md),
@@ -2211,20 +2211,20 @@ as complete coverage unless `uninspectedFormulaCellCount` is `0`.
 ## Use the same report in Node
 
 ```ts
-import { readFile } from "node:fs/promises";
-import { inspectXlsxCache } from "@bilig/xlsx-formula-recalc";
+import { readFile } from 'node:fs/promises'
+import { inspectXlsxCache } from '@bilig/xlsx-formula-recalc'
 
-const report = inspectXlsxCache(await readFile("pricing.xlsx"), {
-  fileName: "pricing.xlsx",
-});
+const report = inspectXlsxCache(await readFile('pricing.xlsx'), {
+  fileName: 'pricing.xlsx',
+})
 
 if (report.staleCachedFormulaCount > 0) {
   throw new Error(
     report.formulas
-      .filter((formula) => formula.cacheStatus === "stale")
+      .filter((formula) => formula.cacheStatus === 'stale')
       .map((formula) => formula.target)
-      .join(", "),
-  );
+      .join(', '),
+  )
 }
 ```
 
@@ -2257,9 +2257,9 @@ pull requests:
 ```yaml
 - uses: proompteng/bilig@v1
   with:
-    workbooks: "**/*.xlsx"
-    changed-files-only: "true"
-    fail-on-stale: "false"
+    workbooks: '**/*.xlsx'
+    changed-files-only: 'true'
+    fail-on-stale: 'false'
 ```
 
 The action writes JSON and Markdown reports, adds a job summary, and exposes
@@ -2284,8 +2284,8 @@ external-link freshness, or exact desktop Excel UI behavior.
 
 ## After the proof
 
-- Star Bilig if this found a stale cached formula problem:
-  <https://github.com/proompteng/bilig/stargazers>
+- Repository:
+  <https://github.com/proompteng/bilig>
 - Watch releases if you want formula and XLSX compatibility updates:
   <https://github.com/proompteng/bilig/subscription>
 - Report the exact adoption blocker:
@@ -2608,8 +2608,8 @@ and an Excel or LibreOffice oracle test for customer-critical file flows.
 
 ## After the proof
 
-- Star Bilig if this solved the XLSX recalculation problem:
-  <https://github.com/proompteng/bilig/stargazers>
+- Repository:
+  <https://github.com/proompteng/bilig>
 - Watch releases if you want compatibility and formula updates:
   <https://github.com/proompteng/bilig/subscription>
 - Report the exact adoption blocker:
@@ -2709,8 +2709,8 @@ oracle test around the exact files you accept.
 
 ## After the proof
 
-- Star Bilig if this removed the external-workbook XLSX blocker:
-  <https://github.com/proompteng/bilig/stargazers>
+- Repository:
+  <https://github.com/proompteng/bilig>
 - Watch releases if you need formula and workbook compatibility updates:
   <https://github.com/proompteng/bilig/subscription>
 - Report the exact workbook-link blocker if it almost worked:
@@ -2999,8 +2999,8 @@ the source of truth.
 
 ## After the proof
 
-- Star Bilig if this is the service shape you needed:
-  <https://github.com/proompteng/bilig/stargazers>
+- Repository:
+  <https://github.com/proompteng/bilig>
 - Watch releases for API and formula runtime updates:
   <https://github.com/proompteng/bilig/subscription>
 - Report the exact adoption blocker:
@@ -3031,12 +3031,12 @@ task, and require formula readback before calling the job done.
 Choose Bilig instead of Excel or Sheets UI automation when the agent needs a
 machine-checkable workbook proof, not a visual session transcript.
 
-| Agent need                  | Use Bilig WorkPaper                                                                                                             | Keep Excel, Sheets, or browser UI automation                                                                      |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Cell-addressed automation   | The task names exact sheets, ranges, or cells such as `Inputs!B3` and `Summary!B3`.                                              | The task depends on a person inspecting or editing the live grid.                                                  |
-| Formula proof after writes  | Success requires formula readback after writes through `set_cell_contents_and_readback`, not a write-call status.                | The spreadsheet product owns recalculation and the agent only needs to click through the product UI.               |
-| Durable agent state         | The agent must export, persist, restore, or restart from persisted WorkPaper JSON and prove the same calculated value comes back. | The durable artifact is an existing Excel or Sheets file with macros, charts, pivots, add-ins, or visual layout.   |
-| CI and tool-call evidence   | The result must fit logs, MCP transcripts, CI checks, or a compact proof object with `verified: true`.                           | The output is a screenshot, screen recording, manual review note, or collaboration comment in a spreadsheet app.   |
+| Agent need                 | Use Bilig WorkPaper                                                                                                               | Keep Excel, Sheets, or browser UI automation                                                                     |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Cell-addressed automation  | The task names exact sheets, ranges, or cells such as `Inputs!B3` and `Summary!B3`.                                               | The task depends on a person inspecting or editing the live grid.                                                |
+| Formula proof after writes | Success requires formula readback after writes through `set_cell_contents_and_readback`, not a write-call status.                 | The spreadsheet product owns recalculation and the agent only needs to click through the product UI.             |
+| Durable agent state        | The agent must export, persist, restore, or restart from persisted WorkPaper JSON and prove the same calculated value comes back. | The durable artifact is an existing Excel or Sheets file with macros, charts, pivots, add-ins, or visual layout. |
+| CI and tool-call evidence  | The result must fit logs, MCP transcripts, CI checks, or a compact proof object with `verified: true`.                            | The output is a screenshot, screen recording, manual review note, or collaboration comment in a spreadsheet app. |
 
 Run the no-key proof before adopting the path:
 
@@ -3379,8 +3379,8 @@ form by itself is not.
 
 ## After The Check
 
-If the check matches your workflow, keep the repo so you can find it again:
-<https://github.com/proompteng/bilig/stargazers>.
+If the check matches your workflow, keep the repository nearby:
+<https://github.com/proompteng/bilig>.
 
 If you need release notifications for agent or MCP changes, watch releases:
 <https://github.com/proompteng/bilig/subscription>.
@@ -3682,8 +3682,8 @@ no blind write-only success, and no missing persistence proof.
 
 ## After the proof
 
-- Star Bilig if this gives your agent the workbook tool contract it needed:
-  <https://github.com/proompteng/bilig/stargazers>
+- Repository:
+  <https://github.com/proompteng/bilig>
 - Watch releases for MCP and agent-tool updates:
   <https://github.com/proompteng/bilig/subscription>
 - Report the exact adoption blocker:
@@ -4435,9 +4435,8 @@ The useful output is not a write-call status. It is readback proof:
 }
 ```
 
-If that is the contract your service or agent needed, star the repo so you can
-find it again: <https://github.com/proompteng/bilig/stargazers>. Watch releases
-if this is close to production: <https://github.com/proompteng/bilig/subscription>.
+If this is close to production, watch releases and review the public limits:
+<https://github.com/proompteng/bilig/subscription>.
 
 For a richer agent check, add `--scenario revenue-plan` to the `agent-mcp`
 evaluator. It proves `SUM`, `SUMIF`, `XLOOKUP`, `FILTER`, a named expression,
@@ -4714,9 +4713,9 @@ macros, and volatile functions may need review.
 
 ## After The Proof
 
-If the starter or challenge output gives you `verified: true` for the service
-or agent workflow you need, star or bookmark Bilig so the WorkPaper runtime is
-easy to find again: <https://github.com/proompteng/bilig/stargazers>.
+If the starter or challenge output matches your service or agent workflow,
+keep the repository nearby for release notes and public limits:
+<https://github.com/proompteng/bilig>.
 
 Watch releases if this is close to a production path:
 <https://github.com/proompteng/bilig/subscription>.
@@ -6090,38 +6089,38 @@ touch spreadsheet-shaped business logic.
 
 ## Quick Decision Table
 
-| Need                                                                                                     | Better starting point                                       |
-| -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Need                                                                                                      | Better starting point                                       |
+| --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | Control a live Excel session through an add-in, paired session, OAuth, or account-backed service          | Hosted or Excel-native MCP control layer                    |
 | Import an `.xlsx` into a collaborative spreadsheet workspace with Python, SQL, charts, and agent access   | Hosted spreadsheet workspace MCP                            |
 | Run an agent-authored script against Excel files for rendering, linting, calculation, and structured JSON | Spreadsheet CLI or API runtime                              |
-| Read and write arbitrary `.xlsx` files with formatting, charts, and workbook layout                      | Excel-focused MCP server or an Office automation workflow   |
-| Read and update Google Sheets through a live cloud spreadsheet                                           | Google Sheets MCP server                                    |
-| Let an agent inspect workbook structure, formulas, and cached values without mutating files              | Read-only spreadsheet inspection MCP server                 |
-| Mutate service-owned workbook inputs, recalculate formulas, verify before/after values, and persist JSON | Bilig WorkPaper MCP                                         |
-| Exact Excel compatibility across macros, pivots, charts, external links, and every function              | Excel, LibreOffice, Graph API, or a dedicated Excel runtime |
+| Read and write arbitrary `.xlsx` files with formatting, charts, and workbook layout                       | Excel-focused MCP server or an Office automation workflow   |
+| Read and update Google Sheets through a live cloud spreadsheet                                            | Google Sheets MCP server                                    |
+| Let an agent inspect workbook structure, formulas, and cached values without mutating files               | Read-only spreadsheet inspection MCP server                 |
+| Mutate service-owned workbook inputs, recalculate formulas, verify before/after values, and persist JSON  | Bilig WorkPaper MCP                                         |
+| Exact Excel compatibility across macros, pivots, charts, external links, and every function               | Excel, LibreOffice, Graph API, or a dedicated Excel runtime |
 
 ## Named Public Alternatives
 
 Use the existing spreadsheet MCP ecosystem when the source of truth is already
 somewhere else:
 
-| Server or path                                                          | Best fit                                                                                 | Boundary to check before adopting                                                               |
-| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| [Witan](https://www.witanlabs.com/)                                      | Agents that can call a CLI, SDK, or API against Excel files for read, write, render, calculate, lint, and structured JSON workflows | Not positioned as a public MCP server in the inspected docs; the Witan API, cloud, or self-hosted runtime is part of proof |
-| [Cellium](https://cellium.dev/)                                          | MCP clients that need a paired Excel Add-in/session control layer with structured cell operations | Requires a Cellium account/API key and live Excel runtime pairing; do not treat it as a local no-key WorkPaper runtime |
-| [xlsx-for-ai](https://xlsx-for-ai.dev/)                                  | Hosted API plus npm/MCP client for reading, writing, validating, diffing, and redacting Excel files | Non-fallback API calls are hosted; strict mode is a privacy/error-capture setting, not proof of fresh formula recalculation |
-| [Quadratic Excel MCP](https://www.quadratichq.com/ai/mcp/excel)          | Hosted Quadratic workspace after importing `.xlsx`, with formulas, charts, Python, SQL, OAuth, and AI clients | Quadratic becomes the working spreadsheet surface and exports back to `.xlsx`; it is not a local file-only MCP server |
-| [Google Sheets MCP](https://github.com/henilcalagiya/google-sheets-mcp) | Agents that need CRUD operations against live Google Sheets through a service account    | Requires Google Cloud, Sheets API, Drive API, and service-account setup                         |
-| [Univer MCP](https://github.com/dream-num/univer-mcp)                   | Agents that operate a Univer spreadsheet runtime through an MCP session                  | Requires an API key and a running Univer instance; the repo labels plain-text mode experimental |
-| [GRID MCP](https://github.com/GRID-is/claude-mcp)                       | Claude Desktop workflows against spreadsheets uploaded to GRID                           | Requires a GRID account, uploaded workbook, and API key                                         |
-| [mort-lab Excel MCP](https://github.com/mort-lab/excel-mcp)             | Openpyxl-backed local `.xlsx` creation, editing, formatting, and formula authoring       | Openpyxl writes formulas but does not calculate them; `data_only` values are cached workbook values unless another engine refreshed them |
-| [negokaz Excel MCP Server](https://github.com/negokaz/excel-mcp-server) | Local Excel workbook editing, with Windows live-Excel mode for open workbooks            | Live editing and screenshots are Windows Excel COM/OLE paths; formula writes are not full proof |
-| [haris-musa Excel MCP Server](https://github.com/haris-musa/excel-mcp-server) | Openpyxl-backed Excel file mutation over stdio or HTTP transports                   | Formula validation and formula writing are not the same as recalculated dependent readback      |
-| [SheetForge MCP](https://mcpservers.org/servers/iheldan/sheetforge-mcp) | Local-first workbook inspection, mutation, audit, diff, repair, formula-inspection, and layout-aware agent workflows | Its docs explicitly say read tools do not recalculate Excel formulas                            |
-| [CData MCP Server for Microsoft Excel](https://cdn.cdata.com/help/RXK/mcp/pg_excelformula.htm) | Commercial Excel connector with configurable read-time formula recalculation | Check connector coverage, licensing, and the `Recalculate` setting before relying on results    |
-| Excel file or SheetJS-style tooling                                     | Creating, reading, or preserving `.xlsx` files                                           | A file library can preserve formulas without recalculating fresh results in Node                |
-| Bilig WorkPaper MCP                                                     | Local agent tools that own WorkPaper JSON and need write, recalculate, readback, restore | Not a full Excel editor; use it when formula readback is the product                            |
+| Server or path                                                                                 | Best fit                                                                                                                            | Boundary to check before adopting                                                                                                        |
+| ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| [Witan](https://www.witanlabs.com/)                                                            | Agents that can call a CLI, SDK, or API against Excel files for read, write, render, calculate, lint, and structured JSON workflows | Not positioned as a public MCP server in the inspected docs; the Witan API, cloud, or self-hosted runtime is part of proof               |
+| [Cellium](https://cellium.dev/)                                                                | MCP clients that need a paired Excel Add-in/session control layer with structured cell operations                                   | Requires a Cellium account/API key and live Excel runtime pairing; do not treat it as a local no-key WorkPaper runtime                   |
+| [xlsx-for-ai](https://xlsx-for-ai.dev/)                                                        | Hosted API plus npm/MCP client for reading, writing, validating, diffing, and redacting Excel files                                 | Non-fallback API calls are hosted; strict mode is a privacy/error-capture setting, not proof of fresh formula recalculation              |
+| [Quadratic Excel MCP](https://www.quadratichq.com/ai/mcp/excel)                                | Hosted Quadratic workspace after importing `.xlsx`, with formulas, charts, Python, SQL, OAuth, and AI clients                       | Quadratic becomes the working spreadsheet surface and exports back to `.xlsx`; it is not a local file-only MCP server                    |
+| [Google Sheets MCP](https://github.com/henilcalagiya/google-sheets-mcp)                        | Agents that need CRUD operations against live Google Sheets through a service account                                               | Requires Google Cloud, Sheets API, Drive API, and service-account setup                                                                  |
+| [Univer MCP](https://github.com/dream-num/univer-mcp)                                          | Agents that operate a Univer spreadsheet runtime through an MCP session                                                             | Requires an API key and a running Univer instance; the repo labels plain-text mode experimental                                          |
+| [GRID MCP](https://github.com/GRID-is/claude-mcp)                                              | Claude Desktop workflows against spreadsheets uploaded to GRID                                                                      | Requires a GRID account, uploaded workbook, and API key                                                                                  |
+| [mort-lab Excel MCP](https://github.com/mort-lab/excel-mcp)                                    | Openpyxl-backed local `.xlsx` creation, editing, formatting, and formula authoring                                                  | Openpyxl writes formulas but does not calculate them; `data_only` values are cached workbook values unless another engine refreshed them |
+| [negokaz Excel MCP Server](https://github.com/negokaz/excel-mcp-server)                        | Local Excel workbook editing, with Windows live-Excel mode for open workbooks                                                       | Live editing and screenshots are Windows Excel COM/OLE paths; formula writes are not full proof                                          |
+| [haris-musa Excel MCP Server](https://github.com/haris-musa/excel-mcp-server)                  | Openpyxl-backed Excel file mutation over stdio or HTTP transports                                                                   | Formula validation and formula writing are not the same as recalculated dependent readback                                               |
+| [SheetForge MCP](https://mcpservers.org/servers/iheldan/sheetforge-mcp)                        | Local-first workbook inspection, mutation, audit, diff, repair, formula-inspection, and layout-aware agent workflows                | Its docs explicitly say read tools do not recalculate Excel formulas                                                                     |
+| [CData MCP Server for Microsoft Excel](https://cdn.cdata.com/help/RXK/mcp/pg_excelformula.htm) | Commercial Excel connector with configurable read-time formula recalculation                                                        | Check connector coverage, licensing, and the `Recalculate` setting before relying on results                                             |
+| Excel file or SheetJS-style tooling                                                            | Creating, reading, or preserving `.xlsx` files                                                                                      | A file library can preserve formulas without recalculating fresh results in Node                                                         |
+| Bilig WorkPaper MCP                                                                            | Local agent tools that own WorkPaper JSON and need write, recalculate, readback, restore                                            | Not a full Excel editor; use it when formula readback is the product                                                                     |
 
 That split is useful for outreach too. Do not pitch Bilig as "another Google
 Sheets MCP server," "another Excel file editor," or "a hosted Excel control
@@ -6227,13 +6226,13 @@ product. Use Bilig WorkPaper MCP when recalculated readback is the product.
 Before an agent trusts a number after a write, classify the spreadsheet server
 by the proof it can return:
 
-| Boundary                                                               | What the agent can safely claim                                                 |
-| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Boundary                                                                        | What the agent can safely claim                                                                            |
+| ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | A hosted tool controls a paired Excel session or imported spreadsheet workspace | The live service or workspace performed the operation; the account/session/configuration is part of proof. |
-| A server writes formula text into an `.xlsx` file                      | The formula was authored; the result still needs a calculation engine.           |
-| A server reads workbook values through an `.xlsx` file library         | The value may be a cached value from the file unless recalculation is documented. |
-| A server can drive live desktop Excel or a commercial connector engine | The source must stay available and the engine/configuration must be part of proof. |
-| A server returns before/after cells from its own workbook runtime      | The agent can cite the edited input and dependent readback from the same run.    |
+| A server writes formula text into an `.xlsx` file                               | The formula was authored; the result still needs a calculation engine.                                     |
+| A server reads workbook values through an `.xlsx` file library                  | The value may be a cached value from the file unless recalculation is documented.                          |
+| A server can drive live desktop Excel or a commercial connector engine          | The source must stay available and the engine/configuration must be part of proof.                         |
+| A server returns before/after cells from its own workbook runtime               | The agent can cite the edited input and dependent readback from the same run.                              |
 
 That is the practical reason Bilig's MCP smoke is deliberately boring: edit a
 known input, recalculate dependent formulas, export or restore the WorkPaper
@@ -6312,9 +6311,9 @@ or persists anything," choose a formula runtime path and keep the MCP layer thin
 - [Bilig WorkPaper MCP registry search](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper)
 - [Bilig WorkPaper on Glama](https://glama.ai/mcp/servers/proompteng/bilig)
 
-If this is the MCP boundary you were looking for, star or bookmark Bilig so the
-server is easier for other agent builders to find:
-<https://github.com/proompteng/bilig/stargazers>.
+If this is the MCP boundary you were looking for, keep the repository and
+release feed nearby:
+<https://github.com/proompteng/bilig>.
 
 ---
 
@@ -14657,9 +14656,8 @@ Workspace.
 - [Where Bilig is not Excel-compatible yet](where-bilig-is-not-excel-compatible-yet.md)
 
 If this matches the workflow, run the proof before adopting it. If the proof
-passes, star or watch the repository so other backend and agent engineers can
-find the package:
-<https://github.com/proompteng/bilig/stargazers>.
+passes, keep the repository and release feed nearby:
+<https://github.com/proompteng/bilig>.
 
 If a missing clause blocks adoption, open one concrete formula fixture:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.

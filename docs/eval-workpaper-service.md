@@ -83,8 +83,8 @@ the source of truth.
 
 ## After the proof
 
-- Star Bilig if this is the service shape you needed:
-  <https://github.com/proompteng/bilig/stargazers>
+- Repository:
+  <https://github.com/proompteng/bilig>
 - Watch releases for API and formula runtime updates:
   <https://github.com/proompteng/bilig/subscription>
 - Report the exact adoption blocker:

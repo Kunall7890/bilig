@@ -16,7 +16,7 @@ function duplicateValues(values: readonly string[]): string[] {
 describe('docs discovery public link manifest', () => {
   it('keeps homepage and llms public-link manifests centralized and duplicate-free', () => {
     expect(homepageRequiredLinks).toContain('./why-use-bilig.html')
-    expect(homepageRequiredLinks).toContain('https://github.com/proompteng/bilig/stargazers')
+    expect(homepageRequiredLinks).toContain('https://github.com/proompteng/bilig/releases')
     expect(llmsRequiredLinks).toContain('https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html')
     expect(llmsRequiredLinks).toContain('https://proompteng.github.io/bilig/agent-start.txt')
     expect(llmsRequiredLinks).toContain('https://proompteng.github.io/bilig/.well-known/agent-start.txt')

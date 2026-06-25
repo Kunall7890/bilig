@@ -17,9 +17,8 @@ use exact dev-tool versions instead of `latest`, so the smoke proof is
 reproducible.
 
 After the smoke proof passes, keep the JSON output limited to proof fields.
-If the workflow is relevant, star or bookmark the repo:
-<https://github.com/proompteng/bilig/stargazers>. Watch releases for API and
-formula compatibility updates: <https://github.com/proompteng/bilig/subscription>.
+If the workflow is relevant, watch releases for API and formula compatibility
+updates: <https://github.com/proompteng/bilig/subscription>.
 If it almost works, open one concrete blocker or integration note:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
 

@@ -54,12 +54,12 @@ pnpm --dir examples/headless-workpaper run fulfillment-capacity
 
 ## What each example proves
 
-| Workflow | Command | What to inspect |
-| --- | --- | --- |
-| Invoice totals | `npm run invoice-totals` | line totals, subtotal, tax, grand total, and serialized formulas |
-| Budget variance alerts | `npm run budget-variance` | budget vs actual rows, variance percent, and review flags |
-| Subscription MRR forecast | `npm run subscription-mrr` | churn, expansion, new customers, ending MRR, and forecast formulas |
-| Quote approval threshold | `npm run quote-approval` | discount amount, quote total, max line discount, and approval status |
+| Workflow                  | Command                        | What to inspect                                                                |
+| ------------------------- | ------------------------------ | ------------------------------------------------------------------------------ |
+| Invoice totals            | `npm run invoice-totals`       | line totals, subtotal, tax, grand total, and serialized formulas               |
+| Budget variance alerts    | `npm run budget-variance`      | budget vs actual rows, variance percent, and review flags                      |
+| Subscription MRR forecast | `npm run subscription-mrr`     | churn, expansion, new customers, ending MRR, and forecast formulas             |
+| Quote approval threshold  | `npm run quote-approval`       | discount amount, quote total, max line discount, and approval status           |
 | Fulfillment capacity plan | `npm run fulfillment-capacity` | forecast orders, required hours, available labor, capacity gap, and short days |
 
 ## Output shape
@@ -158,8 +158,8 @@ scripts are more useful because they keep the workbook behavior visible:
 If one of these workflows is close to a real system you are building, use the
 [show-and-tell discussion](https://github.com/proompteng/bilig/discussions/213)
 to ask for the next example. If the package saves you a workbook automation
-spike, star the repo so it is easier to find later:
-<https://github.com/proompteng/bilig/stargazers>.
+spike, keep the repository and release feed nearby:
+<https://github.com/proompteng/bilig>.
 
 If it almost matches but a gap blocks adoption, use the adoption blocker form:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.

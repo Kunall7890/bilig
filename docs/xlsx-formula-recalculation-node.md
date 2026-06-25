@@ -186,9 +186,9 @@ XLSX boundary around the parts it owns.
 
 ## After the proof
 
-If `verified: true` matches your Node/XLSX workflow, star the repository or
-bookmark Bilig so the recalculation path is easy to find again:
-<https://github.com/proompteng/bilig/stargazers>.
+If `verified: true` matches your Node/XLSX workflow, keep the repository and
+release feed nearby:
+<https://github.com/proompteng/bilig>.
 
 Watch releases if this is close to a production dependency:
 <https://github.com/proompteng/bilig/subscription>.

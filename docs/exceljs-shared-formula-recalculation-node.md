@@ -140,9 +140,8 @@ HyperFormula when broad mature formula-engine coverage is the main requirement.
 Use Bilig when the service needs a WorkPaper-style state object it can mutate,
 recalculate, serialize, restore, and test.
 
-If this is the exact class of bug you are trying to avoid, star or bookmark the
-repository so the next backend developer can find it:
-<https://github.com/proompteng/bilig/stargazers>.
+Repository and release notes:
+<https://github.com/proompteng/bilig>.
 
 ## Sources
 

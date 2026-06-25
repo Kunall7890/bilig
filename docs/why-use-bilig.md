@@ -113,8 +113,8 @@ Bilig lets Node services and agents run spreadsheet-shaped business logic as a
 testable WorkPaper: edit cells, recalculate formulas, read values, and persist
 the workbook state without opening a spreadsheet app.
 
-If that is the job you have, star or bookmark the repo so you can find it again:
-<https://github.com/proompteng/bilig/stargazers>.
+Repository and release notes:
+<https://github.com/proompteng/bilig>.
 
 If the shape is close but blocked, open a concrete adoption blocker:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.

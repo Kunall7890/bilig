@@ -88,7 +88,7 @@ function renderConversionPressureMarkdown(snapshot: CommunityGrowthSnapshot): re
   }
 
   lines.push(
-    '- Interpretation: these are pressure ratios, not attribution. High download or clone pressure with flat stars means the evaluator path needs a clearer proof, trust signal, or bookmark ask after verification.',
+    '- Interpretation: these are pressure ratios, not attribution. High download or clone pressure with flat stars means the evaluator path needs a clearer proof, trust signal, or repository/release path after verification.',
   )
 
   return lines
@@ -228,7 +228,7 @@ export function renderCommunityGrowthSnapshotMarkdown(snapshot: CommunityGrowthS
     '## Read This Snapshot',
     '',
     '- Stars are the primary lagging goal; npm downloads, clone traffic, and external issues are leading signals.',
-    '- If downloads or clones rise without stars, improve README and npm star/bookmark conversion after proof blocks.',
+    '- If downloads or clones rise without stars, improve README and npm post-proof adoption paths.',
     '- If traffic comes from a channel but discussions stay quiet, switch from launch copy to a specific workflow-feedback ask.',
     '- If the starter queue drops below three current issues, open scoped example tasks before the next distribution push.',
   ]

@@ -586,6 +586,6 @@ new value, before/after computed values, and persistence readback.
 For the server-side tool contract, see the
 [MCP spreadsheet tool server guide](mcp-workpaper-tool-server.md).
 
-If the setup works for your agent workflow, star the repository so the next
-person searching for MCP spreadsheet tools can find it:
-<https://github.com/proompteng/bilig/stargazers>.
+If the setup works for your agent workflow, keep the repository and release feed
+nearby:
+<https://github.com/proompteng/bilig>.

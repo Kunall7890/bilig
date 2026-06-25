@@ -88,8 +88,8 @@ oracle test around the exact files you accept.
 
 ## After the proof
 
-- Star Bilig if this removed the external-workbook XLSX blocker:
-  <https://github.com/proompteng/bilig/stargazers>
+- Repository:
+  <https://github.com/proompteng/bilig>
 - Watch releases if you need formula and workbook compatibility updates:
   <https://github.com/proompteng/bilig/subscription>
 - Report the exact workbook-link blocker if it almost worked:

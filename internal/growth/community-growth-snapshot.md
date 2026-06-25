@@ -2,7 +2,7 @@
 
 Captured at: `2026-06-25T07:59:46.827Z`
 
-This snapshot tracks the public signals for the `@bilig/headless` growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
+This snapshot tracks the public signals for the Bilig WorkPaper growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
 
 ## GitHub
 
@@ -63,7 +63,7 @@ This snapshot tracks the public signals for the `@bilig/headless` growth loop: G
 - Last-month npm downloads per current star: 1,881
 - Fourteen-day unique GitHub visitors per current star: 2
 - Fourteen-day unique cloners per current star: 42
-- Interpretation: these are pressure ratios, not attribution. High download or clone pressure with flat stars means the evaluator path needs a clearer proof, trust signal, or bookmark ask after verification.
+- Interpretation: these are pressure ratios, not attribution. High download or clone pressure with flat stars means the evaluator path needs a clearer proof, trust signal, or repository/release path after verification.
 
 ## Spike Read
 
@@ -74,6 +74,6 @@ This snapshot tracks the public signals for the `@bilig/headless` growth loop: G
 ## Read This Snapshot
 
 - Stars are the primary lagging goal; npm downloads, clone traffic, and external issues are leading signals.
-- If downloads or clones rise without stars, improve README and npm star/bookmark conversion after proof blocks.
+- If downloads or clones rise without stars, improve README and npm post-proof adoption paths.
 - If traffic comes from a channel but discussions stay quiet, switch from launch copy to a specific workflow-feedback ask.
 - If the starter queue drops below three current issues, open scoped example tasks before the next distribution push.

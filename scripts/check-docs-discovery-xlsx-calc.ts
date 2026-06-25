@@ -18,7 +18,7 @@ export async function requireXlsxCalcAlternativeDiscovery(docsRoot: string): Pro
     'coverage note: this is a limited SheetJS-style workbook-wide comparison',
     'https://github.com/fabiooshiro/xlsx-calc',
     'https://docs.sheetjs.com/docs/csf/features/formulae/',
-    'star the',
+    'Repository and release notes',
   ] as const) {
     requireIncludes(content, required, 'docs/xlsx-calc-alternative-node-workbook-recalculation.md')
   }

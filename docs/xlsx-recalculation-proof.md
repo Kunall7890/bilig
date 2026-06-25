@@ -82,5 +82,5 @@ LibreOffice, or Microsoft Graph in the loop.
 - [maintained example directory](https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node)
 - [script source in GitHub](https://github.com/proompteng/bilig/blob/main/docs/xlsx-recalculation-proof.ts)
 
-If this is the Node/XLSX workflow you need, star or bookmark Bilig so the next
-developer can find it: <https://github.com/proompteng/bilig/stargazers>.
+If this is the Node/XLSX workflow you need, keep the repository and release feed
+nearby: <https://github.com/proompteng/bilig>.

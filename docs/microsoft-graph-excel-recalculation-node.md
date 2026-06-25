@@ -63,8 +63,8 @@ Ask this before choosing the runtime:
 | Must match Excel Online calculation behavior                  | Microsoft Graph                 |
 | Workbook is already in SharePoint or OneDrive                 | Microsoft Graph                 |
 | Needs desktop Excel, add-ins, or macro-adjacent behavior      | Excel or LibreOffice automation |
-| Needs a local deterministic Node decision path                | `@bilig/workpaper`               |
-| Needs JSON persistence and restore tests                      | `@bilig/workpaper`               |
+| Needs a local deterministic Node decision path                | `@bilig/workpaper`              |
+| Needs JSON persistence and restore tests                      | `@bilig/workpaper`              |
 | Needs broad mature formula coverage more than WorkPaper state | HyperFormula                    |
 | Needs XLSX read/write/styling, not calculation ownership      | SheetJS or ExcelJS              |
 
@@ -128,6 +128,5 @@ but it should not be presented as a drop-in Excel Online replacement.
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
 - [Compatibility limits](where-bilig-is-not-excel-compatible-yet.md)
 
-If this saves you from building a temporary OneDrive calculation worker, star or
-bookmark the repo:
-<https://github.com/proompteng/bilig/stargazers>.
+Repository and release notes:
+<https://github.com/proompteng/bilig>.

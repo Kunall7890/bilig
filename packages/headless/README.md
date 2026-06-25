@@ -11,7 +11,7 @@
 and agent tools. It is the lower-level WorkPaper runtime behind the scoped
 `@bilig/workpaper` entrypoint.
 
-If this npm page is the first thing you found, run the no-clone proof before
+If this npm page is the first thing you found, run the package proof before
 reading the full API docs:
 
 ```sh
@@ -75,7 +75,7 @@ and
 
 ## Choose An Evaluation Path
 
-| If you are evaluating... | Start here                                                                                                                                                                                                          | What should be true before you star, watch, or adopt                                           |
+| If you are evaluating... | Start here                                                                                                                                                                                                          | What should be true before you adopt                                                           |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | Basic fit                | [Why use Bilig?](https://proompteng.github.io/bilig/why-use-bilig.html)                                                                                                                                             | The problem is workbook-shaped business logic that needs API readback and persistence.         |
 | Published npm package    | [90-second Node quickstart](https://proompteng.github.io/bilig/try-bilig-headless-in-node.html)                                                                                                                     | It edits one input, recalculates, persists JSON, restores, and prints `verified: true`.        |

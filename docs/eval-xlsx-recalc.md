@@ -158,8 +158,8 @@ and an Excel or LibreOffice oracle test for customer-critical file flows.
 
 ## After the proof
 
-- Star Bilig if this solved the XLSX recalculation problem:
-  <https://github.com/proompteng/bilig/stargazers>
+- Repository:
+  <https://github.com/proompteng/bilig>
 - Watch releases if you want compatibility and formula updates:
   <https://github.com/proompteng/bilig/subscription>
 - Report the exact adoption blocker:

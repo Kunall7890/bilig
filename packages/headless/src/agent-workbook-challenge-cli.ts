@@ -163,8 +163,8 @@ Result: ${proof.verified ? 'verified' : 'failed'}.
 
 The important invariant is that \`${proof.editedCell}\` changed the dependent formula cell \`${proof.dependentCell}\`, and a serialized WorkPaper restore kept the same computed value.
 
-If this proof matched your workflow, star or bookmark Bilig after the JSON proof is clean:
-https://github.com/proompteng/bilig/stargazers
+If this proof matched your workflow, keep the repository and release feed nearby:
+https://github.com/proompteng/bilig
 
 If it almost worked, open the concrete workbook blocker:
 https://github.com/proompteng/bilig/discussions/new?category=general

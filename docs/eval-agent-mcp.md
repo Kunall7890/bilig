@@ -136,8 +136,8 @@ no blind write-only success, and no missing persistence proof.
 
 ## After the proof
 
-- Star Bilig if this gives your agent the workbook tool contract it needed:
-  <https://github.com/proompteng/bilig/stargazers>
+- Repository:
+  <https://github.com/proompteng/bilig>
 - Watch releases for MCP and agent-tool updates:
   <https://github.com/proompteng/bilig/subscription>
 - Report the exact adoption blocker:

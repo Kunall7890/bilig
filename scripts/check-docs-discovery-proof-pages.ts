@@ -34,7 +34,7 @@ export function requireFormulaProofDiscovery({
     'Use Google Sheets API first when a shared hosted spreadsheet',
     `The current checked benchmark artifact records \`${benchmarkEvidence.meanWinHeadline}\` comparable`,
     benchmarkEvidence.p95HoldoutWorkload,
-    'https://github.com/proompteng/bilig/stargazers',
+    'https://github.com/proompteng/bilig',
     'https://github.com/proompteng/bilig/discussions/new?category=general',
     'adoption-blocker form',
   ] as const) {

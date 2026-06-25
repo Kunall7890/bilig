@@ -124,6 +124,5 @@ That is the useful contract for workbook automation. A response that says
 - framework adapters:
   [`examples/headless-workpaper/agent-framework-adapters.ts`](../examples/headless-workpaper/agent-framework-adapters.ts)
 
-If this saves you from building a spreadsheet tool from scratch, star the repo
-so other agent builders can find it:
-<https://github.com/proompteng/bilig/stargazers>.
+Repository and release notes:
+<https://github.com/proompteng/bilig>.

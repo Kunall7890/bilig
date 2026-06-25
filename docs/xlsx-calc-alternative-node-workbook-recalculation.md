@@ -29,9 +29,9 @@ save a state it can test again later.
 | Recalculate a supported formula set on a SheetJS workbook object | `xlsx-calc`        |
 | Read and write lots of spreadsheet file formats                  | SheetJS            |
 | Build styled `.xlsx` files                                       | ExcelJS or SheetJS |
-| Keep a formula workbook as service state                         | `@bilig/workpaper`  |
-| Read recalculated outputs before accepting a request             | `@bilig/workpaper`  |
-| Persist JSON state and still import or export XLSX at the edge   | `@bilig/workpaper`  |
+| Keep a formula workbook as service state                         | `@bilig/workpaper` |
+| Read recalculated outputs before accepting a request             | `@bilig/workpaper` |
+| Persist JSON state and still import or export XLSX at the edge   | `@bilig/workpaper` |
 
 If you only need to refresh an existing XLSX file before your service returns,
 try the file-level package before migrating workbook state:
@@ -153,6 +153,5 @@ that adapter like business logic.
 - [Headless benchmark evidence](headless-workpaper-benchmark-evidence.md)
 - [Compatibility limits](where-bilig-is-not-excel-compatible-yet.md)
 
-If this saved you a spreadsheet-recalculation detour, star the repo so the next
-Node developer can find it:
-<https://github.com/proompteng/bilig/stargazers>.
+Repository and release notes:
+<https://github.com/proompteng/bilig>.

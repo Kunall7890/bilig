@@ -115,8 +115,8 @@ workbook links, macros, volatile functions, and customer-critical templates.
 ## After The Proof
 
 If the demo or a reduced SheetJS workbook returns the fresh formula values you
-needed, star or bookmark Bilig so the boundary is easy to find later:
-<https://github.com/proompteng/bilig/stargazers>.
+needed, keep the repository and release feed nearby:
+<https://github.com/proompteng/bilig>.
 
 Watch releases if this is close to a production workflow:
 <https://github.com/proompteng/bilig/subscription>.

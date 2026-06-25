@@ -166,6 +166,5 @@ For a real service, keep the boundary boring:
 - [Formula bug clinic](formula-bug-clinic.md)
 - [Formula clinic report script](formula-clinic-report.ts)
 
-If this saved you from trusting a stale cached formula value, star or bookmark
-the repo:
-<https://github.com/proompteng/bilig/stargazers>.
+Repository and release notes:
+<https://github.com/proompteng/bilig>.

@@ -112,8 +112,8 @@ Cell targets must be sheet-qualified A1 references such as `Inputs!B2` or `'Pric
 ## After The Proof
 
 If the demo or a reduced ExcelJS workbook gives the fresh formula values your
-service needs, star or bookmark Bilig so the recalculation boundary is easy to
-find later: <https://github.com/proompteng/bilig/stargazers>.
+service needs, keep the repository and release feed nearby:
+<https://github.com/proompteng/bilig>.
 
 Watch releases if this package is close to a production path:
 <https://github.com/proompteng/bilig/subscription>.

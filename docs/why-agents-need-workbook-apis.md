@@ -236,5 +236,5 @@ Read the benchmark note here:
   <https://proompteng.github.io/bilig/try-bilig-headless-in-node.html>
 - Runnable example: [`examples/headless-workpaper`](../examples/headless-workpaper)
 
-If this is relevant to an agent or Node workflow, star the repo as a bookmark:
-<https://github.com/proompteng/bilig/stargazers>
+Repository and release notes:
+<https://github.com/proompteng/bilig>

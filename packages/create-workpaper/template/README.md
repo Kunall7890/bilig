@@ -12,9 +12,8 @@ WorkPaper as JSON, restores it, and checks that the restored formula output
 matches the live output.
 
 Expected output includes `verified: true`. The JSON output stays limited to
-proof fields. If this workflow is relevant, star or bookmark the repo:
-<https://github.com/proompteng/bilig/stargazers>. Watch releases for API and
-formula compatibility updates: <https://github.com/proompteng/bilig/subscription>.
+proof fields. If this workflow is relevant, watch releases for API and formula
+compatibility updates: <https://github.com/proompteng/bilig/subscription>.
 If it almost works, open a concrete blocker:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
 

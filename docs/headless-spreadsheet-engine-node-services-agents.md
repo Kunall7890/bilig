@@ -99,10 +99,10 @@ Use the smallest proof that matches your blocker:
 
 Bilig is indexed on the
 [LibHunt headless-spreadsheet topic](https://www.libhunt.com/topic/headless-spreadsheet),
-but the repo is the current source of truth for stars, releases, limitations,
-and API examples. If one proof maps to your use case, star the repo as a public
-bookmark. If it almost maps but fails on a real formula, import, or workflow
-boundary, open an adoption blocker with the smallest reproducer you can share.
+but the repo is the current source of truth for releases, limitations, and API
+examples. If one proof almost maps but fails on a real formula, import, or
+workflow boundary, open an adoption blocker with the smallest reproducer you can
+share.
 
 ## Backend service shape
 
@@ -169,8 +169,8 @@ when the boundary is not obvious.
 - [What the benchmark proves](what-workpaper-benchmark-proves.md)
 - [Compatibility limits](where-bilig-is-not-excel-compatible-yet.md)
 
-If this matches a backend or agent workflow you are evaluating, star the repo as
-a bookmark: <https://github.com/proompteng/bilig/stargazers>.
+Repository and release notes:
+<https://github.com/proompteng/bilig>.
 
 If it almost matches but a gap blocks adoption, use the adoption blocker form:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.

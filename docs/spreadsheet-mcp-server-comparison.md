@@ -22,38 +22,38 @@ touch spreadsheet-shaped business logic.
 
 ## Quick Decision Table
 
-| Need                                                                                                     | Better starting point                                       |
-| -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Need                                                                                                      | Better starting point                                       |
+| --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | Control a live Excel session through an add-in, paired session, OAuth, or account-backed service          | Hosted or Excel-native MCP control layer                    |
 | Import an `.xlsx` into a collaborative spreadsheet workspace with Python, SQL, charts, and agent access   | Hosted spreadsheet workspace MCP                            |
 | Run an agent-authored script against Excel files for rendering, linting, calculation, and structured JSON | Spreadsheet CLI or API runtime                              |
-| Read and write arbitrary `.xlsx` files with formatting, charts, and workbook layout                      | Excel-focused MCP server or an Office automation workflow   |
-| Read and update Google Sheets through a live cloud spreadsheet                                           | Google Sheets MCP server                                    |
-| Let an agent inspect workbook structure, formulas, and cached values without mutating files              | Read-only spreadsheet inspection MCP server                 |
-| Mutate service-owned workbook inputs, recalculate formulas, verify before/after values, and persist JSON | Bilig WorkPaper MCP                                         |
-| Exact Excel compatibility across macros, pivots, charts, external links, and every function              | Excel, LibreOffice, Graph API, or a dedicated Excel runtime |
+| Read and write arbitrary `.xlsx` files with formatting, charts, and workbook layout                       | Excel-focused MCP server or an Office automation workflow   |
+| Read and update Google Sheets through a live cloud spreadsheet                                            | Google Sheets MCP server                                    |
+| Let an agent inspect workbook structure, formulas, and cached values without mutating files               | Read-only spreadsheet inspection MCP server                 |
+| Mutate service-owned workbook inputs, recalculate formulas, verify before/after values, and persist JSON  | Bilig WorkPaper MCP                                         |
+| Exact Excel compatibility across macros, pivots, charts, external links, and every function               | Excel, LibreOffice, Graph API, or a dedicated Excel runtime |
 
 ## Named Public Alternatives
 
 Use the existing spreadsheet MCP ecosystem when the source of truth is already
 somewhere else:
 
-| Server or path                                                          | Best fit                                                                                 | Boundary to check before adopting                                                               |
-| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| [Witan](https://www.witanlabs.com/)                                      | Agents that can call a CLI, SDK, or API against Excel files for read, write, render, calculate, lint, and structured JSON workflows | Not positioned as a public MCP server in the inspected docs; the Witan API, cloud, or self-hosted runtime is part of proof |
-| [Cellium](https://cellium.dev/)                                          | MCP clients that need a paired Excel Add-in/session control layer with structured cell operations | Requires a Cellium account/API key and live Excel runtime pairing; do not treat it as a local no-key WorkPaper runtime |
-| [xlsx-for-ai](https://xlsx-for-ai.dev/)                                  | Hosted API plus npm/MCP client for reading, writing, validating, diffing, and redacting Excel files | Non-fallback API calls are hosted; strict mode is a privacy/error-capture setting, not proof of fresh formula recalculation |
-| [Quadratic Excel MCP](https://www.quadratichq.com/ai/mcp/excel)          | Hosted Quadratic workspace after importing `.xlsx`, with formulas, charts, Python, SQL, OAuth, and AI clients | Quadratic becomes the working spreadsheet surface and exports back to `.xlsx`; it is not a local file-only MCP server |
-| [Google Sheets MCP](https://github.com/henilcalagiya/google-sheets-mcp) | Agents that need CRUD operations against live Google Sheets through a service account    | Requires Google Cloud, Sheets API, Drive API, and service-account setup                         |
-| [Univer MCP](https://github.com/dream-num/univer-mcp)                   | Agents that operate a Univer spreadsheet runtime through an MCP session                  | Requires an API key and a running Univer instance; the repo labels plain-text mode experimental |
-| [GRID MCP](https://github.com/GRID-is/claude-mcp)                       | Claude Desktop workflows against spreadsheets uploaded to GRID                           | Requires a GRID account, uploaded workbook, and API key                                         |
-| [mort-lab Excel MCP](https://github.com/mort-lab/excel-mcp)             | Openpyxl-backed local `.xlsx` creation, editing, formatting, and formula authoring       | Openpyxl writes formulas but does not calculate them; `data_only` values are cached workbook values unless another engine refreshed them |
-| [negokaz Excel MCP Server](https://github.com/negokaz/excel-mcp-server) | Local Excel workbook editing, with Windows live-Excel mode for open workbooks            | Live editing and screenshots are Windows Excel COM/OLE paths; formula writes are not full proof |
-| [haris-musa Excel MCP Server](https://github.com/haris-musa/excel-mcp-server) | Openpyxl-backed Excel file mutation over stdio or HTTP transports                   | Formula validation and formula writing are not the same as recalculated dependent readback      |
-| [SheetForge MCP](https://mcpservers.org/servers/iheldan/sheetforge-mcp) | Local-first workbook inspection, mutation, audit, diff, repair, formula-inspection, and layout-aware agent workflows | Its docs explicitly say read tools do not recalculate Excel formulas                            |
-| [CData MCP Server for Microsoft Excel](https://cdn.cdata.com/help/RXK/mcp/pg_excelformula.htm) | Commercial Excel connector with configurable read-time formula recalculation | Check connector coverage, licensing, and the `Recalculate` setting before relying on results    |
-| Excel file or SheetJS-style tooling                                     | Creating, reading, or preserving `.xlsx` files                                           | A file library can preserve formulas without recalculating fresh results in Node                |
-| Bilig WorkPaper MCP                                                     | Local agent tools that own WorkPaper JSON and need write, recalculate, readback, restore | Not a full Excel editor; use it when formula readback is the product                            |
+| Server or path                                                                                 | Best fit                                                                                                                            | Boundary to check before adopting                                                                                                        |
+| ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| [Witan](https://www.witanlabs.com/)                                                            | Agents that can call a CLI, SDK, or API against Excel files for read, write, render, calculate, lint, and structured JSON workflows | Not positioned as a public MCP server in the inspected docs; the Witan API, cloud, or self-hosted runtime is part of proof               |
+| [Cellium](https://cellium.dev/)                                                                | MCP clients that need a paired Excel Add-in/session control layer with structured cell operations                                   | Requires a Cellium account/API key and live Excel runtime pairing; do not treat it as a local no-key WorkPaper runtime                   |
+| [xlsx-for-ai](https://xlsx-for-ai.dev/)                                                        | Hosted API plus npm/MCP client for reading, writing, validating, diffing, and redacting Excel files                                 | Non-fallback API calls are hosted; strict mode is a privacy/error-capture setting, not proof of fresh formula recalculation              |
+| [Quadratic Excel MCP](https://www.quadratichq.com/ai/mcp/excel)                                | Hosted Quadratic workspace after importing `.xlsx`, with formulas, charts, Python, SQL, OAuth, and AI clients                       | Quadratic becomes the working spreadsheet surface and exports back to `.xlsx`; it is not a local file-only MCP server                    |
+| [Google Sheets MCP](https://github.com/henilcalagiya/google-sheets-mcp)                        | Agents that need CRUD operations against live Google Sheets through a service account                                               | Requires Google Cloud, Sheets API, Drive API, and service-account setup                                                                  |
+| [Univer MCP](https://github.com/dream-num/univer-mcp)                                          | Agents that operate a Univer spreadsheet runtime through an MCP session                                                             | Requires an API key and a running Univer instance; the repo labels plain-text mode experimental                                          |
+| [GRID MCP](https://github.com/GRID-is/claude-mcp)                                              | Claude Desktop workflows against spreadsheets uploaded to GRID                                                                      | Requires a GRID account, uploaded workbook, and API key                                                                                  |
+| [mort-lab Excel MCP](https://github.com/mort-lab/excel-mcp)                                    | Openpyxl-backed local `.xlsx` creation, editing, formatting, and formula authoring                                                  | Openpyxl writes formulas but does not calculate them; `data_only` values are cached workbook values unless another engine refreshed them |
+| [negokaz Excel MCP Server](https://github.com/negokaz/excel-mcp-server)                        | Local Excel workbook editing, with Windows live-Excel mode for open workbooks                                                       | Live editing and screenshots are Windows Excel COM/OLE paths; formula writes are not full proof                                          |
+| [haris-musa Excel MCP Server](https://github.com/haris-musa/excel-mcp-server)                  | Openpyxl-backed Excel file mutation over stdio or HTTP transports                                                                   | Formula validation and formula writing are not the same as recalculated dependent readback                                               |
+| [SheetForge MCP](https://mcpservers.org/servers/iheldan/sheetforge-mcp)                        | Local-first workbook inspection, mutation, audit, diff, repair, formula-inspection, and layout-aware agent workflows                | Its docs explicitly say read tools do not recalculate Excel formulas                                                                     |
+| [CData MCP Server for Microsoft Excel](https://cdn.cdata.com/help/RXK/mcp/pg_excelformula.htm) | Commercial Excel connector with configurable read-time formula recalculation                                                        | Check connector coverage, licensing, and the `Recalculate` setting before relying on results                                             |
+| Excel file or SheetJS-style tooling                                                            | Creating, reading, or preserving `.xlsx` files                                                                                      | A file library can preserve formulas without recalculating fresh results in Node                                                         |
+| Bilig WorkPaper MCP                                                                            | Local agent tools that own WorkPaper JSON and need write, recalculate, readback, restore                                            | Not a full Excel editor; use it when formula readback is the product                                                                     |
 
 That split is useful for outreach too. Do not pitch Bilig as "another Google
 Sheets MCP server," "another Excel file editor," or "a hosted Excel control
@@ -159,13 +159,13 @@ product. Use Bilig WorkPaper MCP when recalculated readback is the product.
 Before an agent trusts a number after a write, classify the spreadsheet server
 by the proof it can return:
 
-| Boundary                                                               | What the agent can safely claim                                                 |
-| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Boundary                                                                        | What the agent can safely claim                                                                            |
+| ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | A hosted tool controls a paired Excel session or imported spreadsheet workspace | The live service or workspace performed the operation; the account/session/configuration is part of proof. |
-| A server writes formula text into an `.xlsx` file                      | The formula was authored; the result still needs a calculation engine.           |
-| A server reads workbook values through an `.xlsx` file library         | The value may be a cached value from the file unless recalculation is documented. |
-| A server can drive live desktop Excel or a commercial connector engine | The source must stay available and the engine/configuration must be part of proof. |
-| A server returns before/after cells from its own workbook runtime      | The agent can cite the edited input and dependent readback from the same run.    |
+| A server writes formula text into an `.xlsx` file                               | The formula was authored; the result still needs a calculation engine.                                     |
+| A server reads workbook values through an `.xlsx` file library                  | The value may be a cached value from the file unless recalculation is documented.                          |
+| A server can drive live desktop Excel or a commercial connector engine          | The source must stay available and the engine/configuration must be part of proof.                         |
+| A server returns before/after cells from its own workbook runtime               | The agent can cite the edited input and dependent readback from the same run.                              |
 
 That is the practical reason Bilig's MCP smoke is deliberately boring: edit a
 known input, recalculate dependent formulas, export or restore the WorkPaper
@@ -244,6 +244,6 @@ or persists anything," choose a formula runtime path and keep the MCP layer thin
 - [Bilig WorkPaper MCP registry search](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper)
 - [Bilig WorkPaper on Glama](https://glama.ai/mcp/servers/proompteng/bilig)
 
-If this is the MCP boundary you were looking for, star or bookmark Bilig so the
-server is easier for other agent builders to find:
-<https://github.com/proompteng/bilig/stargazers>.
+If this is the MCP boundary you were looking for, keep the repository and
+release feed nearby:
+<https://github.com/proompteng/bilig>.

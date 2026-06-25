@@ -803,7 +803,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'get computed value of Excel sheet cell in Node.js',
     'Use `@bilig/exceljs-formula-recalc` for an ExcelJS workbook that needs fresh formula',
     'Do not choose `@bilig/workpaper` only to generate styled XLSX files',
-    'star the repository',
+    'release feed nearby',
   ] as const) {
     requireIncludes(exceljsFormulaRecalculationNode, required, 'docs/exceljs-formula-recalculation-node.md')
   }
@@ -843,8 +843,8 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'workbook-shaped calculation boundary',
     '[XLSX recalculation proof](xlsx-recalculation-proof.md)',
     '[LibHunt headless-spreadsheet topic](https://www.libhunt.com/topic/headless-spreadsheet)',
-    'star the repo as a public',
-    'open an adoption blocker with the smallest reproducer you can share',
+    'repo is the current source of truth for releases',
+    'open an adoption blocker',
   ]) {
     requireIncludes(headlessSpreadsheetEngineNodeServicesAgents, required, 'docs/headless-spreadsheet-engine-node-services-agents.md')
   }
@@ -871,7 +871,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     "import { recalculateXlsx } from '@bilig/xlsx-formula-recalc'",
     'Use ExcelJS or SheetJS first when the job is workbook-file manipulation',
     'Use `@bilig/xlsx-formula-recalc` when the Node process must own the recalculated answer',
-    'star the repository',
+    'release feed nearby',
   ] as const) {
     requireIncludes(xlsxFormulaRecalculationNode, required, 'docs/xlsx-formula-recalculation-node.md')
   }

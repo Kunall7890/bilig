@@ -138,8 +138,8 @@ the compatibility page before importing real workbooks.
 - [What the WorkPaper benchmark proves](what-workpaper-benchmark-proves.md)
 - [Where bilig is not Excel-compatible yet](where-bilig-is-not-excel-compatible-yet.md)
 
-If this matches a backend or agent workflow you are evaluating, star the repo as
-a bookmark: <https://github.com/proompteng/bilig/stargazers>.
+Repository and release notes:
+<https://github.com/proompteng/bilig>.
 
 If it does not match yet, use the adoption-blocker form instead of a vague
 comment:

@@ -20,12 +20,12 @@ task, and require formula readback before calling the job done.
 Choose Bilig instead of Excel or Sheets UI automation when the agent needs a
 machine-checkable workbook proof, not a visual session transcript.
 
-| Agent need                  | Use Bilig WorkPaper                                                                                                             | Keep Excel, Sheets, or browser UI automation                                                                      |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Cell-addressed automation   | The task names exact sheets, ranges, or cells such as `Inputs!B3` and `Summary!B3`.                                              | The task depends on a person inspecting or editing the live grid.                                                  |
-| Formula proof after writes  | Success requires formula readback after writes through `set_cell_contents_and_readback`, not a write-call status.                | The spreadsheet product owns recalculation and the agent only needs to click through the product UI.               |
-| Durable agent state         | The agent must export, persist, restore, or restart from persisted WorkPaper JSON and prove the same calculated value comes back. | The durable artifact is an existing Excel or Sheets file with macros, charts, pivots, add-ins, or visual layout.   |
-| CI and tool-call evidence   | The result must fit logs, MCP transcripts, CI checks, or a compact proof object with `verified: true`.                           | The output is a screenshot, screen recording, manual review note, or collaboration comment in a spreadsheet app.   |
+| Agent need                 | Use Bilig WorkPaper                                                                                                               | Keep Excel, Sheets, or browser UI automation                                                                     |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Cell-addressed automation  | The task names exact sheets, ranges, or cells such as `Inputs!B3` and `Summary!B3`.                                               | The task depends on a person inspecting or editing the live grid.                                                |
+| Formula proof after writes | Success requires formula readback after writes through `set_cell_contents_and_readback`, not a write-call status.                 | The spreadsheet product owns recalculation and the agent only needs to click through the product UI.             |
+| Durable agent state        | The agent must export, persist, restore, or restart from persisted WorkPaper JSON and prove the same calculated value comes back. | The durable artifact is an existing Excel or Sheets file with macros, charts, pivots, add-ins, or visual layout. |
+| CI and tool-call evidence  | The result must fit logs, MCP transcripts, CI checks, or a compact proof object with `verified: true`.                            | The output is a screenshot, screen recording, manual review note, or collaboration comment in a spreadsheet app. |
 
 Run the no-key proof before adopting the path:
 
@@ -368,8 +368,8 @@ form by itself is not.
 
 ## After The Check
 
-If the check matches your workflow, keep the repo so you can find it again:
-<https://github.com/proompteng/bilig/stargazers>.
+If the check matches your workflow, keep the repository nearby:
+<https://github.com/proompteng/bilig>.
 
 If you need release notifications for agent or MCP changes, watch releases:
 <https://github.com/proompteng/bilig/subscription>.

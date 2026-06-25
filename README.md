@@ -1,9 +1,9 @@
 # bilig
 
 [![CI](https://github.com/proompteng/bilig/actions/workflows/ci.yml/badge.svg)](https://github.com/proompteng/bilig/actions/workflows/ci.yml)
-[![npm: @bilig/xlsx-formula-recalc](https://img.shields.io/npm/v/@bilig/xlsx-formula-recalc?label=%40bilig%2Fxlsx-formula-recalc)](https://www.npmjs.com/package/@bilig/xlsx-formula-recalc)
-[![npm: @bilig/headless](https://img.shields.io/npm/v/@bilig/headless?label=%40bilig%2Fheadless)](https://www.npmjs.com/package/@bilig/headless)
 [![npm: @bilig/workpaper](https://img.shields.io/npm/v/@bilig/workpaper?label=%40bilig%2Fworkpaper)](https://www.npmjs.com/package/@bilig/workpaper)
+[![npm: @bilig/headless](https://img.shields.io/npm/v/@bilig/headless?label=%40bilig%2Fheadless)](https://www.npmjs.com/package/@bilig/headless)
+[![npm: @bilig/xlsx-formula-recalc](https://img.shields.io/npm/v/@bilig/xlsx-formula-recalc?label=%40bilig%2Fxlsx-formula-recalc)](https://www.npmjs.com/package/@bilig/xlsx-formula-recalc)
 [![CodeQL](https://github.com/proompteng/bilig/actions/workflows/codeql.yml/badge.svg)](https://github.com/proompteng/bilig/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge)](https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -20,12 +20,12 @@ Start with the boundary you actually have. Do not drive Excel, LibreOffice,
 Google Sheets, or a screenshot UI just to learn whether a formula value is
 fresh.
 
-Run the no-clone checks:
+Run these from any Node project:
 
 ```sh
-npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json
 npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 ```
 
@@ -128,18 +128,18 @@ Pick the path that matches the job:
 
 | You have...                                                                                             | Start with                                                                       | You should see                                                                                                                                                                              |
 | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A Node service, route, queue, test, or tool needs workbook logic                                        | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)               | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.                                                                                                      |
+| A coding agent or MCP client needs workbook tools without UI automation                                 | [Agent MCP evaluator](docs/eval-agent-mcp.md)                                    | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`.                                                                                                   |
+| You need to choose among agent, MCP, AI SDK, OpenAI, LangGraph, Semantic Kernel, or XLSX proof          | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md)                       | the smallest command or example for the host boundary, plus what it does and does not prove.                                                                                                |
+| You need to see a successful agent session shape before adopting                                        | [Agent proof transcripts](docs/agent-proof-transcripts.md)                       | prompt, tool call, result, workbook state change, formula readback, JSON export, and restart verification.                                                                                  |
+| A coding agent needs the right repo rule or MCP config file                                             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                          | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Kiro, Roo Code, Trae, Qodo IDE, Zed, Junie, OpenHands, OpenCode, Aider, Goose, Windsurf, Cline, Continue, or Gemini. |
 | You are not sure whether XLSX, SheetJS, ExcelJS, xlsx-populate, CI, WorkPaper, or an agent owns the fix | [Stale formula readback chooser](docs/stale-formula-readback-chooser.md)         | the smallest proof command for the boundary, plus when not to use it.                                                                                                                       |
 | You need to know whether a specific workbook has Bilig integration risks                                | [Workbook Compatibility Report](docs/workbook-compatibility-report.md)           | unsupported functions, external links, macros, pivots, volatile formulas, cache risks, and no compatibility score.                                                                          |
 | A coding agent already has a real `.xlsx` and needs MCP before edits                                    | [Agent XLSX risk preflight](docs/agent-xlsx-risk-preflight.md)                   | `analyze_workbook_risk`, `Inputs!B3`, `Summary!B3`, `60000 -> 96000`, export, and `verified: true`.                                                                                         |
 | A real `.xlsx` file has stale formula results after Node edits                                          | [XLSX Cache Doctor evaluator](docs/eval-xlsx-cache-doctor.md)                    | stale cells, cached values, recalculated values, suggested reads, and JSON output.                                                                                                          |
 | You need to see the exact stale-cache output before adopting                                            | [XLSX Cache Doctor proof transcript](docs/xlsx-cache-doctor-proof-transcript.md) | `Summary!B2` and `Sheet1!B61` cached-vs-recalculated proof, plus CI boundary.                                                                                                               |
 | Pull requests can commit XLSX fixtures with stale cached values                                         | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md)       | report-only workbook findings before the workflow blocks anything.                                                                                                                          |
-| A Node service, route, queue, test, or tool needs workbook logic                                        | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)               | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.                                                                                                      |
-| A coding agent or MCP client needs workbook tools without UI automation                                 | [Agent MCP evaluator](docs/eval-agent-mcp.md)                                    | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`.                                                                                                   |
-| A coding agent needs the right repo rule or MCP config file                                             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                          | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Kiro, Roo Code, Trae, Qodo IDE, Zed, Junie, OpenHands, OpenCode, Aider, Goose, Windsurf, Cline, Continue, or Gemini. |
 | You are comparing Excel MCP servers, hosted spreadsheet agents, or file-first XLSX tools                | [Spreadsheet MCP server comparison](docs/spreadsheet-mcp-server-comparison.md)   | the account/session/file/runtime boundary before an agent trusts formula readback.                                                                                                          |
-| You need to choose among agent, MCP, AI SDK, OpenAI, LangGraph, Semantic Kernel, or XLSX proof          | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md)                       | the smallest command or example for the host boundary, plus what it does and does not prove.                                                                                                |
-| You need to see a successful agent session shape before adopting                                        | [Agent proof transcripts](docs/agent-proof-transcripts.md)                       | prompt, tool call, result, workbook state change, formula readback, JSON export, and restart verification.                                                                                  |
 | Existing XLSX outputs need refreshed cached results                                                     | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)                         | changed input, recalculated output, output workbook, and `recalculationCompleted: true`.                                                                                                    |
 
 If you are not sure which one fits, start with the thing that owns state. Use
@@ -331,9 +331,9 @@ formula-value problem without asking you to adopt WorkPaper state first.
 
 | Problem you have right now                                                        | Install or use                           | First proof                                                                      |
 | --------------------------------------------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------- |
+| Formula workbook state belongs inside a Node service, route, queue, test, or tool | `npm install @bilig/workpaper`           | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)               |
 | Pull requests can commit XLSX fixtures with stale formula caches                  | `uses: proompteng/bilig@v1`              | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md)       |
 | Generic XLSX bytes changed in Node; formula outputs must refresh before returning | `npm install @bilig/xlsx-formula-recalc` | [XLSX formula recalculation in Node.js](docs/xlsx-formula-recalculation-node.md) |
-| Formula workbook state belongs inside a Node service, route, queue, test, or tool | `npm install @bilig/workpaper`           | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)               |
 
 Advanced adapters are still available when the boundary is already specific:
 [SheetJS](docs/sheetjs-formula-result-not-updating-node.md),

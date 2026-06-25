@@ -425,7 +425,7 @@ Latest conversion snapshot on May 17, 2026:
   queue.
 - Funnel read: cloning and npm demand are much stronger than stars. The public
   ask should stay concrete: try the npm smoke test, compare the compatibility
-  limits, star/bookmark only if the workflow is relevant, and tell us what
+  limits, watch releases only if the workflow is relevant, and tell us what
   blocked a real adoption decision.
 - Feedback surface: discussion `#157` keeps the conversion ask in one place for
   people who tried or considered the package and stopped:
@@ -753,20 +753,20 @@ Post asks that are easy to answer:
 The point is to make experts correct the project in public. Useful corrections
 create better issues, better docs, and more credible follow-up posts.
 
-### 6. Convert npm Demand Into GitHub Stars
+### 6. Convert npm Demand Into Durable Repo Interest
 
-The npm page already has visible downloads while GitHub stars are low. Add or
-keep star/bookmark CTAs only after value proof:
+The npm page already has visible downloads while GitHub stars are low. Keep the
+post-proof path concrete:
 
 - after the quickstart expected output
 - after the benchmark evidence link
 - after the external-consumer example
 - after troubleshooting recipes
 
-Good CTA:
+Good path:
 
-> If this saves you a workbook-automation spike, star the repo so the package is
-> easier to find later: <https://github.com/proompteng/bilig>
+> If this saves you a workbook-automation spike, keep the repository and release
+> feed nearby: <https://github.com/proompteng/bilig>
 
 Avoid generic "please star" copy at the top of technical docs.
 

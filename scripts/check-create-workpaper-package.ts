@@ -137,10 +137,7 @@ function assertDocs(): void {
     readme.includes('https://github.com/proompteng/bilig/discussions/new?category=general'),
     'starter README must include the adoption-feedback link',
   )
-  assert(
-    readme.includes('https://github.com/proompteng/bilig/stargazers'),
-    'starter README must include the star link after proof guidance',
-  )
+  assert(!readme.includes('https://github.com/proompteng/bilig/stargazers'), 'starter README must not include the star link')
   assert(
     readme.includes('https://github.com/proompteng/bilig/subscription'),
     'starter README must include the release-watch link after proof guidance',
@@ -149,7 +146,7 @@ function assertDocs(): void {
     docs.includes('https://github.com/proompteng/bilig/discussions/new?category=general'),
     'starter docs must include the adoption-feedback link',
   )
-  assert(docs.includes('https://github.com/proompteng/bilig/stargazers'), 'starter docs must include the star link after proof guidance')
+  assert(!docs.includes('https://github.com/proompteng/bilig/stargazers'), 'starter docs must not include the star link')
   assert(
     docs.includes('https://github.com/proompteng/bilig/subscription'),
     'starter docs must include the release-watch link after proof guidance',

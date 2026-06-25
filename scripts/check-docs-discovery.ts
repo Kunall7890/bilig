@@ -385,7 +385,7 @@ for (const required of [
   'npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json',
   xlsxRecalcCli,
   '`@bilig/workpaper` when the service can own the workbook state locally',
-  'https://github.com/proompteng/bilig/stargazers',
+  'https://github.com/proompteng/bilig',
 ] as const) {
   requireIncludes(staleXlsxFormulaCacheNode, required, 'docs/stale-xlsx-formula-cache-node.md')
 }
@@ -405,7 +405,7 @@ for (const required of [
   'https://stackoverflow.com/questions/63085785/how-to-recalculate-all-formulas-in-excel-file-through-javascript',
   'npm --prefix examples/recalc-bridge-workflows run smoke',
   `\`${liveSheetjsRecalcPackage}\``,
-  'https://github.com/proompteng/bilig/stargazers',
+  'https://github.com/proompteng/bilig',
 ] as const) {
   requireIncludes(sheetjsFormulaResultNotUpdatingNode, required, 'docs/sheetjs-formula-result-not-updating-node.md')
 }

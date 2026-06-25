@@ -69,9 +69,8 @@ The useful output is not a write-call status. It is readback proof:
 }
 ```
 
-If that is the contract your service or agent needed, star the repo so you can
-find it again: <https://github.com/proompteng/bilig/stargazers>. Watch releases
-if this is close to production: <https://github.com/proompteng/bilig/subscription>.
+If this is close to production, watch releases and review the public limits:
+<https://github.com/proompteng/bilig/subscription>.
 
 For a richer agent check, add `--scenario revenue-plan` to the `agent-mcp`
 evaluator. It proves `SUM`, `SUMIF`, `XLOOKUP`, `FILTER`, a named expression,
@@ -348,9 +347,9 @@ macros, and volatile functions may need review.
 
 ## After The Proof
 
-If the starter or challenge output gives you `verified: true` for the service
-or agent workflow you need, star or bookmark Bilig so the WorkPaper runtime is
-easy to find again: <https://github.com/proompteng/bilig/stargazers>.
+If the starter or challenge output matches your service or agent workflow,
+keep the repository nearby for release notes and public limits:
+<https://github.com/proompteng/bilig>.
 
 Watch releases if this is close to a production path:
 <https://github.com/proompteng/bilig/subscription>.

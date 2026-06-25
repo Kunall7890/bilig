@@ -126,6 +126,5 @@ If this starter almost matches a service or agent workflow you maintain, open
 one concrete adoption blocker so the package becomes easier to evaluate:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
 
-If the proof already matches your workflow, star or bookmark the repo:
-<https://github.com/proompteng/bilig/stargazers>. Watch releases for API and
-formula compatibility updates: <https://github.com/proompteng/bilig/subscription>.
+If the proof already matches your workflow, watch releases for API and formula
+compatibility updates: <https://github.com/proompteng/bilig/subscription>.

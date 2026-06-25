@@ -91,20 +91,20 @@ as complete coverage unless `uninspectedFormulaCellCount` is `0`.
 ## Use the same report in Node
 
 ```ts
-import { readFile } from "node:fs/promises";
-import { inspectXlsxCache } from "@bilig/xlsx-formula-recalc";
+import { readFile } from 'node:fs/promises'
+import { inspectXlsxCache } from '@bilig/xlsx-formula-recalc'
 
-const report = inspectXlsxCache(await readFile("pricing.xlsx"), {
-  fileName: "pricing.xlsx",
-});
+const report = inspectXlsxCache(await readFile('pricing.xlsx'), {
+  fileName: 'pricing.xlsx',
+})
 
 if (report.staleCachedFormulaCount > 0) {
   throw new Error(
     report.formulas
-      .filter((formula) => formula.cacheStatus === "stale")
+      .filter((formula) => formula.cacheStatus === 'stale')
       .map((formula) => formula.target)
-      .join(", "),
-  );
+      .join(', '),
+  )
 }
 ```
 
@@ -137,9 +137,9 @@ pull requests:
 ```yaml
 - uses: proompteng/bilig@v1
   with:
-    workbooks: "**/*.xlsx"
-    changed-files-only: "true"
-    fail-on-stale: "false"
+    workbooks: '**/*.xlsx'
+    changed-files-only: 'true'
+    fail-on-stale: 'false'
 ```
 
 The action writes JSON and Markdown reports, adds a job summary, and exposes
@@ -164,8 +164,8 @@ external-link freshness, or exact desktop Excel UI behavior.
 
 ## After the proof
 
-- Star Bilig if this found a stale cached formula problem:
-  <https://github.com/proompteng/bilig/stargazers>
+- Repository:
+  <https://github.com/proompteng/bilig>
 - Watch releases if you want formula and XLSX compatibility updates:
   <https://github.com/proompteng/bilig/subscription>
 - Report the exact adoption blocker:

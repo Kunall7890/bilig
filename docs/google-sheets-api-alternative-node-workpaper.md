@@ -23,13 +23,13 @@ spreadsheet into the system of record.
 
 ## Quick decision
 
-| You need | Start with |
-| --- | --- |
-| People editing the same hosted spreadsheet | Google Sheets |
-| OAuth, spreadsheet IDs, A1 ranges, and Google Workspace permissions | Google Sheets API |
-| A Node service that owns workbook state and formula execution | `@bilig/headless` |
-| An agent tool that edits a cell and returns checked readback | `@bilig/headless` |
-| An XLSX file for a person to open later | SheetJS, ExcelJS, or Excel automation |
+| You need                                                            | Start with                            |
+| ------------------------------------------------------------------- | ------------------------------------- |
+| People editing the same hosted spreadsheet                          | Google Sheets                         |
+| OAuth, spreadsheet IDs, A1 ranges, and Google Workspace permissions | Google Sheets API                     |
+| A Node service that owns workbook state and formula execution       | `@bilig/headless`                     |
+| An agent tool that edits a cell and returns checked readback        | `@bilig/headless`                     |
+| An XLSX file for a person to open later                             | SheetJS, ExcelJS, or Excel automation |
 
 Google describes the Sheets API as a REST interface for reading and modifying
 spreadsheet data. Its values guide is built around the `spreadsheets.values`
@@ -170,9 +170,8 @@ formulas recalculated, output read, document saved.
 - [MCP spreadsheet tool server](mcp-workpaper-tool-server.md)
 - [Where bilig is not Excel-compatible yet](where-bilig-is-not-excel-compatible-yet.md)
 
-If this boundary saves you a Google Sheets automation spike, star the repository
-so the next backend developer can find it:
-<https://github.com/proompteng/bilig/stargazers>.
+Repository and release notes:
+<https://github.com/proompteng/bilig>.
 
 If it almost matches but a gap blocks adoption, use the adoption blocker form:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.

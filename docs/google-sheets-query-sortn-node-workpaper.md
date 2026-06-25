@@ -174,9 +174,8 @@ Workspace.
 - [Where Bilig is not Excel-compatible yet](where-bilig-is-not-excel-compatible-yet.md)
 
 If this matches the workflow, run the proof before adopting it. If the proof
-passes, star or watch the repository so other backend and agent engineers can
-find the package:
-<https://github.com/proompteng/bilig/stargazers>.
+passes, keep the repository and release feed nearby:
+<https://github.com/proompteng/bilig>.
 
 If a missing clause blocks adoption, open one concrete formula fixture:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.

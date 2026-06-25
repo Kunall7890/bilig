@@ -15,7 +15,7 @@ export function requireMicrosoftGraphExcelBoundaryDiscovery(input: {
     'application permissions are not supported for that API',
     'Use `@bilig/workpaper` when the workbook is service-owned state',
     'https://learn.microsoft.com/en-us/graph/api/workbookapplication-calculate',
-    'https://github.com/proompteng/bilig/stargazers',
+    'https://github.com/proompteng/bilig',
   ] as const) {
     requireIncludes(doc, required, 'docs/microsoft-graph-excel-recalculation-node.md')
   }

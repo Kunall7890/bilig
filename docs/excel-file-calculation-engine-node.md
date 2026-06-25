@@ -165,6 +165,5 @@ not a backend calculation engine.
 - [Node.js spreadsheet formula engine for services](node-spreadsheet-formula-engine.md)
 - [Compatibility limits](where-bilig-is-not-excel-compatible-yet.md)
 
-If this helps you avoid a fragile Excel worker in a backend service, star or
-bookmark the repository:
-<https://github.com/proompteng/bilig/stargazers>.
+Repository and release notes:
+<https://github.com/proompteng/bilig>.

@@ -162,9 +162,8 @@ Then inspect the focused examples:
 - [Where bilig is not Excel-compatible yet](where-bilig-is-not-excel-compatible-yet.md)
 - [Starter issues for first-time contributors](starter-issues.md)
 
-If this package saves you a workbook automation spike, star the repository so
-the project is easier for the next backend developer to find:
-<https://github.com/proompteng/bilig/stargazers>.
+Repository and release notes:
+<https://github.com/proompteng/bilig>.
 
 If it almost matches but a gap blocks adoption, use the adoption blocker form:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.

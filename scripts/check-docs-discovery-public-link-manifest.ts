@@ -59,7 +59,7 @@ export const homepageRequiredLinks = [
   'https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper',
   'https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api',
   'https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node',
-  'https://github.com/proompteng/bilig/stargazers',
+  'https://github.com/proompteng/bilig/releases',
   'https://github.com/proompteng/bilig/discussions/new?category=general',
 ] as const
 
