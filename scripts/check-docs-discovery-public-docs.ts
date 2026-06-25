@@ -217,7 +217,7 @@ export async function requireSharedPublicDocsDiscovery(args: {
       'node-framework-workpaper-adapters',
       'submit-workbook-fixture',
       'mcp-spreadsheet-server-directory',
-      'workbook-agent-intent-api',
+      'workbook-runtime-intent-api',
     ],
   )
 
@@ -226,6 +226,10 @@ export async function requireSharedPublicDocsDiscovery(args: {
       { path: 'README.md', content: args.readme },
       { path: 'docs/index.html', content: args.index },
       { path: 'docs/llms.txt', content: args.llms },
+      {
+        path: 'docs/workbook-runtime-intent-api.md',
+        content: await readFile(join(args.docsRoot, 'workbook-runtime-intent-api.md'), 'utf8'),
+      },
       { path: 'docs/workbook-agent-intent-api.md', content: await readFile(join(args.docsRoot, 'workbook-agent-intent-api.md'), 'utf8') },
     ],
     [

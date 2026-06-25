@@ -141,6 +141,7 @@ export const llmsRequiredLinks = [
   'https://github.com/proompteng/bilig/tree/main/examples/google-adk-workpaper-mcp',
   'https://github.com/proompteng/bilig/blob/main/docs/microsoft-agent-framework-workpaper-mcp.md',
   'https://github.com/proompteng/bilig/tree/main/examples/microsoft-agent-framework-workpaper-mcp',
+  'https://proompteng.github.io/bilig/workbook-runtime-intent-api.html',
   'https://proompteng.github.io/bilig/workbook-agent-intent-api.html',
   'https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model',
   'https://proompteng.github.io/bilig/try-bilig-headless-in-node.html',

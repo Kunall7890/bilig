@@ -13,7 +13,7 @@
     "transport-neutral",
     "workbook"
   ],
-  "homepage": "https://proompteng.github.io/bilig/workbook-agent-intent-api.html",
+  "homepage": "https://proompteng.github.io/bilig/workbook-runtime-intent-api.html",
   "bugs": {
     "url": "https://github.com/proompteng/bilig/issues"
   },

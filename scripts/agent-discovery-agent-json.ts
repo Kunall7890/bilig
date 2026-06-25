@@ -38,11 +38,11 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
       name: 'bilig',
       title: 'Bilig WorkPaper spreadsheet formula readback',
       description:
-        'Spreadsheet formula readback for Node.js services and agent MCP tools: edit cells, recalculate, verify outputs, and persist JSON without UI automation.',
+        'Spreadsheet formula readback for Node.js services and MCP tools: edit cells, recalculate, verify outputs, and persist JSON without UI automation.',
       keywords: [
         'spreadsheet formula readback',
         'MCP spreadsheet tools',
-        'agent workbook automation',
+        'tool-host workbook automation',
         'headless WorkPaper runtime',
         'JSON WorkPaper persistence',
         '@bilig/workpaper',
@@ -50,7 +50,7 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
       tags: [
         'spreadsheet-formula-readback',
         'mcp-spreadsheet-tools',
-        'agent-workbook-automation',
+        'tool-host-workbook-automation',
         'headless-workpaper',
         'json-workpaper-persistence',
       ],
@@ -76,7 +76,7 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
           url: skillManifestUrl,
           index_url: `${siteRoot}/.well-known/agent-skills/index.json`,
           description:
-            'Use @bilig/workpaper WorkPaper state, MCP tools, and formula-clinic reports instead of spreadsheet UI automation when an agent needs formula readback.',
+            'Use @bilig/workpaper WorkPaper state, MCP tools, and formula-clinic reports instead of spreadsheet UI automation when a tool host needs formula readback.',
         },
       ],
       evaluator_doors: buildEvaluatorDoors({ repositoryUrl, siteRoot, workpaperPackageSpec }),
@@ -159,12 +159,12 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
           ],
         },
         {
-          name: 'workbook-agent-intent-api',
+          name: 'workbook-runtime-intent-api',
           type: 'npm-library',
           package: '@bilig/workbook',
           runtime: 'Node.js >=22',
           install: 'npm install @bilig/workbook',
-          docs: `${siteRoot}/workbook-agent-intent-api.html`,
+          docs: `${siteRoot}/workbook-runtime-intent-api.html`,
           source: `${repositoryUrl}/tree/main/examples/workbook-agent-model`,
         },
         {
@@ -185,7 +185,7 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
           expected_result:
             'bilig-evaluator.v1 JSON with workbook risk reasons, unsupported functions, external links, VBA payloads, pivots, volatile functions, stored formula result counts, no compatibility score, and verified true',
           boundary:
-            'Diagnoses workbook risks before agent or service use; does not certify Excel compatibility, execute macros, refresh pivots or external data, or assign a compatibility percentage.',
+            'Diagnoses workbook risks before service or tool-host use; does not certify Excel compatibility, execute macros, refresh pivots or external data, or assign a compatibility percentage.',
         },
         {
           name: 'agent-xlsx-risk-preflight',
@@ -568,6 +568,7 @@ export function buildAgentJsonManifest(input: BuildAgentJsonManifestInput): stri
         remoteMcpServerCard,
         `${siteRoot}/agent-workpaper-tool-calling-recipe.html`,
         `${siteRoot}/agent-framework-workbook-tools.html`,
+        `${siteRoot}/workbook-runtime-intent-api.html`,
         `${siteRoot}/workbook-agent-intent-api.html`,
         `${siteRoot}/openai-agents-sdk-workpaper-tool.html`,
         `${siteRoot}/openai-responses-workpaper-tool-call.html`,

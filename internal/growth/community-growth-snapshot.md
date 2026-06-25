@@ -1,14 +1,12 @@
 # Community Growth Snapshot
 
-Captured at: `2026-06-25T10:19:46Z`
+Captured at: `2026-06-25T12:19:47.449Z`
 
-This snapshot tracks public signals for Bilig WorkPaper: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
+This snapshot tracks the public signals for the `@bilig/workpaper` growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
 
 ## GitHub
 
 - Repository: [proompteng/bilig](https://github.com/proompteng/bilig)
-- GitHub About: Run workbook-shaped business rules inside Node: edit inputs,
-  recalculate formulas, read outputs, and save WorkPaper JSON.
 - Stars: 33 / 100 (67 remaining)
 - Forks: 22
 - Watchers: 1
@@ -21,8 +19,8 @@ This snapshot tracks public signals for Bilig WorkPaper: GitHub conversion, npm 
 - Package: `@bilig/workpaper@0.164.1`
 - License: `MIT`
 - Modified: `2026-06-12T17:59:54.469Z`
-- Downloads last week: 505 (2026-06-17 to 2026-06-23)
-- Downloads last month: 13,191 (2026-05-25 to 2026-06-23)
+- Downloads last week: 519 (2026-06-18 to 2026-06-24)
+- Downloads last month: 11,441 (2026-05-26 to 2026-06-24)
 
 ## Contributor Funnel
 
@@ -31,22 +29,20 @@ This snapshot tracks public signals for Bilig WorkPaper: GitHub conversion, npm 
 - Documentation starter issues: 2
 - Non-documentation starter issues: 1
 - Open help wanted issues: 3
-- Open pull requests: 0
+- Open pull requests: 2
 - External open issues: 1
-- External open pull requests: 0
+- External open pull requests: 2
 - External issues opened in the last 7 days: 0
-- External pull requests opened in the last 7 days: 3
+- External pull requests opened in the last 7 days: 5
 
 ## Discussions
 
 - Total discussions: 15
-- #414 [Looking for one ugly workbook case to turn into a fixture](https://github.com/proompteng/bilig/discussions/414) (General, 1 comment)
-- #421 [Show and tell: using GPT for Sheets for spreadsheet enrichment and content ops](https://github.com/proompteng/bilig/discussions/421) (Show and tell, 0 comments)
-- #157 [Which WorkPaper automation workflow should Bilig prove next?](https://github.com/proompteng/bilig/discussions/157) (Ideas, 11 comments)
 - #270 [Show and tell: try @bilig/workpaper from npm in a blank Node project](https://github.com/proompteng/bilig/discussions/270) (Show and tell, 2 comments)
-- Current conversion focus: keep #213 and #335 warm around runnable WorkPaper
-  service, MCP, and tool-host proofs. Keep saved-file import edge cases as a
-  secondary diagnostic for teams that already need import/export verification.
+- #157 [Which WorkPaper automation workflow should Bilig prove next?](https://github.com/proompteng/bilig/discussions/157) (Ideas, 11 comments)
+- #335 [Show and tell: OpenAI Responses tool calls for WorkPaper spreadsheets](https://github.com/proompteng/bilig/discussions/335) (Show and tell, 2 comments)
+- #213 [Show and tell: runnable WorkPaper examples for Node services and agents](https://github.com/proompteng/bilig/discussions/213) (Show and tell, 1 comment)
+- #414 [Looking for one ugly workbook case to turn into a fixture](https://github.com/proompteng/bilig/discussions/414) (General, 1 comment)
 
 ## Traffic
 
@@ -57,124 +53,38 @@ This snapshot tracks public signals for Bilig WorkPaper: GitHub conversion, npm 
 
 ## Execution Log
 
-- 2026-06-25T08:26:29Z: refreshed live Discussion #213
-  ([runnable WorkPaper examples](https://github.com/proompteng/bilig/discussions/213))
-  and #335
-  ([OpenAI Responses WorkPaper tool calls](https://github.com/proompteng/bilig/discussions/335))
-  from older clone-first or package-boundary copy to concise WorkPaper-first
-  evaluation paths with no-key evaluator commands and concrete workflow questions.
-- 2026-06-25T08:28:48Z: updated the high-traffic
-  [`examples/headless-workpaper`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper)
-  README and package metadata so the first screen presents runnable WorkPaper
-  service and agent examples first, while keeping lower-level runtime internals
-  out of the lead message.
-- 2026-06-25T08:34:27Z: retargeted GitHub repository topics away from
-  import-format terms and toward WorkPaper, MCP tools, Node services, workbook
-  automation, and agent workflows. Live readback showed 32 stars after the
-  update.
-- 2026-06-25T08:41:12Z: rewrote the root README first screen and the Node
-  workbook examples quickstart to lead with `@bilig/workpaper`, service
-  readback, MCP proof, and agent workflows. Removed cached-file diagnostics from
-  the main conversion path while keeping saved-file support as a separate
-  boundary.
-- 2026-06-25T08:50:57Z: refreshed live Discussion #157
-  ([WorkPaper automation workflow ask](https://github.com/proompteng/bilig/discussions/157))
-  and #270
-  ([blank Node WorkPaper npm proof](https://github.com/proompteng/bilig/discussions/270))
-  so the public discussion titles, npm package links, and quickstart commands
-  use `@bilig/workpaper` instead of the lower-level runtime package. Live
-  readback showed 32 stars.
-- 2026-06-25T08:56:31Z: retargeted the live GitHub About description from
-  "Headless WorkPaper runtime" to WorkPaper runtime for Node services and
-  agents, and replaced the `headless-spreadsheet` topic with
-  `workflow-automation`. Live readback showed 32 stars.
-- 2026-06-25T09:08:39Z: retargeted the root README, docs homepage, TypeScript
-  example MCP recipes, and `llms-full` source aggregation so `@bilig/workpaper`
-  is the public package path. Saved-file diagnostics remain documented, but no
-  longer drive the homepage or full agent context. Live readback showed 32
-  stars.
-- 2026-06-25T09:28:34Z: removed the old saved-file diagnostic route from the
-  public WorkPaper conversion path, compact and full LLM contexts, generated
-  agent manifests, IDE rules, fixture issue template, formula clinic, and proof
-  matrix. The remaining first-party discovery path leads with WorkPaper service
-  readback, agent MCP proof, compatibility reports, and XLSX recalculation only
-  where saved-file boundaries are explicit. Live GitHub readback still showed 32
-  stars.
-- 2026-06-25T09:38:22Z: cleaned growth-oriented wording from public and agent
-  surfaces: replaced old blocker labels with implementation-gap language,
-  removed brittle outreach phrasing, and regenerated the skill, `llms.txt`,
-  `llms-full.txt`, and well-known mirrors. Live GitHub readback still showed
-  32 stars.
-- 2026-06-25T09:52:00Z: removed the remaining saved-file and launch-review
-  bias from public proof surfaces: the WorkPaper proof note is no longer a
-  social post template, the quote approval example installs `@bilig/workpaper`,
-  the serverless example imports the canonical package, and discovery checks no
-  longer force saved-file diagnostic commands into the package README. Live
-  GitHub readback still showed 32 stars.
-- 2026-06-25T10:03:32Z: replaced remaining agent-facing labels that read like
-  marketing copy with plain handoff/checklist language across the README, docs,
-  generated agent context, package scaffolding, and discovery checks. The
-  legacy GitHub agent topic was replaced with `agent-workpaper`. Live GitHub
-  readback still showed 32 stars.
-- 2026-06-25T10:06:52Z: moved the GitHub README and homepage hero to a
-  WorkPaper-first pitch: concrete Node service use cases, first-viewport social
-  preview, fewer diagnostic detours, and a workbook report link instead of a
-  competing bridge button. Live GitHub readback still showed 32 stars.
-- 2026-06-25T10:16:00Z: cleaned public package metadata and npm first screens:
-  removed legacy AI and spreadsheet automation keywords, made WorkPaper service proof the
-  first package path, refreshed generated skills/LLM mirrors, and moved
-  saved-file language out of the default npm pitch. Live GitHub readback still
-  showed 32 stars.
-- 2026-06-25T10:19:46Z: live GitHub readback after validation showed 33
-  stars, 22 forks, and the WorkPaper-first GitHub description still in place.
-- 2026-06-25T10:27:51Z: removed the remaining generic agent positioning from
-  GitHub topics, npm keywords, README first-screen copy, docs homepage copy,
-  and public proof-page titles. The current path is WorkPaper, Node services,
-  MCP tools, tool integrations, and server-side formulas; saved-file language
-  stays in explicit import/export boundaries. Live GitHub readback showed 33
-  stars and 22 forks.
-- 2026-06-25T10:37:25Z: replaced the repo-visible community launch pack and
-  Product Hunt launch kit with concise execution notes: no canned comments, no
-  generic launch copy, no stale lower-level package product path, and current
-  `@bilig/workpaper` proof links. Discovery checks now enforce the cleaner
-  product-surface standard. Live GitHub readback before the edit showed 33 stars
-  and 22 forks.
-- 2026-06-25T10:43:27Z: cleaned the published workbook-API note and adjacent
-  community drafts: replaced stale lower-level package links with
-  `@bilig/workpaper`, moved the headline away from agent-first framing, and
-  kept the n8n draft focused on workflow readback instead of launch copy. Live
-  GitHub readback before the edit showed 33 stars and 22 forks.
+- 2026-06-25T12:19:47Z: cleaned the next public package metadata pass for
+  `@bilig/workpaper` and `@bilig/workbook`: moved package homepages away from
+  agent-first routes, added a clean workbook runtime intent page, changed the
+  homepage GitHub CTA to "Star on GitHub", regenerated discovery manifests, and
+  retargeted live GitHub topics from `excel`, `headless-spreadsheet`,
+  `node-library`, and `spreadsheet-engine` to `mcp-tools`,
+  `server-side-formulas`, `workpaper-json`, and `node-formulas`. Live readback
+  showed 33 stars, 22 forks, 1 watcher, and 67 stars remaining.
 
 ## External Discovery
 
-- A legacy LibHunt crawler surface still indexes Bilig on the
-  `headless-spreadsheet` topic page:
-  <https://www.libhunt.com/topic/headless-spreadsheet>.
-- That surface came from the May 7 developer discovery path and should not drive
-  current positioning.
-- Keep GitHub repository topics, npm keywords, and proof-page copy aligned with
-  WorkPaper, MCP tools, Node services, tool integrations, server-side formulas,
-  and workbook automation while waiting for crawler refreshes.
+- LibHunt indexes Bilig on the `headless-spreadsheet` topic page: <https://www.libhunt.com/topic/headless-spreadsheet>.
+- That surface came from the May 7 developer discovery path and classifies the project near TypeScript, Spreadsheet, Excel, and tool-host audiences.
+- Keep GitHub repository topics, npm keywords, and proof-page copy aligned with WorkPaper service readback, tool integrations, and formula-recalculation terms while waiting for crawler refreshes.
 
 ## Conversion Pressure
 
 - Last-week npm downloads per current star: 16
-- Last-month npm downloads per current star: 412
+- Last-month npm downloads per current star: 347
 - Fourteen-day unique GitHub visitors per current star: 2
-- Fourteen-day unique cloners per current star: 40
+- Fourteen-day unique cloners per current star: 39
 - Interpretation: these are pressure ratios, not attribution. High download or clone pressure with flat stars means the evaluator path needs a clearer proof, trust signal, or repository/release path after verification.
 
 ## Spike Read
 
 - The visible May 7-11 star jump still lines up with external developer traffic, not broad social posting.
 - The strongest current external referrer is Google with 6 views from 6 unique visitors.
-- Replication plan: ship one sharper proof page, then ask service and tool-host
-  audiences for a concrete implementation gap around service persistence, hosted
-  MCP, formula coverage, or agent writeback verification.
+- Replication plan: ship one sharper proof page, then ask service and tool-host audiences for a concrete implementation gap: formula family, persistence shape, deployment target, or verified writeback.
 
 ## Read This Snapshot
 
 - Stars are the primary lagging goal; npm downloads, clone traffic, and external issues are leading signals.
 - If downloads or clones rise without stars, improve README and npm post-proof adoption paths.
-- If traffic comes from a channel but discussions stay quiet, switch from broad copy to a specific workflow question.
+- If traffic comes from a channel but discussions stay quiet, switch from launch copy to a specific workflow question.
 - If the starter queue drops below three current issues, open scoped example tasks before the next distribution push.

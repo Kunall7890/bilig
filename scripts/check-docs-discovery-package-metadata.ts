@@ -66,9 +66,5 @@ export function requirePackageMetadataDiscovery(args: {
     'Bilig WorkPaper is an API, CLI evaluator, and optional MCP server',
     'packages/workpaper/README.md',
   )
-  requireIncludes(
-    args.scopedWorkpaperPackageJson,
-    '"homepage": "https://proompteng.github.io/bilig/agent-framework-workbook-tools.html"',
-    'packages/workpaper/package.json',
-  )
+  requireIncludes(args.scopedWorkpaperPackageJson, '"homepage": "https://proompteng.github.io/bilig/"', 'packages/workpaper/package.json')
 }

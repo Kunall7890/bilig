@@ -114,7 +114,7 @@ export async function requireAgentRuleChooserDiscovery(input: {
     requireIncludes(content, 'agent-rule-chooser', path)
   }
 
-  requireIncludes(llmsFull, '## Coding Agent Rule Chooser', 'docs/llms-full.txt')
+  requireIncludes(llmsFull, '## Host Rule Chooser', 'docs/llms-full.txt')
   requireIncludes(llmsFull, 'Source: https://github.com/proompteng/bilig/blob/main/docs/agent-rule-chooser.md', 'docs/llms-full.txt')
   requireIncludes(agentStart, 'Agent rule chooser: https://proompteng.github.io/bilig/agent-rule-chooser.html', 'docs/agent-start.txt')
 }

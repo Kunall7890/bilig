@@ -1,10 +1,10 @@
 # @bilig/workbook
 
-Generic workbook intent for agents and runtimes.
+Transport-neutral workbook intent for runtime adapters.
 
-`@bilig/workbook` defines generic, inspectable workbook intent for agents and
-runtimes. It does not depend on hardcoded business models or human spreadsheet
-UI assumptions.
+`@bilig/workbook` defines generic, inspectable workbook intent for products,
+tool hosts, and runtime adapters. It does not depend on hardcoded business
+models or human spreadsheet UI assumptions.
 
 Use this package when a consumer wants to define their own workbook model and
 hand a runtime a portable plan. Bilig supplies the generic model API, selectors,
@@ -17,7 +17,7 @@ ship business templates, or depend on `@bilig/core`, `@bilig/headless`,
 pnpm add @bilig/workbook
 ```
 
-Public evaluator: [Workbook agent intent API](https://proompteng.github.io/bilig/workbook-agent-intent-api.html).
+Public evaluator: [Workbook runtime intent API](https://proompteng.github.io/bilig/workbook-runtime-intent-api.html).
 
 ## Use These First
 
@@ -29,9 +29,9 @@ Most consumers should start with only these names:
 - `runWorkbookPlan`
 - `describeModel`, `describePlan`, `describeRunResult`
 
-That path lets an agent define intent, inspect it before execution, transport it
+That path lets a host define intent, inspect it before execution, transport it
 as plain data, run it through a runtime-owned adapter, and verify the returned
-proof without knowing anything about a rendered spreadsheet UI.
+proof without depending on a rendered spreadsheet UI.
 
 ## The Shape
 
@@ -85,13 +85,14 @@ The core flow:
 
 | Package            | Choose when                                                                                   | Do not use for                                     |
 | ------------------ | --------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| `@bilig/workbook`  | Defining generic agent intent, refs, formulas, checks, plan data, schemas, and proof handoff. | Calculating formulas or owning workbook state.     |
+| `@bilig/workbook`  | Defining generic workbook intent, refs, formulas, checks, plan data, schemas, and proof handoff. | Calculating formulas or owning workbook state.     |
 | `@bilig/workpaper` | Running workbook tools, MCP, or product workflows around persisted WorkPaper state.           | Designing a reusable model API for other runtimes. |
-| `@bilig/headless`  | Owning workbook state inside Node with formula recalculation and import/export.               | Publishing generic agent intent contracts.         |
-| `@bilig/core`      | Implementing calculation or mutation internals.                                               | Consumer-facing agent model definitions.           |
+| `@bilig/headless`  | Owning workbook state inside Node with formula recalculation and import/export.               | Publishing generic intent contracts.               |
+| `@bilig/core`      | Implementing calculation or mutation internals.                                               | Consumer-facing model definitions.                 |
 
-The root export keeps the ordinary agent path: models, refs, checks, formulas,
-plans, runtime proof, command results, schemas, and low-level ops. Subpaths are available when an agent wants a smaller import map:
+The root export keeps the ordinary adapter path: models, refs, checks,
+formulas, plans, runtime proof, command results, schemas, and low-level ops.
+Subpaths are available when a consumer wants a smaller import map:
 `@bilig/workbook/model`,
 `@bilig/workbook/prepare`, `@bilig/workbook/find`, `@bilig/workbook/check`, `@bilig/workbook/formula`,
 `@bilig/workbook/verify`, `@bilig/workbook/runtime`,
@@ -108,7 +109,7 @@ Models are plain:
 - `find(workbook)` binds the workbook parts the model needs.
 - `checks({ refs, workbook })` declares proof the runtime must provide.
 - `actions` publish constrained input metadata and write workbook intent.
-- `prepareWorkbookAction(model, action)` is the canonical preflight for agents.
+- `prepareWorkbookAction(model, action)` is the canonical preflight for hosts.
 
 Refs are generic:
 
@@ -163,7 +164,7 @@ const adapter = {
 }
 ```
 
-Use `runWorkbookPlan(planOrData, adapter, { strict: true })` when an agent needs
+Use `runWorkbookPlan(planOrData, adapter, { strict: true })` when a host needs
 strict proof. Strict mode requires:
 
 - a valid plan before mutation
@@ -176,7 +177,7 @@ strict proof. Strict mode requires:
 - command receipts bound to planned digests and concrete `resolvedRefs`
 - proof on every passed check
 
-Use `{ requireResolvedRefs: true }` when an agent only needs concrete ref
+Use `{ requireResolvedRefs: true }` when a caller only needs concrete ref
 materialization without every strict-mode gate.
 
 Runtime authors can run the same plain-object, known-key, own-data-option

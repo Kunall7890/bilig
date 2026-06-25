@@ -27,6 +27,7 @@ export const docsSiteSources = [
   ['mcp-spreadsheet-formula-server-for-coding-agents.html', 'mcp-spreadsheet-formula-server-for-coding-agents.md'],
   ['vercel-ai-sdk-spreadsheet-tool-formula-readback.html', 'vercel-ai-sdk-spreadsheet-tool-formula-readback.md'],
   ['browser-use-workpaper-formula-tool.html', 'browser-use-workpaper-formula-tool.md'],
+  ['workbook-runtime-intent-api.html', 'workbook-runtime-intent-api.md'],
   ['workbook-agent-intent-api.html', 'workbook-agent-intent-api.md'],
   ['headless-spreadsheet-engine-node-services-agents.html', 'headless-spreadsheet-engine-node-services-agents.md'],
   ['exceljs-formula-recalculation-node.html', 'exceljs-formula-recalculation-node.md'],

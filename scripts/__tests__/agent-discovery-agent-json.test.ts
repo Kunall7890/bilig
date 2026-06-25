@@ -27,9 +27,9 @@ describe('agent discovery agent.json manifest', () => {
       name: 'bilig',
       title: 'Bilig WorkPaper spreadsheet formula readback',
       description:
-        'Spreadsheet formula readback for Node.js services and agent MCP tools: edit cells, recalculate, verify outputs, and persist JSON without UI automation.',
-      keywords: expect.arrayContaining(['spreadsheet formula readback', 'MCP spreadsheet tools', 'agent workbook automation']),
-      tags: expect.arrayContaining(['spreadsheet-formula-readback', 'mcp-spreadsheet-tools', 'agent-workbook-automation']),
+        'Spreadsheet formula readback for Node.js services and MCP tools: edit cells, recalculate, verify outputs, and persist JSON without UI automation.',
+      keywords: expect.arrayContaining(['spreadsheet formula readback', 'MCP spreadsheet tools', 'tool-host workbook automation']),
+      tags: expect.arrayContaining(['spreadsheet-formula-readback', 'mcp-spreadsheet-tools', 'tool-host-workbook-automation']),
     })
     expect(parsed.capabilities).toContainEqual(
       expect.objectContaining({
@@ -39,7 +39,7 @@ describe('agent discovery agent.json manifest', () => {
         expected_result:
           'bilig-evaluator.v1 JSON with workbook risk reasons, unsupported functions, external links, VBA payloads, pivots, volatile functions, stored formula result counts, no compatibility score, and verified true',
         boundary:
-          'Diagnoses workbook risks before agent or service use; does not certify Excel compatibility, execute macros, refresh pivots or external data, or assign a compatibility percentage.',
+          'Diagnoses workbook risks before service or tool-host use; does not certify Excel compatibility, execute macros, refresh pivots or external data, or assign a compatibility percentage.',
       }),
     )
     expect(parsed.capabilities).toContainEqual(

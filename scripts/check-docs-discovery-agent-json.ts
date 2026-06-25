@@ -12,7 +12,7 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
   }
   if (
     Reflect.get(parsedAgentJson, 'description') !==
-    'Spreadsheet formula readback for Node.js services and agent MCP tools: edit cells, recalculate, verify outputs, and persist JSON without UI automation.'
+    'Spreadsheet formula readback for Node.js services and MCP tools: edit cells, recalculate, verify outputs, and persist JSON without UI automation.'
   ) {
     throw new Error('docs/.well-known/agent.json must advertise the spreadsheet formula readback description')
   }
@@ -21,7 +21,7 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
     [
       'spreadsheet formula readback',
       'MCP spreadsheet tools',
-      'agent workbook automation',
+      'tool-host workbook automation',
       'JSON WorkPaper persistence',
       '@bilig/workpaper',
     ],
@@ -29,7 +29,7 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
   )
   requireStringArrayIncludes(
     Reflect.get(parsedAgentJson, 'tags'),
-    ['spreadsheet-formula-readback', 'mcp-spreadsheet-tools', 'agent-workbook-automation', 'json-workpaper-persistence'],
+    ['spreadsheet-formula-readback', 'mcp-spreadsheet-tools', 'tool-host-workbook-automation', 'json-workpaper-persistence'],
     'docs/.well-known/agent.json tags',
   )
 
@@ -102,7 +102,7 @@ export function requireAgentJsonPublicDiscovery(parsedAgentJson: object): void {
         Reflect.get(capability, 'expected_result') ===
           'bilig-evaluator.v1 JSON with workbook risk reasons, unsupported functions, external links, VBA payloads, pivots, volatile functions, stored formula result counts, no compatibility score, and verified true' &&
         Reflect.get(capability, 'boundary') ===
-          'Diagnoses workbook risks before agent or service use; does not certify Excel compatibility, execute macros, refresh pivots or external data, or assign a compatibility percentage.',
+          'Diagnoses workbook risks before service or tool-host use; does not certify Excel compatibility, execute macros, refresh pivots or external data, or assign a compatibility percentage.',
     )
   ) {
     throw new Error('docs/.well-known/agent.json must advertise the Workbook Compatibility Report evaluator capability')

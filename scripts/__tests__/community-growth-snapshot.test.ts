@@ -110,9 +110,9 @@ describe('community growth snapshot', () => {
         })
       }
 
-      if (url === 'https://registry.npmjs.org/%40bilig%2Fheadless') {
+      if (url === 'https://registry.npmjs.org/%40bilig%2Fworkpaper') {
         return responseJson({
-          name: '@bilig/headless',
+          name: '@bilig/workpaper',
           description: 'Headless spreadsheet engine',
           license: 'MIT',
           'dist-tags': {
@@ -124,21 +124,21 @@ describe('community growth snapshot', () => {
         })
       }
 
-      if (url === 'https://api.npmjs.org/downloads/point/last-week/%40bilig%2Fheadless') {
+      if (url === 'https://api.npmjs.org/downloads/point/last-week/%40bilig%2Fworkpaper') {
         return responseJson({
           downloads: 2399,
           start: '2026-04-30',
           end: '2026-05-06',
-          package: '@bilig/headless',
+          package: '@bilig/workpaper',
         })
       }
 
-      if (url === 'https://api.npmjs.org/downloads/point/last-month/%40bilig%2Fheadless') {
+      if (url === 'https://api.npmjs.org/downloads/point/last-month/%40bilig%2Fworkpaper') {
         return responseJson({
           downloads: 16491,
           start: '2026-04-07',
           end: '2026-05-06',
-          package: '@bilig/headless',
+          package: '@bilig/workpaper',
         })
       }
 
@@ -166,7 +166,7 @@ describe('community growth snapshot', () => {
         openIssueCount: 37,
       },
       npm: {
-        name: '@bilig/headless',
+        name: '@bilig/workpaper',
         version: '0.10.62',
         downloads: {
           lastWeek: {
@@ -221,9 +221,9 @@ describe('community growth snapshot', () => {
         })
       }
 
-      if (url === 'https://registry.npmjs.org/%40bilig%2Fheadless') {
+      if (url === 'https://registry.npmjs.org/%40bilig%2Fworkpaper') {
         return responseJson({
-          name: '@bilig/headless',
+          name: '@bilig/workpaper',
           description: 'Headless spreadsheet engine',
           license: 'MIT',
           'dist-tags': {
@@ -235,11 +235,11 @@ describe('community growth snapshot', () => {
         })
       }
 
-      if (url === 'https://api.npmjs.org/downloads/point/last-week/%40bilig%2Fheadless') {
+      if (url === 'https://api.npmjs.org/downloads/point/last-week/%40bilig%2Fworkpaper') {
         return responseJson({ downloads: 13427, start: '2026-05-05', end: '2026-05-11' })
       }
 
-      if (url === 'https://api.npmjs.org/downloads/point/last-month/%40bilig%2Fheadless') {
+      if (url === 'https://api.npmjs.org/downloads/point/last-month/%40bilig%2Fworkpaper') {
         return responseJson({ downloads: 24931, start: '2026-04-12', end: '2026-05-11' })
       }
 
@@ -460,9 +460,9 @@ describe('community growth snapshot', () => {
         })
       }
 
-      if (url === 'https://registry.npmjs.org/%40bilig%2Fheadless') {
+      if (url === 'https://registry.npmjs.org/%40bilig%2Fworkpaper') {
         return responseJson({
-          name: '@bilig/headless',
+          name: '@bilig/workpaper',
           description: 'Headless spreadsheet engine',
           license: 'MIT',
           'dist-tags': {
@@ -474,11 +474,11 @@ describe('community growth snapshot', () => {
         })
       }
 
-      if (url === 'https://api.npmjs.org/downloads/point/last-week/%40bilig%2Fheadless') {
+      if (url === 'https://api.npmjs.org/downloads/point/last-week/%40bilig%2Fworkpaper') {
         return responseJson({ downloads: 1, start: '2026-04-30', end: '2026-05-06' })
       }
 
-      if (url === 'https://api.npmjs.org/downloads/point/last-month/%40bilig%2Fheadless') {
+      if (url === 'https://api.npmjs.org/downloads/point/last-month/%40bilig%2Fworkpaper') {
         return responseJson({ downloads: 2, start: '2026-04-07', end: '2026-05-06' })
       }
 
@@ -550,7 +550,7 @@ describe('community growth snapshot', () => {
                 nodes: [
                   {
                     number: 157,
-                    title: 'Which Node workbook automation workflow should @bilig/headless prove next?',
+                    title: 'Which Node workbook automation workflow should @bilig/workpaper prove next?',
                     url: 'https://github.com/proompteng/bilig/discussions/157',
                     category: {
                       name: 'Ideas',
@@ -595,7 +595,7 @@ describe('community growth snapshot', () => {
       recent: [
         {
           number: 157,
-          title: 'Which Node workbook automation workflow should @bilig/headless prove next?',
+          title: 'Which Node workbook automation workflow should @bilig/workpaper prove next?',
           url: 'https://github.com/proompteng/bilig/discussions/157',
           category: 'Ideas',
           createdAt: '2026-05-08T21:46:51Z',
@@ -647,7 +647,7 @@ describe('community growth snapshot', () => {
         topics: ['headless-spreadsheet', 'typescript'],
       },
       npm: {
-        name: '@bilig/headless',
+        name: '@bilig/workpaper',
         version: '0.11.24',
         description: 'Headless spreadsheet engine',
         license: 'MIT',
@@ -733,7 +733,7 @@ describe('community growth snapshot', () => {
     expect(markdown).toContain('news.ycombinator.com (51/36)')
     expect(markdown).toContain('## External Discovery')
     expect(markdown).toContain('https://www.libhunt.com/topic/headless-spreadsheet')
-    expect(markdown).toContain('May 7 Show HN discovery path')
+    expect(markdown).toContain('May 7 developer discovery path')
     expect(markdown).toContain('## Conversion Pressure')
     expect(markdown).toContain('- Last-week npm downloads per current star: 559')
     expect(markdown).toContain('- Last-month npm downloads per current star: 1,039')
@@ -742,7 +742,7 @@ describe('community growth snapshot', () => {
     expect(markdown).toContain('these are pressure ratios, not attribution')
     expect(markdown).toContain('## Spike Read')
     expect(markdown).toContain('The strongest current external referrer is news.ycombinator.com with 51 views from 36 unique visitors.')
-    expect(markdown).toContain('do not repost the same launch')
+    expect(markdown).toContain('service and tool-host audiences')
   })
 
   it('renders the live traffic channel comparison from the current winner', () => {
@@ -760,7 +760,7 @@ describe('community growth snapshot', () => {
         topics: ['excel', 'model-context-protocol'],
       },
       npm: {
-        name: '@bilig/headless',
+        name: '@bilig/workpaper',
         version: '0.157.0',
         description: 'Headless WorkPaper runtime',
         license: 'MIT',

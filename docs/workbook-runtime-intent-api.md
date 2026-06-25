@@ -3,44 +3,28 @@ title: Workbook runtime intent API
 published: true
 description: Use @bilig/workbook when a product runtime, MCP server, or tool host needs transport-neutral workbook plans, checks, and proof without owning formula calculation.
 tags: workbook-api, runtime-intent, model-proofs, typescript, spreadsheet
-canonical_url: https://proompteng.github.io/bilig/workbook-agent-intent-api.html
+canonical_url: https://proompteng.github.io/bilig/workbook-runtime-intent-api.html
 image: /assets/github-social-preview.png
 ---
 
 # Workbook runtime intent API
 
-Use `@bilig/workbook` when your product or framework already owns the
-runtime, but needs a stable way to describe workbook intent before anything is
-mutated.
+Use `@bilig/workbook` when your product already owns calculation but needs a
+stable way to describe workbook intent before anything mutates state.
 
-This is the package for model authors, adapter authors, and tool hosts
+The package is for model authors, adapter authors, MCP servers, and tool hosts
 that need plan data, requirements, command receipts, checks, schemas, and
-readback proof. It does not calculate formulas or own WorkPaper state. Use
-`@bilig/workpaper` when Bilig should run the workbook. Use `@bilig/workbook`
-when another runtime should run the workbook but still needs a proof-bound
-contract.
+readback proof. It does not calculate formulas or own WorkPaper state.
 
-## Run The Proof
+Use `@bilig/workpaper` when Bilig should run the workbook. Use
+`@bilig/workbook` when another runtime should run the workbook but still needs a
+proof-bound contract.
 
-From a cloned Bilig checkout:
-
-```sh
-pnpm --dir examples/workbook-agent-model install
-pnpm --dir examples/workbook-agent-model start
-pnpm --dir examples/workbook-agent-model run typecheck
-```
-
-From an app that wants the package:
+## Install
 
 ```sh
 npm install @bilig/workbook
 ```
-
-The example defines a generic named-range model, prepares an action, transports
-the plan as JSON-safe data, runs it through a strict adapter, and prints the
-model description, plan requirements, command receipts, changed cells, checks,
-and proof. No quote, revenue, payout, or other domain template is built into
-the package.
 
 ## Use It When
 
@@ -53,18 +37,18 @@ the package.
 
 ## Do Not Use It When
 
-- you want Bilig to own workbook state and formula recalculation; use
+- Bilig should own workbook state and formula recalculation; use
   `@bilig/workpaper`;
-- you only have stale formulas in an `.xlsx` file; use
+- the only problem is stale formulas in an `.xlsx` file; use
   `@bilig/xlsx-formula-recalc`, `@bilig/sheetjs-formula-recalc`, or
   `@bilig/exceljs-formula-recalc`;
-- you need desktop Excel features such as macros, pivots, charts, add-ins, or
-  exact UI layout.
+- the workflow depends on desktop Excel features such as macros, pivots, charts,
+  add-ins, or exact UI layout.
 
 ## Proof Contract
 
-An integration should be able to answer these questions without
-asking a human to inspect a spreadsheet UI:
+An integration should be able to answer these questions without asking a human
+to inspect a spreadsheet UI:
 
 1. Which model and action were selected?
 2. Which refs did selectors bind?
@@ -129,15 +113,5 @@ console.log(describeRunResult(result));
 | `@bilig/workpaper` | WorkPaper state, recalculation, JSON persistence, MCP, and service tools. | [WorkPaper service evaluator](eval-workpaper-service.md) |
 | `@bilig/xlsx-formula-recalc` | File-level XLSX formula recalculation after input edits. | [XLSX recalculation evaluator](eval-xlsx-recalc.md) |
 
-## Handoff Prompt
-
-```text
-Use @bilig/workbook when the runtime owns calculation but the caller needs a
-transport-neutral workbook plan. Define a model, prepare the action, inspect
-the plan data, run it through a strict adapter, and return model/action,
-resolved refs, applied ops, command receipts, checks, verified proof, and known
-limitations. Do not claim success from a write call alone.
-```
-
-See the package README for the full API surface:
-[`packages/workbook`](https://github.com/proompteng/bilig/tree/main/packages/workbook#readme).
+The older `workbook-agent-intent-api.html` URL remains as a compatibility alias
+for existing links.

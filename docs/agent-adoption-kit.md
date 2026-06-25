@@ -8,7 +8,7 @@ cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets
 image: /assets/github-social-preview.png
 ---
 
-# Agent WorkPaper Handoff
+# Tool Host WorkPaper Handoff
 
 Use this page when you are deciding whether Bilig should be the workbook tool
 inside a coding agent, MCP client, or agent framework. The path is deliberately

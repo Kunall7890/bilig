@@ -1,15 +1,15 @@
 ---
-title: Workbook tools for agent frameworks
+title: Workbook tools for MCP, services, and framework integrations
 published: true
-description: Pick the Bilig WorkPaper integration path for Codex, Claude, Cursor, Kiro, Roo Code, Trae, Qodo IDE, Zed, Junie, OpenHands, OpenCode, Aider, Goose, Browser Use, OpenAI Agents, Microsoft Agent Framework, Vercel AI SDK, LangChain, LangGraph, LlamaIndex, and MCP clients.
-tags: agents, mcp, spreadsheet automation, workbook-api, typescript
+description: Pick the Bilig WorkPaper integration path for Node services, MCP clients, tool hosts, OpenAI Agents, Microsoft Agent Framework, Vercel AI SDK, LangChain, LangGraph, LlamaIndex, and workflow runners.
+tags: mcp, spreadsheet automation, workbook-api, typescript, node-services
 canonical_url: https://proompteng.github.io/bilig/agent-framework-workbook-tools.html
 image: /assets/github-social-preview.png
 ---
 
-# Workbook tools for agent frameworks
+# Workbook tools for MCP, services, and framework integrations
 
-Use this page when an agent, assistant, or tool host needs spreadsheet formulas
+Use this page when a service, MCP client, assistant, or tool host needs workbook formulas
 but should not drive Excel through screenshots. Pick the smallest integration
 boundary that can write inputs, recalculate formulas, verify readback, and
 persist WorkPaper JSON.
@@ -17,7 +17,7 @@ persist WorkPaper JSON.
 ## Decision
 
 Use `@bilig/workpaper` when the workbook model can live in a Node service,
-agent tool, route handler, or MCP server. The tool contract is explicit:
+tool call, route handler, or MCP server. The contract is explicit:
 
 1. read the relevant sheet or range;
 2. write the requested input cell;
@@ -40,8 +40,8 @@ the product: manual review, macros, pivots, charts, add-ins, or layout fidelity.
 
 ## Start here
 
-For a coding agent that only needs the shortest no-key path, use the
-[Agent WorkPaper handoff](agent-adoption-kit.md):
+For a tool host that only needs the shortest no-key path, use the
+[WorkPaper handoff](agent-adoption-kit.md):
 
 ```sh
 npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
@@ -79,12 +79,12 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | Codex                              | Local stdio MCP server or direct package import in repo tools.                                                                        | [MCP client setup](mcp-client-setup.md#codex)                                                |
 | Claude Code and Claude Desktop     | File-backed MCP server, or MCPB when a desktop extension is easier.                                                                   | [Claude MCPB guide](claude-desktop-mcpb-workpaper.md)                                        |
 | Cursor                             | Project-local `.cursor/mcp.json` pointing at `bilig-workpaper-mcp`.                                                                   | [MCP client setup](mcp-client-setup.md#cursor)                                               |
-| Kiro                               | Project `.kiro/steering/bilig-workpaper.md` plus `.kiro/settings/mcp.json` for the file-backed WorkPaper MCP server.                  | [Coding agent rule chooser](agent-rule-chooser.md)                                           |
-| Roo Code                           | Project `.roo/rules/bilig-workpaper.md` plus `.roo/mcp.json` for the file-backed WorkPaper MCP server.                                | [Coding agent rule chooser](agent-rule-chooser.md)                                           |
+| Kiro                               | Project `.kiro/steering/bilig-workpaper.md` plus `.kiro/settings/mcp.json` for the file-backed WorkPaper MCP server.                  | [Host rule chooser](agent-rule-chooser.md)                                                   |
+| Roo Code                           | Project `.roo/rules/bilig-workpaper.md` plus `.roo/mcp.json` for the file-backed WorkPaper MCP server.                                | [Host rule chooser](agent-rule-chooser.md)                                                   |
 | Trae                               | Project `.trae/rules/bilig-workpaper.md` plus `.trae/mcp.json` Project MCP for the file-backed WorkPaper MCP server.                  | [Trae WorkPaper MCP setup](trae-workpaper-mcp.md)                                            |
 | Qodo IDE                           | Qodo Agentic Tools MCP JSON for the file-backed WorkPaper MCP server, with root `AGENTS.md` as the project policy.                    | [Qodo WorkPaper MCP setup](qodo-workpaper-mcp.md)                                            |
 | Zed                                | Project `.zed/settings.json` `context_servers.bilig-workpaper` plus `AGENTS.md` and `.agents/skills/bilig-workpaper/SKILL.md`.        | [MCP client setup](mcp-client-setup.md#zed)                                                  |
-| JetBrains Junie                    | Project-local `.junie/mcp/mcp.json` using the file-backed WorkPaper MCP server, with `AGENTS.md` for the shared workbook proof rule. | [Coding agent rule chooser](agent-rule-chooser.md)                                           |
+| JetBrains Junie                    | Project-local `.junie/mcp/mcp.json` using the file-backed WorkPaper MCP server, with `AGENTS.md` for the shared workbook proof rule. | [Host rule chooser](agent-rule-chooser.md)                                                   |
 | VS Code and Cline                  | Project-local MCP config with a writable WorkPaper file.                                                                              | [MCP client setup](mcp-client-setup.md)                                                      |
 | OpenHands                          | `AGENTS.md`, `.agents/skills/bilig-workpaper/SKILL.md`, and `openhands mcp add` for a file-backed stdio WorkPaper server.             | [OpenHands WorkPaper MCP setup](openhands-workpaper-mcp.md)                                  |
 | OpenCode                           | `opencode.jsonc` for local MCP plus `.opencode/agents/bilig-workpaper.md` for a readback-first workbook subagent.                    | [OpenCode WorkPaper MCP setup](opencode-workpaper-mcp.md)                                    |
@@ -103,21 +103,21 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 | LlamaIndex.TS                      | `tool(fn, { parameters })` with a compact proof return.                                                                               | [LlamaIndex.TS WorkPaper tool](llamaindex-workpaper-spreadsheet-tool.md)                     |
 | Open Multi-Agent                   | `connectMCPTools()` with the file-backed WorkPaper MCP server registered on an `Agent`.                                               | [Open Multi-Agent WorkPaper MCP example](open-multi-agent-workpaper-mcp.md)                  |
 | Agno                               | `MCPTools` with the file-backed WorkPaper MCP server and explicit readback checks.                                                    | [Agno WorkPaper MCP tools](agno-workpaper-mcp.md)                                            |
-| Pydantic AI                        | `MCPToolset` with typed proof validation before an agent trusts workbook calculations.                                                | [Pydantic AI WorkPaper MCP tools](pydantic-ai-workpaper-mcp.md)                              |
+| Pydantic AI                        | `MCPToolset` with typed proof validation before the workflow trusts workbook calculations.                                            | [Pydantic AI WorkPaper MCP tools](pydantic-ai-workpaper-mcp.md)                              |
 | Google ADK                         | `McpToolset` with file-backed stdio WorkPaper tools and explicit formula readback proof.                                             | [Google ADK WorkPaper MCP tools](google-adk-workpaper-mcp.md)                                |
 | Microsoft Agent Framework          | `MCPStdioTool` or `MCPStreamableHTTPTool` with file-backed or hosted WorkPaper tools; .NET hosts can convert MCP tools to `AITool`.  | [Microsoft Agent Framework WorkPaper MCP tools](microsoft-agent-framework-workpaper-mcp.md)   |
 | Mastra                             | Real `@mastra/core` `createTool()` smoke for formula-backed workbook edits.                                                           | [Mastra WorkPaper tool](mastra-workpaper-spreadsheet-tool.md)                                |
 | Cloudflare Agents                  | Agent tool calling a Node-compatible WorkPaper boundary.                                                                              | [Cloudflare Agents WorkPaper tool](cloudflare-agents-workpaper-spreadsheet-tool.md)          |
-| Runtime adapter authors            | `@bilig/workbook` models, plan data, checks, schemas, command receipts, and strict proof.                                             | [Workbook agent intent API](workbook-agent-intent-api.md)                                    |
+| Runtime adapter authors            | `@bilig/workbook` models, plan data, checks, schemas, command receipts, and strict proof.                                             | [Workbook runtime intent API](workbook-runtime-intent-api.md)                                |
 | MCP directories and remote clients | Hosted server card or local file-backed server.                                                                                       | [MCP WorkPaper server](mcp-workpaper-tool-server.md)                                         |
 
 ## Proof object
 
-Every agent integration should return a small object like this instead of a
+Every tool integration should return a small object like this instead of a
 generic "cell updated" message:
 
 ```ts
-type SpreadsheetAgentProof = {
+type SpreadsheetToolProof = {
   editedCell: { sheet: string; cell: string; value: unknown }
   before: { cell: string; displayValue: string }
   after: { cell: string; displayValue: string }
@@ -144,10 +144,10 @@ Do not claim success from a write call alone.
 
 ## Links
 
-- [WorkPaper agent tool for Node.js](ai-agent-spreadsheet-tool-node.md)
-- [Workbook agent intent API](workbook-agent-intent-api.md)
-- [WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
-- [Agent WorkPaper tool-calling recipe](agent-workpaper-tool-calling-recipe.md)
+- [WorkPaper tool for Node.js](ai-agent-spreadsheet-tool-node.md)
+- [Workbook runtime intent API](workbook-agent-intent-api.md)
+- [WorkPaper host handbook](headless-workpaper-agent-handbook.md)
+- [WorkPaper tool-calling recipe](agent-workpaper-tool-calling-recipe.md)
 - [MCP client setup](mcp-client-setup.md)
 - [OpenHands WorkPaper MCP setup](openhands-workpaper-mcp.md)
 - [Trae WorkPaper MCP setup](trae-workpaper-mcp.md)

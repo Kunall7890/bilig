@@ -217,8 +217,8 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     requireIncludes(aiAgentSpreadsheetToolNode, required, 'docs/ai-agent-spreadsheet-tool-node.md')
   }
   for (const required of [
-    'title: Workbook tools for agent frameworks',
-    'description: Pick the Bilig WorkPaper integration path for Codex, Claude, Cursor, Kiro, Roo Code, Trae, Qodo IDE, Zed, Junie, OpenHands, OpenCode, Aider, Goose, Browser Use, OpenAI Agents, Microsoft Agent Framework, Vercel AI SDK, LangChain, LangGraph, LlamaIndex, and MCP clients.',
+    'title: Workbook tools for MCP, services, and framework integrations',
+    'description: Pick the Bilig WorkPaper integration path for Node services, MCP clients, tool hosts, OpenAI Agents, Microsoft Agent Framework, Vercel AI SDK, LangChain, LangGraph, LlamaIndex, and workflow runners.',
     'npm create @bilig/workpaper@latest pricing-agent -- --agent',
     'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json',
     'npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json',
@@ -256,7 +256,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'Vercel AI SDK',
     'LangGraph.js',
     'LlamaIndex.TS',
-    'SpreadsheetAgentProof',
+    'SpreadsheetToolProof',
     'Do not claim success from a write call alone.',
     'Implementation gap form',
   ] as const) {

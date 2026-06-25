@@ -235,9 +235,9 @@ into an in-memory MCP server by default, or into persisted WorkPaper JSON when
 startup. It reports workbook risk indicators before a workflow trusts the imported
 WorkPaper and does not certify Excel compatibility.
 
-## Agent WorkPaper Handoff
+## Tool Host WorkPaper Handoff
 
-When another coding agent is about to solve a spreadsheet task by opening Excel,
+When a tool host is about to solve a spreadsheet task by opening Excel,
 LibreOffice, Google Sheets, or a screenshot grid, hand it the WorkPaper checklist
 instead:
 
@@ -247,16 +247,16 @@ npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
-The kit gives the agent one path: install the instructions, run the no-key
-agent evaluator, paste a workbook edit task, and require computed readback plus
+The kit gives the host one path: install the instructions, run the no-key MCP
+evaluator, paste a workbook edit task, and require computed readback plus
 persisted state before reporting success. Use `bilig-mcp-challenge --json` only
 when debugging the lower-level MCP transcript.
 
 Docs: <https://proompteng.github.io/bilig/agent-adoption-kit.html>
 
-## Agent Workflow Builders
+## Workflow Builders
 
-Use the local formula-readback server when an agent workflow platform should
+Use the local formula-readback server when a workflow platform should
 orchestrate the task but Bilig should own workbook state:
 
 ```sh
@@ -342,7 +342,7 @@ macros, and volatile functions may need review.
 
 ## After The Proof
 
-If the starter or challenge output matches your service or agent workflow,
+If the starter or challenge output matches your service or tool workflow,
 keep the repository nearby for release notes and public limits:
 <https://github.com/proompteng/bilig>.
 
