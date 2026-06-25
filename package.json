@@ -267,7 +267,7 @@
   },
   "lint-staged": {
     "*.{js,cjs,mjs,jsx,ts,tsx,json,css,html}": [
-      "oxfmt --write"
+      "oxfmt --write --no-error-on-unmatched-pattern"
     ],
     "*.{js,cjs,mjs,jsx,ts,tsx}": [
       "oxlint --config .oxlintrc.json --type-aware --fix --deny-warnings"
