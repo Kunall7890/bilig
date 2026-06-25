@@ -308,7 +308,7 @@ export async function requireAgentInstructionDiscovery(input: {
   requireIncludes(claudeProjectSkillNotes, '## Command Safety', '.claude/skills/bilig-workpaper/SKILL.md')
   requireIncludes(claudeProjectSkillNotes, '"bilig-evaluate", "--door", "agent-mcp", "--json"', '.claude/skills/bilig-workpaper/SKILL.md')
   requireIncludes(claudeProjectSkillNotes, '"bilig-mcp-challenge", "--json"', '.claude/skills/bilig-workpaper/SKILL.md')
-  requireIncludes(claudeProjectSkillNotes, 'Return readback, not vibes.', '.claude/skills/bilig-workpaper/SKILL.md')
+  requireIncludes(claudeProjectSkillNotes, 'Return readback, not a write-only claim.', '.claude/skills/bilig-workpaper/SKILL.md')
   requireNotIncludes(claudeProjectSkillNotes, 'allowed-tools:', '.claude/skills/bilig-workpaper/SKILL.md')
   requireNotIncludes(claudeProjectSkillNotes, 'argument-hint:', '.claude/skills/bilig-workpaper/SKILL.md')
   requireIncludes(

@@ -191,7 +191,7 @@ registry refresh:
   Live API verification on 2026-05-13 returned 9 matching registry entries,
   with `0.14.0` marked as latest at the time.
 - GitHub Discussion `#230` now has a maintainer update for MCP users with the
-  `0.14.0` registry proof, MCPB proof, and a concrete feedback ask about the
+  `0.14.0` registry proof, MCPB proof, and a concrete workflow question about the
   next useful WorkPaper tool shape:
   <https://github.com/proompteng/bilig/discussions/230#discussioncomment-16907632>
 - Official MCP Registry refresh on May 14, 2026: the existing Publish MCP
@@ -475,10 +475,10 @@ Latest star-spike research on May 16, 2026:
   Treat it as weak awareness until it creates comments, referrers, issues, or
   discussion replies.
 - The replicable pattern is: narrow technical audience, single proof URL,
-  concrete feedback ask, public npm package, and immediate README/example/docs
+  concrete workflow question, public npm package, and immediate README/example/docs
   conversion. The next loop should make the HN/X/MCP follow-up about one
-  adoption blocker, not a general launch.
-- The post-proof CTA now routes adoption blockers to the `general` discussion
+  implementation gap, not a general launch.
+- The post-proof CTA now routes implementation gaps to the `general` discussion
   form so HN/X visitors are asked for blocker type, workflow, attempted proof,
   and smallest unblocking evidence instead of leaving an unstructured comment.
 - Timing discipline: do not submit another HN item on a weekend or immediately

@@ -1,7 +1,7 @@
 ---
 title: XLSX formula support answers for Node.js
 published: true
-description: Short, non-spam support-answer templates for stale XLSX formula values in SheetJS, ExcelJS, xlsx-populate, template, and CI workflows.
+description: Short support-answer templates for XLSX formula values in SheetJS, ExcelJS, xlsx-populate, template, and CI workflows.
 tags: typescript, node, xlsx, sheetjs, exceljs, formulas, recalculation
 canonical_url: https://proompteng.github.io/bilig/xlsx-formula-support-answers.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png

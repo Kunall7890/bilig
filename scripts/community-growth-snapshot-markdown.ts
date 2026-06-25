@@ -229,7 +229,7 @@ export function renderCommunityGrowthSnapshotMarkdown(snapshot: CommunityGrowthS
     '',
     '- Stars are the primary lagging goal; npm downloads, clone traffic, and external issues are leading signals.',
     '- If downloads or clones rise without stars, improve README and npm post-proof adoption paths.',
-    '- If traffic comes from a channel but discussions stay quiet, switch from launch copy to a specific workflow-feedback ask.',
+    '- If traffic comes from a channel but discussions stay quiet, switch from launch copy to a specific workflow question.',
     '- If the starter queue drops below three current issues, open scoped example tasks before the next distribution push.',
   ]
 

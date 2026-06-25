@@ -62,7 +62,7 @@ This snapshot tracks the public signals for the Bilig WorkPaper growth loop: Git
   and #335
   ([OpenAI Responses WorkPaper tool calls](https://github.com/proompteng/bilig/discussions/335))
   from older clone-first or package-boundary copy to concise WorkPaper-first
-  evaluation paths with no-key evaluator commands and concrete feedback asks.
+  evaluation paths with no-key evaluator commands and concrete workflow questions.
 - 2026-06-25T08:28:48Z: updated the high-traffic
   [`examples/headless-workpaper`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper)
   README and package metadata so the first screen presents runnable WorkPaper
@@ -100,6 +100,11 @@ This snapshot tracks the public signals for the Bilig WorkPaper growth loop: Git
   readback, agent MCP proof, compatibility reports, and XLSX recalculation only
   where saved-file boundaries are explicit. Live GitHub readback still showed 32
   stars.
+- 2026-06-25T09:38:22Z: cleaned growth-oriented wording from public and agent
+  surfaces: replaced "adoption blocker" labels with implementation-gap language,
+  removed "non-spam", "not vibes", "feedback ask", and star-mechanics phrasing,
+  and regenerated the skill, `llms.txt`, `llms-full.txt`, and well-known mirrors.
+  Live GitHub readback still showed 32 stars.
 
 ## External Discovery
 
@@ -132,5 +137,5 @@ This snapshot tracks the public signals for the Bilig WorkPaper growth loop: Git
 
 - Stars are the primary lagging goal; npm downloads, clone traffic, and external issues are leading signals.
 - If downloads or clones rise without stars, improve README and npm post-proof adoption paths.
-- If traffic comes from a channel but discussions stay quiet, switch from launch copy to a specific workflow-feedback ask.
+- If traffic comes from a channel but discussions stay quiet, switch from launch copy to a specific workflow question.
 - If the starter queue drops below three current issues, open scoped example tasks before the next distribution push.

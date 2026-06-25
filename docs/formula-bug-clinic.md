@@ -119,8 +119,8 @@ My spreadsheet is wrong. Can Bilig support it?
 
 ## Why this helps
 
-Stars usually follow evidence, not claims. A reduced workbook fixture is better
-than a marketing post because it gives maintainers something concrete to merge:
+A reduced workbook fixture is better than a broad bug report because it gives
+maintainers something concrete to merge:
 
 - a regression test;
 - an XLSX import/export corpus case;

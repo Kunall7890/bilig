@@ -622,5 +622,5 @@ the formulas reacted. Keep the MCP layer thin, keep the workbook logic
 testable, and make every write return structured verification.
 
 Start with the adapter command above. If it almost matches but a gap blocks
-adoption, use the adoption blocker form:
+adoption, open an implementation gap discussion:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.

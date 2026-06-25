@@ -55,7 +55,7 @@ an empty or understood `warnings` array, and the recalculated cell value under
 Excel parity claim; real workbooks still report `excelParity: "not_proven"`
 unless you compare against your own Excel, LibreOffice, or Graph oracle.
 
-The JSON contains proof fields only. Star, release-watch, and adoption-blocker
+The JSON contains proof fields only. Discussion, release-watch, and follow-up
 links stay in prose so machine output stays usable in CI and agents.
 
 ## Inspect your workbook first

@@ -1,7 +1,7 @@
 ---
 title: 'Show HN: Bilig - formula WorkPapers for Node services and agents'
 published: true
-description: A plain maintainer note for Bilig with the WorkPaper npm check, benchmark artifact, limits, and concrete feedback ask.
+description: A plain maintainer note for Bilig with the WorkPaper npm check, benchmark artifact, limits, and open questions.
 tags: show-hn, typescript, node, spreadsheet, agents
 canonical_url: https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png

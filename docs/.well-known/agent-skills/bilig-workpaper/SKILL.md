@@ -201,7 +201,7 @@ The report is local. It does not upload workbook contents. Ask for a reduced pub
 
 ## Required Verification
 
-Return readback, not vibes. A successful agent response should include:
+Return readback, not a write-only claim. A successful agent response should include:
 
 - the exact edited sheet and A1 cell;
 - before values for relevant inputs and dependent outputs;

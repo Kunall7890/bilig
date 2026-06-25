@@ -401,5 +401,5 @@ Start with the adapter command above. If it saves you an agent-tooling spike,
 keep the repository and release feed nearby:
 <https://github.com/proompteng/bilig>.
 
-If it almost matches but a gap blocks adoption, use the adoption blocker form:
+If it almost matches but a gap blocks adoption, open an implementation gap discussion:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.

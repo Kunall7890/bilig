@@ -84,10 +84,10 @@ and
 | Agent or MCP tools       | [Headless WorkPaper agent handbook](https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html) and [MCP spreadsheet tool server](https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html) | The agent can pick MCP, direct TypeScript, or route tools and prove write/readback/persist.    |
 | Agent intent contracts   | [Workbook agent intent API](https://proompteng.github.io/bilig/workbook-agent-intent-api.html)                                                                                                                      | `@bilig/workbook` can describe plans, receipts, and strict runtime proof without owning state. |
 | Agent-owned XLSX files   | [Agent XLSX recalculation without LibreOffice](https://proompteng.github.io/bilig/agent-xlsx-formula-recalculation-without-libreoffice.html)                                                                        | A tool can edit XLSX inputs, recalculate, export, reimport, and return `verified: true`.       |
-| Public technical review  | [Show HN maintainer note](https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html)                                                                                                          | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask.        |
+| Public technical review  | [Show HN maintainer note](https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html)                                                                                                          | One shareable page has the npm check, benchmark caveat, known limits, and open questions.      |
 | Trust and performance    | [npm provenance](https://proompteng.github.io/bilig/npm-provenance-package-trust.html) and [benchmark evidence](https://proompteng.github.io/bilig/what-workpaper-benchmark-proves.html)                            | npm shows SLSA provenance, and benchmark claims match the checked artifact.                    |
-| Almost a fit             | [adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                                                       | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.       |
-| Formula or XLSX bug      | [formula bug clinic](https://proompteng.github.io/bilig/formula-bug-clinic.html) and [XLSX Cache Doctor transcript](https://proompteng.github.io/bilig/xlsx-cache-doctor-proof-transcript.html)                     | Prove stale cached values locally, then share one reduced public fixture.                      |
+| Almost a fit             | [implementation gap discussion](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                                               | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.       |
+| Formula or XLSX bug      | [formula bug clinic](https://proompteng.github.io/bilig/formula-bug-clinic.html) and [submit a workbook fixture](https://proompteng.github.io/bilig/submit-workbook-fixture.html)                                  | Share one reduced public fixture that maintainers can turn into a test.                       |
 | Real workbook blocked    | [submit a workbook fixture](https://proompteng.github.io/bilig/submit-workbook-fixture.html)                                                                                                                        | Use the structured form when a reduced workbook is ready.                                      |
 
 Reduced workbook already in hand? Start with the stale-cache diagnostic when a
@@ -669,7 +669,7 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
 - For HN, Lobsters, Reddit, or newsletter review, use the
   [Show HN maintainer note](https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html).
   It keeps the empty npm-project command, `verified: true` output, benchmark
-  caveat, known limits, and feedback ask together.
+  caveat, known limits, and open questions together.
 - Auditing imported Excel files is a separate workflow. Cached formula values
   embedded in `.xlsx` files are useful for triage, but Bilig accuracy claims
   should be checked against a fresh Microsoft Excel recalculation.
@@ -699,7 +699,7 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
 - Open benchmark critique lives in
   [Discussion 340](https://github.com/proompteng/bilig/discussions/340).
 
-If it almost matches but a gap blocks adoption, use the adoption blocker form:
+If it almost matches but a gap blocks adoption, open an implementation gap discussion:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
 If the fixture is already reduced and public, submit it through the public
 fixture form. For stale-cache cases, include the exact cell address, formula,

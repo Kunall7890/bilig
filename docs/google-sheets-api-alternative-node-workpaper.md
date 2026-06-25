@@ -173,7 +173,7 @@ formulas recalculated, output read, document saved.
 Repository and release notes:
 <https://github.com/proompteng/bilig>.
 
-If it almost matches but a gap blocks adoption, use the adoption blocker form:
+If it almost matches but a gap blocks adoption, open an implementation gap discussion:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
 
 ## Sources

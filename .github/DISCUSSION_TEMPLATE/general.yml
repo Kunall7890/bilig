@@ -1,15 +1,15 @@
-title: "[adoption blocker] "
+title: "[implementation gap] "
 labels: ["question"]
 body:
   - type: markdown
     attributes:
       value: |
-        Use this when you tried or evaluated `@bilig/headless` and something would block real adoption.
+        Use this when you tried or evaluated `@bilig/workpaper` and something would block real use.
         Good reports are specific: the workflow, formula family, import/export shape, persistence requirement, agent tool contract, or benchmark proof you need.
   - type: dropdown
-    id: blocker_type
+    id: gap_type
     attributes:
-      label: Blocker type
+      label: Gap type
       options:
         - Formula coverage
         - XLSX import / export behavior
@@ -34,9 +34,9 @@ body:
     validations:
       required: true
   - type: textarea
-    id: blocker
+    id: gap
     attributes:
-      label: What blocks adoption?
+      label: What blocks use?
       description: Name the missing formula, API shape, runtime behavior, proof, or documentation gap.
       placeholder: |
         I would try this in production if ...
@@ -56,7 +56,7 @@ body:
   - type: textarea
     id: success_criteria
     attributes:
-      label: What proof would unblock you?
+      label: What proof would close the gap?
       description: Describe the smallest example, test, benchmark, transcript, or compatibility note that would make this credible.
       placeholder: |
         A useful proof would show ...

@@ -56,7 +56,7 @@ export async function requireSharedPublicDocsDiscovery(args: {
     'XLSX formula recalculation example',
     'MCP spreadsheet tool server',
     'npm provenance',
-    'adoption blocker form',
+    'implementation gap discussion',
     'submit a workbook fixture',
     '## TypeScript API Shape',
     "['Revenue', '=Inputs!B2*Inputs!B3']",
@@ -125,7 +125,7 @@ export async function requireSharedPublicDocsDiscovery(args: {
       'https://github.com/proompteng/bilig/discussions/new?category=general',
       'https://github.com/proompteng/bilig/issues/new?template=workbook_fixture.yml',
       'https://github.com/proompteng/bilig/discussions/414',
-      'adoption blocker',
+      'implementation gap',
       'submit a workbook fixture',
       'formula-bug-clinic',
     ],
@@ -186,11 +186,11 @@ export async function requireSharedPublicDocsDiscovery(args: {
         content: await readFile(join(args.docsRoot, name), 'utf8'),
       })),
     ),
-    ['https://github.com/proompteng/bilig/discussions/new?category=general', 'adoption blocker'],
+    ['https://github.com/proompteng/bilig/discussions/new?category=general', 'implementation gap'],
   )
   requireDocumentsInclude(
     [{ path: '.github/DISCUSSION_TEMPLATE/general.yml', content: args.generalDiscussionTemplate }],
-    ['adoption blocker', 'What proof would unblock you?'],
+    ['implementation gap', 'What proof would close the gap?'],
   )
 
   const issueTemplateDocs = [
