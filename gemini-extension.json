@@ -1,6 +1,6 @@
 {
   "name": "bilig-workpaper",
-  "version": "0.164.2",
+  "version": "0.164.3",
   "description": "Formula WorkPaper MCP tools for Gemini CLI: edit cells, recalculate formulas, verify readback, and persist JSON without spreadsheet UI automation.",
   "contextFileName": "gemini-workpaper-context.md",
   "mcpServers": {

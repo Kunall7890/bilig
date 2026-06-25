@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.164.3
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.164.2
+- Manual override: no
+
+## Fixes
+- fix(create-workpaper): clean starter discovery metadata (2890512f)
+
 ## 0.164.2
 
 - Release type: patch
