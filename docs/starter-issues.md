@@ -15,18 +15,17 @@ for someone opening the repository cold.
 
 Current starter queue as of June 25, 2026:
 
-- 3 open `good first issue` issues.
-- 3 open `first-timers-only` issues.
-- 3 open `help wanted` issues.
+- 2 open `good first issue` issues.
+- 2 open `first-timers-only` issues.
+- 2 open `help wanted` issues.
 - 1 starter issue is a code or test task.
-- 2 starter issues are focused docs or integration transcript tasks.
+- 1 starter issue is a focused docs or integration transcript task.
 - 0 starter issues are currently under active review.
 
 ## Start Here This Week
 
 - [#452 docs(starter): add current WorkPaper service proof transcript](https://github.com/proompteng/bilig/issues/452)
 - [#453 examples(starter): add Hono WorkPaper route smoke](https://github.com/proompteng/bilig/issues/453)
-- [#454 docs(starter): keep starter issue page synced with live labels](https://github.com/proompteng/bilig/issues/454)
 
 ## Code And Test Starters
 
@@ -35,7 +34,6 @@ Current starter queue as of June 25, 2026:
 ## Integration Docs Starters
 
 - [#452 docs(starter): add current WorkPaper service proof transcript](https://github.com/proompteng/bilig/issues/452)
-- [#454 docs(starter): keep starter issue page synced with live labels](https://github.com/proompteng/bilig/issues/454)
 
 ## Claim A Starter Issue
 
