@@ -70,6 +70,11 @@ This snapshot tracks the public signals for the Bilig WorkPaper growth loop: Git
   import-format terms and toward WorkPaper, MCP tools, Node services, workbook
   automation, and agent workflows. Live readback showed 32 stars after the
   update.
+- 2026-06-25T08:41:12Z: rewrote the root README first screen and the Node
+  workbook examples quickstart to lead with `@bilig/workpaper`, service
+  readback, MCP proof, and agent workflows. Removed cached-file diagnostics from
+  the main conversion path while keeping saved-file support as a separate
+  boundary.
 
 ## External Discovery
 

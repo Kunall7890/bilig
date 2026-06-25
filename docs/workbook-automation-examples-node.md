@@ -15,7 +15,7 @@ service, queue worker, API route, or agent tool instead of a browser grid. Each
 script builds a small WorkPaper, writes formulas, reads computed values, and
 prints `verified: true` after the expected checks pass.
 
-The examples use the published `@bilig/headless` package from npm.
+The examples use the published `@bilig/workpaper` package from npm.
 
 ## 90-second npm-only check
 
@@ -25,11 +25,11 @@ empty directory, edits an input cell, recalculates formulas, persists the
 WorkPaper JSON, restores it, and prints `verified: true`.
 
 ```sh
-mkdir bilig-headless-eval
-cd bilig-headless-eval
+mkdir bilig-workpaper-eval
+cd bilig-workpaper-eval
 npm init -y
 npm pkg set type=module
-npm install @bilig/headless
+npm install @bilig/workpaper
 npm install -D tsx typescript @types/node
 curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts
 npx tsx quickstart.ts

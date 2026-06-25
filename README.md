@@ -2,42 +2,27 @@
 
 [![CI](https://github.com/proompteng/bilig/actions/workflows/ci.yml/badge.svg)](https://github.com/proompteng/bilig/actions/workflows/ci.yml)
 [![npm: @bilig/workpaper](https://img.shields.io/npm/v/@bilig/workpaper?label=%40bilig%2Fworkpaper)](https://www.npmjs.com/package/@bilig/workpaper)
-[![npm: @bilig/headless](https://img.shields.io/npm/v/@bilig/headless?label=%40bilig%2Fheadless)](https://www.npmjs.com/package/@bilig/headless)
-[![npm: @bilig/xlsx-formula-recalc](https://img.shields.io/npm/v/@bilig/xlsx-formula-recalc?label=%40bilig%2Fxlsx-formula-recalc)](https://www.npmjs.com/package/@bilig/xlsx-formula-recalc)
 [![CodeQL](https://github.com/proompteng/bilig/actions/workflows/codeql.yml/badge.svg)](https://github.com/proompteng/bilig/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge)](https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-**Run workbook rules from Node, with formula readback you can verify.**
+**WorkPaper runtime for Node services and agents.**
 
-Bilig is for workbook logic that has to run from code. If your service or agent
-should own the workbook model, start with `@bilig/workpaper`: edit cells,
-recalculate formulas, read outputs, and persist JSON. If an existing `.xlsx`
-file is still the contract, use the XLSX tools to find stale cached formula
-values and refresh readback.
+Bilig gives backend code a workbook object it can edit, recalculate, read, save,
+and restore without driving a spreadsheet UI. Start with `@bilig/workpaper`
+when a service, queue worker, test, MCP server, or agent tool owns the workbook
+model.
 
 Start with the boundary you actually have. Do not drive Excel, LibreOffice,
 Google Sheets, or a screenshot UI just to learn whether a formula value is
 fresh.
 
-Run these from any Node project:
+Run the two no-project checks from any Node project:
 
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
-npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json
-npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
 ```
-
-Evaluate a real workbook before integrating it:
-
-```sh
-npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibility-report workbook.xlsx --json
-```
-
-The report lists unsupported functions, external links, VBA payloads, pivots,
-volatile formulas, stale cached formulas, and concrete risk reasons. It is not
-an Excel compatibility certification and does not print a compatibility score.
 
 Expected WorkPaper service result:
 
@@ -57,29 +42,6 @@ Expected WorkPaper service result:
 }
 ```
 
-Need the full formula-cache report for a real workbook?
-
-```sh
-npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor pricing.xlsx --json
-npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc pricing.xlsx --read Summary!B2 --out pricing.recalculated.xlsx --json
-```
-
-For pull requests with XLSX fixtures, start with the GitHub Action in report
-mode and let it show stale cached formulas before it blocks anything:
-
-```yaml
-- uses: actions/setup-node@v6
-  with:
-    node-version: '22'
-    package-manager-cache: false
-- uses: proompteng/bilig@v1
-  with:
-    workbooks: '**/*.xlsx'
-    changed-files-only: 'true'
-    package-version: '0.164.1'
-    fail-on-stale: 'false'
-```
-
 For TypeScript services that should own the workbook model:
 
 ```sh
@@ -87,12 +49,6 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 cd pricing-agent
 npm install
 npm run agent:verify
-```
-
-For lower-level runtime imports:
-
-```sh
-npm install @bilig/headless
 ```
 
 Direct diagnostic commands remain available:
@@ -109,16 +65,14 @@ Agent and framework evaluators are ranked in the
 The [agent proof transcripts](docs/agent-proof-transcripts.md) show the
 successful prompt, tool call, workbook state change, formula readback, JSON
 export, and restart verification shape.
-The [XLSX Cache Doctor proof transcript](docs/xlsx-cache-doctor-proof-transcript.md)
-shows the stale cached formula value, recalculated value, exact cell address,
-and suggested read target before a service or CI job trusts a saved workbook.
-The [Workbook Compatibility Report](docs/workbook-compatibility-report.md)
-shows the local risk report for an actual `.xlsx` before a Node service or
-coding agent trusts Bilig with it.
 Use the [coding agent rule chooser](docs/agent-rule-chooser.md) when you need
 the exact instruction, rule, prompt, or MCP config file for Codex, Claude Code,
 GitHub Copilot, VS Code, Cursor, Kiro, Roo Code, Trae, Qodo IDE, Zed, Junie, OpenHands, OpenCode, Aider,
 Goose, Windsurf/Cascade, Cline, Continue, or Gemini CLI.
+Existing workbook file diagnostics live under
+[Which Path Should I Install?](#which-path-should-i-install) and
+[Choose An Evaluation Path](#choose-an-evaluation-path); keep them separate
+from the default WorkPaper service path.
 
 Project site: <https://proompteng.github.io/bilig/>
 
@@ -126,34 +80,24 @@ Project site: <https://proompteng.github.io/bilig/>
 
 Pick the path that matches the job:
 
-| You have...                                                                                             | Start with                                                                       | You should see                                                                                                                                                                              |
-| ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A Node service, route, queue, test, or tool needs workbook logic                                        | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)               | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.                                                                                                      |
-| A coding agent or MCP client needs workbook tools without UI automation                                 | [Agent MCP evaluator](docs/eval-agent-mcp.md)                                    | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`.                                                                                                   |
-| You need to choose among agent, MCP, AI SDK, OpenAI, LangGraph, Semantic Kernel, or XLSX proof          | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md)                       | the smallest command or example for the host boundary, plus what it does and does not prove.                                                                                                |
-| You need to see a successful agent session shape before adopting                                        | [Agent proof transcripts](docs/agent-proof-transcripts.md)                       | prompt, tool call, result, workbook state change, formula readback, JSON export, and restart verification.                                                                                  |
-| A coding agent needs the right repo rule or MCP config file                                             | [Coding agent rule chooser](docs/agent-rule-chooser.md)                          | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Kiro, Roo Code, Trae, Qodo IDE, Zed, Junie, OpenHands, OpenCode, Aider, Goose, Windsurf, Cline, Continue, or Gemini. |
-| You are not sure whether XLSX, SheetJS, ExcelJS, xlsx-populate, CI, WorkPaper, or an agent owns the fix | [Stale formula readback chooser](docs/stale-formula-readback-chooser.md)         | the smallest proof command for the boundary, plus when not to use it.                                                                                                                       |
-| You need to know whether a specific workbook has Bilig integration risks                                | [Workbook Compatibility Report](docs/workbook-compatibility-report.md)           | unsupported functions, external links, macros, pivots, volatile formulas, cache risks, and no compatibility score.                                                                          |
-| A coding agent already has a real `.xlsx` and needs MCP before edits                                    | [Agent XLSX risk preflight](docs/agent-xlsx-risk-preflight.md)                   | `analyze_workbook_risk`, `Inputs!B3`, `Summary!B3`, `60000 -> 96000`, export, and `verified: true`.                                                                                         |
-| A real `.xlsx` file has stale formula results after Node edits                                          | [XLSX Cache Doctor evaluator](docs/eval-xlsx-cache-doctor.md)                    | stale cells, cached values, recalculated values, suggested reads, and JSON output.                                                                                                          |
-| You need to see the exact stale-cache output before adopting                                            | [XLSX Cache Doctor proof transcript](docs/xlsx-cache-doctor-proof-transcript.md) | `Summary!B2` and `Sheet1!B61` cached-vs-recalculated proof, plus CI boundary.                                                                                                               |
-| Pull requests can commit XLSX fixtures with stale cached values                                         | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md)       | report-only workbook findings before the workflow blocks anything.                                                                                                                          |
-| You are comparing Excel MCP servers, hosted spreadsheet agents, or file-first XLSX tools                | [Spreadsheet MCP server comparison](docs/spreadsheet-mcp-server-comparison.md)   | the account/session/file/runtime boundary before an agent trusts formula readback.                                                                                                          |
-| Existing XLSX outputs need refreshed cached results                                                     | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)                         | changed input, recalculated output, output workbook, and `recalculationCompleted: true`.                                                                                                    |
+| You have...                                                      | Start with                                                             | You should see                                                                                                                                                                              |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A Node service, route, queue, test, or tool needs workbook logic | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)     | input edit, recalculated output, serialized JSON, restore check, and `verified: true`.                                                                                                      |
+| A coding agent or MCP client needs workbook tools                | [Agent MCP evaluator](docs/eval-agent-mcp.md)                          | tool discovery, cell edit, formula readback, export, restart check, and `verified: true`.                                                                                                   |
+| You need the smallest proof for a specific agent host            | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md)             | the shortest command or example for AI SDK, OpenAI, LangGraph, Semantic Kernel, MCP, or direct TypeScript.                                                                                  |
+| You need to see a successful agent session shape before adopting | [Agent proof transcripts](docs/agent-proof-transcripts.md)             | prompt, tool call, workbook state change, formula readback, JSON export, and restart verification.                                                                                          |
+| A coding agent needs the right repo rule or MCP config file      | [Coding agent rule chooser](docs/agent-rule-chooser.md)                | the exact Bilig file for Codex, Claude Code, Copilot, VS Code, Cursor, Kiro, Roo Code, Trae, Qodo IDE, Zed, Junie, OpenHands, OpenCode, Aider, Goose, Windsurf, Cline, Continue, or Gemini. |
+| A saved workbook file must remain the source of truth            | [Workbook Compatibility Report](docs/workbook-compatibility-report.md) | unsupported functions, external links, macros, pivots, volatile formulas, and concrete import/export risks.                                                                                 |
 
 If you are not sure which one fits, start with the thing that owns state. Use
-WorkPaper when your service or agent should own the workbook model. Use the XLSX
-path when a saved Excel file is still the source of truth.
+WorkPaper when your service or agent should own the workbook model. Use file
+diagnostics only when a saved workbook file is still the source of truth.
 
 The shortest no-project checks are:
 
 ```sh
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
-npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json
-npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
-npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json
 ```
 
 Good fits: pricing, quote approval, payout checks, import validation, forecasts,
@@ -161,26 +105,6 @@ CI fixtures, formula-backed workflow steps, and coding agents that need exact
 cell addresses plus readback. Bad fits: manual spreadsheet editing, Office
 macros, desktop Excel automation, or one-off arithmetic where a workbook would
 be ceremony.
-
-The canonical XLSX guide is
-[Fix stale XLSX formula values in Node.js](docs/stale-xlsx-formula-cache-node.md).
-If you need to choose among XLSX, SheetJS, ExcelJS, xlsx-populate, CI,
-WorkPaper, and agent proof paths, use the
-[stale formula readback chooser](docs/stale-formula-readback-chooser.md).
-If you are answering a public SheetJS, ExcelJS, `xlsx-populate`, template, or CI
-question, use the non-spam
-[XLSX formula support answers](docs/xlsx-formula-support-answers.md) first.
-For a direct before/after proof across SheetJS, `xlsx-populate`, and ExcelJS:
-
-```sh
-npm --prefix examples/recalc-bridge-workflows install
-npm --prefix examples/recalc-bridge-workflows run smoke
-```
-
-For the GitHub Action listing and a live reviewer path:
-
-- <https://github.com/marketplace/actions/xlsx-cache-doctor>
-- <https://github.com/proompteng/xlsx-cache-doctor-demo/pull/1>
 
 ## If You Only Try One Thing
 
@@ -216,12 +140,6 @@ If an agent or MCP client owns the workflow, run the agent door:
 npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
 ```
 
-If an existing XLSX file is still the contract, run the XLSX cache door:
-
-```sh
-npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door xlsx-cache --json
-```
-
 Trust boundaries:
 
 - Runs locally in Node or in your GitHub Actions runner; no hosted workbook
@@ -229,111 +147,16 @@ Trust boundaries:
 - Does not claim Excel parity. Start with
   [where Bilig is not Excel-compatible yet](docs/where-bilig-is-not-excel-compatible-yet.md)
   before using it for irreversible workflows.
-- The XLSX cache doctor is diagnostic by default. It only blocks pull requests
-  when you opt into `fail-on-stale`.
-
-For linked workbooks, use the
-[external workbook recalculation proof](docs/external-workbook-recalc-proof.md).
-For stale cached XLSX values, use
-[Evaluate stale XLSX formula caches](docs/eval-xlsx-cache-doctor.md).
-For a copyable terminal transcript, use the
-[XLSX Cache Doctor proof transcript](docs/xlsx-cache-doctor-proof-transcript.md).
-For a narrower recalculation evaluator, use
-[Evaluate XLSX formula recalculation](docs/eval-xlsx-recalc.md).
-
-If you already have the real workbook but do not know which formulas to read
-yet, inspect it first without writing an output file:
-
-```sh
-npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor pricing.xlsx --json
-```
-
-That checks every formula by default, reports any skipped formulas as
-`uninspectedFormulaCellCount`, returns stale cached values, and suggests
-`--read` targets so the next command can prove the cells your service actually
-depends on.
-
-If your service or test runner needs the same report without a subprocess, use
-the Node API:
-
-```ts
-import { readFile } from 'node:fs/promises'
-import { inspectXlsxCache } from '@bilig/xlsx-formula-recalc'
-
-const report = inspectXlsxCache(await readFile('pricing.xlsx'), {
-  fileName: 'pricing.xlsx',
-})
-
-if (report.staleCachedFormulaCount > 0) {
-  throw new Error(
-    report.formulas
-      .filter((formula) => formula.cacheStatus === 'stale')
-      .map((formula) => formula.target)
-      .join(', '),
-  )
-}
-```
-
-To run that check in CI, install
-[XLSX Cache Doctor from GitHub Marketplace](https://github.com/marketplace/actions/xlsx-cache-doctor),
-read the [GitHub Action guide](docs/xlsx-cache-doctor-github-action.md), or
-copy the runnable example at
-[`examples/xlsx-cache-doctor-ci`](examples/xlsx-cache-doctor-ci).
-The [proof transcript](docs/xlsx-cache-doctor-proof-transcript.md) shows the
-same cached-vs-recalculated value shape in one page.
-For a live reviewer path, inspect the
-[demo pull request](https://github.com/proompteng/xlsx-cache-doctor-demo/pull/1):
-it runs `proompteng/bilig@v1`, proves 60 formula cells were inspected, finds 1
-stale cached formula value, and uploads the JSON report.
-
-To generate the pull-request workflow instead of hand-writing YAML:
-
-```sh
-mkdir -p .github/workflows
-npm exec --package @bilig/xlsx-formula-recalc@latest -- \
-  xlsx-cache-doctor --print-github-action "**/*.xlsx" \
-  > .github/workflows/xlsx-cache-doctor.yml
-```
-
-The generated workflow is read-only and report-only by default. Add
-`--fail-on-stale true` when you want stale cached values to block pull requests,
-or pass `--inspect-limit`, `--json-output`, or `--markdown-output` to match your
-CI artifact policy. The Action uploads machine-readable JSON and a
-human-readable Markdown report path, so reviewers can inspect the stale cells
-without giving the detector write permissions.
-
-If your pipeline is specifically SheetJS / `xlsx`, run the sibling proof with
-the same shape:
-
-```sh
-npm exec --package @bilig/sheetjs-formula-recalc@latest -- sheetjs-recalc --demo --json
-```
-
-If the workbook is already in ExcelJS, keep that boundary and add
-`@bilig/exceljs-formula-recalc`:
-
-```sh
-npm install exceljs @bilig/exceljs-formula-recalc
-npm exec --package @bilig/exceljs-formula-recalc@latest -- exceljs-recalc --demo --json
-```
-
-For one checkout proof across SheetJS/`xlsx`, `xlsx-populate`, and ExcelJS:
-
-```sh
-npm --prefix examples/recalc-bridge-workflows install
-npm --prefix examples/recalc-bridge-workflows run smoke
-```
-
-That bridge proof is the fastest way to check whether Bilig solves the stale
-formula-value problem without asking you to adopt WorkPaper state first.
+- File import/export diagnostics are available when a saved workbook file is the
+  contract, but they are a separate path from service-owned WorkPaper state.
 
 ## Which Path Should I Install?
 
-| Problem you have right now                                                        | Install or use                           | First proof                                                                      |
-| --------------------------------------------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------- |
-| Formula workbook state belongs inside a Node service, route, queue, test, or tool | `npm install @bilig/workpaper`           | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)               |
-| Pull requests can commit XLSX fixtures with stale formula caches                  | `uses: proompteng/bilig@v1`              | [XLSX Cache Doctor GitHub Action](docs/xlsx-cache-doctor-github-action.md)       |
-| Generic XLSX bytes changed in Node; formula outputs must refresh before returning | `npm install @bilig/xlsx-formula-recalc` | [XLSX formula recalculation in Node.js](docs/xlsx-formula-recalculation-node.md) |
+| Problem you have right now                                                        | Install or use                 | First proof                                                            |
+| --------------------------------------------------------------------------------- | ------------------------------ | ---------------------------------------------------------------------- |
+| Formula workbook state belongs inside a Node service, route, queue, test, or tool | `npm install @bilig/workpaper` | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)     |
+| An agent or MCP client needs workbook tools with computed readback                | `npm install @bilig/workpaper` | [Agent MCP evaluator](docs/eval-agent-mcp.md)                          |
+| A saved workbook file must remain the integration boundary                        | `@bilig/xlsx-formula-recalc`   | [Workbook Compatibility Report](docs/workbook-compatibility-report.md) |
 
 Advanced adapters are still available when the boundary is already specific:
 [SheetJS](docs/sheetjs-formula-result-not-updating-node.md),
@@ -420,38 +243,33 @@ recipes are for teams that already know where the workbook tool needs to live.
 
 ## Choose An Evaluation Path
 
-| If you are evaluating...      | Start here                                                                                                                                                                                                                                                                                                        | What should be true before you adopt                                                                        |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Existing XLSX files           | [XLSX recalculation evaluator](docs/eval-xlsx-recalc.md)                                                                                                                                                                                                                                                          | A command edits inputs, reads recalculated values, writes XLSX, and returns `recalculationCompleted: true`. |
-| Node service formulas         | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)                                                                                                                                                                                                                                                | A starter writes one input, recalculates, persists JSON, restores, and prints `verified: true`.             |
-| Agent MCP contract            | [Agent MCP workbook evaluator](docs/eval-agent-mcp.md)                                                                                                                                                                                                                                                            | MCP tool discovery, input edit, formula readback, persistence, and restart proof all pass.                  |
-| Agent proof chooser           | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md), [agent proof transcripts](docs/agent-proof-transcripts.md), [MCP spreadsheet formula server](docs/mcp-spreadsheet-formula-server-for-coding-agents.md), and [Vercel AI SDK formula readback](docs/vercel-ai-sdk-spreadsheet-tool-formula-readback.md) | The agent path starts with the smallest verified proof and avoids write-only or UI-only claims.             |
-| Agent intent/runtime adapters | [Workbook agent intent API](docs/workbook-agent-intent-api.md) and [workbook-agent-model example](https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model)                                                                                                                                    | A model prepares transport-neutral plan data, strict runtime proof, command receipts, and check evidence.   |
-| Basic fit                     | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                                                                                                                                                                                           | The problem is workbook-shaped business logic that needs API readback and persistence.                      |
-| Published npm package         | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                                                                                                                   | `@bilig/workpaper` edits one input, recalculates, persists JSON, restores, and prints `verified: true`.     |
-| XLSX or ExcelJS recalculation | [XLSX formula recalculation](docs/xlsx-formula-recalculation-node.md) and [ExcelJS formula recalculation](docs/exceljs-formula-recalculation-node.md)                                                                                                                                                             | The package updates inputs, reads recalculated values, and exports or mutates the workbook boundary.        |
-| Backend service shape         | [Quote approval WorkPaper API](docs/quote-approval-workpaper-api.md)                                                                                                                                                                                                                                              | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`.                 |
-| Agent or MCP tools            | [Headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md), [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md), [Gemini CLI extension](docs/gemini-cli-workpaper-extension.md), and [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md)                         | The agent installs a tool path, uses the handoff prompt, then proves write/readback/persist.                |
-| Agent XLSX risk preflight     | [Agent XLSX risk preflight](docs/agent-xlsx-risk-preflight.md)                                                                                                                                                                                                                                                    | The MCP path starts with `analyze_workbook_risk`, then proves formula readback and WorkPaper export.        |
-| Agent-owned XLSX files        | [Agent XLSX recalculation without LibreOffice](docs/agent-xlsx-formula-recalculation-without-libreoffice.md)                                                                                                                                                                                                      | A tool can edit XLSX inputs, recalculate, export, reimport, and return `verified: true`.                    |
-| Public WorkPaper review       | [Show HN WorkPaper maintainer note](docs/show-hn-formula-workbooks-node-services.md)                                                                                                                                                                                                                              | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask.                     |
-| Trust and performance         | [npm provenance](docs/npm-provenance-package-trust.md) and [benchmark evidence](docs/what-workpaper-benchmark-proves.md)                                                                                                                                                                                          | npm shows SLSA provenance, and benchmark claims match the checked artifact.                                 |
-| Almost a fit                  | [adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                                                                                                                                                     | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.                    |
-| Formula or XLSX bug           | [formula bug clinic](docs/formula-bug-clinic.md) and [XLSX Cache Doctor proof transcript](docs/xlsx-cache-doctor-proof-transcript.md)                                                                                                                                                                             | First prove stale cached values locally, then share one reduced public case that can become a fixture.      |
-| Real workbook blocked         | [submit a workbook fixture](docs/submit-workbook-fixture.md)                                                                                                                                                                                                                                                      | Use the structured form when a reduced workbook is ready.                                                   |
+| If you are evaluating...      | Start here                                                                                                                                                                                                                                                                                                        | What should be true before you adopt                                                                      |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Node service formulas         | [Node service WorkPaper evaluator](docs/eval-workpaper-service.md)                                                                                                                                                                                                                                                | A starter writes one input, recalculates, persists JSON, restores, and prints `verified: true`.           |
+| Agent MCP contract            | [Agent MCP workbook evaluator](docs/eval-agent-mcp.md)                                                                                                                                                                                                                                                            | MCP tool discovery, input edit, formula readback, persistence, and restart proof all pass.                |
+| Agent proof chooser           | [Agent WorkPaper proof matrix](docs/agent-proof-matrix.md), [agent proof transcripts](docs/agent-proof-transcripts.md), [MCP spreadsheet formula server](docs/mcp-spreadsheet-formula-server-for-coding-agents.md), and [Vercel AI SDK formula readback](docs/vercel-ai-sdk-spreadsheet-tool-formula-readback.md) | The agent path starts with the smallest verified proof and avoids write-only or UI-only claims.           |
+| Agent intent/runtime adapters | [Workbook agent intent API](docs/workbook-agent-intent-api.md) and [workbook-agent-model example](https://github.com/proompteng/bilig/tree/main/examples/workbook-agent-model)                                                                                                                                    | A model prepares transport-neutral plan data, strict runtime proof, command receipts, and check evidence. |
+| Basic fit                     | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                                                                                                                                                                                           | The problem is workbook-shaped business logic that needs API readback and persistence.                    |
+| Published npm package         | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                                                                                                                   | `@bilig/workpaper` edits one input, recalculates, persists JSON, restores, and prints `verified: true`.   |
+| Backend service shape         | [Quote approval WorkPaper API](docs/quote-approval-workpaper-api.md)                                                                                                                                                                                                                                              | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`.               |
+| Agent or MCP tools            | [Headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md), [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md), [Gemini CLI extension](docs/gemini-cli-workpaper-extension.md), and [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md)                         | The agent installs a tool path, uses the handoff prompt, then proves write/readback/persist.              |
+| Public WorkPaper review       | [Show HN WorkPaper maintainer note](docs/show-hn-formula-workbooks-node-services.md)                                                                                                                                                                                                                              | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask.                   |
+| Trust and performance         | [npm provenance](docs/npm-provenance-package-trust.md) and [benchmark evidence](docs/what-workpaper-benchmark-proves.md)                                                                                                                                                                                          | npm shows SLSA provenance, and benchmark claims match the checked artifact.                               |
+| Saved workbook files          | [Workbook Compatibility Report](docs/workbook-compatibility-report.md), [XLSX formula recalculation](docs/xlsx-formula-recalculation-node.md), and [ExcelJS formula recalculation](docs/exceljs-formula-recalculation-node.md)                                                                                    | The file boundary is inspected before a service, CI job, or agent trusts imported formulas.               |
+| Almost a fit                  | [adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                                                                                                                                                     | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.                  |
+| Formula or import bug         | [formula bug clinic](docs/formula-bug-clinic.md) and [submit a workbook fixture](docs/submit-workbook-fixture.md)                                                                                                                                                                                                 | Share one reduced public case that can become a fixture.                                                  |
 
-Reduced workbook already in hand? Start with the stale-cache diagnostic when a
-Node process changed cells but formula output stayed old:
-
-```sh
-npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json
-```
-
-If the blocker is an import, formula, or persistence gap, generate the fixture
-report:
+Reduced workbook already in hand? If the blocker is an import, formula, or
+persistence gap, generate the fixture report:
 
 ```sh
 npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+```
+
+For saved-file cache diagnostics on the same reduced fixture:
+
+```sh
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor ./reduced.xlsx --json
 ```
 
 Handing a spreadsheet task to another coding agent? Start with the
@@ -605,8 +423,8 @@ the skipped paths and a short handoff block.
 If that proof almost matches a service or agent workflow you maintain, the useful next
 step is concrete feedback: open or answer one adoption blocker in
 [Discussions](https://github.com/proompteng/bilig/discussions/new?category=general):
-formula coverage, stale XLSX cached values, persistence shape, MCP/agent
-writeback, or benchmark coverage.
+formula coverage, service persistence, MCP setup, agent writeback, import/export
+boundary, or benchmark coverage.
 
 ## TypeScript API Shape
 
@@ -714,7 +532,7 @@ matches the next job.
 2. Run the flagship
    [serverless WorkPaper API](examples/serverless-workpaper-api) example:
    `npm run quote-approval-api`.
-3. If the workflow starts with an XLSX file, run the
+3. If the workflow starts with a saved workbook file, run the
    [XLSX formula recalculation in Node](examples/xlsx-recalculation-node):
    `npm start`.
 4. If an agent needs workbook tools, start with the
@@ -722,10 +540,9 @@ matches the next job.
    then use the [MCP server guide](docs/mcp-workpaper-tool-server.md) when the
    caller is an MCP client.
 5. If a real workbook almost works, start with the
-   [formula bug clinic](docs/formula-bug-clinic.md). For stale XLSX caches, run
-   `xlsx-cache-doctor ./reduced.xlsx --json` and include the exact cell,
-   cached value, and recalculated value. If the fixture is already reduced and
-   public, submit the structured
+   [formula bug clinic](docs/formula-bug-clinic.md). Include the exact cell,
+   expected value, actual value, and command output.
+   If the fixture is already reduced, submit the structured
    [fixture form](docs/submit-workbook-fixture.md) so the blocker can become a
    test, example, or corpus case instead of private feedback.
    <https://github.com/proompteng/bilig/issues/new?template=workbook_fixture.yml>.
@@ -772,7 +589,7 @@ the [MCP server guide](docs/mcp-workpaper-tool-server.md),
 [XLSX formula recalculation in Node.js](docs/xlsx-formula-recalculation-node.md),
 [agent XLSX formula recalculation without LibreOffice](docs/agent-xlsx-formula-recalculation-without-libreoffice.md),
 [Excel file as a Node calculation engine](docs/excel-file-calculation-engine-node.md),
-[stale XLSX formula cache in Node.js](docs/stale-xlsx-formula-cache-node.md),
+[Fix stale XLSX formula values in Node.js](docs/stale-xlsx-formula-cache-node.md),
 [stale formula readback chooser](docs/stale-formula-readback-chooser.md),
 [XLSX formula support answers](docs/xlsx-formula-support-answers.md),
 [SheetJS formula result not updating in Node.js](docs/sheetjs-formula-result-not-updating-node.md),
@@ -799,6 +616,17 @@ and [serverless quote approval](examples/serverless-workpaper-api). Run
 `npm run agent:mcp-file-transcript`, `npm run agent:mcp-stdio`, or
 `npm exec --package @bilig/workpaper -- bilig-workpaper-mcp` when that is the
 path you are evaluating.
+
+Saved workbook diagnostics stay available when a file is the integration
+boundary:
+
+```sh
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- bilig-evaluate --door workbook-compatibility --json
+npm exec --yes --package @bilig/xlsx-formula-recalc@latest -- workbook-compatibility-report workbook.xlsx --json
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-cache-doctor pricing.xlsx --json
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json
+npm exec --package @bilig/sheetjs-formula-recalc@latest -- sheetjs-recalc --demo --json
+```
 
 The serverless example also includes `npm run next-route-handler`,
 `npm run next-server-action`, `npm run next-server-action-formdata`,
@@ -1095,7 +923,7 @@ work.
 3. Use public exports from `@bilig/workpaper`; do not reach into `src/` or
    `dist/` when writing consumer examples.
 4. Keep examples TypeScript-first.
-5. Do not call stale XLSX cached formula values an accuracy oracle.
+5. Do not call embedded XLSX cached formula values an accuracy oracle.
 6. Add focused tests before changing formulas, persistence, range bounds,
    config rebuilds, events, row/column moves, or sheet lifecycle.
 7. Run the focused package tests first, then broaden to `pnpm run ci`.
