@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "package": {
     "name": "@bilig/headless",
-    "version": "0.164.5",
+    "version": "0.164.6",
     "description": "Lower-level WorkPaper formula runtime for Node services with JSON persistence and verified formula readback.",
     "nodeEngine": ">=22.0.0",
     "keywordCount": 20,
@@ -43,10 +43,10 @@
     "hasMcpBinary": true
   },
   "npmPackDryRun": {
-    "tarballBytes": 859196,
-    "unpackedBytes": 5243599,
+    "tarballBytes": 859229,
+    "unpackedBytes": 5243740,
     "entryCount": 835,
-    "readmeBytes": 50147,
+    "readmeBytes": 50290,
     "packageJsonBytes": 3273
   },
   "coldStartProbe": {
