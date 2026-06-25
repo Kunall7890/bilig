@@ -39,6 +39,7 @@ export function syncRuntimePackageVersions(options: SyncRuntimePackageVersionsOp
   syncGeminiExtensionVersion(options.rootDir, version, updatedFiles)
   syncXlsxCacheDoctorActionVersion(options.rootDir, version, updatedFiles)
   syncAgentEvaluatorDocVersions(options.rootDir, version, updatedFiles)
+  syncWorkpaperServiceProofVersions(options.rootDir, version, updatedFiles)
   syncHuggingFaceWorkpaperSpaceVersion(options.rootDir, version, updatedFiles)
   syncMcpDirectoryDocVersion(options.rootDir, version, updatedFiles)
 
@@ -116,6 +117,17 @@ function syncAgentEvaluatorDocVersions(rootDir: string, version: string, updated
       `$1${version}$2`,
       `${docPath} must include an xlsx-formula-recalc evaluator package version`,
     )
+    writeTextIfChanged(docPath, currentContent, nextContent, updatedFiles)
+  }
+}
+
+function syncWorkpaperServiceProofVersions(rootDir: string, version: string, updatedFiles: string[]): void {
+  const docPaths = [join(rootDir, 'docs/eval-workpaper-service.md'), join(rootDir, 'packages/workpaper/README.md')]
+  for (const docPath of docPaths) {
+    const currentContent = readFileSync(docPath, 'utf8')
+    const nextContent = currentContent
+      .replace(/@bilig\/workpaper@\d+\.\d+\.\d+/gu, `@bilig/workpaper@${version}`)
+      .replace(/("@bilig\/workpaper":\s*")\d+\.\d+\.\d+(")/gu, `$1${version}$2`)
     writeTextIfChanged(docPath, currentContent, nextContent, updatedFiles)
   }
 }

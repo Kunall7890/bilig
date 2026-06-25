@@ -82,6 +82,11 @@ describe('syncRuntimePackageVersions', () => {
     const agentEvaluatorDoc = ['{', '  "@bilig/workpaper": "0.1.95",', '  "xlsx-formula-recalc": "0.1.95"', '}', ''].join('\n')
     writeFileSync(join(rootDir, 'docs/agent-adoption-kit.md'), agentEvaluatorDoc)
     writeFileSync(join(rootDir, 'docs/eval-agent-mcp.md'), agentEvaluatorDoc)
+    writeFileSync(
+      join(rootDir, 'docs/eval-workpaper-service.md'),
+      ['This transcript was captured against `@bilig/workpaper@0.1.95`.', '{', '  "@bilig/workpaper": "0.1.95"', '}', ''].join('\n'),
+    )
+    writeFileSync(join(rootDir, 'packages/workpaper/README.md'), ['{', '  "@bilig/workpaper": "0.1.95"', '}', ''].join('\n'))
     mkdirSync(join(rootDir, 'examples/huggingface-workpaper-space/scripts'), { recursive: true })
     writeFileSync(
       join(rootDir, 'examples/huggingface-workpaper-space/package.json'),
@@ -149,7 +154,7 @@ describe('syncRuntimePackageVersions', () => {
     const result = syncRuntimePackageVersions({ rootDir, version: '0.14.14' })
 
     expect(result.updatedPackages).toEqual(RUNTIME_PACKAGE_DIRS.map(packageNameForDir))
-    expect(result.updatedFiles).toHaveLength(RUNTIME_PACKAGE_DIRS.length + 16)
+    expect(result.updatedFiles).toHaveLength(RUNTIME_PACKAGE_DIRS.length + 18)
 
     for (const packageDir of RUNTIME_PACKAGE_DIRS) {
       const manifest = JSON.parse(readFileSync(join(rootDir, packageDir, 'package.json'), 'utf8'))
@@ -185,6 +190,9 @@ describe('syncRuntimePackageVersions', () => {
     expect(readFileSync(join(rootDir, 'docs/xlsx-cache-doctor-github-action.md'), 'utf8')).toContain('| `package-version`    | 0.14.14 |')
     expect(readFileSync(join(rootDir, 'docs/agent-adoption-kit.md'), 'utf8')).toContain('"@bilig/workpaper": "0.14.14"')
     expect(readFileSync(join(rootDir, 'docs/eval-agent-mcp.md'), 'utf8')).toContain('"xlsx-formula-recalc": "0.14.14"')
+    expect(readFileSync(join(rootDir, 'docs/eval-workpaper-service.md'), 'utf8')).toContain('@bilig/workpaper@0.14.14')
+    expect(readFileSync(join(rootDir, 'docs/eval-workpaper-service.md'), 'utf8')).toContain('"@bilig/workpaper": "0.14.14"')
+    expect(readFileSync(join(rootDir, 'packages/workpaper/README.md'), 'utf8')).toContain('"@bilig/workpaper": "0.14.14"')
     expect(JSON.parse(readFileSync(join(rootDir, 'examples/huggingface-workpaper-space/package.json'), 'utf8')).dependencies).toEqual({
       '@bilig/workpaper': '0.14.14',
     })
