@@ -13,29 +13,29 @@ intentionally stays short: GitHub's `good first issue`, `first-timers-only`, and
 `help wanted` labels should point to work that is current, scoped, and credible
 for someone opening the repository cold.
 
-Current starter queue as of June 3, 2026:
+Current starter queue as of June 25, 2026:
 
-- 0 open `good first issue` issues.
-- 0 open `first-timers-only` issues.
-- 0 open `help wanted` issues.
-- 0 starter issues are code or test tasks.
-- 0 starter issues are focused docs or integration transcript tasks.
+- 3 open `good first issue` issues.
+- 3 open `first-timers-only` issues.
+- 3 open `help wanted` issues.
+- 1 starter issue is a code or test task.
+- 2 starter issues are focused docs or integration transcript tasks.
 - 0 starter issues are currently under active review.
 
 ## Start Here This Week
 
-There are no open first-patch issues right now. Browse the full issue list or
-open a Discussion with a small agent, workbook import/export, or formula
-readback gap that you can reproduce.
+- [#452 docs(starter): add current xlsx-cache-doctor demo transcript](https://github.com/proompteng/bilig/issues/452)
+- [#453 examples(starter): add Hono WorkPaper route smoke](https://github.com/proompteng/bilig/issues/453)
+- [#454 docs(starter): keep starter issue page synced with live labels](https://github.com/proompteng/bilig/issues/454)
 
 ## Code And Test Starters
 
-No code or test starter issues are currently open. Open a scoped code/test
-ticket before the next contributor push if the queue should include one.
+- [#453 examples(starter): add Hono WorkPaper route smoke](https://github.com/proompteng/bilig/issues/453)
 
 ## Integration Docs Starters
 
-No integration-docs starter issues are currently open.
+- [#452 docs(starter): add current xlsx-cache-doctor demo transcript](https://github.com/proompteng/bilig/issues/452)
+- [#454 docs(starter): keep starter issue page synced with live labels](https://github.com/proompteng/bilig/issues/454)
 
 ## Claim A Starter Issue
 

@@ -1,6 +1,6 @@
 # Community Growth Snapshot
 
-Captured at: `2026-06-25T07:49:34.567Z`
+Captured at: `2026-06-25T07:54:06.141Z`
 
 This snapshot tracks the public signals for the `@bilig/headless` growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
 
@@ -10,7 +10,7 @@ This snapshot tracks the public signals for the `@bilig/headless` growth loop: G
 - Stars: 31 / 100 (69 remaining)
 - Forks: 21
 - Watchers: 1
-- Open issues: 1
+- Open issues: 4
 - Default branch: `main`
 - Topics: `agent-tools`, `ai-agents`, `excel`, `excel-formulas`, `formula-engine`, `formula-recalculation`, `github-actions`, `headless-spreadsheet`, `mcp`, `mcp-server`, `model-context-protocol`, `nodejs`, `spreadsheet`, `spreadsheet-api`, `spreadsheet-automation`, `typescript`, `workbook-api`, `xlsx`, `xlsx-cache`, `xlsx-recalculation`
 
@@ -24,11 +24,11 @@ This snapshot tracks the public signals for the `@bilig/headless` growth loop: G
 
 ## Contributor Funnel
 
-- Open good first issues: 0
-- Open first-timers-only issues: 0
-- Documentation starter issues: 0
-- Non-documentation starter issues: 0
-- Open help wanted issues: 0
+- Open good first issues: 3
+- Open first-timers-only issues: 3
+- Documentation starter issues: 2
+- Non-documentation starter issues: 1
+- Open help wanted issues: 3
 - Open pull requests: 0
 - External open issues: 1
 - External open pull requests: 0
