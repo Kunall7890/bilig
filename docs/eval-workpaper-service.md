@@ -21,6 +21,48 @@ document, restores it, and verifies the same result.
 npm create @bilig/workpaper@latest pricing-workpaper && cd pricing-workpaper && npm install && npm run smoke
 ```
 
+For the no-key evaluator, run the published package directly:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
+```
+
+## Current evaluator transcript
+
+This transcript was captured on June 25, 2026 against
+`@bilig/workpaper@0.164.5`. It is the shortest current proof for service-owned
+WorkPaper state:
+
+```json
+{
+  "schemaVersion": "bilig-evaluator.v1",
+  "door": "workpaper-service",
+  "doorName": "WorkPaper service proof",
+  "packageVersions": {
+    "@bilig/workpaper": "0.164.5"
+  },
+  "evidence": {
+    "editedCell": "Inputs!B2",
+    "dependentCell": "Summary!B2",
+    "before": 24000,
+    "after": 38400,
+    "afterRestore": 38400,
+    "persistedDocumentBytes": 999,
+    "checks": {
+      "formulaReadbackChanged": true,
+      "exportedWorkPaperDocument": true,
+      "restoredMatchesAfter": true
+    }
+  },
+  "verified": true
+}
+```
+
+The full command also returns `limitations`, `next`, `sourceProof`, and
+`durationMs`. Treat `durationMs` as runtime noise; the proof invariants are the
+edited cell, dependent cell, changed value, restore readback, persisted document
+bytes, and `verified: true`.
+
 ## Expected proof
 
 The starter smoke prints this shape:

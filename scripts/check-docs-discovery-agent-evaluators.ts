@@ -13,6 +13,7 @@ export async function requireAgentEvaluatorDiscovery(input: {
   const { docsRoot, readme, index, llms, runtimePackageVersion } = input
   const agentAdoptionKit = await readFile(join(docsRoot, 'agent-adoption-kit.md'), 'utf8')
   const agentMcpEvaluator = await readFile(join(docsRoot, 'eval-agent-mcp.md'), 'utf8')
+  const workpaperServiceEvaluator = await readFile(join(docsRoot, 'eval-workpaper-service.md'), 'utf8')
   const expectedWorkpaperVersion = `"@bilig/workpaper": "${runtimePackageVersion}"`
   const expectedXlsxVersion = `"xlsx-formula-recalc": "${runtimePackageVersion}"`
 
@@ -88,6 +89,24 @@ export async function requireAgentEvaluatorDiscovery(input: {
   requireIncludes(agentMcpEvaluator, '"door": "agent-mcp"', 'docs/eval-agent-mcp.md')
   requireIncludes(agentMcpEvaluator, expectedWorkpaperVersion, 'docs/eval-agent-mcp.md')
   requireIncludes(agentMcpEvaluator, expectedXlsxVersion, 'docs/eval-agent-mcp.md')
+  requireIncludes(
+    workpaperServiceEvaluator,
+    'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json',
+    'docs/eval-workpaper-service.md',
+  )
+  requireIncludes(workpaperServiceEvaluator, '## Current evaluator transcript', 'docs/eval-workpaper-service.md')
+  requireIncludes(workpaperServiceEvaluator, '"door": "workpaper-service"', 'docs/eval-workpaper-service.md')
+  requireIncludes(workpaperServiceEvaluator, expectedWorkpaperVersion, 'docs/eval-workpaper-service.md')
+  requireIncludes(workpaperServiceEvaluator, '"editedCell": "Inputs!B2"', 'docs/eval-workpaper-service.md')
+  requireIncludes(workpaperServiceEvaluator, '"dependentCell": "Summary!B2"', 'docs/eval-workpaper-service.md')
+  requireIncludes(workpaperServiceEvaluator, '"before": 24000', 'docs/eval-workpaper-service.md')
+  requireIncludes(workpaperServiceEvaluator, '"after": 38400', 'docs/eval-workpaper-service.md')
+  requireIncludes(workpaperServiceEvaluator, '"afterRestore": 38400', 'docs/eval-workpaper-service.md')
+  requireIncludes(workpaperServiceEvaluator, '"persistedDocumentBytes": 999', 'docs/eval-workpaper-service.md')
+  requireIncludes(workpaperServiceEvaluator, '"formulaReadbackChanged": true', 'docs/eval-workpaper-service.md')
+  requireIncludes(workpaperServiceEvaluator, '"exportedWorkPaperDocument": true', 'docs/eval-workpaper-service.md')
+  requireIncludes(workpaperServiceEvaluator, '"restoredMatchesAfter": true', 'docs/eval-workpaper-service.md')
+  requireIncludes(workpaperServiceEvaluator, '"verified": true', 'docs/eval-workpaper-service.md')
   requireIncludes(llms, 'https://proompteng.github.io/bilig/eval-agent-mcp.html', 'docs/llms.txt')
   requireIncludes(llms, 'https://proompteng.github.io/bilig/agent-adoption-kit.html', 'docs/llms.txt')
   requireIncludes(llms, 'npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json', 'docs/llms.txt')
