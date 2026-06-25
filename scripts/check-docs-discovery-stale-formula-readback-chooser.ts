@@ -5,19 +5,13 @@ import { requireIncludes } from './check-docs-discovery-core.ts'
 interface StaleFormulaReadbackChooserDiscoveryContext {
   readonly docsRoot: string
   readonly repoRoot: string
-  readonly index: string
   readonly llms: string
-  readonly llmsFull: string
-  readonly readme: string
 }
 
 export async function requireStaleFormulaReadbackChooserDiscovery({
   docsRoot,
   repoRoot,
-  index,
   llms,
-  llmsFull,
-  readme,
 }: StaleFormulaReadbackChooserDiscoveryContext): Promise<void> {
   const chooser = await readFile(join(docsRoot, 'stale-formula-readback-chooser.md'), 'utf8')
   const headlessReadme = await readFile(join(repoRoot, 'packages', 'headless', 'README.md'), 'utf8')
@@ -62,12 +56,9 @@ export async function requireStaleFormulaReadbackChooserDiscovery({
     requireIncludes(chooser, required, 'docs/stale-formula-readback-chooser.md')
   }
 
-  requireIncludes(index, './stale-formula-readback-chooser.html', 'docs/index.html')
-  requireIncludes(readme, 'docs/stale-formula-readback-chooser.md', 'README.md')
   requireIncludes(headlessReadme, 'docs/stale-formula-readback-chooser.md', 'packages/headless/README.md')
   requireIncludes(llms, 'https://proompteng.github.io/bilig/stale-formula-readback-chooser.html', 'docs/llms.txt')
   requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/stale-formula-readback-chooser.md', 'docs/llms.txt')
-  requireIncludes(llmsFull, '## Stale Formula Readback Chooser For Node.js', 'docs/llms-full.txt')
 
   for (const { relativePath, content } of packageReadmes) {
     requireIncludes(content, 'stale formula readback chooser', relativePath)

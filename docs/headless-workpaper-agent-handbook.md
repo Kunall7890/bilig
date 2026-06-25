@@ -1,5 +1,5 @@
 ---
-title: Headless WorkPaper agent handbook
+title: WorkPaper agent handbook
 published: true
 description: A compact playbook for agents that need workbook formulas without opening Excel: pick the Bilig path, run the smoke test, write one input, verify readback, and persist WorkPaper JSON.
 tags: ai agents, mcp, spreadsheet automation, workbook formulas, node
@@ -8,7 +8,7 @@ cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets
 image: /assets/github-social-preview.png
 ---
 
-# Headless WorkPaper Agent Handbook
+# WorkPaper Agent Handbook
 
 Use this page when an agent needs workbook logic but only has terminal, file,
 HTTP, MCP, or tool-calling access. The default path is not to click Excel,

@@ -16,7 +16,7 @@
     />
     <meta
       name="keywords"
-      content="WorkPaper runtime, spreadsheet formula readback, headless workbook runtime, spreadsheet formulas Node.js, backend spreadsheet formulas, agent workbook automation, agent MCP tools, MCP spreadsheet tools, JSON WorkPaper persistence, @bilig/headless, @bilig/workpaper, XLSX formula recalculation Node.js"
+      content="WorkPaper runtime, spreadsheet formula readback, spreadsheet formulas Node.js, backend spreadsheet formulas, agent workbook automation, agent MCP tools, MCP spreadsheet tools, JSON WorkPaper persistence, @bilig/workpaper, Node service workbook automation"
     />
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="theme-color" content="#151713" />
@@ -29,7 +29,7 @@
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://proompteng.github.io/bilig/" />
     <meta property="og:image" content="https://proompteng.github.io/bilig/assets/github-social-preview.png?v=2026-05-15-2" />
-    <meta property="og:image:alt" content="bilig headless WorkPaper runtime preview" />
+    <meta property="og:image:alt" content="bilig WorkPaper runtime preview" />
     <meta property="og:image:width" content="1280" />
     <meta property="og:image:height" content="640" />
     <meta name="twitter:card" content="summary_large_image" />
@@ -39,7 +39,7 @@
       content="Edit workbook inputs, recalculate formulas, read outputs, and persist JSON from Node without spreadsheet UI automation."
     />
     <meta name="twitter:image" content="https://proompteng.github.io/bilig/assets/github-social-preview.png?v=2026-05-15-2" />
-    <meta name="twitter:image:alt" content="bilig headless WorkPaper runtime preview" />
+    <meta name="twitter:image:alt" content="bilig WorkPaper runtime preview" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -58,33 +58,29 @@
         "isAccessibleForFree": true,
         "image": "https://proompteng.github.io/bilig/assets/github-social-preview.png?v=2026-05-15-2",
         "featureList": [
-          "Headless WorkPaper runtime for service-owned workbook models",
+          "WorkPaper runtime for service-owned workbook models",
           "Spreadsheet formula readback before backend code or an agent uses the result",
           "JSON WorkPaper persistence",
           "Agent MCP tool contracts",
-          "Local XLSX import, export, and formula recalculation when files are the boundary",
+          "Saved workbook import, export, and formula recalculation when files are the boundary",
           "Report-only GitHub Action for workbook fixtures"
         ],
         "sameAs": [
           "https://github.com/proompteng/bilig",
-          "https://www.npmjs.com/package/@bilig/headless",
           "https://www.npmjs.com/package/@bilig/workpaper",
           "https://www.npmjs.com/package/@bilig/xlsx-formula-recalc",
           "https://www.npmjs.com/package/@bilig/exceljs-formula-recalc",
-          "https://www.npmjs.com/package/@bilig/sheetjs-formula-recalc",
-          "https://github.com/marketplace/actions/xlsx-cache-doctor"
+          "https://www.npmjs.com/package/@bilig/sheetjs-formula-recalc"
         ],
         "keywords": [
           "spreadsheet formula readback",
-          "headless workbook runtime",
           "WorkPaper runtime",
           "backend spreadsheet formulas",
           "agent workbook automation",
           "MCP spreadsheet tools",
           "JSON WorkPaper persistence",
-          "@bilig/headless",
           "@bilig/workpaper",
-          "XLSX formula recalculation"
+          "Node service workbook automation"
         ]
       }
     </script>
@@ -98,7 +94,7 @@
             "name": "Who is bilig for?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Bilig is for backend and agent-tool developers who need to read calculated workbook values from Node without trusting stale XLSX formula caches or driving Excel."
+              "text": "Bilig is for backend and agent-tool developers who need to read calculated workbook values from Node without driving Excel or a browser grid."
             }
           },
           {
@@ -114,7 +110,7 @@
             "name": "Can I use bilig from TypeScript?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Yes. Use @bilig/xlsx-formula-recalc when an existing XLSX file is the contract, @bilig/workpaper for a service-owned workbook model, and @bilig/headless when you need the lower-level WorkPaper runtime."
+              "text": "Yes. Use @bilig/workpaper for a service-owned workbook model and @bilig/xlsx-formula-recalc only when an existing XLSX file remains the contract."
             }
           },
           {
@@ -162,7 +158,7 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="wrap hero-inner">
         <div class="hero-copy">
-          <p class="eyebrow">Headless WorkPaper runtime</p>
+          <p class="eyebrow">WorkPaper runtime</p>
           <h1 id="hero-title" class="hero-title">Run workbook rules in Node.</h1>
           <p class="hero-subtitle">
             Bilig gives services and agents a workbook API: write inputs, recalculate formulas, read outputs, and save JSON. Use the XLSX
@@ -183,13 +179,12 @@
           </div>
           <p class="hero-note">
             Start with <a href="https://www.npmjs.com/package/@bilig/workpaper">@bilig/workpaper</a> when your service or agent owns the
-            workbook state. Use <a href="https://www.npmjs.com/package/@bilig/headless">@bilig/headless</a> for lower-level runtime imports
-            and <a href="https://www.npmjs.com/package/@bilig/xlsx-formula-recalc">@bilig/xlsx-formula-recalc</a> when a saved
-            <code>.xlsx</code> file stays in the loop.
+            workbook state. Use <a href="https://www.npmjs.com/package/@bilig/xlsx-formula-recalc">@bilig/xlsx-formula-recalc</a> only when
+            a saved <code>.xlsx</code> file stays in the loop.
           </p>
         </div>
 
-        <figure class="hero-media" aria-label="Headless WorkPaper runtime report.">
+        <figure class="hero-media" aria-label="WorkPaper runtime report.">
           <img
             class="hero-ambient"
             src="./assets/bilig-hero-ambient.png?v=2026-05-15-1"
@@ -268,10 +263,10 @@
               <strong><code>npm create @bilig/workpaper@latest pricing-workpaper</code></strong>
               <em>Generate a small service or agent starter wired to the same runtime.</em>
             </a>
-            <a class="path-link" href="https://www.npmjs.com/package/@bilig/headless">
-              <span>headless</span>
-              <strong><code>npm install @bilig/headless</code></strong>
-              <em>Use the lower-level runtime when you need direct WorkPaper imports and subpaths.</em>
+            <a class="path-link" href="./node-service-workpaper-recipe.html">
+              <span>service</span>
+              <strong>Put a WorkPaper behind a Node route.</strong>
+              <em>Wire formula-backed state into an API, queue worker, CLI, or tool.</em>
             </a>
             <a class="path-link" href="./eval-agent-mcp.html">
               <span>agents</span>
@@ -307,8 +302,8 @@
           </div>
 
           <p class="section-note">
-            Use <code>@bilig/workpaper</code> for starters, evaluators, and agent tools, <code>@bilig/headless</code> for lower-level
-            runtime imports, and <code>@bilig/xlsx-formula-recalc</code> when XLSX is the boundary.
+            Use <code>@bilig/workpaper</code> for starters, evaluators, service code, and agent tools. Use saved-file packages only when
+            XLSX is the boundary.
           </p>
         </div>
       </section>
@@ -373,8 +368,7 @@
   bilig-evaluate --door workpaper-service --json</code></pre>
               </div>
               <p>
-                Want a starter? Run <code>npm create @bilig/workpaper@latest pricing-workpaper</code>. Want the lower-level API? Install
-                <code>@bilig/headless</code>. Need a saved workbook file? Use the
+                Want a starter? Run <code>npm create @bilig/workpaper@latest pricing-workpaper</code>. Need a saved workbook file? Use the
                 <a href="./xlsx-formula-recalculation-node.html">XLSX bridge</a>.
               </p>
             </div>
@@ -434,7 +428,7 @@
 
             <div class="terminal-panel">
               <div class="panel-label">
-                <span>@bilig/headless</span>
+                <span>@bilig/workpaper</span>
                 <span>service loop</span>
               </div>
               <pre><code>const paper = WorkPaper.buildFromSheets(model)
@@ -543,10 +537,10 @@ console.log({ answer, restored: restored.getCellDisplayValue(outputCell) })
           </div>
 
           <div class="row-list">
-            <a class="path-link" href="https://www.npmjs.com/package/@bilig/headless">
+            <a class="path-link" href="https://www.npmjs.com/package/@bilig/workpaper">
               <span>runtime</span>
-              <strong>Install the lower-level headless package.</strong>
-              <em>Use this when you want direct TypeScript control over WorkPaper state.</em>
+              <strong>Install the WorkPaper package.</strong>
+              <em>Use this when you want TypeScript control over workbook state.</em>
             </a>
             <a class="path-link" href="./eval-workpaper-service.html">
               <span>node</span>
@@ -568,15 +562,15 @@ console.log({ answer, restored: restored.getCellDisplayValue(outputCell) })
               <strong>Keep XLSX only when the file is the contract.</strong>
               <em>Edit inputs, read recalculated values, and write a fresh workbook file.</em>
             </a>
-            <a class="path-link" href="./xlsx-cache-doctor-github-action.html">
-              <span>ci</span>
-              <strong>Check committed workbook files in pull requests.</strong>
-              <em>Use the GitHub Action when a repo has XLSX fixtures or templates.</em>
+            <a class="path-link" href="./workbook-compatibility-report.html">
+              <span>compat</span>
+              <strong>Review saved-workbook compatibility before import.</strong>
+              <em>Use the report when workbook files remain part of the workflow.</em>
             </a>
             <a class="path-link" href="./formula-bug-clinic.html">
               <span>fixture</span>
               <strong>Turn one real workbook blocker into a public fixture.</strong>
-              <em>Start with cache-doctor JSON, then send only reduced public cases.</em>
+              <em>Start with the formula clinic, then send only reduced public cases.</em>
             </a>
             <a class="path-link" href="./headless-spreadsheet-engine-comparison.html">
               <span>compare</span>
@@ -605,8 +599,8 @@ console.log({ answer, restored: restored.getCellDisplayValue(outputCell) })
               <h2 id="docs-title">Start narrow, then go deeper.</h2>
             </div>
             <p>
-              Choose by boundary. Use <code>@bilig/workpaper</code> when the service or agent owns workbook state,
-              <code>@bilig/headless</code> for lower-level runtime imports, and <code>@bilig/xlsx-formula-recalc</code> for saved files.
+              Choose by boundary. Use <code>@bilig/workpaper</code> when the service or agent owns workbook state, and saved-file tools only
+              when the file remains the contract.
             </p>
           </div>
 
@@ -614,28 +608,23 @@ console.log({ answer, restored: restored.getCellDisplayValue(outputCell) })
             <div class="docs-column">
               <h3>Run</h3>
               <ul>
-                <li><a href="https://www.npmjs.com/package/@bilig/xlsx-formula-recalc">@bilig/xlsx-formula-recalc npm package</a></li>
-                <li><a href="./workbook-compatibility-report.html">Workbook Compatibility Report</a></li>
-                <li><a href="./workbook-compatibility-report-transcript.html">Workbook Compatibility Report transcript</a></li>
-                <li><a href="./agent-xlsx-risk-preflight.html">Agent XLSX risk preflight</a></li>
-                <li><a href="./eval-xlsx-cache-doctor.html">XLSX cache evaluator</a></li>
-                <li><a href="./xlsx-cache-doctor-proof-transcript.html">XLSX Cache Doctor proof transcript</a></li>
-                <li><a href="./xlsx-cache-doctor-github-action.html">XLSX Cache Doctor GitHub Action</a></li>
-                <li><a href="./xlsx-formula-recalculation-node.html">XLSX formula recalculation in Node</a></li>
-                <li><a href="./stale-formula-readback-chooser.html">stale formula readback chooser</a></li>
-                <li><a href="./xlsx-formula-support-answers.html">XLSX formula support answers</a></li>
-                <li><a href="./xlsx-template-formula-recalculation-node.html">xlsx-template formula recalculation</a></li>
-                <li><a href="./xlsx-populate-formula-result-node.html">xlsx-populate formula results</a></li>
-                <li>
-                  <a href="https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node">XLSX recalculation example</a>
-                </li>
-                <li><a href="https://www.npmjs.com/package/@bilig/headless">@bilig/headless npm package</a></li>
                 <li><a href="https://www.npmjs.com/package/@bilig/workpaper">@bilig/workpaper npm package</a></li>
                 <li><a href="./try-bilig-headless-in-node.html">Node quickstart</a></li>
                 <li><a href="./create-bilig-workpaper.html">starter package status</a></li>
                 <li><a href="./workbook-automation-examples-node.html">workbook automation examples</a></li>
                 <li><a href="https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper">TypeScript examples</a></li>
                 <li><a href="./eval-workpaper-service.html">service evaluator</a></li>
+                <li><a href="./workbook-compatibility-report.html">Workbook Compatibility Report</a></li>
+                <li><a href="./workbook-compatibility-report-transcript.html">Workbook Compatibility Report transcript</a></li>
+                <li><a href="./agent-xlsx-risk-preflight.html">Agent XLSX risk preflight</a></li>
+                <li><a href="https://www.npmjs.com/package/@bilig/xlsx-formula-recalc">@bilig/xlsx-formula-recalc npm package</a></li>
+                <li><a href="./xlsx-formula-recalculation-node.html">XLSX formula recalculation in Node</a></li>
+                <li><a href="./xlsx-formula-support-answers.html">XLSX formula support answers</a></li>
+                <li><a href="./xlsx-template-formula-recalculation-node.html">xlsx-template formula recalculation</a></li>
+                <li><a href="./xlsx-populate-formula-result-node.html">xlsx-populate formula results</a></li>
+                <li>
+                  <a href="https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node">XLSX recalculation example</a>
+                </li>
               </ul>
             </div>
 
@@ -674,7 +663,7 @@ console.log({ answer, restored: restored.getCellDisplayValue(outputCell) })
                 <li><a href="https://context7.com/proompteng/bilig">Context7 indexed docs</a></li>
                 <li><a href="./agent-proof-matrix.html">Agent WorkPaper proof matrix</a></li>
                 <li><a href="./agent-xlsx-risk-preflight.html">Agent XLSX risk preflight</a></li>
-                <li><a href="./headless-workpaper-agent-handbook.html">headless WorkPaper agent handbook</a></li>
+                <li><a href="./headless-workpaper-agent-handbook.html">WorkPaper agent handbook</a></li>
                 <li><a href="./agent-workpaper-tool-calling-recipe.html">agent tool-calling recipe</a></li>
                 <li><a href="./agent-framework-workbook-tools.html">agent framework workbook tool chooser</a></li>
                 <li>
@@ -717,10 +706,8 @@ console.log({ answer, restored: restored.getCellDisplayValue(outputCell) })
                 <li><a href="./google-sheets-api-alternative-node-workpaper.html">Google Sheets API boundary</a></li>
                 <li><a href="./google-sheets-query-sortn-node-workpaper.html">Google Sheets QUERY/SORTN in Node</a></li>
                 <li><a href="./microsoft-graph-excel-recalculation-node.html">Microsoft Graph Excel boundary</a></li>
-                <li><a href="./stale-formula-readback-chooser.html">stale formula readback chooser</a></li>
-                <li><a href="./stale-xlsx-formula-cache-node.html">stale XLSX formula caches</a></li>
                 <li><a href="./xlsx-formula-support-answers.html">non-spam XLSX support answers</a></li>
-                <li><a href="./sheetjs-formula-result-not-updating-node.html">SheetJS stale formula values</a></li>
+                <li><a href="./sheetjs-formula-result-not-updating-node.html">SheetJS formula result boundaries</a></li>
                 <li>
                   <a href="./exceljs-formula-result-not-updating-after-node-edits.html"
                     >ExcelJS formula result not updating after Node edits</a

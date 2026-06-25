@@ -5,9 +5,9 @@ MCP clients. They run without a browser UI, edit workbook inputs through code,
 recalculate formulas, persist WorkPaper JSON, restore it, and print verified
 readback.
 
-Use `@bilig/workpaper` for the package-level service and agent API. The
-lower-level examples still use `@bilig/headless` where they need direct runtime
-or MCP internals.
+Use `@bilig/workpaper` for the package-level service and agent API. A few local
+source examples import the lower-level runtime because this folder lives inside
+the monorepo.
 
 Run it from a cloned checkout:
 
@@ -738,7 +738,7 @@ import { generateText } from 'ai'
 const client = await createMCPClient({
   transport: new Experimental_StdioMCPTransport({
     command: 'npm',
-    args: ['exec', '--package', '@bilig/headless', '--', 'bilig-workpaper-mcp'],
+    args: ['exec', '--package', '@bilig/workpaper', '--', 'bilig-workpaper-mcp'],
   }),
 })
 
@@ -762,7 +762,7 @@ try {
 
 The important calls are still the MCP `read_workpaper_summary` read and the
 `set_workpaper_input_cell` write. The server command is `bilig-workpaper-mcp`;
-`npm exec --package @bilig/headless -- bilig-workpaper-mcp` just resolves the
+`npm exec --package @bilig/workpaper -- bilig-workpaper-mcp` resolves the
 published package for a clean local recipe. The stdio transport receives `npm`
 as the command and the rest as `args`, so the SDK launches the process directly.
 
@@ -785,7 +785,7 @@ Claude Desktop:
     "bilig-workpaper": {
       "type": "stdio",
       "command": "npm",
-      "args": ["exec", "--package", "@bilig/headless", "--", "bilig-workpaper-mcp"],
+      "args": ["exec", "--package", "@bilig/workpaper", "--", "bilig-workpaper-mcp"],
       "env": {}
     }
   }
@@ -799,7 +799,7 @@ Cline:
   "mcpServers": {
     "bilig-workpaper": {
       "command": "npm",
-      "args": ["exec", "--package", "@bilig/headless", "--", "bilig-workpaper-mcp"],
+      "args": ["exec", "--package", "@bilig/workpaper", "--", "bilig-workpaper-mcp"],
       "env": {},
       "disabled": false,
       "autoApprove": []

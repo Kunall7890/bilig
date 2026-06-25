@@ -147,4 +147,4 @@ Expected local proof:
 - [MCP WorkPaper tool server](mcp-workpaper-tool-server.md)
 - [MCP client setup](mcp-client-setup.md)
 - [Agent framework workbook tools](agent-framework-workbook-tools.md)
-- [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
+- [WorkPaper agent handbook](headless-workpaper-agent-handbook.md)

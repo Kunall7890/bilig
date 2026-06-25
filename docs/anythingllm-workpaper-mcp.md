@@ -199,4 +199,4 @@ and the persisted document can be restored.
 - [MCP client setup](mcp-client-setup.md)
 - [MCP WorkPaper tool server](mcp-workpaper-tool-server.md)
 - [Agent framework workbook tools](agent-framework-workbook-tools.md)
-- [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
+- [WorkPaper agent handbook](headless-workpaper-agent-handbook.md)

@@ -380,7 +380,7 @@ If it almost works but adoption is blocked, open the concrete blocker:
 ## Next Pages
 
 - [Evaluate Bilig as an agent MCP workbook tool](eval-agent-mcp.md)
-- [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
+- [WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
 - [MCP client setup](mcp-client-setup.md)
 - [OpenHands WorkPaper MCP setup](openhands-workpaper-mcp.md)
 - [Trae WorkPaper MCP setup](trae-workpaper-mcp.md)

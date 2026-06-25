@@ -183,14 +183,12 @@ requireNoUnsupportedGoogleSheetsTenXClaims(dominanceScorecard, {
 requirePackageMetadataDiscovery({ headlessPackageJson, scopedWorkpaperPackageJson, scopedWorkpaperPackageReadme })
 requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/workpaper"', 'docs/index.html')
 requireIncludes(index, '"installUrl": "https://www.npmjs.com/package/@bilig/workpaper"', 'docs/index.html')
-requireIncludes(index, '"https://www.npmjs.com/package/@bilig/headless"', 'docs/index.html')
 requireIncludes(index, '"https://www.npmjs.com/package/@bilig/workpaper"', 'docs/index.html')
 requireIncludes(index, '"https://www.npmjs.com/package/@bilig/xlsx-formula-recalc"', 'docs/index.html')
 requireIncludes(index, '"https://www.npmjs.com/package/@bilig/exceljs-formula-recalc"', 'docs/index.html')
 requireIncludes(index, '<h2 id="runtime-title">Teams that keep business rules in workbook formulas.</h2>', 'docs/index.html')
 requireIncludes(index, 'first run', 'docs/index.html')
 requireIncludes(index, 'npm create @bilig/workpaper@latest pricing-workpaper', 'docs/index.html')
-requireIncludes(index, 'npm install @bilig/headless', 'docs/index.html')
 requireIncludes(index, '"applicationCategory": "DeveloperApplication"', 'docs/index.html')
 requireIncludes(index, '"@type": "FAQPage"', 'docs/index.html')
 requireIncludes(
@@ -389,13 +387,11 @@ for (const required of [
 ] as const) {
   requireIncludes(staleXlsxFormulaCacheNode, required, 'docs/stale-xlsx-formula-cache-node.md')
 }
-requireIncludes(index, './stale-xlsx-formula-cache-node.html', 'docs/index.html')
-requireIncludes(readme, 'docs/stale-xlsx-formula-cache-node.md', 'README.md')
 requireIncludes(headlessReadme, 'docs/stale-xlsx-formula-cache-node.md', 'packages/headless/README.md')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/stale-xlsx-formula-cache-node.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/stale-xlsx-formula-cache-node.md', 'docs/llms.txt')
 await requireXlsxFormulaSupportAnswersDiscovery({ docsRoot, index, llms, readme })
-await requireStaleFormulaReadbackChooserDiscovery({ docsRoot, repoRoot, index, llms, llmsFull, readme })
+await requireStaleFormulaReadbackChooserDiscovery({ docsRoot, repoRoot, llms })
 
 for (const required of [
   'title: SheetJS formula result not updating in Node.js',
@@ -771,7 +767,7 @@ requireIncludes(
   'docs/.well-known/skills/index.json',
 )
 requireIncludes(llmsFull, '## Generated Skill Manifest', 'docs/llms-full.txt')
-requireIncludes(llmsFull, '## Headless WorkPaper Agent Handbook', 'docs/llms-full.txt')
+requireIncludes(llmsFull, '## WorkPaper Agent Handbook', 'docs/llms-full.txt')
 requireIncludes(llmsFull, `npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge`, 'docs/llms-full.txt')
 requireIncludes(llmsFull, `npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp`, 'docs/llms-full.txt')
 requireIncludes(headlessReadme, '## Stay Connected', 'packages/headless/README.md')
@@ -817,8 +813,8 @@ for (const required of [
 ] as const) {
   requireIncludes(npmProvenancePackageTrustDoc, required, 'docs/npm-provenance-package-trust.md')
 }
-requireIncludes(readme, `@bilig/headless@${headlessPackageVersion}`, 'README.md')
-requireIncludes(readme, 'npm view @bilig/headless version dist.attestations dist.signatures --json', 'README.md')
+requireIncludes(readme, '@bilig/workpaper@latest', 'README.md')
+requireIncludes(readme, 'npm view @bilig/workpaper version dist.attestations dist.signatures --json', 'README.md')
 requireIncludes(readme, 'npm provenance and package trust', 'README.md')
 requireIncludes(readme, 'https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge', 'README.md')
 requireIncludes(readme, 'uploaded to GitHub code scanning on every `main` update', 'README.md')

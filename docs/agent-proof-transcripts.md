@@ -97,4 +97,4 @@ chart layout, private workbook compatibility, or hosted multi-user storage.
 - [Agent WorkPaper proof matrix](agent-proof-matrix.md)
 - [Evaluate Bilig as an agent MCP workbook tool](eval-agent-mcp.md)
 - [MCP spreadsheet formula server for coding agents](mcp-spreadsheet-formula-server-for-coding-agents.md)
-- [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
+- [WorkPaper agent handbook](headless-workpaper-agent-handbook.md)

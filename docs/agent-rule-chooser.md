@@ -147,5 +147,5 @@ npm create @bilig/workpaper@latest pricing-agent -- --agent
 - [Goose WorkPaper MCP recipe](goose-workpaper-mcp.md)
 - [Agent WorkPaper proof matrix](agent-proof-matrix.md)
 - [Agent proof transcripts](agent-proof-transcripts.md)
-- [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
+- [WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
 - [Evaluate Bilig as an agent MCP workbook tool](eval-agent-mcp.md)

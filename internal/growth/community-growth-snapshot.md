@@ -1,18 +1,20 @@
 # Community Growth Snapshot
 
-Captured at: `2026-06-25T08:50:57Z`
+Captured at: `2026-06-25T09:08:39Z`
 
 This snapshot tracks the public signals for the Bilig WorkPaper growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
 
 ## GitHub
 
 - Repository: [proompteng/bilig](https://github.com/proompteng/bilig)
+- GitHub About: WorkPaper runtime for Node services and agents: edit cells,
+  recalculate formulas, read outputs, and save JSON.
 - Stars: 32 / 100 (68 remaining)
 - Forks: 21
 - Watchers: 1
 - Open issues: 4
 - Default branch: `main`
-- Topics: `agent-tools`, `agent-workflows`, `ai-agents`, `formula-engine`, `formula-recalculation`, `headless-spreadsheet`, `mcp`, `mcp-server`, `mcp-tools`, `model-context-protocol`, `node-services`, `nodejs`, `spreadsheet`, `spreadsheet-api`, `spreadsheet-automation`, `typescript`, `workbook-api`, `workbook-automation`, `workbook-runtime`, `workpaper`
+- Topics: `agent-tools`, `agent-workflows`, `ai-agents`, `formula-engine`, `formula-recalculation`, `mcp`, `mcp-server`, `mcp-tools`, `model-context-protocol`, `node-services`, `nodejs`, `spreadsheet`, `spreadsheet-api`, `spreadsheet-automation`, `typescript`, `workbook-api`, `workbook-automation`, `workbook-runtime`, `workflow-automation`, `workpaper`
 
 ## npm
 
@@ -82,11 +84,23 @@ This snapshot tracks the public signals for the Bilig WorkPaper growth loop: Git
   so the public discussion titles, npm package links, and quickstart commands
   use `@bilig/workpaper` instead of the lower-level runtime package. Live
   readback showed 32 stars.
+- 2026-06-25T08:56:31Z: retargeted the live GitHub About description from
+  "Headless WorkPaper runtime" to WorkPaper runtime for Node services and
+  agents, and replaced the `headless-spreadsheet` topic with
+  `workflow-automation`. Live readback showed 32 stars.
+- 2026-06-25T09:08:39Z: retargeted the root README, docs homepage, TypeScript
+  example MCP recipes, and `llms-full` source aggregation so `@bilig/workpaper`
+  is the public package path. Saved-file diagnostics remain documented, but no
+  longer drive the homepage or full agent context. Live readback showed 32
+  stars.
 
 ## External Discovery
 
-- LibHunt indexes Bilig on the `headless-spreadsheet` topic page: <https://www.libhunt.com/topic/headless-spreadsheet>.
-- That surface came from the May 7 Show HN discovery path and classifies the project near TypeScript, Spreadsheet, Excel, Agents, and `ai-agents` audiences.
+- A legacy LibHunt crawler surface still indexes Bilig on the
+  `headless-spreadsheet` topic page:
+  <https://www.libhunt.com/topic/headless-spreadsheet>.
+- That surface came from the May 7 Show HN discovery path and should not drive
+  current positioning.
 - Keep GitHub repository topics, npm keywords, and proof-page copy aligned with
   WorkPaper, MCP tools, Node services, agent workflows, and workbook automation
   while waiting for crawler refreshes.

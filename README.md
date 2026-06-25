@@ -252,7 +252,7 @@ recipes are for teams that already know where the workbook tool needs to live.
 | Basic fit                     | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                                                                                                                                                                                           | The problem is workbook-shaped business logic that needs API readback and persistence.                    |
 | Published npm package         | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                                                                                                                   | `@bilig/workpaper` edits one input, recalculates, persists JSON, restores, and prints `verified: true`.   |
 | Backend service shape         | [Quote approval WorkPaper API](docs/quote-approval-workpaper-api.md)                                                                                                                                                                                                                                              | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`.               |
-| Agent or MCP tools            | [Headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md), [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md), [Gemini CLI extension](docs/gemini-cli-workpaper-extension.md), and [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md)                         | The agent installs a tool path, uses the handoff prompt, then proves write/readback/persist.              |
+| Agent or MCP tools            | [WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md), [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md), [Gemini CLI extension](docs/gemini-cli-workpaper-extension.md), and [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md)                                  | The agent installs a tool path, uses the handoff prompt, then proves write/readback/persist.              |
 | Public WorkPaper review       | [Show HN WorkPaper maintainer note](docs/show-hn-formula-workbooks-node-services.md)                                                                                                                                                                                                                              | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask.                   |
 | Trust and performance         | [npm provenance](docs/npm-provenance-package-trust.md) and [benchmark evidence](docs/what-workpaper-benchmark-proves.md)                                                                                                                                                                                          | npm shows SLSA provenance, and benchmark claims match the checked artifact.                               |
 | Saved workbook files          | [Workbook Compatibility Report](docs/workbook-compatibility-report.md), [XLSX formula recalculation](docs/xlsx-formula-recalculation-node.md), and [ExcelJS formula recalculation](docs/exceljs-formula-recalculation-node.md)                                                                                    | The file boundary is inspected before a service, CI job, or agent trusts imported formulas.               |
@@ -487,28 +487,21 @@ matters.
 
 ## Package Boundary
 
-<!-- headless-package-footprint:start -->
+Current checked npm metadata for `@bilig/workpaper@latest`:
 
-Current checked npm footprint for `@bilig/headless@0.164.1`:
-
-- Pack dry run: `860 kB` tarball, `5.24 MB` unpacked, `835` package entries.
-- Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
-  import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
-  `bilig-workpaper-mcp` binary wrapper; reduced workbook reports use the
-  `bilig-formula-clinic` binary.
-- Cold-start gate: Node imports the main entrypoint, builds a two-sheet
-  WorkPaper, and reads `24000` under `1000 ms` without importing
-  the XLSX subpath.
-- Runtime: Node `>=22.0.0`; Node 22 compatibility is covered by the runtime package workflow.
-<!-- headless-package-footprint:end -->
+- Published package: `57.7 kB` unpacked, `49` package entries.
+- Boundary: the public package owns WorkPaper starters, evaluators, MCP command
+  wrappers, formula clinic reports, JSON persistence, and restored readback.
+- Runtime: Node `>=22.0.0`; Node 22 compatibility is covered by the runtime
+  package workflow.
 
 ## Published Package Trust
 
-`@bilig/headless` is published with npm registry signatures and SLSA provenance
+`@bilig/workpaper` is published with npm registry signatures and SLSA provenance
 attestations. Verify the package version you are about to adopt:
 
 ```sh
-npm view @bilig/headless version dist.attestations dist.signatures --json
+npm view @bilig/workpaper version dist.attestations dist.signatures --json
 ```
 
 After installing, npm can verify the current dependency tree:
@@ -575,7 +568,7 @@ the [Node spreadsheet formula engine guide](docs/node-spreadsheet-formula-engine
 [Vercel AI SDK formula readback](docs/vercel-ai-sdk-spreadsheet-tool-formula-readback.md),
 [AI SDK and LangChain tools](docs/vercel-ai-sdk-langchain-spreadsheet-tool.md),
 [CrewAI adapter](docs/crewai-workpaper-spreadsheet-tool.md),
-the [headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md),
+the [WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md),
 the [MCP server guide](docs/mcp-workpaper-tool-server.md),
 [spreadsheet MCP server comparison](docs/spreadsheet-mcp-server-comparison.md),
 [MCP directory status](docs/mcp-spreadsheet-server-directory.md),
@@ -585,21 +578,14 @@ the [MCP server guide](docs/mcp-workpaper-tool-server.md),
 [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md),
 [npm provenance and package trust](docs/npm-provenance-package-trust.md),
 [JavaScript library comparison](docs/javascript-spreadsheet-library-headless-node.md),
-[headless spreadsheet engine for Node services and agents](docs/headless-spreadsheet-engine-node-services-agents.md),
-[XLSX formula recalculation in Node.js](docs/xlsx-formula-recalculation-node.md),
-[agent XLSX formula recalculation without LibreOffice](docs/agent-xlsx-formula-recalculation-without-libreoffice.md),
-[Excel file as a Node calculation engine](docs/excel-file-calculation-engine-node.md),
-[Fix stale XLSX formula values in Node.js](docs/stale-xlsx-formula-cache-node.md),
-[stale formula readback chooser](docs/stale-formula-readback-chooser.md),
+[Node spreadsheet formula engine guide](docs/node-spreadsheet-formula-engine.md),
+[server-side spreadsheet automation](docs/server-side-spreadsheet-automation-node.md),
+[saved-workbook formula recalculation](docs/xlsx-formula-recalculation-node.md),
 [XLSX formula support answers](docs/xlsx-formula-support-answers.md),
-[SheetJS formula result not updating in Node.js](docs/sheetjs-formula-result-not-updating-node.md),
-[ExcelJS formula result not updating after Node edits](docs/exceljs-formula-result-not-updating-after-node-edits.md),
-[Microsoft Graph Excel recalculation in Node.js](docs/microsoft-graph-excel-recalculation-node.md),
-[xlsx-calc alternative for Node workbook recalculation](docs/xlsx-calc-alternative-node-workbook-recalculation.md),
-[ExcelJS formula recalculation in Node.js](docs/exceljs-formula-recalculation-node.md),
-[ExcelJS shared formulas in Node.js](docs/exceljs-shared-formula-recalculation-node.md),
 [SheetJS/ExcelJS boundary](docs/sheetjs-exceljs-alternative-formula-workbook-api.md),
-and [headless engine comparison](docs/headless-spreadsheet-engine-comparison.md).
+[ExcelJS formula result boundary](docs/exceljs-formula-result-not-updating-after-node-edits.md),
+[Microsoft Graph Excel boundary](docs/microsoft-graph-excel-recalculation-node.md),
+and [engine comparison](docs/headless-spreadsheet-engine-comparison.md).
 
 Useful deeper examples: [invoice totals](examples/headless-workpaper#invoice-totals),
 [budget variance alerts](examples/headless-workpaper#budget-variance-alerts),
@@ -725,7 +711,6 @@ npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
 pnpm --dir examples/headless-workpaper run agent:mcp-xlsx-risk-preflight
-npm exec --package @bilig/headless@latest -- bilig-workpaper-mcp
 docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
 ```
 
@@ -856,10 +841,11 @@ pnpm workpaper:xlsx-oracle -- summarize "$OUT"
 
 ## What Is In This Repo
 
-- `packages/headless`: WorkPaper runtime and npm package.
-- `packages/excel-import`: XLSX import/export boundary. Install both packages
-  with `pnpm add @bilig/headless @bilig/excel-import` when you need file import
-  and export.
+- `packages/workpaper`: public WorkPaper package, starters, evaluator binaries,
+  and MCP wrappers.
+- `packages/headless`: lower-level WorkPaper runtime that backs the public
+  package.
+- `packages/excel-import`: saved-workbook import/export boundary.
 - `packages/formula`: formula parser, binder, compiler, and evaluator.
 - `packages/core`: workbook engine, snapshots, mutation flow, and scheduler.
 - `packages/grid` and `apps/web`: browser spreadsheet shell.

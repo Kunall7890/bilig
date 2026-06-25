@@ -114,5 +114,5 @@ because npm publishing can lag the repository.
 
 - [Coding agent rule chooser](agent-rule-chooser.md)
 - [Agent adoption kit](agent-adoption-kit.md)
-- [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
+- [WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
 - [MCP spreadsheet tool server](mcp-workpaper-tool-server.md)

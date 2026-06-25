@@ -413,7 +413,7 @@ function replaceMarkdownBlock(source: string, renderedBlock: string, path: strin
 
 async function syncMarkdownBlocks(footprint: HeadlessPackageFootprint): Promise<void> {
   const renderedBlock = renderMarkdownBlock(footprint)
-  const paths = ['README.md', join('packages', 'headless', 'README.md')] as const
+  const paths = [join('packages', 'headless', 'README.md')] as const
   await Promise.all(
     paths.map(async (path) => {
       const absolutePath = join(repoRoot, path)

@@ -97,4 +97,4 @@ workbook data. Use local stdio/file-backed MCP for private workbooks.
 
 - [Agent proof transcripts](../agent-proof-transcripts.md)
 - [Coding agent rule chooser](../agent-rule-chooser.md)
-- [Headless WorkPaper agent handbook](../headless-workpaper-agent-handbook.md)
+- [WorkPaper agent handbook](../headless-workpaper-agent-handbook.md)

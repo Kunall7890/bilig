@@ -191,4 +191,4 @@ Ask the model to return a concrete proof instead of "the cell was updated":
 - [MCP WorkPaper tool server](mcp-workpaper-tool-server.md)
 - [Agent framework workbook tools](agent-framework-workbook-tools.md)
 - [Why agents need workbook APIs](why-agents-need-workbook-apis.md)
-- [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
+- [WorkPaper agent handbook](headless-workpaper-agent-handbook.md)

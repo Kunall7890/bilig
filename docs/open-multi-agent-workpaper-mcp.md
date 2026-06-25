@@ -104,6 +104,6 @@ from the WorkPaper after the input edit.
 
 - [Agent framework workbook tools](agent-framework-workbook-tools.md)
 - [MCP WorkPaper tool server](mcp-workpaper-tool-server.md)
-- [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
+- [WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
 - [Agent WorkPaper tool-calling recipe](agent-workpaper-tool-calling-recipe.md)
 - [Why agents need workbook APIs](why-agents-need-workbook-apis.md)

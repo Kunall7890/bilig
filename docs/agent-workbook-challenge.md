@@ -159,7 +159,7 @@ https://proompteng.github.io/bilig/agent-workbook-challenge.html
 ## Where To Go Next
 
 - For a broader agent playbook, use the
-  [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md).
+  [WorkPaper agent handbook](headless-workpaper-agent-handbook.md).
 - For MCP client setup, use the
   [MCP client setup guide](mcp-client-setup.md).
 - For direct tool wrappers, use the

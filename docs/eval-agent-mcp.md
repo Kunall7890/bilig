@@ -147,5 +147,5 @@ no blind write-only success, and no missing persistence proof.
 
 - [Agent workbook challenge](agent-workbook-challenge.md)
 - [MCP WorkPaper tool server](mcp-workpaper-tool-server.md)
-- [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
+- [WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
 - [MCP client setup](mcp-client-setup.md)
