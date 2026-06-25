@@ -14629,7 +14629,6 @@ compatibility pages before adopting it.
 
 - [GitHub repository](https://github.com/proompteng/bilig)
 - [@bilig/workpaper npm package](https://www.npmjs.com/package/@bilig/workpaper)
-- [@bilig/headless npm package](https://www.npmjs.com/package/@bilig/headless)
 - [Five Node.js workbook automation examples](workbook-automation-examples-node.md)
 - [Node.js spreadsheet formula engine guide](node-spreadsheet-formula-engine.md)
 - [WorkPaper service recipe](node-service-workpaper-recipe.md)

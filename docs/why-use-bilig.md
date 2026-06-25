@@ -21,7 +21,7 @@ or agent tool needs to do four things:
 3. read the exact output cells back;
 4. save the edited workbook state and restore it later.
 
-That is the narrow reason `@bilig/headless` exists. It gives TypeScript code a
+That is the narrow reason `@bilig/workpaper` exists. It gives TypeScript code a
 `WorkPaper` object for workbook-shaped business logic.
 
 ## The problem it replaces
@@ -47,13 +47,13 @@ real runtime artifact.
 
 ## What you get
 
-`@bilig/headless` gives you:
+`@bilig/workpaper` gives you:
 
 - programmatic sheets, cells, formulas, and structural edits;
 - formula readback after writes;
 - WorkPaper JSON export and restore;
 - a local MCP server for agent tools;
-- XLSX import/export through the `@bilig/headless/xlsx` subpath;
+- XLSX import/export through the `@bilig/workpaper/xlsx` subpath;
 - runnable examples that prove write -> recalc -> read -> persist -> restore.
 
 The important word is prove. A useful integration does not stop after writing a
@@ -80,14 +80,10 @@ of them.
 Run the npm proof in a blank directory:
 
 ```sh
-mkdir bilig-headless-eval
-cd bilig-headless-eval
-npm init -y
-npm pkg set type=module
-npm install @bilig/headless
-npm install -D tsx typescript @types/node
-curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts
-npx tsx quickstart.ts
+npm create @bilig/workpaper@latest pricing-workpaper
+cd pricing-workpaper
+npm install
+npm run smoke
 ```
 
 If it prints `verified: true`, the package can create a workbook, edit one

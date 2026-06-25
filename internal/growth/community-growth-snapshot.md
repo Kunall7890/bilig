@@ -1,13 +1,13 @@
 # Community Growth Snapshot
 
-Captured at: `2026-06-25T07:59:46.827Z`
+Captured at: `2026-06-25T08:50:57Z`
 
 This snapshot tracks the public signals for the Bilig WorkPaper growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
 
 ## GitHub
 
 - Repository: [proompteng/bilig](https://github.com/proompteng/bilig)
-- Stars: 31 / 100 (69 remaining)
+- Stars: 32 / 100 (68 remaining)
 - Forks: 21
 - Watchers: 1
 - Open issues: 4
@@ -16,11 +16,11 @@ This snapshot tracks the public signals for the Bilig WorkPaper growth loop: Git
 
 ## npm
 
-- Package: `@bilig/headless@0.164.1`
+- Package: `@bilig/workpaper@0.164.1`
 - License: `MIT`
-- Modified: `2026-06-12T17:59:46.919Z`
-- Downloads last week: 7,439 (2026-06-17 to 2026-06-23)
-- Downloads last month: 58,303 (2026-05-25 to 2026-06-23)
+- Modified: `2026-06-12T17:59:54.469Z`
+- Downloads last week: 505 (2026-06-17 to 2026-06-23)
+- Downloads last month: 13,191 (2026-05-25 to 2026-06-23)
 
 ## Contributor Funnel
 
@@ -40,8 +40,8 @@ This snapshot tracks the public signals for the Bilig WorkPaper growth loop: Git
 - Total discussions: 15
 - #414 [Looking for one ugly workbook case to turn into a fixture](https://github.com/proompteng/bilig/discussions/414) (General, 1 comment)
 - #421 [Show and tell: using GPT for Sheets for spreadsheet enrichment and content ops](https://github.com/proompteng/bilig/discussions/421) (Show and tell, 0 comments)
-- #157 [Which Node workbook automation workflow should @bilig/headless prove next?](https://github.com/proompteng/bilig/discussions/157) (Ideas, 11 comments)
-- #270 [Show and tell: try @bilig/headless from npm in an empty Node project](https://github.com/proompteng/bilig/discussions/270) (Show and tell, 2 comments)
+- #157 [Which WorkPaper automation workflow should Bilig prove next?](https://github.com/proompteng/bilig/discussions/157) (Ideas, 11 comments)
+- #270 [Show and tell: try @bilig/workpaper from npm in a blank Node project](https://github.com/proompteng/bilig/discussions/270) (Show and tell, 2 comments)
 - Current conversion focus: keep #213 and #335 warm around runnable WorkPaper
   service, MCP, and agent-tool proofs. Keep cached-file import edge cases as a
   secondary diagnostic for teams that already need import/export verification.
@@ -64,8 +64,8 @@ This snapshot tracks the public signals for the Bilig WorkPaper growth loop: Git
 - 2026-06-25T08:28:48Z: updated the high-traffic
   [`examples/headless-workpaper`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper)
   README and package metadata so the first screen presents runnable WorkPaper
-  service and agent examples first, while keeping `@bilig/headless` named only
-  for lower-level runtime and MCP internals.
+  service and agent examples first, while keeping lower-level runtime internals
+  out of the lead message.
 - 2026-06-25T08:34:27Z: retargeted GitHub repository topics away from
   import-format terms and toward WorkPaper, MCP tools, Node services, workbook
   automation, and agent workflows. Live readback showed 32 stars after the
@@ -75,19 +75,28 @@ This snapshot tracks the public signals for the Bilig WorkPaper growth loop: Git
   readback, MCP proof, and agent workflows. Removed cached-file diagnostics from
   the main conversion path while keeping saved-file support as a separate
   boundary.
+- 2026-06-25T08:50:57Z: refreshed live Discussion #157
+  ([WorkPaper automation workflow ask](https://github.com/proompteng/bilig/discussions/157))
+  and #270
+  ([blank Node WorkPaper npm proof](https://github.com/proompteng/bilig/discussions/270))
+  so the public discussion titles, npm package links, and quickstart commands
+  use `@bilig/workpaper` instead of the lower-level runtime package. Live
+  readback showed 32 stars.
 
 ## External Discovery
 
 - LibHunt indexes Bilig on the `headless-spreadsheet` topic page: <https://www.libhunt.com/topic/headless-spreadsheet>.
 - That surface came from the May 7 Show HN discovery path and classifies the project near TypeScript, Spreadsheet, Excel, Agents, and `ai-agents` audiences.
-- Keep GitHub repository topics, npm keywords, and proof-page copy aligned with `headless-spreadsheet`, `excel`, `ai-agents`, and formula-recalculation terms while waiting for crawler refreshes.
+- Keep GitHub repository topics, npm keywords, and proof-page copy aligned with
+  WorkPaper, MCP tools, Node services, agent workflows, and workbook automation
+  while waiting for crawler refreshes.
 
 ## Conversion Pressure
 
-- Last-week npm downloads per current star: 240
-- Last-month npm downloads per current star: 1,881
+- Last-week npm downloads per current star: 16
+- Last-month npm downloads per current star: 412
 - Fourteen-day unique GitHub visitors per current star: 2
-- Fourteen-day unique cloners per current star: 42
+- Fourteen-day unique cloners per current star: 40
 - Interpretation: these are pressure ratios, not attribution. High download or clone pressure with flat stars means the evaluator path needs a clearer proof, trust signal, or repository/release path after verification.
 
 ## Spike Read
