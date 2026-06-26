@@ -2299,7 +2299,8 @@ maps each host to the current repo-local rule and MCP config. Common anchors are
 `.claude/commands/bilig-workpaper-proof.md`,
 `.github/instructions/bilig-workpaper.instructions.md`,
 `.github/prompts/bilig-workpaper-proof.prompt.md`, `.vscode/mcp.json`,
-`.cursor/rules/bilig-workpaper.mdc`, `.trae/mcp.json`, `.zed/settings.json`,
+`.cursor/rules/bilig-workpaper.mdc`, `.kiro/steering/bilig-workpaper.md`,
+`.trae/mcp.json`, `.trae/rules/bilig-workpaper.md`, `.zed/settings.json`,
 `opencode.jsonc`, and `.continue/mcpServers/bilig-workpaper.yaml`.
 
 For a clean project that already contains those instruction files, create the
