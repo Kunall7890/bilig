@@ -63,9 +63,6 @@ The useful output is not a write-call status. It is readback proof:
 For recompute and output boundaries, see
 <https://proompteng.github.io/bilig/eval-workpaper-service.html#recompute-and-output-boundaries>.
 
-If this is close to production, watch releases and review the public limits:
-<https://github.com/proompteng/bilig/subscription>.
-
 For a richer tool check, add `--scenario revenue-plan` to the `agent-mcp`
 evaluator. It proves `SUM`, `SUMIF`, `XLOOKUP`, `FILTER`, a named expression,
 JSON persistence, and restart readback.
@@ -79,19 +76,16 @@ If the workbook has provider-backed formulas such as `IMPORTRANGE`, run
 That proves the formula fails closed with an adapter diagnostic, then verifies a
 local synthetic adapter readback. It does not call Google Sheets.
 
-If one of those matches your workflow, keep Bilig nearby:
-<https://github.com/proompteng/bilig>.
-
-Framework examples live in the repo instead of this first screen. Start with
-the closest runtime:
+Framework examples live in the repo instead of this first screen. Use them after
+one evaluator passes:
 
 - Tool runtimes: Vercel AI SDK, LangGraph, LangChain MCP adapters, Open WebUI,
   FastMCP, Agno, Pydantic AI, smolagents.
 - Workflow engines: Trigger.dev, Inngest, Temporal, Airflow, Dagster, Kestra,
   Prefect, Windmill.
 - Low-code and data tools: n8n, Pipedream, Directus, Airbyte, Meltano.
-- Existing `.xlsx` files: use `@bilig/xlsx-formula-recalc` for saved-file
-  recalculation and exported workbook readback.
+- Saved workbook files: use the saved-file boundary section only when a file is
+  the contract.
 
 ## Searchable Example Guides
 
@@ -212,31 +206,28 @@ rewriting formula sheets.
 
 ## Verify Without Cloning
 
-The package ships evaluator and direct proof commands:
+The public package ships three no-clone checks. Start with the smallest one that
+matches the state owner:
 
 ```sh
-npm exec --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
-npm exec --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
-npm exec --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --scenario provider-backed --json
-npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge --json
-npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
-npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321
-npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
-npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx
-npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door agent-mcp --json
+npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-start --json
 ```
 
 `bilig-evaluate` prints a `bilig-evaluator.v1` object with `door`, `evidence`,
 `verified`, `limitations`, and the source command output.
 
-The challenge commands edit one input, recalculate dependent formulas, export
-WorkPaper JSON, restore it, and print a `verified: true` proof object.
-Use `--from-xlsx` when the tool host already has an XLSX file: Bilig imports it once
-into an in-memory MCP server by default, or into persisted WorkPaper JSON when
-`--workpaper --writable` is also supplied. That XLSX-backed MCP path also lists
-`analyze_workbook_risk`, a read-only tool fixed to the source workbook passed at
-startup. It reports workbook risk indicators before a workflow trusts the imported
-WorkPaper and does not certify Excel compatibility.
+Use the raw challenge commands only when you need a lower-level transcript for
+debugging:
+
+```sh
+npm exec --yes --package @bilig/workpaper@latest -- bilig-agent-challenge --json
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge --json
+```
+
+Those commands edit one input, recalculate dependent formulas, export WorkPaper
+JSON, restore it, and print a `verified: true` proof object.
 
 ## Tool Host WorkPaper Handoff
 
@@ -309,21 +300,35 @@ Docs:
 - <https://proompteng.github.io/bilig/langgraph-workpaper-toolnode-spreadsheet.html>
 - <https://proompteng.github.io/bilig/smolagents-workpaper-tool.html>
 
-## XLSX Import And Export
+## Saved File Boundaries
 
 ```ts
 import { WorkPaper } from '@bilig/workpaper'
 import { exportXlsx, importXlsx } from '@bilig/workpaper/xlsx'
 ```
 
-Use `@bilig/xlsx-formula-recalc` when you only need to edit and recalculate
-XLSX files. Use `@bilig/exceljs-formula-recalc` when you already use ExcelJS
-and need recalculated formula results after changing inputs.
+Use saved-file commands only when a workbook file is the integration contract:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx
+npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --from-xlsx ./pricing.xlsx --workpaper ./.bilig/pricing.workpaper.json --writable
+```
+
+The `--from-xlsx` path imports the file once into an in-memory MCP server by
+default, or into persisted WorkPaper JSON when `--workpaper --writable` is also
+supplied. It also exposes `analyze_workbook_risk`, a read-only tool fixed to the
+source workbook passed at startup. That report surfaces workbook risk indicators
+before a workflow trusts the imported WorkPaper; it does not certify Excel compatibility.
+
+Use `@bilig/xlsx-formula-recalc` when the job is only to edit and recalculate
+XLSX files. Use `@bilig/exceljs-formula-recalc` when an existing ExcelJS
+workflow needs recalculated formula results after changing inputs.
 
 ## Tool Commands And Optional MCP
 
-The npm tarball exposes the same CLI entrypoints through the canonical scoped package, so tool
-hosts can install one focused package and still get the MCP stdio server:
+The npm tarball exposes the same CLI entrypoints through the canonical scoped
+package, so tool hosts can install one focused package and still get the MCP
+stdio server:
 
 ```ts
 import { createWorkPaperMcpServer } from '@bilig/workpaper/mcp'

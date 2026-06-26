@@ -81,12 +81,6 @@ If you are not sure which one fits, start with the thing that owns state. Use
 WorkPaper when your service or tool should own the workbook model. Use file
 diagnostics only when import/export compatibility is the actual contract.
 
-The default no-project check is:
-
-```sh
-npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
-```
-
 Good fits: pricing, quote approval, payout checks, import validation, forecasts,
 CI fixtures, formula-backed workflow steps, and tool integrations that need exact
 cell addresses plus readback. Bad fits: manual spreadsheet editing, Office
@@ -95,31 +89,10 @@ be ceremony.
 
 ## If You Only Try One Thing
 
-Run the WorkPaper service proof first. It is the shortest proof that Bilig gives
-backend code a workbook object it can change, recalculate, read back, save, and
-restore without driving Excel, LibreOffice, Google Sheets, or a browser grid.
-
-```sh
-npm exec --yes --package @bilig/workpaper@latest -- bilig-evaluate --door workpaper-service --json
-```
-
-Expected shape:
-
-```json
-{
-  "schemaVersion": "bilig-evaluator.v1",
-  "door": "workpaper-service",
-  "verified": true,
-  "evidence": {
-    "editedCell": "Inputs!B2",
-    "dependentCell": "Summary!B2",
-    "before": 24000,
-    "after": 38400,
-    "afterRestore": 38400,
-    "persistedDocumentBytes": 999
-  }
-}
-```
+Run the WorkPaper service proof at the top of this README first. It is the
+shortest proof that Bilig gives backend code a workbook object it can change,
+recalculate, read back, save, and restore without driving Excel, LibreOffice,
+Google Sheets, or a browser grid.
 
 If an MCP client or tool integration owns the workflow, run the MCP door:
 
