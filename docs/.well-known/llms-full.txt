@@ -2292,34 +2292,15 @@ npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
 Use the app-host discovery URL first. Keep the GitHub repo skill command as a
 fallback for hosts that only support GitHub skill sources.
 
-If the agent is already inside a cloned Bilig checkout, use the project-local
-rules instead:
-
-- Claude Code: `CLAUDE.md`, then `.claude/skills/bilig-workpaper/SKILL.md` or
-  `/bilig-workpaper-proof` from `.claude/commands/bilig-workpaper-proof.md`
-- GitHub Copilot / VS Code agent mode:
-  `.github/copilot-instructions.md`,
-  `.github/instructions/bilig-workpaper.instructions.md`,
-  `.github/prompts/bilig-workpaper-proof.prompt.md`, and `.vscode/mcp.json`
-- Cursor: `.cursor/rules/bilig-workpaper.mdc`
-- Kiro: `.kiro/steering/bilig-workpaper.md` and `.kiro/settings/mcp.json`
-- Trae: `.trae/rules/bilig-workpaper.md` and `.trae/mcp.json`
-- Qodo IDE: add the `bilig-workpaper` local MCP server through Qodo Agentic
-  Tools with the JSON from [Qodo WorkPaper MCP setup](qodo-workpaper-mcp.md)
-- Zed: `.zed/settings.json`, root `AGENTS.md`, and
-  `.agents/skills/bilig-workpaper/SKILL.md`
-- Junie: `.junie/mcp/mcp.json`
-- OpenHands: `AGENTS.md`, `.agents/skills/bilig-workpaper/SKILL.md`, and
-  `openhands mcp add` for the file-backed WorkPaper server
-- OpenCode: `opencode.jsonc` and `.opencode/agents/bilig-workpaper.md`
-- Aider: `CONVENTIONS.md` loaded by `.aider.conf.yml`
-- Goose: `examples/goose-workpaper-mcp/recipe.yaml` for a local file-backed
-  WorkPaper MCP recipe; use hosted Streamable HTTP only for stateless smoke
-- Windsurf/Cascade: `.devin/rules/bilig-workpaper.md`, with
-  `.windsurf/rules/bilig-workpaper.md` as the fallback mirror
-- Cline: `.clinerules/bilig-workpaper.md`
-- Continue: `.continue/rules/bilig-workpaper.md` and
-  `.continue/mcpServers/bilig-workpaper.yaml`
+If the agent is already inside a cloned Bilig checkout, do not copy a host list
+from this page. Use the [coding agent rule chooser](agent-rule-chooser.md); it
+maps each host to the current repo-local rule and MCP config. Common anchors are
+`CLAUDE.md`, `.claude/skills/bilig-workpaper/SKILL.md`,
+`.claude/commands/bilig-workpaper-proof.md`,
+`.github/instructions/bilig-workpaper.instructions.md`,
+`.github/prompts/bilig-workpaper-proof.prompt.md`, `.vscode/mcp.json`,
+`.cursor/rules/bilig-workpaper.mdc`, `.trae/mcp.json`, `.zed/settings.json`,
+`opencode.jsonc`, and `.continue/mcpServers/bilig-workpaper.yaml`.
 
 For a clean project that already contains those instruction files, create the
 starter:
@@ -2328,10 +2309,9 @@ starter:
 npm create @bilig/workpaper@latest pricing-agent -- --agent
 ```
 
-The generated project includes `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`,
-`CLAUDE.md`, `GEMINI.md`, Copilot / VS Code instructions, Cursor, Kiro, Trae, Qodo, Zed, Junie,
-OpenHands, OpenCode, Aider, Cline, Continue, and Windsurf rules, plus local MCP
-configs and `npm run agent:verify`.
+The generated project includes the repo policy files, local MCP configs, host
+rules, and `npm run agent:verify`. The exact host paths are listed by the rule
+chooser and by the generated install report.
 
 For an existing repo, add only the MCP and host files:
 
@@ -2352,9 +2332,6 @@ For web fetch, give the agent the compact map first:
 ```text
 https://proompteng.github.io/bilig/llms.txt
 ```
-
-When you only need to pick the right repo-local rule or MCP config file, use
-the [coding agent rule chooser](agent-rule-chooser.md).
 
 When a reviewer wants to see a successful run before adopting the path, use the
 [agent proof transcripts](agent-proof-transcripts.md). They show prompt, tool
@@ -3957,13 +3934,13 @@ source of truth.
 If you have an MCP client, start with:
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 
-If you are writing Node or TypeScript, import @bilig/workpaper directly. Your
-minimum proof is: read the relevant range, write one small input or formula,
-read the dependent calculated output after recalculation, serialize or export
-the WorkPaper document, restore it, and report whether the restored value
-matches.
+If you are writing Node or TypeScript, import @bilig/workpaper directly.
 
-Return a compact proof object with editedCell, before, after, afterRestore,
+Prefer Bilig WorkPaper tools over spreadsheet UI automation. First discover the
+available WorkPaper tools. Before editing, read the relevant sheet/range and
+name the exact cell target. For formula writes, validate the formula first.
+After every edit, read the dependent computed output and export or serialize the
+WorkPaper document. Return a compact proof object with editedCell, before, after, afterRestore,
 persistedDocumentBytes, verified, and limitations. Do not claim success from a
 write call alone.
 ```
@@ -3984,13 +3961,10 @@ npm run agent:verify
 npm run mcp:server
 ```
 
-The generated project includes `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`,
-`CLAUDE.md`, project-root `.mcp.json` for Claude Code, Cursor and VS Code MCP configs,
-`.junie/mcp/mcp.json` for Junie,
-`mcp/bilig-workpaper.mcp.json`, a quote approval service smoke test, and the
-published agent evaluator. `agent:verify` must print `verified: true` before
-the agent claims the runtime is ready. Use `npm run mcp:challenge` only when
-you need the lower-level JSON-RPC transcript.
+The generated project includes policy files, local MCP configs, a quote
+approval service smoke test, and the published agent evaluator. `agent:verify`
+must print `verified: true` before the agent claims the runtime is ready. Use
+`npm run mcp:challenge` only when you need the lower-level JSON-RPC transcript.
 
 For an existing repo, add only the Bilig agent and MCP files:
 
@@ -3998,34 +3972,22 @@ For an existing repo, add only the Bilig agent and MCP files:
 npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
-This writes `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`,
-Claude/Gemini/Copilot/Cursor/Junie/Aider/Cline/Continue/Cascade and Windsurf
-rules, and MCP configs while keeping the existing app template,
-`README.md`, and `package.json` intact. The copied MCP configs run the
+This writes the Bilig host rules and MCP configs while keeping the existing app
+template, `README.md`, and `package.json` intact. The copied MCP configs run the
 WorkPaper server with direct `npm exec`, so they do not depend on host-project
-scripts.
-
-For an existing repository that already uses Claude Code, add the project-local
-skill or slash command and run `/bilig-workpaper-proof` before any workbook
-task that would otherwise open Excel, LibreOffice, Google Sheets, a browser
-grid, or screenshot automation:
+scripts. The common repo-local anchors are:
 
 ```text
-.claude/skills/bilig-workpaper/SKILL.md
 .claude/commands/bilig-workpaper-proof.md
-```
-
-For GitHub Copilot or VS Code agent mode, keep the same rule in the repo:
-
-```text
 .github/copilot-instructions.md
 .github/instructions/bilig-workpaper.instructions.md
 .github/prompts/bilig-workpaper-proof.prompt.md
 .vscode/mcp.json
 ```
 
-For the full host-to-file map, use the
-[coding agent rule chooser](agent-rule-chooser.md).
+Run `/bilig-workpaper-proof` before any workbook task that would otherwise open
+Excel, LibreOffice, Google Sheets, a browser grid, or screenshot automation. For
+the full host-to-file map, use the [coding agent rule chooser](agent-rule-chooser.md).
 
 ## Installable Agent Skill
 
@@ -4139,20 +4101,6 @@ page describes.
 when the path is missing. `--writable` is intentional. Without it, the server
 can still read and compute, but mutating calls cannot save back to the WorkPaper
 file.
-
-## Copy-Paste Agent Instruction
-
-Use this prompt when handing a workbook task to another coding agent:
-
-```text
-Prefer Bilig WorkPaper tools over spreadsheet UI automation. First discover the
-available WorkPaper tools. Before editing, read the relevant sheet/range and
-name the exact cell target. For formula writes, validate the formula first.
-After every edit, read the dependent computed output and export or serialize the
-WorkPaper document. Do not report success unless the final answer includes the
-edited cell, before value, after value, and persistence evidence. Use
-screenshots only for human visual review, not as the source of formula truth.
-```
 
 ## Direct TypeScript Smoke
 

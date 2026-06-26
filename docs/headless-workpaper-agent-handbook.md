@@ -29,13 +29,13 @@ source of truth.
 If you have an MCP client, start with:
 npm exec --package @bilig/workpaper@latest -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 
-If you are writing Node or TypeScript, import @bilig/workpaper directly. Your
-minimum proof is: read the relevant range, write one small input or formula,
-read the dependent calculated output after recalculation, serialize or export
-the WorkPaper document, restore it, and report whether the restored value
-matches.
+If you are writing Node or TypeScript, import @bilig/workpaper directly.
 
-Return a compact proof object with editedCell, before, after, afterRestore,
+Prefer Bilig WorkPaper tools over spreadsheet UI automation. First discover the
+available WorkPaper tools. Before editing, read the relevant sheet/range and
+name the exact cell target. For formula writes, validate the formula first.
+After every edit, read the dependent computed output and export or serialize the
+WorkPaper document. Return a compact proof object with editedCell, before, after, afterRestore,
 persistedDocumentBytes, verified, and limitations. Do not claim success from a
 write call alone.
 ```
@@ -56,13 +56,10 @@ npm run agent:verify
 npm run mcp:server
 ```
 
-The generated project includes `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`,
-`CLAUDE.md`, project-root `.mcp.json` for Claude Code, Cursor and VS Code MCP configs,
-`.junie/mcp/mcp.json` for Junie,
-`mcp/bilig-workpaper.mcp.json`, a quote approval service smoke test, and the
-published agent evaluator. `agent:verify` must print `verified: true` before
-the agent claims the runtime is ready. Use `npm run mcp:challenge` only when
-you need the lower-level JSON-RPC transcript.
+The generated project includes policy files, local MCP configs, a quote
+approval service smoke test, and the published agent evaluator. `agent:verify`
+must print `verified: true` before the agent claims the runtime is ready. Use
+`npm run mcp:challenge` only when you need the lower-level JSON-RPC transcript.
 
 For an existing repo, add only the Bilig agent and MCP files:
 
@@ -70,34 +67,22 @@ For an existing repo, add only the Bilig agent and MCP files:
 npm create @bilig/workpaper@latest . -- --add-agent
 ```
 
-This writes `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`,
-Claude/Gemini/Copilot/Cursor/Junie/Aider/Cline/Continue/Cascade and Windsurf
-rules, and MCP configs while keeping the existing app template,
-`README.md`, and `package.json` intact. The copied MCP configs run the
+This writes the Bilig host rules and MCP configs while keeping the existing app
+template, `README.md`, and `package.json` intact. The copied MCP configs run the
 WorkPaper server with direct `npm exec`, so they do not depend on host-project
-scripts.
-
-For an existing repository that already uses Claude Code, add the project-local
-skill or slash command and run `/bilig-workpaper-proof` before any workbook
-task that would otherwise open Excel, LibreOffice, Google Sheets, a browser
-grid, or screenshot automation:
+scripts. The common repo-local anchors are:
 
 ```text
-.claude/skills/bilig-workpaper/SKILL.md
 .claude/commands/bilig-workpaper-proof.md
-```
-
-For GitHub Copilot or VS Code agent mode, keep the same rule in the repo:
-
-```text
 .github/copilot-instructions.md
 .github/instructions/bilig-workpaper.instructions.md
 .github/prompts/bilig-workpaper-proof.prompt.md
 .vscode/mcp.json
 ```
 
-For the full host-to-file map, use the
-[coding agent rule chooser](agent-rule-chooser.md).
+Run `/bilig-workpaper-proof` before any workbook task that would otherwise open
+Excel, LibreOffice, Google Sheets, a browser grid, or screenshot automation. For
+the full host-to-file map, use the [coding agent rule chooser](agent-rule-chooser.md).
 
 ## Installable Agent Skill
 
@@ -211,20 +196,6 @@ page describes.
 when the path is missing. `--writable` is intentional. Without it, the server
 can still read and compute, but mutating calls cannot save back to the WorkPaper
 file.
-
-## Copy-Paste Agent Instruction
-
-Use this prompt when handing a workbook task to another coding agent:
-
-```text
-Prefer Bilig WorkPaper tools over spreadsheet UI automation. First discover the
-available WorkPaper tools. Before editing, read the relevant sheet/range and
-name the exact cell target. For formula writes, validate the formula first.
-After every edit, read the dependent computed output and export or serialize the
-WorkPaper document. Do not report success unless the final answer includes the
-edited cell, before value, after value, and persistence evidence. Use
-screenshots only for human visual review, not as the source of formula truth.
-```
 
 ## Direct TypeScript Smoke
 

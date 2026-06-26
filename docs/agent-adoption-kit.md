@@ -80,34 +80,15 @@ npx --yes skills@latest add proompteng/bilig --skill bilig-workpaper --list
 Use the app-host discovery URL first. Keep the GitHub repo skill command as a
 fallback for hosts that only support GitHub skill sources.
 
-If the agent is already inside a cloned Bilig checkout, use the project-local
-rules instead:
-
-- Claude Code: `CLAUDE.md`, then `.claude/skills/bilig-workpaper/SKILL.md` or
-  `/bilig-workpaper-proof` from `.claude/commands/bilig-workpaper-proof.md`
-- GitHub Copilot / VS Code agent mode:
-  `.github/copilot-instructions.md`,
-  `.github/instructions/bilig-workpaper.instructions.md`,
-  `.github/prompts/bilig-workpaper-proof.prompt.md`, and `.vscode/mcp.json`
-- Cursor: `.cursor/rules/bilig-workpaper.mdc`
-- Kiro: `.kiro/steering/bilig-workpaper.md` and `.kiro/settings/mcp.json`
-- Trae: `.trae/rules/bilig-workpaper.md` and `.trae/mcp.json`
-- Qodo IDE: add the `bilig-workpaper` local MCP server through Qodo Agentic
-  Tools with the JSON from [Qodo WorkPaper MCP setup](qodo-workpaper-mcp.md)
-- Zed: `.zed/settings.json`, root `AGENTS.md`, and
-  `.agents/skills/bilig-workpaper/SKILL.md`
-- Junie: `.junie/mcp/mcp.json`
-- OpenHands: `AGENTS.md`, `.agents/skills/bilig-workpaper/SKILL.md`, and
-  `openhands mcp add` for the file-backed WorkPaper server
-- OpenCode: `opencode.jsonc` and `.opencode/agents/bilig-workpaper.md`
-- Aider: `CONVENTIONS.md` loaded by `.aider.conf.yml`
-- Goose: `examples/goose-workpaper-mcp/recipe.yaml` for a local file-backed
-  WorkPaper MCP recipe; use hosted Streamable HTTP only for stateless smoke
-- Windsurf/Cascade: `.devin/rules/bilig-workpaper.md`, with
-  `.windsurf/rules/bilig-workpaper.md` as the fallback mirror
-- Cline: `.clinerules/bilig-workpaper.md`
-- Continue: `.continue/rules/bilig-workpaper.md` and
-  `.continue/mcpServers/bilig-workpaper.yaml`
+If the agent is already inside a cloned Bilig checkout, do not copy a host list
+from this page. Use the [coding agent rule chooser](agent-rule-chooser.md); it
+maps each host to the current repo-local rule and MCP config. Common anchors are
+`CLAUDE.md`, `.claude/skills/bilig-workpaper/SKILL.md`,
+`.claude/commands/bilig-workpaper-proof.md`,
+`.github/instructions/bilig-workpaper.instructions.md`,
+`.github/prompts/bilig-workpaper-proof.prompt.md`, `.vscode/mcp.json`,
+`.cursor/rules/bilig-workpaper.mdc`, `.trae/mcp.json`, `.zed/settings.json`,
+`opencode.jsonc`, and `.continue/mcpServers/bilig-workpaper.yaml`.
 
 For a clean project that already contains those instruction files, create the
 starter:
@@ -116,10 +97,9 @@ starter:
 npm create @bilig/workpaper@latest pricing-agent -- --agent
 ```
 
-The generated project includes `AGENTS.md`, `CONVENTIONS.md`, `.aider.conf.yml`,
-`CLAUDE.md`, `GEMINI.md`, Copilot / VS Code instructions, Cursor, Kiro, Trae, Qodo, Zed, Junie,
-OpenHands, OpenCode, Aider, Cline, Continue, and Windsurf rules, plus local MCP
-configs and `npm run agent:verify`.
+The generated project includes the repo policy files, local MCP configs, host
+rules, and `npm run agent:verify`. The exact host paths are listed by the rule
+chooser and by the generated install report.
 
 For an existing repo, add only the MCP and host files:
 
@@ -140,9 +120,6 @@ For web fetch, give the agent the compact map first:
 ```text
 https://proompteng.github.io/bilig/llms.txt
 ```
-
-When you only need to pick the right repo-local rule or MCP config file, use
-the [coding agent rule chooser](agent-rule-chooser.md).
 
 When a reviewer wants to see a successful run before adopting the path, use the
 [agent proof transcripts](agent-proof-transcripts.md). They show prompt, tool

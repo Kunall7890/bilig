@@ -107,7 +107,7 @@ Expected: those commands appear only in workflow or saved-file boundary sections
 
 Modify `README.md` so the top section and `## If You Only Try One Thing` do not both carry the same full JSON sample. Keep the top sample; turn the later section into routing and trust boundaries.
 
-- [ ] **Step 2: Keep WorkPaper first and saved files second**
+- [x] **Step 2: Keep WorkPaper first and saved files second**
 
 Search:
 
@@ -119,11 +119,11 @@ Expected: saved-file language appears only in trust boundaries, imported-file ro
 
 ### Task 4: Trim Agent Handoff Repetition
 
-- [ ] **Step 1: Shorten `docs/agent-adoption-kit.md`**
+- [x] **Step 1: Shorten `docs/agent-adoption-kit.md`**
 
 Keep the proof table, no-key evaluator, manifest gate, and upstream maintainer notes. Replace long host lists with links to `docs/agent-rule-chooser.md` unless a host needs unique instructions on that page.
 
-- [ ] **Step 2: Shorten `docs/headless-workpaper-agent-handbook.md`**
+- [x] **Step 2: Shorten `docs/headless-workpaper-agent-handbook.md`**
 
 Keep one copy-paste prompt, one MCP config, one output contract, and boundaries. Remove duplicate install lists already covered by the adoption kit or rule chooser.
 
